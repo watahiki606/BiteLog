@@ -1,10 +1,3 @@
-//
-//  Item.swift
-//  BiteLog
-//
-//  Created by 綿引慎也 on 2025/02/22.
-//
-
 import Foundation
 import SwiftData
 

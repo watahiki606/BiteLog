@@ -1,10 +1,3 @@
-//
-//  BiteLogUITestsLaunchTests.swift
-//  BiteLogUITests
-//
-//  Created by 綿引慎也 on 2025/02/22.
-//
-
 import XCTest
 
 final class BiteLogUITestsLaunchTests: XCTestCase {
