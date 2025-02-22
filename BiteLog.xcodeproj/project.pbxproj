@@ -52,6 +52,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2D086CB72D69707900C2CD95 /* SwiftData.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -236,6 +237,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2D086CB42D69707900C2CD95 /* BiteLogApp.swift in Sources */,
+				2D086CB52D69707900C2CD95 /* ContentView.swift in Sources */,
+				2D086CB62D69707900C2CD95 /* Item.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
