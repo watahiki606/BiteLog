@@ -56,8 +56,13 @@ struct ContentView: View {
           }
           .padding()
 
-          Text(selectedDate.formatted(date: .abbreviated, time: .omitted))
-            .font(.headline)
+          DatePicker(
+            "",
+            selection: $selectedDate,
+            displayedComponents: [.date]
+          )
+          .labelsHidden()
+          .datePickerStyle(.compact)
 
           Button(action: { moveDate(by: 1) }) {
             Image(systemName: "chevron.right")
@@ -84,9 +89,17 @@ struct ContentView: View {
             Section(mealType.rawValue) {
               ForEach(filteredItems.filter { $0.mealType == mealType }) { item in
                 ItemRow(item: item)
-              }
-              .onDelete { indexSet in
-                deleteItems(for: mealType, at: indexSet)
+                  .swipeActions(allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                      if let index = filteredItems.filter({ $0.mealType == mealType }).firstIndex(
+                        of: item)
+                      {
+                        deleteItems(for: mealType, at: IndexSet([index]))
+                      }
+                    } label: {
+                      Label("削除", systemImage: "trash")
+                    }
+                  }
               }
 
               Button(action: {
@@ -105,20 +118,25 @@ struct ContentView: View {
             }
           }
         }
+        .scrollDisabled(abs(dragOffset) > 0)
       }
       .offset(x: dragOffset)
       .animation(.interactiveSpring(), value: dragOffset)
-      .gesture(
+      .simultaneousGesture(
         DragGesture()
           .onChanged { gesture in
-            dragOffset = gesture.translation.width
+            if abs(gesture.translation.width) > abs(gesture.translation.height) {
+              dragOffset = gesture.translation.width
+            }
           }
           .onEnded { gesture in
-            dragOffset = 0
-            if gesture.translation.width > 100 {
-              moveDate(by: -1)  // 右にスワイプで前日
-            } else if gesture.translation.width < -100 {
-              moveDate(by: 1)  // 左にスワイプで翌日
+            if abs(gesture.translation.width) > abs(gesture.translation.height) {
+              dragOffset = 0
+              if gesture.translation.width > 100 {
+                moveDate(by: -1)
+              } else if gesture.translation.width < -100 {
+                moveDate(by: 1)
+              }
             }
           }
       )
