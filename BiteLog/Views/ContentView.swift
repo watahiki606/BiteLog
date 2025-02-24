@@ -20,7 +20,7 @@ struct ContentView: View {
 
   @Query(sort: \Item.timestamp) private var allItems: [Item]
 
-  @State private var showingAddItem = false
+  @State private var showingAddItemFor: MealType?
   @State private var selectedDate = Date()
   @State private var showingImportCSV = false
 
@@ -77,18 +77,23 @@ struct ContentView: View {
               }
 
               Button(action: {
-                showingAddItem = true
+                showingAddItemFor = mealType
               }) {
                 Label("食事を追加", systemImage: "plus.circle")
+              }
+              .sheet(
+                isPresented: Binding(
+                  get: { showingAddItemFor == mealType },
+                  set: { if !$0 { showingAddItemFor = nil } }
+                )
+              ) {
+                AddItemView(preselectedMealType: mealType, selectedDate: selectedDate)
               }
             }
           }
         }
       }
       .navigationTitle("食事記録")
-      .sheet(isPresented: $showingAddItem) {
-        AddItemView(preselectedMealType: .breakfast)
-      }
       .sheet(isPresented: $showingImportCSV) {
         ImportCSVView()
       }

@@ -2,22 +2,30 @@ import SwiftData
 import SwiftUI
 
 struct AddItemView: View {
+  @Environment(\.managedObjectContext) private var viewContext
   @Environment(\.dismiss) var dismiss
   @Environment(\.modelContext) private var modelContext
   @Query private var items: [Item]
 
+  let preselectedMealType: MealType
+  let mealType: MealType
+  var selectedDate: Date
+
   @State private var brandName = ""
   @State private var productName = ""
-  @State private var portion = ""
-  @State private var calories = ""
-  @State private var protein = ""
-  @State private var fat = ""
-  @State private var carbohydrates = ""
-  @State private var mealType: MealType
+  @State private var portion: String = ""
+  @State private var calories: String = ""
+  @State private var protein: String = ""
+  @State private var fat: String = ""
+  @State private var carbohydrates: String = ""
   @State private var showingPastItems = false
+  @State private var date: Date
 
-  init(preselectedMealType: MealType) {
-    _mealType = State(initialValue: preselectedMealType)
+  init(preselectedMealType: MealType, selectedDate: Date) {
+    self.preselectedMealType = preselectedMealType
+    self.mealType = preselectedMealType
+    self.selectedDate = selectedDate
+    _date = State(initialValue: selectedDate)
   }
 
   var body: some View {
@@ -27,11 +35,7 @@ struct AddItemView: View {
           TextField("ブランド名", text: $brandName)
           TextField("商品名", text: $productName)
           TextField("量 (例: 1個, 100g)", text: $portion)
-          Picker("食事タイプ", selection: $mealType) {
-            ForEach(MealType.allCases, id: \.self) { type in
-              Text(type.rawValue).tag(type)
-            }
-          }
+          Text(mealType.rawValue)
         }
 
         Section("栄養素") {
@@ -80,7 +84,7 @@ struct AddItemView: View {
       fat: Double(fat) ?? 0,
       carbohydrates: Double(carbohydrates) ?? 0,
       mealType: mealType,
-      timestamp: Date()
+      timestamp: date
     )
     modelContext.insert(newItem)
   }
