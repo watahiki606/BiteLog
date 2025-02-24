@@ -6,7 +6,7 @@ struct ContentView: View {
   @Query(sort: \Item.timestamp) private var allItems: [Item]
 
   @State private var selectedDate = Date()
-  @State private var showingAddItemFor: MealType?
+  @State private var showingAddItemFor: (date: Date, mealType: MealType)?
   @State private var showingImportCSV = false
   @State private var dragOffset = CGFloat.zero
 
@@ -17,7 +17,10 @@ struct ContentView: View {
           // 前日のビュー
           DayContentView(
             date: Calendar.current.date(byAdding: .day, value: -1, to: selectedDate)!,
-            showingAddItemFor: $showingAddItemFor,
+            selectedDate: selectedDate,
+            onAddTapped: { date, mealType in
+              showingAddItemFor = (date, mealType)
+            },
             modelContext: modelContext
           )
           .frame(width: geometry.size.width)
@@ -25,7 +28,10 @@ struct ContentView: View {
           // 現在の日付のビュー
           DayContentView(
             date: selectedDate,
-            showingAddItemFor: $showingAddItemFor,
+            selectedDate: selectedDate,
+            onAddTapped: { date, mealType in
+              showingAddItemFor = (date, mealType)
+            },
             modelContext: modelContext
           )
           .frame(width: geometry.size.width)
@@ -33,7 +39,10 @@ struct ContentView: View {
           // 翌日のビュー
           DayContentView(
             date: Calendar.current.date(byAdding: .day, value: 1, to: selectedDate)!,
-            showingAddItemFor: $showingAddItemFor,
+            selectedDate: selectedDate,
+            onAddTapped: { date, mealType in
+              showingAddItemFor = (date, mealType)
+            },
             modelContext: modelContext
           )
           .frame(width: geometry.size.width)
@@ -90,8 +99,19 @@ struct ContentView: View {
           }
         }
       }
-      .sheet(isPresented: $showingImportCSV) {
-        ImportCSVView()
+      .sheet(
+        isPresented: Binding(
+          get: { showingAddItemFor != nil },
+          set: { if !$0 { showingAddItemFor = nil } }
+        )
+      ) {
+        if let itemInfo = showingAddItemFor {
+          AddItemView(
+            preselectedMealType: itemInfo.mealType,
+            selectedDate: itemInfo.date
+          )
+          .presentationDetents([.medium, .large])
+        }
       }
     }
   }
@@ -100,7 +120,8 @@ struct ContentView: View {
 // 日付ごとのコンテンツを表示するビュー
 struct DayContentView: View {
   let date: Date
-  @Binding var showingAddItemFor: MealType?
+  let selectedDate: Date
+  let onAddTapped: (Date, MealType) -> Void
   let modelContext: ModelContext
 
   var filteredItems: [Item] {
@@ -170,7 +191,7 @@ struct DayContentView: View {
             }
 
             Button(action: {
-              showingAddItemFor = mealType
+              onAddTapped(date, mealType)
             }) {
               Label("食事を追加", systemImage: "plus.circle")
             }
