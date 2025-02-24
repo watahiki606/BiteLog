@@ -145,10 +145,15 @@ struct ContentView: View {
         ImportCSVView()
       }
       .toolbar {
-        Button(action: {
-          showingImportCSV = true
-        }) {
-          Label("CSVインポート", systemImage: "square.and.arrow.down")
+        ToolbarItem(placement: .topBarTrailing) {
+          Menu {
+            Button(action: { showingImportCSV = true }) {
+              Label("CSVインポート", systemImage: "square.and.arrow.down")
+            }
+            // 将来的な機能拡張のためのメニュー項目をここに追加可能
+          } label: {
+            Image(systemName: "ellipsis.circle")
+          }
         }
       }
     }
