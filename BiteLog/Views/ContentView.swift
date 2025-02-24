@@ -3,152 +3,82 @@ import SwiftUI
 
 struct ContentView: View {
   @Environment(\.modelContext) private var modelContext
-
-  var filteredItems: [Item] {
-    let calendar = Calendar.current
-    let startOfDay = calendar.startOfDay(for: selectedDate)
-    let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-
-    let descriptor = FetchDescriptor<Item>(
-      predicate: #Predicate<Item> { item in
-        item.timestamp >= startOfDay && item.timestamp < endOfDay
-      },
-      sortBy: [SortDescriptor(\.timestamp)]
-    )
-    return (try? modelContext.fetch(descriptor) as [Item]) ?? []
-  }
-
   @Query(sort: \Item.timestamp) private var allItems: [Item]
 
-  @State private var showingAddItemFor: MealType?
   @State private var selectedDate = Date()
+  @State private var showingAddItemFor: MealType?
   @State private var showingImportCSV = false
-
-  @State private var cachedTotals:
-    (date: Date, totals: (calories: Double, protein: Double, fat: Double, carbs: Double))?
-
   @State private var dragOffset = CGFloat.zero
-
-  var dailyTotals: (calories: Double, protein: Double, fat: Double, carbs: Double) {
-    if let cached = cachedTotals, Calendar.current.isDate(cached.date, inSameDayAs: selectedDate) {
-      return cached.totals
-    }
-
-    let totals = filteredItems.reduce((0, 0, 0, 0)) { result, item in
-      (
-        result.0 + item.calories,
-        result.1 + item.protein,
-        result.2 + item.fat,
-        result.3 + item.carbohydrates
-      )
-    }
-
-    cachedTotals = (selectedDate, totals)
-    return totals
-  }
 
   var body: some View {
     NavigationStack {
-      VStack {
-        // 日付選択と日別集計をVStackでグループ化
-        VStack {
-          // 日付選択部分
-          HStack {
-            Button(action: { moveDate(by: -1) }) {
-              Image(systemName: "chevron.left")
-            }
-            .padding()
+      GeometryReader { geometry in
+        HStack(spacing: 0) {
+          // 前日のビュー
+          DayContentView(
+            date: Calendar.current.date(byAdding: .day, value: -1, to: selectedDate)!,
+            showingAddItemFor: $showingAddItemFor,
+            modelContext: modelContext
+          )
+          .frame(width: geometry.size.width)
 
-            DatePicker(
-              "",
-              selection: $selectedDate,
-              displayedComponents: [.date]
-            )
-            .labelsHidden()
-            .datePickerStyle(.compact)
+          // 現在の日付のビュー
+          DayContentView(
+            date: selectedDate,
+            showingAddItemFor: $showingAddItemFor,
+            modelContext: modelContext
+          )
+          .frame(width: geometry.size.width)
 
-            Button(action: { moveDate(by: 1) }) {
-              Image(systemName: "chevron.right")
-            }
-            .padding()
-          }
-
-          // 日別集計
-          VStack(spacing: 8) {
-            Text("1日の合計")
-              .font(.headline)
-            Text("カロリー: \(dailyTotals.calories, specifier: "%.0f") kcal")
-            Text("タンパク質: \(dailyTotals.protein, specifier: "%.1f")g")
-            Text("脂質: \(dailyTotals.fat, specifier: "%.1f")g")
-            Text("炭水化物: \(dailyTotals.carbs, specifier: "%.1f")g")
-          }
-          .padding()
-          .background(Color.gray.opacity(0.1))
-          .cornerRadius(10)
-          .padding(.horizontal)
+          // 翌日のビュー
+          DayContentView(
+            date: Calendar.current.date(byAdding: .day, value: 1, to: selectedDate)!,
+            showingAddItemFor: $showingAddItemFor,
+            modelContext: modelContext
+          )
+          .frame(width: geometry.size.width)
         }
+        .offset(x: -geometry.size.width + dragOffset)
+        .animation(.interactiveSpring(), value: dragOffset)
         .gesture(
           DragGesture()
             .onChanged { gesture in
-              if abs(gesture.translation.width) > abs(gesture.translation.height) {
-                dragOffset = gesture.translation.width
-              }
+              dragOffset = gesture.translation.width
             }
             .onEnded { gesture in
-              if abs(gesture.translation.width) > abs(gesture.translation.height) {
-                dragOffset = 0
-                if gesture.translation.width > 100 {
-                  moveDate(by: -1)
-                } else if gesture.translation.width < -100 {
-                  moveDate(by: 1)
+              let threshold = geometry.size.width / 3
+              if gesture.translation.width > threshold {
+                // 右にスワイプ（前日）
+                withAnimation(.interactiveSpring()) {
+                  selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate)!
+                  dragOffset = 0
+                }
+              } else if gesture.translation.width < -threshold {
+                // 左にスワイプ（翌日）
+                withAnimation(.interactiveSpring()) {
+                  selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate)!
+                  dragOffset = 0
+                }
+              } else {
+                // 元の位置に戻す
+                withAnimation(.interactiveSpring()) {
+                  dragOffset = 0
                 }
               }
             }
         )
-
-        // リスト部分
-        List {
-          ForEach(MealType.allCases, id: \.self) { mealType in
-            Section(mealType.rawValue) {
-              ForEach(filteredItems.filter { $0.mealType == mealType }) { item in
-                ItemRow(item: item)
-                  .swipeActions(allowsFullSwipe: true) {
-                    Button(role: .destructive) {
-                      if let index = filteredItems.filter({ $0.mealType == mealType }).firstIndex(
-                        of: item)
-                      {
-                        deleteItems(for: mealType, at: IndexSet([index]))
-                      }
-                    } label: {
-                      Label("削除", systemImage: "trash")
-                    }
-                  }
-              }
-
-              Button(action: {
-                showingAddItemFor = mealType
-              }) {
-                Label("食事を追加", systemImage: "plus.circle")
-              }
-              .sheet(
-                isPresented: Binding(
-                  get: { showingAddItemFor == mealType },
-                  set: { if !$0 { showingAddItemFor = nil } }
-                )
-              ) {
-                AddItemView(preselectedMealType: mealType, selectedDate: selectedDate)
-              }
-            }
-          }
-        }
       }
-      .offset(x: dragOffset)
-      .animation(.interactiveSpring(), value: dragOffset)
       .navigationTitle("食事記録")
-      .sheet(isPresented: $showingImportCSV) {
-        ImportCSVView()
-      }
       .toolbar {
+        ToolbarItem(placement: .topBarTrailing) {
+          DatePicker(
+            "",
+            selection: $selectedDate,
+            displayedComponents: [.date]
+          )
+          .labelsHidden()
+        }
+
         ToolbarItem(placement: .topBarTrailing) {
           Menu {
             Button(action: { showingImportCSV = true }) {
@@ -160,19 +90,93 @@ struct ContentView: View {
           }
         }
       }
+      .sheet(isPresented: $showingImportCSV) {
+        ImportCSVView()
+      }
+    }
+  }
+}
+
+// 日付ごとのコンテンツを表示するビュー
+struct DayContentView: View {
+  let date: Date
+  @Binding var showingAddItemFor: MealType?
+  let modelContext: ModelContext
+
+  var filteredItems: [Item] {
+    let calendar = Calendar.current
+    let startOfDay = calendar.startOfDay(for: date)
+    let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+
+    let descriptor = FetchDescriptor<Item>(
+      predicate: #Predicate<Item> { item in
+        item.timestamp >= startOfDay && item.timestamp < endOfDay
+      },
+      sortBy: [SortDescriptor(\.timestamp)]
+    )
+    return (try? modelContext.fetch(descriptor)) ?? []
+  }
+
+  var dailyTotals: (calories: Double, protein: Double, fat: Double, carbs: Double) {
+    filteredItems.reduce((0, 0, 0, 0)) { result, item in
+      (
+        result.0 + item.calories,
+        result.1 + item.protein,
+        result.2 + item.fat,
+        result.3 + item.carbohydrates
+      )
     }
   }
 
-  private func deleteItems(for mealType: MealType, at offsets: IndexSet) {
-    let itemsToDelete = filteredItems.filter { $0.mealType == mealType }
-    offsets.forEach { index in
-      modelContext.delete(itemsToDelete[index])
-    }
-  }
+  var body: some View {
+    VStack {
+      // 日付表示
+      DatePicker(
+        "",
+        selection: .constant(date),
+        displayedComponents: [.date]
+      )
+      .labelsHidden()
+      .datePickerStyle(.compact)
+      .disabled(true)
 
-  private func moveDate(by days: Int) {
-    if let newDate = Calendar.current.date(byAdding: .day, value: days, to: selectedDate) {
-      selectedDate = newDate
+      // 日別集計
+      VStack(spacing: 8) {
+        Text("1日の合計")
+          .font(.headline)
+        Text("カロリー: \(dailyTotals.calories, specifier: "%.0f") kcal")
+        Text("タンパク質: \(dailyTotals.protein, specifier: "%.1f")g")
+        Text("脂質: \(dailyTotals.fat, specifier: "%.1f")g")
+        Text("炭水化物: \(dailyTotals.carbs, specifier: "%.1f")g")
+      }
+      .padding()
+      .background(Color.gray.opacity(0.1))
+      .cornerRadius(10)
+      .padding(.horizontal)
+
+      // リスト部分
+      List {
+        ForEach(MealType.allCases, id: \.self) { mealType in
+          Section(mealType.rawValue) {
+            ForEach(filteredItems.filter { $0.mealType == mealType }) { item in
+              ItemRow(item: item)
+                .swipeActions(allowsFullSwipe: true) {
+                  Button(role: .destructive) {
+                    modelContext.delete(item)
+                  } label: {
+                    Label("削除", systemImage: "trash")
+                  }
+                }
+            }
+
+            Button(action: {
+              showingAddItemFor = mealType
+            }) {
+              Label("食事を追加", systemImage: "plus.circle")
+            }
+          }
+        }
+      }
     }
   }
 }
