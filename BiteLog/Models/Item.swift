@@ -10,7 +10,9 @@ enum MealType: String, CaseIterable, Codable {
 
 @Model
 final class Item {
-  var name: String
+  var brandName: String
+  var productName: String
+  var portion: String
   var calories: Double
   var protein: Double
   var fat: Double
@@ -19,15 +21,22 @@ final class Item {
   var timestamp: Date
 
   init(
-    name: String, calories: Double, protein: Double, fat: Double, carbohydrates: Double,
+    brandName: String, productName: String, portion: String,
+    calories: Double, protein: Double, fat: Double, carbohydrates: Double,
     mealType: MealType, timestamp: Date
   ) {
-    self.name = name
+    self.brandName = brandName
+    self.productName = productName
+    self.portion = portion
     self.calories = calories
     self.protein = protein
     self.fat = fat
     self.carbohydrates = carbohydrates
     self.mealType = mealType
     self.timestamp = timestamp
+  }
+
+  var name: String {
+    "\(brandName) \(productName)"
   }
 }
