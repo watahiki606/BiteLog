@@ -50,17 +50,31 @@ struct AddItemView: View {
               Text(mealType.rawValue)
             }
 
-            Section("栄養素") {
-              TextField("カロリー (kcal)", text: $calories)
-                .keyboardType(.decimalPad)
-              TextField("タンパク質 (g)", text: $protein)
-                .keyboardType(.decimalPad)
-              TextField("脂質 (g)", text: $fat)
-                .keyboardType(.decimalPad)
-              TextField("炭水化物 (g)", text: $carbohydrates)
-                .keyboardType(.decimalPad)
+            Section("栄養成分") {
+              HStack {
+                TextField("カロリー", text: $calories)
+                  .keyboardType(.decimalPad)
+                Text("kcal")
+              }
+              HStack {
+                TextField("タンパク質", text: $protein)
+                  .keyboardType(.decimalPad)
+                Text("g")
+              }
+              HStack {
+                TextField("脂質", text: $fat)
+                  .keyboardType(.decimalPad)
+                Text("g")
+              }
+              HStack {
+                TextField("炭水化物", text: $carbohydrates)
+                  .keyboardType(.decimalPad)
+                Text("g")
+              }
             }
+
           }
+
         } else {
           // 検索結果一覧
           List {
