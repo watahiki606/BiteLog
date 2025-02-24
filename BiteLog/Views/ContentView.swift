@@ -3,18 +3,36 @@ import SwiftUI
 
 struct ContentView: View {
   @Environment(\.modelContext) private var modelContext
-  @Query private var items: [Item]
+
+  var filteredItems: [Item] {
+    let calendar = Calendar.current
+    let startOfDay = calendar.startOfDay(for: selectedDate)
+    let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+
+    let descriptor = FetchDescriptor<Item>(
+      predicate: #Predicate<Item> { item in
+        item.timestamp >= startOfDay && item.timestamp < endOfDay
+      },
+      sortBy: [SortDescriptor(\.timestamp)]
+    )
+    return (try? modelContext.fetch(descriptor) as [Item]) ?? []
+  }
+
+  @Query(sort: \Item.timestamp) private var allItems: [Item]
 
   @State private var showingAddItem = false
   @State private var selectedDate = Date()
   @State private var showingImportCSV = false
 
-  var filteredItems: [Item] {
-    items.filter { Calendar.current.isDate($0.timestamp, inSameDayAs: selectedDate) }
-  }
+  @State private var cachedTotals:
+    (date: Date, totals: (calories: Double, protein: Double, fat: Double, carbs: Double))?
 
   var dailyTotals: (calories: Double, protein: Double, fat: Double, carbs: Double) {
-    filteredItems.reduce((0, 0, 0, 0)) { result, item in
+    if let cached = cachedTotals, Calendar.current.isDate(cached.date, inSameDayAs: selectedDate) {
+      return cached.totals
+    }
+
+    let totals = filteredItems.reduce((0, 0, 0, 0)) { result, item in
       (
         result.0 + item.calories,
         result.1 + item.protein,
@@ -22,6 +40,9 @@ struct ContentView: View {
         result.3 + item.carbohydrates
       )
     }
+
+    cachedTotals = (selectedDate, totals)
+    return totals
   }
 
   var body: some View {

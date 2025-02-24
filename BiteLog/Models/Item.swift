@@ -10,6 +10,7 @@ enum MealType: String, CaseIterable, Codable {
 
 @Model
 final class Item {
+  @Attribute(.unique) var id: String
   var brandName: String
   var productName: String
   var portion: String
@@ -18,13 +19,14 @@ final class Item {
   var fat: Double
   var carbohydrates: Double
   var mealType: MealType
-  var timestamp: Date
+  @Attribute(.externalStorage) var timestamp: Date
 
   init(
     brandName: String, productName: String, portion: String,
     calories: Double, protein: Double, fat: Double, carbohydrates: Double,
     mealType: MealType, timestamp: Date
   ) {
+    self.id = UUID().uuidString
     self.brandName = brandName
     self.productName = productName
     self.portion = portion
