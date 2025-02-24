@@ -50,40 +50,63 @@ struct ContentView: View {
   var body: some View {
     NavigationStack {
       VStack {
-        HStack {
-          Button(action: { moveDate(by: -1) }) {
-            Image(systemName: "chevron.left")
+        // 日付選択と日別集計をVStackでグループ化
+        VStack {
+          // 日付選択部分
+          HStack {
+            Button(action: { moveDate(by: -1) }) {
+              Image(systemName: "chevron.left")
+            }
+            .padding()
+
+            DatePicker(
+              "",
+              selection: $selectedDate,
+              displayedComponents: [.date]
+            )
+            .labelsHidden()
+            .datePickerStyle(.compact)
+
+            Button(action: { moveDate(by: 1) }) {
+              Image(systemName: "chevron.right")
+            }
+            .padding()
+          }
+
+          // 日別集計
+          VStack(spacing: 8) {
+            Text("1日の合計")
+              .font(.headline)
+            Text("カロリー: \(dailyTotals.calories, specifier: "%.0f") kcal")
+            Text("タンパク質: \(dailyTotals.protein, specifier: "%.1f")g")
+            Text("脂質: \(dailyTotals.fat, specifier: "%.1f")g")
+            Text("炭水化物: \(dailyTotals.carbs, specifier: "%.1f")g")
           }
           .padding()
-
-          DatePicker(
-            "",
-            selection: $selectedDate,
-            displayedComponents: [.date]
-          )
-          .labelsHidden()
-          .datePickerStyle(.compact)
-
-          Button(action: { moveDate(by: 1) }) {
-            Image(systemName: "chevron.right")
-          }
-          .padding()
+          .background(Color.gray.opacity(0.1))
+          .cornerRadius(10)
+          .padding(.horizontal)
         }
+        .gesture(
+          DragGesture()
+            .onChanged { gesture in
+              if abs(gesture.translation.width) > abs(gesture.translation.height) {
+                dragOffset = gesture.translation.width
+              }
+            }
+            .onEnded { gesture in
+              if abs(gesture.translation.width) > abs(gesture.translation.height) {
+                dragOffset = 0
+                if gesture.translation.width > 100 {
+                  moveDate(by: -1)
+                } else if gesture.translation.width < -100 {
+                  moveDate(by: 1)
+                }
+              }
+            }
+        )
 
-        // 日別集計
-        VStack(spacing: 8) {
-          Text("1日の合計")
-            .font(.headline)
-          Text("カロリー: \(dailyTotals.calories, specifier: "%.0f") kcal")
-          Text("タンパク質: \(dailyTotals.protein, specifier: "%.1f")g")
-          Text("脂質: \(dailyTotals.fat, specifier: "%.1f")g")
-          Text("炭水化物: \(dailyTotals.carbs, specifier: "%.1f")g")
-        }
-        .padding()
-        .background(Color.gray.opacity(0.1))
-        .cornerRadius(10)
-        .padding(.horizontal)
-
+        // リスト部分
         List {
           ForEach(MealType.allCases, id: \.self) { mealType in
             Section(mealType.rawValue) {
@@ -118,28 +141,9 @@ struct ContentView: View {
             }
           }
         }
-        .scrollDisabled(abs(dragOffset) > 0)
       }
       .offset(x: dragOffset)
       .animation(.interactiveSpring(), value: dragOffset)
-      .simultaneousGesture(
-        DragGesture()
-          .onChanged { gesture in
-            if abs(gesture.translation.width) > abs(gesture.translation.height) {
-              dragOffset = gesture.translation.width
-            }
-          }
-          .onEnded { gesture in
-            if abs(gesture.translation.width) > abs(gesture.translation.height) {
-              dragOffset = 0
-              if gesture.translation.width > 100 {
-                moveDate(by: -1)
-              } else if gesture.translation.width < -100 {
-                moveDate(by: 1)
-              }
-            }
-          }
-      )
       .navigationTitle("食事記録")
       .sheet(isPresented: $showingImportCSV) {
         ImportCSVView()
