@@ -27,6 +27,8 @@ struct ContentView: View {
   @State private var cachedTotals:
     (date: Date, totals: (calories: Double, protein: Double, fat: Double, carbs: Double))?
 
+  @State private var dragOffset = CGFloat.zero
+
   var dailyTotals: (calories: Double, protein: Double, fat: Double, carbs: Double) {
     if let cached = cachedTotals, Calendar.current.isDate(cached.date, inSameDayAs: selectedDate) {
       return cached.totals
@@ -48,9 +50,20 @@ struct ContentView: View {
   var body: some View {
     NavigationStack {
       VStack {
-        DatePicker("日付", selection: $selectedDate, displayedComponents: .date)
-          .datePickerStyle(.compact)
+        HStack {
+          Button(action: { moveDate(by: -1) }) {
+            Image(systemName: "chevron.left")
+          }
           .padding()
+
+          Text(selectedDate.formatted(date: .abbreviated, time: .omitted))
+            .font(.headline)
+
+          Button(action: { moveDate(by: 1) }) {
+            Image(systemName: "chevron.right")
+          }
+          .padding()
+        }
 
         // 日別集計
         VStack(spacing: 8) {
@@ -93,6 +106,22 @@ struct ContentView: View {
           }
         }
       }
+      .offset(x: dragOffset)
+      .animation(.interactiveSpring(), value: dragOffset)
+      .gesture(
+        DragGesture()
+          .onChanged { gesture in
+            dragOffset = gesture.translation.width
+          }
+          .onEnded { gesture in
+            dragOffset = 0
+            if gesture.translation.width > 100 {
+              moveDate(by: -1)  // 右にスワイプで前日
+            } else if gesture.translation.width < -100 {
+              moveDate(by: 1)  // 左にスワイプで翌日
+            }
+          }
+      )
       .navigationTitle("食事記録")
       .sheet(isPresented: $showingImportCSV) {
         ImportCSVView()
@@ -111,6 +140,12 @@ struct ContentView: View {
     let itemsToDelete = filteredItems.filter { $0.mealType == mealType }
     offsets.forEach { index in
       modelContext.delete(itemsToDelete[index])
+    }
+  }
+
+  private func moveDate(by days: Int) {
+    if let newDate = Calendar.current.date(byAdding: .day, value: days, to: selectedDate) {
+      selectedDate = newDate
     }
   }
 }
