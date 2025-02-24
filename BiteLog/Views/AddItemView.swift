@@ -11,6 +11,7 @@ struct AddItemView: View {
   let mealType: MealType
   var selectedDate: Date
 
+  @State private var searchText = ""
   @State private var brandName = ""
   @State private var productName = ""
   @State private var portion: String = ""
@@ -20,6 +21,10 @@ struct AddItemView: View {
   @State private var carbohydrates: String = ""
   @State private var showingPastItems = false
   @State private var date: Date
+  @State private var searchResults: [Item] = []
+  @State private var currentOffset = 0
+  @State private var hasMoreData = true
+  private let pageSize = 100
 
   init(preselectedMealType: MealType, selectedDate: Date) {
     self.preselectedMealType = preselectedMealType
@@ -30,28 +35,52 @@ struct AddItemView: View {
 
   var body: some View {
     NavigationStack {
-      Form {
-        Section("基本情報") {
-          TextField("ブランド名", text: $brandName)
-          TextField("商品名", text: $productName)
-          TextField("量 (例: 1個, 100g)", text: $portion)
-          Text(mealType.rawValue)
-        }
+      VStack {
+        // 検索バー
+        SearchBar(text: $searchText, placeholder: "過去の食事を検索")
+          .padding()
 
-        Section("栄養素") {
-          TextField("カロリー (kcal)", text: $calories)
-            .keyboardType(.decimalPad)
-          TextField("タンパク質 (g)", text: $protein)
-            .keyboardType(.decimalPad)
-          TextField("脂質 (g)", text: $fat)
-            .keyboardType(.decimalPad)
-          TextField("炭水化物 (g)", text: $carbohydrates)
-            .keyboardType(.decimalPad)
-        }
+        if searchText.isEmpty {
+          // 新規入力フォーム
+          Form {
+            Section("基本情報") {
+              TextField("ブランド名", text: $brandName)
+              TextField("商品名", text: $productName)
+              TextField("量 (例: 1個, 100g)", text: $portion)
+              Text(mealType.rawValue)
+            }
 
-        Section {
-          Button("過去の食事から選択") {
-            showingPastItems = true
+            Section("栄養素") {
+              TextField("カロリー (kcal)", text: $calories)
+                .keyboardType(.decimalPad)
+              TextField("タンパク質 (g)", text: $protein)
+                .keyboardType(.decimalPad)
+              TextField("脂質 (g)", text: $fat)
+                .keyboardType(.decimalPad)
+              TextField("炭水化物 (g)", text: $carbohydrates)
+                .keyboardType(.decimalPad)
+            }
+          }
+        } else {
+          // 検索結果一覧
+          List {
+            ForEach(searchResults) { item in
+              Button {
+                selectPastItem(item)
+                searchText = ""
+              } label: {
+                ItemRow(item: item)
+              }
+              .onAppear {
+                if searchResults.index(searchResults.endIndex, offsetBy: -2)
+                  == searchResults.firstIndex(of: item)
+                {
+                  if hasMoreData {
+                    loadMoreItems()
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -68,8 +97,12 @@ struct AddItemView: View {
           .disabled(brandName.isEmpty || productName.isEmpty || portion.isEmpty || calories.isEmpty)
         }
       }
-      .sheet(isPresented: $showingPastItems) {
-        PastItemsView(selection: selectPastItem)
+
+      .onChange(of: searchText) { _, _ in
+        searchResults = []
+        currentOffset = 0
+        hasMoreData = true
+        loadMoreItems()
       }
     }
   }
@@ -97,5 +130,59 @@ struct AddItemView: View {
     protein = String(item.protein)
     fat = String(item.fat)
     carbohydrates = String(item.carbohydrates)
+  }
+
+  private func loadMoreItems() {
+    guard !searchText.isEmpty else {
+      searchResults = []
+      currentOffset = 0
+      hasMoreData = true
+      return
+    }
+
+    var descriptor = FetchDescriptor<Item>(
+      predicate: #Predicate<Item> { item in
+        item.brandName.localizedStandardContains(searchText)
+          || item.productName.localizedStandardContains(searchText)
+      },
+      sortBy: [SortDescriptor(\Item.timestamp, order: .reverse)]
+    )
+    descriptor.fetchOffset = currentOffset
+    descriptor.fetchLimit = pageSize
+
+    if let newItems = try? modelContext.fetch(descriptor) {
+      if currentOffset == 0 {
+        searchResults = newItems
+      } else {
+        searchResults.append(contentsOf: newItems)
+      }
+      currentOffset += newItems.count
+      hasMoreData = newItems.count == pageSize
+    }
+  }
+}
+
+// 検索バーのカスタムビュー
+struct SearchBar: View {
+  @Binding var text: String
+  var placeholder: String
+
+  var body: some View {
+    HStack {
+      Image(systemName: "magnifyingglass")
+        .foregroundColor(.gray)
+
+      TextField(placeholder, text: $text)
+        .textFieldStyle(RoundedBorderTextFieldStyle())
+
+      if !text.isEmpty {
+        Button(action: {
+          text = ""
+        }) {
+          Image(systemName: "xmark.circle.fill")
+            .foregroundColor(.gray)
+        }
+      }
+    }
   }
 }
