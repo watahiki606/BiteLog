@@ -3,19 +3,28 @@ import SwiftUI
 
 struct PastItemsView: View {
   @Environment(\.dismiss) var dismiss
-  @Query private var items: [Item]
+  @Environment(\.modelContext) private var modelContext
   @State private var searchText = ""
 
   var selection: (Item) -> Void
 
-  var filteredItems: [Item] {
+  var searchPredicate: Predicate<Item> {
     if searchText.isEmpty {
-      return Array(Set(items)).sorted { $0.timestamp > $1.timestamp }
+      return #Predicate<Item> { _ in true }
     }
-    return items.filter {
-      $0.brandName.localizedCaseInsensitiveContains(searchText)
-        || $0.productName.localizedCaseInsensitiveContains(searchText)
+    return #Predicate<Item> { item in
+      item.brandName.localizedStandardContains(searchText)
+        || item.productName.localizedStandardContains(searchText)
     }
+  }
+
+  var filteredItems: [Item] {
+    var descriptor = FetchDescriptor<Item>(
+      predicate: searchPredicate,
+      sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+    )
+    descriptor.fetchLimit = 100
+    return (try? modelContext.fetch(descriptor)) ?? []
   }
 
   var body: some View {
