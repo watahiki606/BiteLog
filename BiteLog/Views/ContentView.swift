@@ -152,18 +152,26 @@ struct ContentView: View {
 
 struct ItemRow: View {
   let item: Item
+  @State private var showingEditSheet = false
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 4) {
-      Text("\(item.brandName) \(item.productName)")
-        .font(.headline)
-      Text("\(item.portion) (\(item.calories, specifier: "%.0f") kcal)")
-        .font(.subheadline)
-      Text(
-        "P:\(item.protein, specifier: "%.1f")g F:\(item.fat, specifier: "%.1f")g C:\(item.carbohydrates, specifier: "%.1f")g"
-      )
-      .font(.caption)
-      .foregroundStyle(.secondary)
+    Button {
+      showingEditSheet = true
+    } label: {
+      VStack(alignment: .leading, spacing: 4) {
+        Text("\(item.brandName) \(item.productName)")
+          .font(.headline)
+        Text("\(item.portion) (\(item.calories, specifier: "%.0f") kcal)")
+          .font(.subheadline)
+        Text(
+          "P:\(item.protein, specifier: "%.1f")g F:\(item.fat, specifier: "%.1f")g C:\(item.carbohydrates, specifier: "%.1f")g"
+        )
+        .font(.caption)
+        .foregroundStyle(.secondary)
+      }
+    }
+    .sheet(isPresented: $showingEditSheet) {
+      EditItemView(item: item)
     }
   }
 }
