@@ -149,6 +149,21 @@ struct DayContentView: View {
     }
   }
 
+  // 各食事タイプごとのPFC合計を計算する関数
+  func mealTypeTotals(for mealType: MealType) -> (
+    calories: Double, protein: Double, fat: Double, carbs: Double
+  ) {
+    let mealItems = filteredItems.filter { $0.mealType == mealType }
+    return mealItems.reduce((0, 0, 0, 0)) { result, item in
+      (
+        result.0 + item.calories,
+        result.1 + item.protein,
+        result.2 + item.fat,
+        result.3 + item.carbohydrates
+      )
+    }
+  }
+
   var body: some View {
     VStack {
       // 日付表示
@@ -178,7 +193,25 @@ struct DayContentView: View {
       // リスト部分
       List {
         ForEach(MealType.allCases, id: \.self) { mealType in
-          Section(mealType.rawValue) {
+          Section {
+            // 食事タイプごとのPFC合計を表示
+            let totals = mealTypeTotals(for: mealType)
+            if filteredItems.contains(where: { $0.mealType == mealType }) {
+              VStack(alignment: .leading, spacing: 4) {
+                Text("カロリー: \(totals.calories, specifier: "%.0f") kcal")
+                  .font(.caption)
+                Text(
+                  "P:\(totals.protein, specifier: "%.1f")g F:\(totals.fat, specifier: "%.1f")g C:\(totals.carbs, specifier: "%.1f")g"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+              }
+              .padding(.vertical, 4)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .background(Color.gray.opacity(0.05))
+              .cornerRadius(6)
+            }
+
             ForEach(filteredItems.filter { $0.mealType == mealType }) { item in
               ItemRow(item: item)
                 .swipeActions(allowsFullSwipe: true) {
@@ -195,6 +228,8 @@ struct DayContentView: View {
             }) {
               Label("食事を追加", systemImage: "plus.circle")
             }
+          } header: {
+            Text(mealType.rawValue)
           }
         }
       }
