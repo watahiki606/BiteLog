@@ -211,9 +211,14 @@ struct ItemRow: View {
       showingEditSheet = true
     } label: {
       VStack(alignment: .leading, spacing: 4) {
-        Text("\(item.brandName) \(item.productName)")
-          .font(.headline)
-        Text("\(item.portion) (\(item.calories, specifier: "%.0f") kcal)")
+        HStack {
+          Text("\(item.brandName) \(item.productName)")
+            .font(.headline)
+          Spacer()
+          Text("\(item.calories, specifier: "%.0f") kcal")
+            .font(.subheadline)
+        }
+        Text("\(item.portion)")
           .font(.subheadline)
         Text(
           "P:\(item.protein, specifier: "%.1f")g F:\(item.fat, specifier: "%.1f")g C:\(item.carbohydrates, specifier: "%.1f")g"
