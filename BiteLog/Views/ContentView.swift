@@ -442,72 +442,69 @@ struct ItemCardView: View {
       }
 
       // メインカード
-      Button(action: {
-        showingEditSheet = true
-      }) {
-        VStack(alignment: .leading, spacing: 8) {
-          HStack {
-            VStack(alignment: .leading, spacing: 4) {
-              Text("\(item.brandName) \(item.productName)")
-                .font(.headline)
-                .lineLimit(1)
+      VStack(alignment: .leading, spacing: 8) {
+        HStack {
+          VStack(alignment: .leading, spacing: 4) {
+            Text("\(item.brandName) \(item.productName)")
+              .font(.headline)
+              .lineLimit(1)
 
-              Text("\(item.portion)")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            }
-
-            Spacer()
-
-            Text("\(item.calories, specifier: "%.0f")")
-              .font(.system(size: 18, weight: .bold))
-              + Text(" kcal")
-              .font(.system(size: 14))
+            Text("\(item.portion)")
+              .font(.subheadline)
               .foregroundColor(.secondary)
           }
 
-          HStack(spacing: 12) {
-            MacroView(label: "P", value: item.protein, color: .blue)
-            MacroView(label: "F", value: item.fat, color: .yellow)
-            MacroView(label: "C", value: item.carbohydrates, color: .green)
-          }
+          Spacer()
+
+          Text("\(item.calories, specifier: "%.0f")")
+            .font(.system(size: 18, weight: .bold))
+            + Text(" kcal")
+            .font(.system(size: 14))
+            .foregroundColor(.secondary)
         }
-        .padding()
-        .background(Color(UIColor.systemBackground))
-        .cornerRadius(10)
-        .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
+
+        HStack(spacing: 12) {
+          MacroView(label: "P", value: item.protein, color: .blue)
+          MacroView(label: "F", value: item.fat, color: .yellow)
+          MacroView(label: "C", value: item.carbohydrates, color: .green)
+        }
       }
-      .buttonStyle(PlainButtonStyle())
+      .padding()
+      .background(Color(UIColor.systemBackground))
+      .cornerRadius(10)
+      .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
       .offset(x: offset)
+      .contentShape(Rectangle())  // タップ可能な領域を明確に定義
+      .onTapGesture {
+        if offset != 0 {
+          // スワイプオープン状態ならカードを閉じる
+          withAnimation(.spring()) {
+            offset = 0
+          }
+        } else {
+          // カードが閉じた状態なら編集画面を表示
+          showingEditSheet = true
+        }
+      }
       .gesture(
         DragGesture()
           .onChanged { gesture in
-            if gesture.translation.width < 0 {
-              isSwiping = true
+            if gesture.translation.width < 0 {  // 左スワイプのみ検出
               offset = max(gesture.translation.width, -60)
             }
           }
           .onEnded { gesture in
             withAnimation(.spring()) {
               if gesture.translation.width < -40 {
+                // スワイプが十分なら削除ボタンを表示
                 offset = -60
               } else {
+                // 不十分なスワイプならリセット
                 offset = 0
-                isSwiping = false
               }
             }
           }
       )
-      .onTapGesture {
-        if isSwiping {
-          withAnimation(.spring()) {
-            offset = 0
-            isSwiping = false
-          }
-        } else {
-          showingEditSheet = true
-        }
-      }
     }
     .sheet(isPresented: $showingEditSheet) {
       EditItemView(item: item)
