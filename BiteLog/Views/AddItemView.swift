@@ -337,31 +337,38 @@ struct NutrientInputField: View {
   let label: String
   @Binding var value: String
   let unit: String
+  @FocusState private var isFocused: Bool
 
   var body: some View {
-    HStack {
-      Image(systemName: icon)
-        .foregroundColor(iconColor)
-        .frame(width: 24)
+    Button {
+      isFocused = true
+    } label: {
+      HStack {
+        Image(systemName: icon)
+          .foregroundColor(iconColor)
+          .frame(width: 24)
 
-      Text(label)
-        .foregroundColor(.primary)
+        Text(label)
+          .foregroundColor(.primary)
 
-      Spacer()
+        Spacer()
 
-      TextField("0", text: $value)
-        .keyboardType(.decimalPad)
-        .multilineTextAlignment(.trailing)
-        .frame(width: 80)
+        TextField("0", text: $value)
+          .keyboardType(.decimalPad)
+          .multilineTextAlignment(.trailing)
+          .frame(width: 80)
+          .focused($isFocused)
 
-      Text(unit)
-        .foregroundColor(.secondary)
-        .frame(width: 40, alignment: .leading)
+        Text(unit)
+          .foregroundColor(.secondary)
+          .frame(width: 40, alignment: .leading)
+      }
+      .padding(.vertical, 12)
+      .padding(.horizontal, 12)
+      .background(Color(UIColor.secondarySystemBackground))
+      .cornerRadius(10)
     }
-    .padding(.vertical, 12)
-    .padding(.horizontal, 12)
-    .background(Color(UIColor.secondarySystemBackground))
-    .cornerRadius(10)
+    .buttonStyle(PlainButtonStyle())
   }
 }
 
