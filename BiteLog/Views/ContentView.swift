@@ -276,10 +276,31 @@ struct DayContentView: View {
                 }
                 .padding(.horizontal, 32)
               } else {
-                ForEach(mealItems) { item in
-                  ItemCardView(item: item, modelContext: modelContext)
-                    .padding(.horizontal, 32)
+                List {
+                  ForEach(mealItems) { item in
+                    ItemRowView(item: item)
+                      .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                      .listRowBackground(Color.clear)
+                      .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                          withAnimation {
+                            modelContext.delete(item)
+                          }
+                        } label: {
+                          Label("削除", systemImage: "trash")
+                        }
+                      }
+                  }
+                  .onDelete(perform: { indexSet in
+                    for index in indexSet {
+                      modelContext.delete(mealItems[index])
+                    }
+                  })
                 }
+                .listStyle(.plain)
+                .frame(height: CGFloat(mealItems.count) * 110)
+                .padding(.horizontal, 20)
+                .background(Color.clear)
               }
             }
             .padding(.vertical, 8)
@@ -292,6 +313,54 @@ struct DayContentView: View {
         .padding(.vertical)
       }
       .background(Color(UIColor.systemGroupedBackground))
+    }
+  }
+}
+
+// 新しいアイテム行ビュー
+struct ItemRowView: View {
+  let item: Item
+  @State private var showingEditSheet = false
+
+  var body: some View {
+    Button {
+      showingEditSheet = true
+    } label: {
+      VStack(alignment: .leading, spacing: 8) {
+        HStack {
+          VStack(alignment: .leading, spacing: 4) {
+            Text("\(item.brandName) \(item.productName)")
+              .font(.headline)
+              .lineLimit(1)
+
+            Text("\(item.portion)")
+              .font(.subheadline)
+              .foregroundColor(.secondary)
+          }
+
+          Spacer()
+
+          Text("\(item.calories, specifier: "%.0f")")
+            .font(.system(size: 18, weight: .bold))
+            + Text(" kcal")
+            .font(.system(size: 14))
+            .foregroundColor(.secondary)
+        }
+
+        HStack(spacing: 12) {
+          MacroView(label: "P", value: item.protein, color: .blue)
+          MacroView(label: "F", value: item.fat, color: .yellow)
+          MacroView(label: "C", value: item.carbohydrates, color: .green)
+        }
+      }
+      .padding()
+      .background(Color(UIColor.systemBackground))
+      .cornerRadius(10)
+      .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
+    }
+    .buttonStyle(PlainButtonStyle())
+    .sheet(isPresented: $showingEditSheet) {
+      EditItemView(item: item)
     }
   }
 }
