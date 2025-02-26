@@ -12,86 +12,170 @@ struct ContentView: View {
 
   var body: some View {
     NavigationStack {
-      GeometryReader { geometry in
-        HStack(spacing: 0) {
-          // 前日のビュー
-          DayContentView(
-            date: Calendar.current.date(byAdding: .day, value: -1, to: selectedDate)!,
-            selectedDate: selectedDate,
-            onAddTapped: { date, mealType in
-              showingAddItemFor = (date, mealType)
-            },
-            modelContext: modelContext
-          )
-          .frame(width: geometry.size.width)
+      ScrollView {
+        VStack(spacing: 16) {
+          // 日別集計
+          VStack(spacing: 0) {
+            Text("1日の合計")
+              .font(.headline)
+              .padding(.bottom, 8)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .padding(.horizontal)
+              .padding(.top, 12)
 
-          // 現在の日付のビュー
-          DayContentView(
-            date: selectedDate,
-            selectedDate: selectedDate,
-            onAddTapped: { date, mealType in
-              showingAddItemFor = (date, mealType)
-            },
-            modelContext: modelContext
-          )
-          .frame(width: geometry.size.width)
+            Divider()
 
-          // 翌日のビュー
-          DayContentView(
-            date: Calendar.current.date(byAdding: .day, value: 1, to: selectedDate)!,
-            selectedDate: selectedDate,
-            onAddTapped: { date, mealType in
-              showingAddItemFor = (date, mealType)
-            },
-            modelContext: modelContext
-          )
-          .frame(width: geometry.size.width)
-        }
-        .offset(x: -geometry.size.width + dragOffset)
-        .animation(.interactiveSpring(), value: dragOffset)
-        .gesture(
-          DragGesture()
-            .onChanged { gesture in
-              dragOffset = gesture.translation.width
+            VStack(spacing: 12) {
+              NutrientRow(
+                label: "カロリー",
+                value: dailyTotals.calories,
+                unit: "kcal",
+                format: "%.0f",
+                icon: "flame.fill",
+                color: .orange
+              )
+
+              NutrientRow(
+                label: "タンパク質",
+                value: dailyTotals.protein,
+                unit: "g",
+                format: "%.1f",
+                icon: "p.circle.fill",
+                color: .blue
+              )
+
+              NutrientRow(
+                label: "脂質",
+                value: dailyTotals.fat,
+                unit: "g",
+                format: "%.1f",
+                icon: "f.circle.fill",
+                color: .yellow
+              )
+
+              NutrientRow(
+                label: "炭水化物",
+                value: dailyTotals.carbs,
+                unit: "g",
+                format: "%.1f",
+                icon: "c.circle.fill",
+                color: .green
+              )
             }
-            .onEnded { gesture in
-              let threshold = geometry.size.width / 5
-              if gesture.translation.width > threshold {
-                // 右にスワイプ（前日）
-                withAnimation(.interactiveSpring()) {
-                  selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate)!
-                  dragOffset = 0
-                }
-              } else if gesture.translation.width < -threshold {
-                // 左にスワイプ（翌日）
-                withAnimation(.interactiveSpring()) {
-                  selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate)!
-                  dragOffset = 0
-                }
-              } else {
-                // 元の位置に戻す
-                withAnimation(.interactiveSpring()) {
-                  dragOffset = 0
+            .padding(.vertical, 8)
+          }
+          .background(Color(UIColor.systemBackground))
+          .cornerRadius(12)
+          .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+          .padding(.horizontal)
+          .padding(.vertical, 8)
+
+          // 食事リスト
+          ForEach(MealType.allCases, id: \.self) { mealType in
+            VStack(spacing: 8) {
+              // セクションヘッダー
+              HStack {
+                Text(mealType.rawValue)
+                  .font(.headline)
+                  .foregroundColor(.primary)
+
+                Spacer()
+
+                Button(action: {
+                  showingAddItemFor = (selectedDate, mealType)
+                }) {
+                  Label("追加", systemImage: "plus.circle.fill")
+                    .font(.subheadline)
+                    .foregroundColor(.blue)
                 }
               }
+              .padding(.horizontal)
+
+              // 食事タイプごとのPFC合計を表示
+              let totals = mealTypeTotals(for: mealType)
+              if filteredItems.contains(where: { $0.mealType == mealType }) {
+                HStack(spacing: 12) {
+                  NutrientBadge(
+                    value: totals.calories, unit: "kcal", name: "カロリー", color: .orange,
+                    icon: "flame.fill")
+                  NutrientBadge(
+                    value: totals.protein, unit: "g", name: "P", color: .blue, icon: "p.circle.fill"
+                  )
+                  NutrientBadge(
+                    value: totals.fat, unit: "g", name: "F", color: .yellow, icon: "f.circle.fill")
+                  NutrientBadge(
+                    value: totals.carbs, unit: "g", name: "C", color: .green, icon: "c.circle.fill")
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal)
+              }
+
+              // 食事アイテム
+              let mealItems = filteredItems.filter { $0.mealType == mealType }
+              if mealItems.isEmpty {
+                EmptyMealView(mealType: mealType) {
+                  showingAddItemFor = (selectedDate, mealType)
+                }
+              } else {
+                List {
+                  ForEach(mealItems) { item in
+                    ItemRowView(item: item)
+                      .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                      .listRowBackground(Color.clear)
+                      .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                          withAnimation {
+                            modelContext.delete(item)
+                          }
+                        } label: {
+                          Label("削除", systemImage: "trash")
+                        }
+                      }
+                  }
+                  .onDelete(perform: { indexSet in
+                    for index in indexSet {
+                      modelContext.delete(mealItems[index])
+                    }
+                  })
+                }
+                .scrollDisabled(true)
+                .listStyle(.plain)
+                .frame(height: CGFloat(mealItems.count) * 110)
+                .background(Color.clear)
+              }
             }
-        )
+            .padding(.vertical, 8)
+            .background(Color(UIColor.secondarySystemGroupedBackground))
+            .cornerRadius(12)
+            .shadow(color: Color.black.opacity(0.05), radius: 3, x: 0, y: 1)
+            .padding(.horizontal)
+          }
+        }
+        .padding(.vertical)
       }
-      .navigationTitle("Log")
-      .sheet(isPresented: $showingImportCSV) {
-        ImportCSVView()
-      }
+      .background(Color(UIColor.systemGroupedBackground))
+      .navigationBarTitleDisplayMode(.inline)
       .toolbar {
-        ToolbarItem(placement: .topBarTrailing) {
-          DatePicker(
-            "",
-            selection: $selectedDate,
-            displayedComponents: [.date]
-          )
-          .labelsHidden()
+        ToolbarItem(placement: .principal) {
+          HStack {
+            Button(action: {
+              selectedDate = selectedDate.addingTimeInterval(-86400)
+            }) {
+              Image(systemName: "chevron.left")
+            }
+
+            Text(dateFormatter.string(from: selectedDate))
+              .font(.headline)
+
+            Button(action: {
+              selectedDate = selectedDate.addingTimeInterval(86400)
+            }) {
+              Image(systemName: "chevron.right")
+            }
+          }
         }
 
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItem(placement: .navigationBarTrailing) {
           Menu {
             Button(action: { showingImportCSV = true }) {
               Label("CSVインポート", systemImage: "square.and.arrow.down")
@@ -117,6 +201,53 @@ struct ContentView: View {
         }
       }
     }
+  }
+
+  private var filteredItems: [Item] {
+    let calendar = Calendar.current
+    let startOfDay = calendar.startOfDay(for: selectedDate)
+    let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+
+    let descriptor = FetchDescriptor<Item>(
+      predicate: #Predicate<Item> { item in
+        item.timestamp >= startOfDay && item.timestamp < endOfDay
+      },
+      sortBy: [SortDescriptor(\.timestamp)]
+    )
+    return (try? modelContext.fetch(descriptor)) ?? []
+  }
+
+  private var dailyTotals: (calories: Double, protein: Double, fat: Double, carbs: Double) {
+    filteredItems.reduce((0, 0, 0, 0)) { result, item in
+      (
+        result.0 + item.calories,
+        result.1 + item.protein,
+        result.2 + item.fat,
+        result.3 + item.carbohydrates
+      )
+    }
+  }
+
+  // 各食事タイプごとのPFC合計を計算する関数
+  private func mealTypeTotals(for mealType: MealType) -> (
+    calories: Double, protein: Double, fat: Double, carbs: Double
+  ) {
+    let mealItems = filteredItems.filter { $0.mealType == mealType }
+    return mealItems.reduce((0, 0, 0, 0)) { result, item in
+      (
+        result.0 + item.calories,
+        result.1 + item.protein,
+        result.2 + item.fat,
+        result.3 + item.carbohydrates
+      )
+    }
+  }
+
+  private var dateFormatter: DateFormatter {
+    let formatter = DateFormatter()
+    formatter.dateStyle = .medium
+    formatter.timeStyle = .none
+    return formatter
   }
 }
 
@@ -171,6 +302,10 @@ struct DayContentView: View {
     VStack {
       // スクロール全体
       ScrollView {
+        // 上部にスペースを追加して、ナビゲーションバーとの重なりを防ぐ
+        Color.clear.frame(height: 1)
+          .padding(.top, 8)
+
         VStack(spacing: 16) {
           // 日別集計
           VStack(spacing: 0) {
@@ -310,8 +445,10 @@ struct DayContentView: View {
           }
         }
         .padding(.vertical)
+
       }
       .background(Color(UIColor.systemGroupedBackground))
+
     }
   }
 }
