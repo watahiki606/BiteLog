@@ -274,7 +274,6 @@ struct DayContentView: View {
                 EmptyMealView(mealType: mealType) {
                   onAddTapped(date, mealType)
                 }
-                .padding(.horizontal, 32)
               } else {
                 List {
                   ForEach(mealItems) { item in
@@ -297,9 +296,9 @@ struct DayContentView: View {
                     }
                   })
                 }
+                .scrollDisabled(true)
                 .listStyle(.plain)
                 .frame(height: CGFloat(mealItems.count) * 110)
-                .padding(.horizontal, 20)
                 .background(Color.clear)
               }
             }
