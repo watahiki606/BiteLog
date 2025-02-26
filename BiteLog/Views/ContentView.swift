@@ -77,7 +77,7 @@ struct ContentView: View {
             }
         )
       }
-      .navigationTitle("食事記録")
+      .navigationTitle("Log")
       .sheet(isPresented: $showingImportCSV) {
         ImportCSVView()
       }
@@ -169,29 +169,62 @@ struct DayContentView: View {
 
   var body: some View {
     VStack {
-      // 日付表示
-      DatePicker(
-        "",
-        selection: .constant(date),
-        displayedComponents: [.date]
-      )
-      .labelsHidden()
-      .datePickerStyle(.compact)
-      .disabled(true)
 
       // 日別集計
-      VStack(spacing: 8) {
+      VStack(spacing: 0) {
         Text("1日の合計")
           .font(.headline)
-        Text("カロリー: \(dailyTotals.calories, specifier: "%.0f") kcal")
-        Text("タンパク質: \(dailyTotals.protein, specifier: "%.1f")g")
-        Text("脂質: \(dailyTotals.fat, specifier: "%.1f")g")
-        Text("炭水化物: \(dailyTotals.carbs, specifier: "%.1f")g")
+          .padding(.bottom, 8)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(.horizontal)
+          .padding(.top, 12)
+
+        Divider()
+
+        VStack(spacing: 12) {
+          NutrientRow(
+            label: "カロリー",
+            value: dailyTotals.calories,
+            unit: "kcal",
+            format: "%.0f",
+            icon: "flame.fill",
+            color: .orange
+          )
+
+          NutrientRow(
+            label: "タンパク質",
+            value: dailyTotals.protein,
+            unit: "g",
+            format: "%.1f",
+            icon: "p.circle.fill",
+            color: .blue
+          )
+
+          NutrientRow(
+            label: "脂質",
+            value: dailyTotals.fat,
+            unit: "g",
+            format: "%.1f",
+            icon: "f.circle.fill",
+            color: .yellow
+          )
+
+          NutrientRow(
+            label: "炭水化物",
+            value: dailyTotals.carbs,
+            unit: "g",
+            format: "%.1f",
+            icon: "c.circle.fill",
+            color: .green
+          )
+        }
+        .padding(.vertical, 8)
       }
-      .padding()
-      .background(Color.gray.opacity(0.1))
-      .cornerRadius(10)
+      .background(Color(UIColor.systemBackground))
+      .cornerRadius(12)
+      .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
       .padding(.horizontal)
+      .padding(.vertical, 8)
 
       // リスト部分
       List {
@@ -274,4 +307,35 @@ struct ItemRow: View {
 #Preview {
   ContentView()
     .modelContainer(for: Item.self, inMemory: true)
+}
+
+// 栄養素行のコンポーネント
+struct NutrientRow: View {
+  let label: String
+  let value: Double
+  let unit: String
+  let format: String
+  let icon: String
+  let color: Color
+
+  var body: some View {
+    HStack {
+      Image(systemName: icon)
+        .foregroundColor(color)
+        .font(.system(size: 16, weight: .semibold))
+        .frame(width: 24)
+
+      Text(label)
+        .font(.system(size: 16))
+
+      Spacer()
+
+      Text("\(value, specifier: format)")
+        .font(.system(size: 16, weight: .semibold))
+        + Text(" \(unit)")
+        .font(.system(size: 14))
+        .foregroundColor(.secondary)
+    }
+    .padding(.horizontal)
+  }
 }
