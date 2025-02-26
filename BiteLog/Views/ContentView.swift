@@ -169,66 +169,66 @@ struct DayContentView: View {
 
   var body: some View {
     VStack {
-
-      // 日別集計
-      VStack(spacing: 0) {
-        Text("1日の合計")
-          .font(.headline)
-          .padding(.bottom, 8)
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .padding(.horizontal)
-          .padding(.top, 12)
-
-        Divider()
-
-        VStack(spacing: 12) {
-          NutrientRow(
-            label: "カロリー",
-            value: dailyTotals.calories,
-            unit: "kcal",
-            format: "%.0f",
-            icon: "flame.fill",
-            color: .orange
-          )
-
-          NutrientRow(
-            label: "タンパク質",
-            value: dailyTotals.protein,
-            unit: "g",
-            format: "%.1f",
-            icon: "p.circle.fill",
-            color: .blue
-          )
-
-          NutrientRow(
-            label: "脂質",
-            value: dailyTotals.fat,
-            unit: "g",
-            format: "%.1f",
-            icon: "f.circle.fill",
-            color: .yellow
-          )
-
-          NutrientRow(
-            label: "炭水化物",
-            value: dailyTotals.carbs,
-            unit: "g",
-            format: "%.1f",
-            icon: "c.circle.fill",
-            color: .green
-          )
-        }
-        .padding(.vertical, 8)
-      }
-      .background(Color(UIColor.systemBackground))
-      .cornerRadius(12)
-      .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-      .padding(.horizontal)
-      .padding(.vertical, 8)
-
-      // リスト部分
+      // スクロール全体
       ScrollView {
         VStack(spacing: 16) {
+          // 日別集計
+          VStack(spacing: 0) {
+            Text("1日の合計")
+              .font(.headline)
+              .padding(.bottom, 8)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .padding(.horizontal)
+              .padding(.top, 12)
+
+            Divider()
+
+            VStack(spacing: 12) {
+              NutrientRow(
+                label: "カロリー",
+                value: dailyTotals.calories,
+                unit: "kcal",
+                format: "%.0f",
+                icon: "flame.fill",
+                color: .orange
+              )
+
+              NutrientRow(
+                label: "タンパク質",
+                value: dailyTotals.protein,
+                unit: "g",
+                format: "%.1f",
+                icon: "p.circle.fill",
+                color: .blue
+              )
+
+              NutrientRow(
+                label: "脂質",
+                value: dailyTotals.fat,
+                unit: "g",
+                format: "%.1f",
+                icon: "f.circle.fill",
+                color: .yellow
+              )
+
+              NutrientRow(
+                label: "炭水化物",
+                value: dailyTotals.carbs,
+                unit: "g",
+                format: "%.1f",
+                icon: "c.circle.fill",
+                color: .green
+              )
+            }
+            .padding(.vertical, 8)
+          }
+          .background(Color(UIColor.systemBackground))
+          .cornerRadius(12)
+          .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+          .padding(.horizontal)
+          .padding(.vertical, 8)
+
+          // 食事リスト
           ForEach(MealType.allCases, id: \.self) { mealType in
             VStack(spacing: 8) {
               // セクションヘッダー
