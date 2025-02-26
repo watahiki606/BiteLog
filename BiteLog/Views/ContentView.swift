@@ -78,6 +78,9 @@ struct ContentView: View {
         )
       }
       .navigationTitle("食事記録")
+      .sheet(isPresented: $showingImportCSV) {
+        ImportCSVView()
+      }
       .toolbar {
         ToolbarItem(placement: .topBarTrailing) {
           DatePicker(
