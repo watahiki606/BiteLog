@@ -140,21 +140,6 @@ struct AddItemView: View {
                       unit: "g"
                     )
 
-                    // PFCバランス表示（入力値がある場合）
-                    if let p = Double(protein), let f = Double(fat), let c = Double(carbohydrates),
-                      p > 0 || f > 0 || c > 0
-                    {
-                      VStack(spacing: 8) {
-                        Text("PFCバランス")
-                          .font(.subheadline)
-                          .foregroundColor(.secondary)
-
-                        PFCBalanceBar(protein: p, fat: f, carbs: c)
-                          .frame(height: 24)
-                          .padding(.bottom, 8)
-                      }
-                      .padding(.top, 8)
-                    }
                   }
                 }
               }
@@ -438,45 +423,5 @@ struct ScaleButtonStyle: ButtonStyle {
     configuration.label
       .scaleEffect(configuration.isPressed ? 0.98 : 1)
       .animation(.easeInOut(duration: 0.2), value: configuration.isPressed)
-  }
-}
-
-// PFCバランスバー
-struct PFCBalanceBar: View {
-  let protein: Double
-  let fat: Double
-  let carbs: Double
-
-  var totalMacros: Double {
-    protein + fat + carbs
-  }
-
-  var body: some View {
-    GeometryReader { geometry in
-      HStack(spacing: 0) {
-        if totalMacros > 0 {
-          // タンパク質
-          RoundedRectangle(cornerRadius: 8)
-            .fill(Color.blue)
-            .frame(width: max(geometry.size.width * (protein / totalMacros), 0))
-
-          // 脂質
-          RoundedRectangle(cornerRadius: 8)
-            .fill(Color.yellow)
-            .frame(width: max(geometry.size.width * (fat / totalMacros), 0))
-
-          // 炭水化物
-          RoundedRectangle(cornerRadius: 8)
-            .fill(Color.green)
-            .frame(width: max(geometry.size.width * (carbs / totalMacros), 0))
-        } else {
-          // データなしの場合
-          RoundedRectangle(cornerRadius: 8)
-            .fill(Color.gray.opacity(0.3))
-            .frame(width: geometry.size.width)
-        }
-      }
-      .cornerRadius(8)
-    }
   }
 }

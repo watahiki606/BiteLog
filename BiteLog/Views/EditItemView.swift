@@ -126,27 +126,6 @@ struct EditItemView: View {
                   unit: "g"
                 )
 
-                // PFCバランスセクション
-                if let p = Double(protein), let f = Double(fat), let c = Double(carbohydrates),
-                  p > 0 || f > 0 || c > 0
-                {
-                  VStack(spacing: 8) {
-                    Text("PFCバランス")
-                      .font(.subheadline)
-                      .foregroundColor(.secondary)
-
-                    PFCBalanceBar(protein: p, fat: f, carbs: c)
-                      .frame(height: 24)
-                      .padding(.bottom, 8)
-
-                    HStack(spacing: 12) {
-                      PFCPercentageLabel(value: p, total: p + f + c, color: .blue, label: "P")
-                      PFCPercentageLabel(value: f, total: p + f + c, color: .yellow, label: "F")
-                      PFCPercentageLabel(value: c, total: p + f + c, color: .green, label: "C")
-                    }
-                  }
-                  .padding(.top, 8)
-                }
               }
             }
           }
