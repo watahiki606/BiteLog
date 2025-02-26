@@ -55,7 +55,7 @@ struct ContentView: View {
               dragOffset = gesture.translation.width
             }
             .onEnded { gesture in
-              let threshold = geometry.size.width / 3
+              let threshold = geometry.size.width / 5
               if gesture.translation.width > threshold {
                 // 右にスワイプ（前日）
                 withAnimation(.interactiveSpring()) {
@@ -274,10 +274,11 @@ struct DayContentView: View {
                 EmptyMealView(mealType: mealType) {
                   onAddTapped(date, mealType)
                 }
+                .padding(.horizontal, 32)
               } else {
                 ForEach(mealItems) { item in
                   ItemCardView(item: item, modelContext: modelContext)
-                    .padding(.horizontal)
+                    .padding(.horizontal, 32)
                 }
               }
             }
