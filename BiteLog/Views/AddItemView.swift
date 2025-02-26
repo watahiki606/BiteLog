@@ -35,103 +35,181 @@ struct AddItemView: View {
 
   var body: some View {
     NavigationStack {
-      VStack {
-        // 検索バー
-        SearchBar(text: $searchText, placeholder: "過去の食事を検索")
-          .padding()
+      ZStack {
+        Color(UIColor.systemGroupedBackground)
+          .ignoresSafeArea()
 
-        if searchText.isEmpty {
-          // 新規入力フォーム
-          Form {
-            Section("基本情報") {
-              TextField("ブランド名", text: $brandName)
-              TextField("商品名", text: $productName)
-              TextField("量 (例: 1個, 100g)", text: $portion)
-              Text(mealType.rawValue)
-            }
+        VStack {
+          // 検索バー
+          HStack {
+            Image(systemName: "magnifyingglass")
+              .foregroundColor(.secondary)
+              .padding(.leading, 8)
 
-            Section("栄養成分") {
-              HStack {
-                TextField("カロリー", text: $calories)
-                  .keyboardType(.decimalPad)
-                Text("kcal")
-              }
-              HStack {
-                TextField("タンパク質", text: $protein)
-                  .keyboardType(.decimalPad)
-                Text("g")
-              }
-              HStack {
-                TextField("脂質", text: $fat)
-                  .keyboardType(.decimalPad)
-                Text("g")
-              }
-              HStack {
-                TextField("炭水化物", text: $carbohydrates)
-                  .keyboardType(.decimalPad)
-                Text("g")
+            TextField("過去の食事を検索", text: $searchText)
+              .padding(10)
+              .background(Color(UIColor.secondarySystemBackground))
+              .cornerRadius(10)
+
+            if !searchText.isEmpty {
+              Button(action: {
+                searchText = ""
+              }) {
+                Image(systemName: "xmark.circle.fill")
+                  .foregroundColor(.secondary)
+                  .padding(.trailing, 8)
               }
             }
-
           }
+          .padding(.horizontal)
+          .padding(.top, 8)
 
-        } else {
-          // 検索結果一覧
-          List {
-            ForEach(searchResults) { item in
-              Button {
-                addItemFromPast(item)
-                dismiss()
-              } label: {
-                VStack(alignment: .leading, spacing: 4) {
-                  HStack {
-                    Text("\(item.brandName) \(item.productName)")
-                      .font(.headline)
-                    Spacer()
-                    Text("\(item.calories, specifier: "%.0f") kcal")
-                      .font(.subheadline)
-                  }
-                  Text("\(item.portion)")
-                    .font(.subheadline)
-                  Text(
-                    "P:\(item.protein, specifier: "%.1f")g F:\(item.fat, specifier: "%.1f")g C:\(item.carbohydrates, specifier: "%.1f")g"
-                  )
-                  .font(.caption)
-                  .foregroundStyle(.secondary)
-                }
-              }
-              .onAppear {
-                if searchResults.index(searchResults.endIndex, offsetBy: -2)
-                  == searchResults.firstIndex(of: item)
-                {
-                  if hasMoreData {
-                    loadMoreItems()
+          if searchText.isEmpty {
+            // 新規入力フォーム
+            ScrollView {
+              VStack(spacing: 24) {
+                // 基本情報カード
+                CardView(title: "基本情報") {
+                  VStack(spacing: 16) {
+                    CustomTextField(
+                      icon: "tag.fill",
+                      placeholder: "ブランド名",
+                      text: $brandName
+                    )
+
+                    CustomTextField(
+                      icon: "cart.fill",
+                      placeholder: "商品名",
+                      text: $productName
+                    )
+
+                    CustomTextField(
+                      icon: "scalemass.fill",
+                      placeholder: "量 (例: 1個, 100g)",
+                      text: $portion
+                    )
+
+                    HStack {
+                      Image(systemName: "fork.knife")
+                        .foregroundColor(.blue)
+                        .frame(width: 24)
+                      Text(mealType.rawValue)
+                        .font(.body)
+                        .foregroundColor(.primary)
+                      Spacer()
+                    }
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 12)
+                    .background(Color(UIColor.secondarySystemBackground))
+                    .cornerRadius(10)
                   }
                 }
+
+                // 栄養素カード
+                CardView(title: "栄養成分") {
+                  VStack(spacing: 16) {
+                    NutrientInputField(
+                      icon: "flame.fill",
+                      iconColor: .orange,
+                      label: "カロリー",
+                      value: $calories,
+                      unit: "kcal"
+                    )
+
+                    NutrientInputField(
+                      icon: "p.circle.fill",
+                      iconColor: .blue,
+                      label: "タンパク質",
+                      value: $protein,
+                      unit: "g"
+                    )
+
+                    NutrientInputField(
+                      icon: "f.circle.fill",
+                      iconColor: .yellow,
+                      label: "脂質",
+                      value: $fat,
+                      unit: "g"
+                    )
+
+                    NutrientInputField(
+                      icon: "c.circle.fill",
+                      iconColor: .green,
+                      label: "炭水化物",
+                      value: $carbohydrates,
+                      unit: "g"
+                    )
+
+                    // PFCバランス表示（入力値がある場合）
+                    if let p = Double(protein), let f = Double(fat), let c = Double(carbohydrates),
+                      p > 0 || f > 0 || c > 0
+                    {
+                      VStack(spacing: 8) {
+                        Text("PFCバランス")
+                          .font(.subheadline)
+                          .foregroundColor(.secondary)
+
+                        PFCBalanceBar(protein: p, fat: f, carbs: c)
+                          .frame(height: 24)
+                          .padding(.bottom, 8)
+                      }
+                      .padding(.top, 8)
+                    }
+                  }
+                }
               }
+              .padding()
+            }
+          } else {
+            // 検索結果一覧
+            ScrollView {
+              LazyVStack(spacing: 12) {
+                ForEach(searchResults) { item in
+                  Button {
+                    addItemFromPast(item)
+                    dismiss()
+                  } label: {
+                    PastItemCard(item: item)
+                  }
+                  .buttonStyle(ScaleButtonStyle())
+                  .onAppear {
+                    if searchResults.index(searchResults.endIndex, offsetBy: -2)
+                      == searchResults.firstIndex(of: item)
+                    {
+                      if hasMoreData {
+                        loadMoreItems()
+                      }
+                    }
+                  }
+                }
+              }
+              .padding()
             }
           }
         }
-      }
-      .navigationTitle("食事を追加")
-      .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          Button("キャンセル") { dismiss() }
-        }
-        ToolbarItem(placement: .confirmationAction) {
-          Button("保存") {
-            addItem()
-            dismiss()
+        .navigationTitle("食事を追加")
+        .toolbar {
+          ToolbarItem(placement: .cancellationAction) {
+            Button("キャンセル") { dismiss() }
           }
-          .disabled(brandName.isEmpty || productName.isEmpty || portion.isEmpty || calories.isEmpty)
+          ToolbarItem(placement: .confirmationAction) {
+            Button(action: {
+              addItem()
+              dismiss()
+            }) {
+              Text("保存")
+                .bold()
+            }
+            .disabled(
+              brandName.isEmpty || productName.isEmpty || portion.isEmpty || calories.isEmpty)
+          }
         }
-      }
-
-      .onChange(of: searchText) { _, _ in
-        searchResults = []
-        currentOffset = 0
-        hasMoreData = true
-        loadMoreItems()
+        .onChange(of: searchText) { _, _ in
+          searchResults = []
+          currentOffset = 0
+          hasMoreData = true
+          loadMoreItems()
+        }
       }
     }
   }
@@ -206,27 +284,192 @@ struct AddItemView: View {
   }
 }
 
-// 検索バーのカスタムビュー
-struct SearchBar: View {
+// カードビュー
+struct CardView<Content: View>: View {
+  let title: String
+  let content: Content
+
+  init(title: String, @ViewBuilder content: () -> Content) {
+    self.title = title
+    self.content = content()
+  }
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      Text(title)
+        .font(.headline)
+        .foregroundColor(.primary)
+
+      content
+    }
+    .padding()
+    .background(Color(UIColor.systemBackground))
+    .cornerRadius(16)
+    .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+  }
+}
+
+// カスタムテキストフィールド
+struct CustomTextField: View {
+  let icon: String
+  let placeholder: String
   @Binding var text: String
-  var placeholder: String
 
   var body: some View {
     HStack {
-      Image(systemName: "magnifyingglass")
-        .foregroundColor(.gray)
+      Image(systemName: icon)
+        .foregroundColor(.blue)
+        .frame(width: 24)
 
       TextField(placeholder, text: $text)
-        .textFieldStyle(RoundedBorderTextFieldStyle())
+        .padding(.vertical, 8)
+    }
+    .padding(.horizontal, 12)
+    .background(Color(UIColor.secondarySystemBackground))
+    .cornerRadius(10)
+  }
+}
 
-      if !text.isEmpty {
-        Button(action: {
-          text = ""
-        }) {
-          Image(systemName: "xmark.circle.fill")
-            .foregroundColor(.gray)
+// 栄養素入力フィールド
+struct NutrientInputField: View {
+  let icon: String
+  let iconColor: Color
+  let label: String
+  @Binding var value: String
+  let unit: String
+
+  var body: some View {
+    HStack {
+      Image(systemName: icon)
+        .foregroundColor(iconColor)
+        .frame(width: 24)
+
+      Text(label)
+        .foregroundColor(.primary)
+
+      Spacer()
+
+      TextField("0", text: $value)
+        .keyboardType(.decimalPad)
+        .multilineTextAlignment(.trailing)
+        .frame(width: 80)
+
+      Text(unit)
+        .foregroundColor(.secondary)
+        .frame(width: 40, alignment: .leading)
+    }
+    .padding(.vertical, 12)
+    .padding(.horizontal, 12)
+    .background(Color(UIColor.secondarySystemBackground))
+    .cornerRadius(10)
+  }
+}
+
+// 過去の食事アイテムカード
+struct PastItemCard: View {
+  let item: Item
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      HStack {
+        VStack(alignment: .leading, spacing: 4) {
+          Text("\(item.brandName) \(item.productName)")
+            .font(.headline)
+
+          Text(item.portion)
+            .font(.subheadline)
+            .foregroundColor(.secondary)
+        }
+
+        Spacer()
+
+        Text("\(item.calories, specifier: "%.0f")")
+          .font(.title3.bold())
+          + Text(" kcal")
+          .font(.subheadline)
+          .foregroundColor(.secondary)
+      }
+
+      HStack(spacing: 8) {
+        MacroNutrientBadge(label: "P", value: item.protein, color: .blue)
+        MacroNutrientBadge(label: "F", value: item.fat, color: .yellow)
+        MacroNutrientBadge(label: "C", value: item.carbohydrates, color: .green)
+      }
+    }
+    .padding()
+    .background(Color(UIColor.systemBackground))
+    .cornerRadius(12)
+    .shadow(color: Color.black.opacity(0.05), radius: 3, x: 0, y: 2)
+  }
+}
+
+// マクロ栄養素バッジ
+struct MacroNutrientBadge: View {
+  let label: String
+  let value: Double
+  let color: Color
+
+  var body: some View {
+    HStack(spacing: 4) {
+      Text(label)
+        .font(.footnote.bold())
+        .foregroundColor(color)
+
+      Text("\(value, specifier: "%.1f")g")
+        .font(.footnote)
+    }
+    .padding(.vertical, 4)
+    .padding(.horizontal, 8)
+    .background(color.opacity(0.1))
+    .cornerRadius(8)
+  }
+}
+
+// ボタンスケールスタイル
+struct ScaleButtonStyle: ButtonStyle {
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .scaleEffect(configuration.isPressed ? 0.98 : 1)
+      .animation(.easeInOut(duration: 0.2), value: configuration.isPressed)
+  }
+}
+
+// PFCバランスバー
+struct PFCBalanceBar: View {
+  let protein: Double
+  let fat: Double
+  let carbs: Double
+
+  var totalMacros: Double {
+    protein + fat + carbs
+  }
+
+  var body: some View {
+    GeometryReader { geometry in
+      HStack(spacing: 0) {
+        if totalMacros > 0 {
+          // タンパク質
+          RoundedRectangle(cornerRadius: 8)
+            .fill(Color.blue)
+            .frame(width: max(geometry.size.width * (protein / totalMacros), 0))
+
+          // 脂質
+          RoundedRectangle(cornerRadius: 8)
+            .fill(Color.yellow)
+            .frame(width: max(geometry.size.width * (fat / totalMacros), 0))
+
+          // 炭水化物
+          RoundedRectangle(cornerRadius: 8)
+            .fill(Color.green)
+            .frame(width: max(geometry.size.width * (carbs / totalMacros), 0))
+        } else {
+          // データなしの場合
+          RoundedRectangle(cornerRadius: 8)
+            .fill(Color.gray.opacity(0.3))
+            .frame(width: geometry.size.width)
         }
       }
+      .cornerRadius(8)
     }
   }
 }

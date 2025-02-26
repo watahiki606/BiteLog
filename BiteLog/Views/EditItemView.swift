@@ -31,53 +31,143 @@ struct EditItemView: View {
 
   var body: some View {
     NavigationStack {
-      Form {
-        Section("基本情報") {
-          TextField("ブランド名", text: $brandName)
-          TextField("商品名", text: $productName)
-          TextField("量 (例: 1個, 100g)", text: $portion)
-          Picker("食事タイプ", selection: $mealType) {
-            ForEach(MealType.allCases, id: \.self) { type in
-              Text(type.rawValue).tag(type)
+      ZStack {
+        Color(UIColor.systemGroupedBackground)
+          .ignoresSafeArea()
+
+        ScrollView {
+          VStack(spacing: 24) {
+            // 基本情報カード
+            CardView(title: "基本情報") {
+              VStack(spacing: 16) {
+                CustomTextField(
+                  icon: "tag.fill",
+                  placeholder: "ブランド名",
+                  text: $brandName
+                )
+
+                CustomTextField(
+                  icon: "cart.fill",
+                  placeholder: "商品名",
+                  text: $productName
+                )
+
+                CustomTextField(
+                  icon: "scalemass.fill",
+                  placeholder: "量 (例: 1個, 100g)",
+                  text: $portion
+                )
+
+                HStack {
+                  Image(systemName: "fork.knife")
+                    .foregroundColor(.blue)
+                    .frame(width: 24)
+
+                  Picker("食事タイプ", selection: $mealType) {
+                    ForEach(MealType.allCases, id: \.self) { type in
+                      Text(type.rawValue).tag(type)
+                    }
+                  }
+                  .pickerStyle(.menu)
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .background(Color(UIColor.secondarySystemBackground))
+                .cornerRadius(10)
+
+                HStack {
+                  Image(systemName: "calendar")
+                    .foregroundColor(.blue)
+                    .frame(width: 24)
+
+                  DatePicker("日時", selection: $date, displayedComponents: [.date])
+                    .labelsHidden()
+                    .datePickerStyle(.compact)
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .background(Color(UIColor.secondarySystemBackground))
+                .cornerRadius(10)
+              }
+            }
+
+            // 栄養素カード
+            CardView(title: "栄養成分") {
+              VStack(spacing: 16) {
+                NutrientInputField(
+                  icon: "flame.fill",
+                  iconColor: .orange,
+                  label: "カロリー",
+                  value: $calories,
+                  unit: "kcal"
+                )
+
+                NutrientInputField(
+                  icon: "p.circle.fill",
+                  iconColor: .blue,
+                  label: "タンパク質",
+                  value: $protein,
+                  unit: "g"
+                )
+
+                NutrientInputField(
+                  icon: "f.circle.fill",
+                  iconColor: .yellow,
+                  label: "脂質",
+                  value: $fat,
+                  unit: "g"
+                )
+
+                NutrientInputField(
+                  icon: "c.circle.fill",
+                  iconColor: .green,
+                  label: "炭水化物",
+                  value: $carbohydrates,
+                  unit: "g"
+                )
+
+                // PFCバランスセクション
+                if let p = Double(protein), let f = Double(fat), let c = Double(carbohydrates),
+                  p > 0 || f > 0 || c > 0
+                {
+                  VStack(spacing: 8) {
+                    Text("PFCバランス")
+                      .font(.subheadline)
+                      .foregroundColor(.secondary)
+
+                    PFCBalanceBar(protein: p, fat: f, carbs: c)
+                      .frame(height: 24)
+                      .padding(.bottom, 8)
+
+                    HStack(spacing: 12) {
+                      PFCPercentageLabel(value: p, total: p + f + c, color: .blue, label: "P")
+                      PFCPercentageLabel(value: f, total: p + f + c, color: .yellow, label: "F")
+                      PFCPercentageLabel(value: c, total: p + f + c, color: .green, label: "C")
+                    }
+                  }
+                  .padding(.top, 8)
+                }
+              }
             }
           }
-          DatePicker("日時", selection: $date, displayedComponents: [.date])
+          .padding()
         }
-
-        Section("栄養素") {
-          HStack {
-            TextField("カロリー", text: $calories)
-              .keyboardType(.decimalPad)
-            Text("kcal")
+        .navigationTitle("食事を編集")
+        .toolbar {
+          ToolbarItem(placement: .cancellationAction) {
+            Button("キャンセル") { dismiss() }
           }
-          HStack {
-            TextField("タンパク質", text: $protein)
-              .keyboardType(.decimalPad)
-            Text("g")
+          ToolbarItem(placement: .confirmationAction) {
+            Button(action: {
+              updateItem()
+              dismiss()
+            }) {
+              Text("保存")
+                .bold()
+            }
+            .disabled(
+              brandName.isEmpty || productName.isEmpty || portion.isEmpty || calories.isEmpty)
           }
-          HStack {
-            TextField("脂質", text: $fat)
-              .keyboardType(.decimalPad)
-            Text("g")
-          }
-          HStack {
-            TextField("炭水化物", text: $carbohydrates)
-              .keyboardType(.decimalPad)
-            Text("g")
-          }
-        }
-      }
-      .navigationTitle("食事を編集")
-      .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          Button("キャンセル") { dismiss() }
-        }
-        ToolbarItem(placement: .confirmationAction) {
-          Button("保存") {
-            updateItem()
-            dismiss()
-          }
-          .disabled(brandName.isEmpty || productName.isEmpty || portion.isEmpty || calories.isEmpty)
         }
       }
     }
@@ -93,5 +183,32 @@ struct EditItemView: View {
     item.carbohydrates = Double(carbohydrates) ?? 0
     item.mealType = mealType
     item.timestamp = date
+  }
+}
+
+// PFCパーセンテージラベル
+struct PFCPercentageLabel: View {
+  let value: Double
+  let total: Double
+  let color: Color
+  let label: String
+
+  var percentage: Int {
+    total > 0 ? Int((value / total) * 100) : 0
+  }
+
+  var body: some View {
+    VStack(spacing: 2) {
+      Text(label)
+        .font(.caption.bold())
+        .foregroundColor(color)
+
+      Text("\(percentage)%")
+        .font(.footnote)
+    }
+    .frame(maxWidth: .infinity)
+    .padding(.vertical, 4)
+    .background(color.opacity(0.1))
+    .cornerRadius(8)
   }
 }
