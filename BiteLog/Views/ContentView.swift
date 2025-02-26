@@ -9,6 +9,7 @@ struct ContentView: View {
   @State private var showingAddItemFor: (date: Date, mealType: MealType)?
   @State private var showingImportCSV = false
   @State private var dragOffset = CGFloat.zero
+  @State private var showingDatePicker = false
 
   var body: some View {
     NavigationStack {
@@ -164,8 +165,12 @@ struct ContentView: View {
               Image(systemName: "chevron.left")
             }
 
-            Text(dateFormatter.string(from: selectedDate))
-              .font(.headline)
+            Button(action: {
+              showingDatePicker = true
+            }) {
+              Text(dateFormatter.string(from: selectedDate))
+                .font(.headline)
+            }
 
             Button(action: {
               selectedDate = selectedDate.addingTimeInterval(86400)
@@ -199,6 +204,9 @@ struct ContentView: View {
           )
           .presentationDetents([.medium, .large])
         }
+      }
+      .sheet(isPresented: $showingDatePicker) {
+        DatePickerSheet(selectedDate: $selectedDate, isPresented: $showingDatePicker)
       }
     }
   }
@@ -736,5 +744,35 @@ struct MacroView: View {
     .padding(.horizontal, 8)
     .background(color.opacity(0.1))
     .cornerRadius(6)
+  }
+}
+
+// 日付選択シート
+struct DatePickerSheet: View {
+  @Binding var selectedDate: Date
+  @Binding var isPresented: Bool
+
+  var body: some View {
+    NavigationStack {
+      VStack {
+        DatePicker(
+          "日付を選択",
+          selection: $selectedDate,
+          displayedComponents: .date
+        )
+        .datePickerStyle(.graphical)
+        .padding()
+      }
+      .navigationTitle("日付を選択")
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .confirmationAction) {
+          Button("完了") {
+            isPresented = false
+          }
+        }
+      }
+    }
+    .presentationDetents([.medium])
   }
 }
