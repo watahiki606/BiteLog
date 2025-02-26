@@ -80,10 +80,25 @@ struct AddItemView: View {
           List {
             ForEach(searchResults) { item in
               Button {
-                selectPastItem(item)
-                searchText = ""
+                addItemFromPast(item)
+                dismiss()
               } label: {
-                ItemRow(item: item)
+                VStack(alignment: .leading, spacing: 4) {
+                  HStack {
+                    Text("\(item.brandName) \(item.productName)")
+                      .font(.headline)
+                    Spacer()
+                    Text("\(item.calories, specifier: "%.0f") kcal")
+                      .font(.subheadline)
+                  }
+                  Text("\(item.portion)")
+                    .font(.subheadline)
+                  Text(
+                    "P:\(item.protein, specifier: "%.1f")g F:\(item.fat, specifier: "%.1f")g C:\(item.carbohydrates, specifier: "%.1f")g"
+                  )
+                  .font(.caption)
+                  .foregroundStyle(.secondary)
+                }
               }
               .onAppear {
                 if searchResults.index(searchResults.endIndex, offsetBy: -2)
@@ -130,6 +145,21 @@ struct AddItemView: View {
       protein: Double(protein) ?? 0,
       fat: Double(fat) ?? 0,
       carbohydrates: Double(carbohydrates) ?? 0,
+      mealType: mealType,
+      timestamp: date
+    )
+    modelContext.insert(newItem)
+  }
+
+  private func addItemFromPast(_ item: Item) {
+    let newItem = Item(
+      brandName: item.brandName,
+      productName: item.productName,
+      portion: item.portion,
+      calories: item.calories,
+      protein: item.protein,
+      fat: item.fat,
+      carbohydrates: item.carbohydrates,
       mealType: mealType,
       timestamp: date
     )

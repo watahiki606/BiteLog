@@ -227,48 +227,70 @@ struct DayContentView: View {
       .padding(.vertical, 8)
 
       // リスト部分
-      List {
-        ForEach(MealType.allCases, id: \.self) { mealType in
-          Section {
-            // 食事タイプごとのPFC合計を表示
-            let totals = mealTypeTotals(for: mealType)
-            if filteredItems.contains(where: { $0.mealType == mealType }) {
-              VStack(alignment: .leading, spacing: 4) {
-                Text("カロリー: \(totals.calories, specifier: "%.0f") kcal")
-                  .font(.caption)
-                Text(
-                  "P:\(totals.protein, specifier: "%.1f")g F:\(totals.fat, specifier: "%.1f")g C:\(totals.carbs, specifier: "%.1f")g"
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-              }
-              .padding(.vertical, 4)
-              .frame(maxWidth: .infinity, alignment: .leading)
-              .background(Color.gray.opacity(0.05))
-              .cornerRadius(6)
-            }
+      ScrollView {
+        VStack(spacing: 16) {
+          ForEach(MealType.allCases, id: \.self) { mealType in
+            VStack(spacing: 8) {
+              // セクションヘッダー
+              HStack {
+                Text(mealType.rawValue)
+                  .font(.headline)
+                  .foregroundColor(.primary)
 
-            ForEach(filteredItems.filter { $0.mealType == mealType }) { item in
-              ItemRow(item: item)
-                .swipeActions(allowsFullSwipe: true) {
-                  Button(role: .destructive) {
-                    modelContext.delete(item)
-                  } label: {
-                    Label("削除", systemImage: "trash")
-                  }
+                Spacer()
+
+                Button(action: {
+                  onAddTapped(date, mealType)
+                }) {
+                  Label("追加", systemImage: "plus.circle.fill")
+                    .font(.subheadline)
+                    .foregroundColor(.blue)
                 }
-            }
+              }
+              .padding(.horizontal)
 
-            Button(action: {
-              onAddTapped(date, mealType)
-            }) {
-              Label("食事を追加", systemImage: "plus.circle")
+              // 食事タイプごとのPFC合計を表示
+              let totals = mealTypeTotals(for: mealType)
+              if filteredItems.contains(where: { $0.mealType == mealType }) {
+                HStack(spacing: 12) {
+                  NutrientBadge(
+                    value: totals.calories, unit: "kcal", name: "カロリー", color: .orange,
+                    icon: "flame.fill")
+                  NutrientBadge(
+                    value: totals.protein, unit: "g", name: "P", color: .blue, icon: "p.circle.fill"
+                  )
+                  NutrientBadge(
+                    value: totals.fat, unit: "g", name: "F", color: .yellow, icon: "f.circle.fill")
+                  NutrientBadge(
+                    value: totals.carbs, unit: "g", name: "C", color: .green, icon: "c.circle.fill")
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal)
+              }
+
+              // 食事アイテム
+              let mealItems = filteredItems.filter { $0.mealType == mealType }
+              if mealItems.isEmpty {
+                EmptyMealView(mealType: mealType) {
+                  onAddTapped(date, mealType)
+                }
+              } else {
+                ForEach(mealItems) { item in
+                  ItemCardView(item: item, modelContext: modelContext)
+                    .padding(.horizontal)
+                }
+              }
             }
-          } header: {
-            Text(mealType.rawValue)
+            .padding(.vertical, 8)
+            .background(Color(UIColor.secondarySystemGroupedBackground))
+            .cornerRadius(12)
+            .shadow(color: Color.black.opacity(0.05), radius: 3, x: 0, y: 1)
+            .padding(.horizontal)
           }
         }
+        .padding(.vertical)
       }
+      .background(Color(UIColor.systemGroupedBackground))
     }
   }
 }
@@ -337,5 +359,179 @@ struct NutrientRow: View {
         .foregroundColor(.secondary)
     }
     .padding(.horizontal)
+  }
+}
+
+// 栄養素バッジコンポーネント
+struct NutrientBadge: View {
+  let value: Double
+  let unit: String
+  let name: String
+  let color: Color
+  let icon: String
+
+  var body: some View {
+    VStack(spacing: 2) {
+      HStack(spacing: 4) {
+        Image(systemName: icon)
+          .font(.system(size: 10))
+        Text(name)
+          .font(.system(size: 12, weight: .medium))
+      }
+      .foregroundColor(color)
+
+      Text("\(value, specifier: value >= 100 ? "%.0f" : "%.1f")\(unit)")
+        .font(.system(size: 14, weight: .semibold))
+    }
+    .frame(maxWidth: .infinity)
+    .padding(.vertical, 6)
+    .background(color.opacity(0.1))
+    .cornerRadius(8)
+  }
+}
+
+// 空の食事セクション
+struct EmptyMealView: View {
+  let mealType: MealType
+  let onAddTap: () -> Void
+
+  var body: some View {
+    Button(action: onAddTap) {
+      HStack {
+        Image(systemName: "plus.circle")
+          .font(.title2)
+          .foregroundColor(.blue)
+
+        Text("\(mealType.rawValue)を追加")
+          .font(.subheadline)
+      }
+      .frame(maxWidth: .infinity)
+      .padding()
+      .background(Color(UIColor.systemBackground))
+      .cornerRadius(10)
+    }
+    .buttonStyle(PlainButtonStyle())
+    .padding(.horizontal)
+  }
+}
+
+// アイテムカードビュー
+struct ItemCardView: View {
+  let item: Item
+  let modelContext: ModelContext
+  @State private var showingEditSheet = false
+  @State private var offset: CGFloat = 0
+  @State private var isSwiping = false
+
+  var body: some View {
+    ZStack {
+      // 削除ボタン背景
+      HStack {
+        Spacer()
+        Button(action: {
+          withAnimation {
+            modelContext.delete(item)
+          }
+        }) {
+          Image(systemName: "trash.fill")
+            .foregroundColor(.white)
+            .frame(width: 60, height: 60)
+            .background(Color.red)
+            .cornerRadius(10)
+        }
+      }
+
+      // メインカード
+      Button(action: {
+        showingEditSheet = true
+      }) {
+        VStack(alignment: .leading, spacing: 8) {
+          HStack {
+            VStack(alignment: .leading, spacing: 4) {
+              Text("\(item.brandName) \(item.productName)")
+                .font(.headline)
+                .lineLimit(1)
+
+              Text("\(item.portion)")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            Text("\(item.calories, specifier: "%.0f")")
+              .font(.system(size: 18, weight: .bold))
+              + Text(" kcal")
+              .font(.system(size: 14))
+              .foregroundColor(.secondary)
+          }
+
+          HStack(spacing: 12) {
+            MacroView(label: "P", value: item.protein, color: .blue)
+            MacroView(label: "F", value: item.fat, color: .yellow)
+            MacroView(label: "C", value: item.carbohydrates, color: .green)
+          }
+        }
+        .padding()
+        .background(Color(UIColor.systemBackground))
+        .cornerRadius(10)
+        .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
+      }
+      .buttonStyle(PlainButtonStyle())
+      .offset(x: offset)
+      .gesture(
+        DragGesture()
+          .onChanged { gesture in
+            if gesture.translation.width < 0 {
+              isSwiping = true
+              offset = max(gesture.translation.width, -60)
+            }
+          }
+          .onEnded { gesture in
+            withAnimation(.spring()) {
+              if gesture.translation.width < -40 {
+                offset = -60
+              } else {
+                offset = 0
+                isSwiping = false
+              }
+            }
+          }
+      )
+      .onTapGesture {
+        if isSwiping {
+          withAnimation(.spring()) {
+            offset = 0
+            isSwiping = false
+          }
+        } else {
+          showingEditSheet = true
+        }
+      }
+    }
+    .sheet(isPresented: $showingEditSheet) {
+      EditItemView(item: item)
+    }
+  }
+}
+
+struct MacroView: View {
+  let label: String
+  let value: Double
+  let color: Color
+
+  var body: some View {
+    HStack(spacing: 4) {
+      Text(label)
+        .font(.system(size: 12, weight: .bold))
+        .foregroundColor(color)
+
+      Text("\(value, specifier: "%.1f")g")
+        .font(.system(size: 14))
+    }
+    .padding(.vertical, 4)
+    .padding(.horizontal, 8)
+    .background(color.opacity(0.1))
+    .cornerRadius(6)
   }
 }
