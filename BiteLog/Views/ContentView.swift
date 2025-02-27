@@ -560,17 +560,18 @@ struct NutrientRow: View {
   var body: some View {
     HStack {
       Image(systemName: icon)
-        .foregroundColor(color)
-        .font(.system(size: 16, weight: .semibold))
-        .frame(width: 24)
+        .foregroundColor(color.opacity(0.8))
+        .font(.system(size: 14, weight: .medium))
+        .frame(width: 22)
 
       Text(label)
-        .font(.system(size: 16))
+        .font(.system(size: 15))
+        .foregroundColor(.primary.opacity(0.9))
 
       Spacer()
 
       Text("\(value, specifier: format)")
-        .font(.system(size: 16, weight: .semibold))
+        .font(.system(size: 15, weight: .medium))
         + Text(" \(unit)")
         .font(.system(size: 14))
         .foregroundColor(.secondary)
@@ -589,21 +590,19 @@ struct NutrientBadge: View {
 
   var body: some View {
     VStack(spacing: 2) {
-      HStack(spacing: 4) {
-        Image(systemName: icon)
-          .font(.system(size: 10))
+      HStack(spacing: 3) {
         Text(name)
           .font(.system(size: 12, weight: .medium))
       }
-      .foregroundColor(color)
+      .foregroundColor(color.opacity(0.8))
 
       Text("\(value, specifier: value >= 100 ? "%.0f" : "%.1f")\(unit)")
-        .font(.system(size: 14, weight: .semibold))
+        .font(.system(size: 13, weight: .medium))
     }
     .frame(maxWidth: .infinity)
-    .padding(.vertical, 6)
-    .background(color.opacity(0.1))
-    .cornerRadius(8)
+    .padding(.vertical, 5)
+    .background(color.opacity(0.06))
+    .cornerRadius(4)
   }
 }
 
@@ -615,17 +614,18 @@ struct EmptyMealView: View {
   var body: some View {
     Button(action: onAddTap) {
       HStack {
-        Image(systemName: "plus.circle")
-          .font(.title2)
-          .foregroundColor(.blue)
+        Image(systemName: "plus")
+          .font(.body)
+          .foregroundColor(.accentColor)
 
         Text("\(mealType.rawValue)を追加")
           .font(.subheadline)
+          .foregroundColor(.primary.opacity(0.8))
       }
       .frame(maxWidth: .infinity)
       .padding()
       .background(Color(UIColor.systemBackground))
-      .cornerRadius(10)
+      .cornerRadius(6)
     }
     .buttonStyle(PlainButtonStyle())
     .padding(.horizontal)
@@ -735,18 +735,19 @@ struct MacroView: View {
   let color: Color
 
   var body: some View {
-    HStack(spacing: 4) {
+    HStack(spacing: 3) {
       Text(label)
-        .font(.system(size: 12, weight: .bold))
-        .foregroundColor(color)
+        .font(.system(size: 11, weight: .medium))
+        .foregroundColor(color.opacity(0.7))
 
       Text("\(value, specifier: "%.1f")g")
-        .font(.system(size: 14))
+        .font(.system(size: 13))
+        .foregroundColor(.primary.opacity(0.8))
     }
-    .padding(.vertical, 4)
-    .padding(.horizontal, 8)
-    .background(color.opacity(0.1))
-    .cornerRadius(6)
+    .padding(.vertical, 3)
+    .padding(.horizontal, 6)
+    .background(color.opacity(0.04))
+    .cornerRadius(3)
   }
 }
 
