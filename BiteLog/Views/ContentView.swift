@@ -208,6 +208,9 @@ struct ContentView: View {
       .sheet(isPresented: $showingDatePicker) {
         DatePickerSheet(selectedDate: $selectedDate, isPresented: $showingDatePicker)
       }
+      .sheet(isPresented: $showingImportCSV) {
+        ImportCSVView()
+      }
     }
   }
 
