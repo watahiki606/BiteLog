@@ -37,7 +37,7 @@ class CSVImporter {
     // 2行目以降のデータを処理
     for (index, row) in rows.dropFirst().enumerated() where !row.isEmpty {
       let columns = parseCSVLine(row)
-      guard columns.count == 9 else {
+      guard columns.count >= 9 else {
         throw CSVImportError.invalidData("\(index + 2)行目: カラム数が不正です (\(columns.count)列)")
       }
 
@@ -74,6 +74,17 @@ class CSVImporter {
         throw CSVImportError.invalidData("\(index + 2)行目: 栄養価の数値が不正です")
       }
 
+      // オプションで食事量を取得（10列目があれば）
+      var numberOfServings = 1.0
+      if columns.count > 9 {
+        let cleanedServings = columns[9]
+          .replacingOccurrences(of: "\"", with: "")
+          .replacingOccurrences(of: ",", with: "")
+        if let servingsValue = Double(cleanedServings) {
+          numberOfServings = servingsValue
+        }
+      }
+
       let item = Item(
         brandName: columns[2],
         productName: columns[3],
@@ -83,7 +94,8 @@ class CSVImporter {
         fat: fat,
         carbohydrates: carbs,
         mealType: mealType,
-        timestamp: date
+        timestamp: date,
+        numberOfServings: numberOfServings
       )
 
       context.insert(item)

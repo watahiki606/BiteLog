@@ -15,6 +15,7 @@ struct AddItemView: View {
   @State private var brandName = ""
   @State private var productName = ""
   @State private var portion: String = ""
+  @State private var numberOfServings: String = "1.0"
   @State private var calories: String = ""
   @State private var protein: String = ""
   @State private var fat: String = ""
@@ -87,6 +88,12 @@ struct AddItemView: View {
                       icon: "scalemass.fill",
                       placeholder: "量 (例: 1個, 100g)",
                       text: $portion
+                    )
+
+                    CustomTextField(
+                      icon: "number",
+                      placeholder: "食事量 (例: 1.5)",
+                      text: $numberOfServings
                     )
 
                     HStack {
@@ -209,7 +216,8 @@ struct AddItemView: View {
       fat: Double(fat) ?? 0,
       carbohydrates: Double(carbohydrates) ?? 0,
       mealType: mealType,
-      timestamp: date
+      timestamp: date,
+      numberOfServings: Double(numberOfServings) ?? 1.0
     )
     modelContext.insert(newItem)
   }
@@ -219,12 +227,13 @@ struct AddItemView: View {
       brandName: item.brandName,
       productName: item.productName,
       portion: item.portion,
-      calories: item.calories,
-      protein: item.protein,
-      fat: item.fat,
-      carbohydrates: item.carbohydrates,
+      calories: item.baseCalories,
+      protein: item.baseProtein,
+      fat: item.baseFat,
+      carbohydrates: item.baseCarbohydrates,
       mealType: mealType,
-      timestamp: date
+      timestamp: date,
+      numberOfServings: Double(numberOfServings) ?? 1.0
     )
     modelContext.insert(newItem)
   }

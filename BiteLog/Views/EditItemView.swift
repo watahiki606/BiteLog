@@ -9,6 +9,7 @@ struct EditItemView: View {
   @State private var brandName: String
   @State private var productName: String
   @State private var portion: String
+  @State private var numberOfServings: String
   @State private var calories: String
   @State private var protein: String
   @State private var fat: String
@@ -21,6 +22,7 @@ struct EditItemView: View {
     _brandName = State(initialValue: item.brandName)
     _productName = State(initialValue: item.productName)
     _portion = State(initialValue: item.portion)
+    _numberOfServings = State(initialValue: String(item.numberOfServings))
     _calories = State(initialValue: String(item.calories))
     _protein = State(initialValue: String(item.protein))
     _fat = State(initialValue: String(item.fat))
@@ -56,6 +58,12 @@ struct EditItemView: View {
                   icon: "scalemass.fill",
                   placeholder: "量 (例: 1個, 100g)",
                   text: $portion
+                )
+
+                CustomTextField(
+                  icon: "number",
+                  placeholder: "食事量 (例: 1.5)",
+                  text: $numberOfServings
                 )
 
                 HStack {
@@ -156,10 +164,11 @@ struct EditItemView: View {
     item.brandName = brandName
     item.productName = productName
     item.portion = portion
-    item.calories = Double(calories) ?? 0
-    item.protein = Double(protein) ?? 0
-    item.fat = Double(fat) ?? 0
-    item.carbohydrates = Double(carbohydrates) ?? 0
+    item.numberOfServings = Double(numberOfServings) ?? 1.0
+    item.baseCalories = Double(calories) ?? 0
+    item.baseProtein = Double(protein) ?? 0
+    item.baseFat = Double(fat) ?? 0
+    item.baseCarbohydrates = Double(carbohydrates) ?? 0
     item.mealType = mealType
     item.timestamp = date
   }

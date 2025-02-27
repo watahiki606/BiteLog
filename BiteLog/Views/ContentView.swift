@@ -480,7 +480,7 @@ struct ItemRowView: View {
               .font(.headline)
               .lineLimit(1)
 
-            Text("\(item.portion)")
+            Text("\(item.portion) × \(item.numberOfServings, specifier: "%.1f")")
               .font(.subheadline)
               .foregroundColor(.secondary)
           }
@@ -666,7 +666,7 @@ struct ItemCardView: View {
               .font(.headline)
               .lineLimit(1)
 
-            Text("\(item.portion)")
+            Text("\(item.portion) × \(item.numberOfServings, specifier: "%.1f")")
               .font(.subheadline)
               .foregroundColor(.secondary)
           }
