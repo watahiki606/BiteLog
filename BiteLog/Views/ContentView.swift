@@ -10,158 +10,18 @@ struct ContentView: View {
   @State private var showingAddItemFor: (date: Date, mealType: MealType)?
   @State private var showingImportCSV = false
   @State private var showingSettings = false
-  @State private var dragOffset = CGFloat.zero
   @State private var showingDatePicker = false
 
   var body: some View {
     NavigationStack {
-      ScrollView {
-        VStack(spacing: 16) {
-          // 日別集計
-          VStack(spacing: 0) {
-            Text(NSLocalizedString("Daily Total", comment: "Daily nutrition summary"))
-              .font(.headline)
-              .padding(.bottom, 8)
-              .frame(maxWidth: .infinity, alignment: .leading)
-              .padding(.horizontal)
-              .padding(.top, 12)
-
-            Divider()
-
-            VStack(spacing: 12) {
-              NutrientRow(
-                label: NSLocalizedString("Calories", comment: "Nutrient label"),
-                value: dailyTotals.calories,
-                unit: "kcal",
-                format: "%.1f",
-                icon: "flame.fill",
-                color: .orange
-              )
-
-              NutrientRow(
-                label: NSLocalizedString("Protein", comment: "Nutrient label"),
-                value: dailyTotals.protein,
-                unit: "g",
-                format: "%.1f",
-                icon: "p.circle.fill",
-                color: .blue
-              )
-
-              NutrientRow(
-                label: NSLocalizedString("Fat", comment: "Nutrient label"),
-                value: dailyTotals.fat,
-                unit: "g",
-                format: "%.1f",
-                icon: "f.circle.fill",
-                color: .yellow
-              )
-
-              NutrientRow(
-                label: NSLocalizedString("Carbs", comment: "Nutrient label"),
-                value: dailyTotals.carbs,
-                unit: "g",
-                format: "%.1f",
-                icon: "c.circle.fill",
-                color: .green
-              )
-            }
-            .padding(.vertical, 8)
-          }
-          .background(Color(UIColor.systemBackground))
-          .cornerRadius(12)
-          .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-          .padding(.horizontal)
-          .padding(.vertical, 8)
-
-          // 食事リスト
-          ForEach(MealType.allCases, id: \.self) { mealType in
-            VStack(spacing: 8) {
-              // セクションヘッダー
-              HStack {
-                Text(mealType.rawValue)
-                  .font(.headline)
-                  .foregroundColor(.primary)
-
-                Spacer()
-
-                Button(action: {
-                  showingAddItemFor = (selectedDate, mealType)
-                }) {
-                  Label(
-                    NSLocalizedString("Add", comment: "Add button"), systemImage: "plus.circle.fill"
-                  )
-                  .font(.subheadline)
-                  .foregroundColor(.blue)
-                }
-              }
-              .padding(.horizontal)
-
-              // 食事タイプごとのPFC合計を表示
-              let totals = mealTypeTotals(for: mealType)
-              if filteredItems.contains(where: { $0.mealType == mealType }) {
-                HStack(spacing: 12) {
-                  NutrientBadge(
-                    value: totals.calories, unit: "kcal",
-                    name: NSLocalizedString("Calories", comment: "Nutrient short name"),
-                    color: .orange,
-                    icon: "flame.fill")
-                  NutrientBadge(
-                    value: totals.protein, unit: "g",
-                    name: "P", color: .blue, icon: "p.circle.fill"
-                  )
-                  NutrientBadge(
-                    value: totals.fat, unit: "g", name: "F", color: .yellow, icon: "f.circle.fill")
-                  NutrientBadge(
-                    value: totals.carbs, unit: "g", name: "C", color: .green, icon: "c.circle.fill")
-                }
-                .padding(.vertical, 8)
-                .padding(.horizontal)
-              }
-
-              // 食事アイテム
-              let mealItems = filteredItems.filter { $0.mealType == mealType }
-              if mealItems.isEmpty {
-                EmptyMealView(mealType: mealType) {
-                  showingAddItemFor = (selectedDate, mealType)
-                }
-              } else {
-                List {
-                  ForEach(mealItems) { item in
-                    ItemRowView(item: item)
-                      .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
-                      .listRowBackground(Color.clear)
-                      .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) {
-                          withAnimation {
-                            modelContext.delete(item)
-                          }
-                        } label: {
-                          Label("削除", systemImage: "trash")
-                        }
-                      }
-                  }
-                  .onDelete(perform: { indexSet in
-                    for index in indexSet {
-                      modelContext.delete(mealItems[index])
-                    }
-                  })
-                }
-                .scrollDisabled(true)
-                .listStyle(.plain)
-                .frame(height: CGFloat(mealItems.count) * 110)
-                .background(Color.clear)
-              }
-            }
-            .padding(.vertical, 8)
-            .background(Color(UIColor.secondarySystemGroupedBackground))
-            .cornerRadius(12)
-            .shadow(color: Color.black.opacity(0.05), radius: 3, x: 0, y: 1)
-            .padding(.horizontal)
-          }
-        }
-        .padding(.vertical)
-      }
-      .background(Color(UIColor.systemGroupedBackground))
+      DayContentView(
+        date: selectedDate,
+        selectedDate: selectedDate,
+        onAddTapped: { date, mealType in
+          showingAddItemFor = (date, mealType)
+        },
+        modelContext: modelContext
+      )
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .principal) {
@@ -530,37 +390,6 @@ struct ItemRowView: View {
   }
 }
 
-struct ItemRow: View {
-  let item: Item
-  @State private var showingEditSheet = false
-
-  var body: some View {
-    Button {
-      showingEditSheet = true
-    } label: {
-      VStack(alignment: .leading, spacing: 4) {
-        HStack {
-          Text("\(item.brandName) \(item.productName)")
-            .font(.headline)
-          Spacer()
-          Text("\(item.calories, specifier: "%.0f") kcal")
-            .font(.subheadline)
-        }
-        Text("\(item.portion)")
-          .font(.subheadline)
-        Text(
-          "P:\(item.protein, specifier: "%.1f")g F:\(item.fat, specifier: "%.1f")g C:\(item.carbohydrates, specifier: "%.1f")g"
-        )
-        .font(.caption)
-        .foregroundStyle(.secondary)
-      }
-    }
-    .sheet(isPresented: $showingEditSheet) {
-      EditItemView(item: item)
-    }
-  }
-}
-
 #Preview {
   ContentView()
     .modelContainer(for: Item.self, inMemory: true)
@@ -652,104 +481,6 @@ struct EmptyMealView: View {
     .padding(.horizontal)
   }
 }
-
-// アイテムカードビュー
-struct ItemCardView: View {
-  let item: Item
-  let modelContext: ModelContext
-  @State private var showingEditSheet = false
-  @State private var offset: CGFloat = 0
-  @State private var isSwiping = false
-
-  var body: some View {
-    ZStack {
-      // 削除ボタン背景
-      HStack {
-        Spacer()
-        Button(action: {
-          withAnimation {
-            modelContext.delete(item)
-          }
-        }) {
-          Image(systemName: "trash.fill")
-            .foregroundColor(.white)
-            .frame(width: 60, height: 60)
-            .background(Color.red)
-            .cornerRadius(10)
-        }
-      }
-
-      // メインカード
-      VStack(alignment: .leading, spacing: 8) {
-        HStack {
-          VStack(alignment: .leading, spacing: 4) {
-            Text("\(item.brandName) \(item.productName)")
-              .font(.headline)
-              .lineLimit(1)
-
-            Text("\(item.portion) × \(item.numberOfServings, specifier: "%.1f")")
-              .font(.subheadline)
-              .foregroundColor(.secondary)
-          }
-
-          Spacer()
-
-          Text("\(item.calories, specifier: "%.0f")")
-            .font(.system(size: 18, weight: .bold))
-            + Text(" kcal")
-            .font(.system(size: 14))
-            .foregroundColor(.secondary)
-        }
-
-        HStack(spacing: 12) {
-          MacroView(label: "P", value: item.protein, color: .blue)
-          MacroView(label: "F", value: item.fat, color: .yellow)
-          MacroView(label: "C", value: item.carbohydrates, color: .green)
-        }
-      }
-      .padding()
-      .background(Color(UIColor.systemBackground))
-      .cornerRadius(10)
-      .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
-      .offset(x: offset)
-      .contentShape(Rectangle())  // タップ可能な領域を明確に定義
-      .onTapGesture {
-        if offset != 0 {
-          // スワイプオープン状態ならカードを閉じる
-          withAnimation(.spring()) {
-            offset = 0
-          }
-        } else {
-          // カードが閉じた状態なら編集画面を表示
-          showingEditSheet = true
-        }
-      }
-      .gesture(
-        DragGesture()
-          .onChanged { gesture in
-            if gesture.translation.width < 0 {  // 左スワイプのみ検出
-              offset = max(gesture.translation.width, -60)
-            }
-          }
-          .onEnded { gesture in
-            withAnimation(.spring()) {
-              if gesture.translation.width < -40 {
-                // スワイプが十分なら削除ボタンを表示
-                offset = -60
-              } else {
-                // 不十分なスワイプならリセット
-                offset = 0
-              }
-            }
-          }
-      )
-    }
-    .sheet(isPresented: $showingEditSheet) {
-      EditItemView(item: item)
-    }
-  }
-}
-
 struct MacroView: View {
   let label: String
   let value: Double
