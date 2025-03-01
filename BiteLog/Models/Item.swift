@@ -14,7 +14,10 @@ enum MealType: String, CaseIterable, Codable {
 
 @Model
 final class Item {
-  @Attribute(.unique) var id: String
+  #Index<Item>([\.timestamp], [\.timestamp, \.mealTypeRawValue])
+  #Unique<Item>([\.id])
+
+  var id: String
   var brandName: String
   var productName: String
   var portion: String
@@ -23,8 +26,14 @@ final class Item {
   var baseProtein: Double
   var baseFat: Double
   var baseCarbohydrates: Double
-  var mealType: MealType
-  @Attribute(.externalStorage) var timestamp: Date
+  var mealTypeRawValue: String
+  var timestamp: Date
+
+  @Transient
+  var mealType: MealType {
+    get { MealType(rawValue: mealTypeRawValue) ?? .snack }
+    set { mealTypeRawValue = newValue.rawValue }
+  }
 
   init(
     brandName: String, productName: String, portion: String,
@@ -40,7 +49,7 @@ final class Item {
     self.baseProtein = protein
     self.baseFat = fat
     self.baseCarbohydrates = carbohydrates
-    self.mealType = mealType
+    self.mealTypeRawValue = mealType.rawValue
     self.timestamp = timestamp
   }
 
