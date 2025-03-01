@@ -176,32 +176,6 @@ struct EditItemView: View {
     item.baseCarbohydrates = Double(carbohydrates) ?? 0
     item.mealType = mealType
     item.timestamp = date
-  }
-}
 
-// PFCパーセンテージラベル
-struct PFCPercentageLabel: View {
-  let value: Double
-  let total: Double
-  let color: Color
-  let label: String
-
-  var percentage: Int {
-    total > 0 ? Int((value / total) * 100) : 0
-  }
-
-  var body: some View {
-    VStack(spacing: 2) {
-      Text(label)
-        .font(.caption.bold())
-        .foregroundColor(color)
-
-      Text("\(percentage)%")
-        .font(.footnote)
-    }
-    .frame(maxWidth: .infinity)
-    .padding(.vertical, 4)
-    .background(color.opacity(0.1))
-    .cornerRadius(8)
   }
 }
