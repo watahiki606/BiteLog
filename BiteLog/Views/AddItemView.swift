@@ -2,12 +2,9 @@ import SwiftData
 import SwiftUI
 
 struct AddItemView: View {
-  @Environment(\.managedObjectContext) private var viewContext
   @Environment(\.dismiss) var dismiss
   @Environment(\.modelContext) private var modelContext
-  @Query private var items: [Item]
 
-  let preselectedMealType: MealType
   let mealType: MealType
   var selectedDate: Date
 
@@ -20,7 +17,6 @@ struct AddItemView: View {
   @State private var protein: String = ""
   @State private var fat: String = ""
   @State private var carbohydrates: String = ""
-  @State private var showingPastItems = false
   @State private var date: Date
   @State private var searchResults: [Item] = []
   @State private var currentOffset = 0
@@ -28,7 +24,6 @@ struct AddItemView: View {
   private let pageSize = 100
 
   init(preselectedMealType: MealType, selectedDate: Date) {
-    self.preselectedMealType = preselectedMealType
     self.mealType = preselectedMealType
     self.selectedDate = selectedDate
     _date = State(initialValue: selectedDate)
@@ -241,16 +236,6 @@ struct AddItemView: View {
       numberOfServings: Double(numberOfServings) ?? 1.0
     )
     modelContext.insert(newItem)
-  }
-
-  private func selectPastItem(_ item: Item) {
-    brandName = item.brandName
-    productName = item.productName
-    portion = item.portion
-    calories = String(item.calories)
-    protein = String(item.protein)
-    fat = String(item.fat)
-    carbohydrates = String(item.carbohydrates)
   }
 
   private func loadMoreItems() {
