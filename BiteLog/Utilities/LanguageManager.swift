@@ -47,8 +47,18 @@ class LanguageManager: ObservableObject {
   func updateLocale() {
     if let identifier = selectedLanguage.localeIdentifier {
       locale = Locale(identifier: identifier)
+
+      // 強制的に言語リソースを切り替える
+      UserDefaults.standard.set([identifier], forKey: "AppleLanguages")
+      UserDefaults.standard.synchronize()
     } else {
       locale = Locale.current
+      // システム言語に戻す
+      UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+      UserDefaults.standard.synchronize()
     }
+
+    // 言語変更を通知
+    objectWillChange.send()
   }
 }

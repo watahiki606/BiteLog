@@ -7,48 +7,43 @@
 "Add" = "Add";
 "Language" = "Language";
 "System Default" = "System Default";
+"Language Changed" = "Language Changed";
+"Apply" = "Apply";
+"The app needs to restart to apply the language change. Restart now?" = "The app needs to restart to apply the language change. Restart now?";
 
 // Meal Types
-"朝食" = "Breakfast";
-"昼食" = "Lunch";
-"夕食" = "Dinner";
-"間食" = "Snack";
+"Breakfast" = "Breakfast";
+"Lunch" = "Lunch";
+"Dinner" = "Dinner";
+"Snack" = "Snack";
 
 // Main View
-"1日の合計" = "Daily Total";
-"カロリー" = "Calories";
-"タンパク質" = "Protein";
-"脂質" = "Fat";
-"炭水化物" = "Carbs";
-"追加" = "Add";
-"CSVインポート" = "Import CSV";
-"日付を選択" = "Select Date";
-"完了" = "Done";
+"Daily Total" = "Daily Total";
+"Calories" = "Calories";
+"Protein" = "Protein";
+"Fat" = "Fat";
+"Carbs" = "Carbs";
+"Select Date" = "Select Date";
 
 // Form Fields
-"基本情報" = "Basic Info";
-"ブランド名" = "Brand";
-"商品名" = "Product";
-"量 (例: 1個, 100g)" = "Portion (e.g. 1 piece, 100g)";
-"食事量 (例: 1.5)" = "Servings (e.g. 1.5)";
-"栄養成分" = "Nutrition";
-"過去の食事を検索" = "Search past meals";
-"食事を追加" = "Add Meal";
-"食事を編集" = "Edit Meal";
-"保存" = "Save";
-"キャンセル" = "Cancel";
-
-// Import CSV
-"CSVファイルのフォーマット:" = "CSV File Format:";
-"CSVファイルを選択" = "Select CSV File";
-"閉じる" = "Close";
-"インポートエラー" = "Import Error"; 
-
-// Navigation
+"Basic Info" = "Basic Info";
+"Brand" = "Brand";
+"Product" = "Product";
+"Portion (e.g. 1 piece, 100g)" = "Portion (e.g. 1 piece, 100g)";
+"Servings (e.g. 1.5)" = "Servings (e.g. 1.5)";
+"Nutrition" = "Nutrition";
+"Search past meals" = "Search past meals";
 "Add Meal" = "Add Meal";
 "Edit Meal" = "Edit Meal";
 
-// Form Labels
+// Import CSV
+"CSV File Format:" = "CSV File Format:";
+"Select CSV File" = "Select CSV File";
+"Close" = "Close";
+"Import Error" = "Import Error"; 
+"Import CSV" = "Import CSV";
+
+// Navigation
 "Meal Type" = "Meal Type";
 "Date" = "Date";
 "Add %@" = "Add %@";

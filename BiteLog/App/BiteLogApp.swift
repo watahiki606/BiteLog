@@ -24,6 +24,7 @@ struct BiteLogApp: App {
         .tint(Color.accentColor)
         .environment(\.locale, languageManager.locale)
         .environmentObject(languageManager)
+        .id(languageManager.selectedLanguage)
     }
     .modelContainer(sharedModelContainer)
   }

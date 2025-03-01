@@ -7,6 +7,9 @@
 "Add" = "追加";
 "Language" = "言語";
 "System Default" = "システム設定に従う";
+"Language Changed" = "言語が変更されました";
+"Apply" = "適用";
+"The app needs to restart to apply the language change. Restart now?" = "言語変更を適用するにはアプリを再起動する必要があります。今すぐ再起動しますか？";
 
 // Meal Types
 "Breakfast" = "朝食";
@@ -20,10 +23,7 @@
 "Protein" = "タンパク質";
 "Fat" = "脂質";
 "Carbs" = "炭水化物";
-"Add" = "追加";
-"Import CSV" = "CSVインポート";
 "Select Date" = "日付を選択";
-"Done" = "完了";
 
 // Form Fields
 "Basic Info" = "基本情報";
@@ -35,20 +35,15 @@
 "Search past meals" = "過去の食事を検索";
 "Add Meal" = "食事を追加";
 "Edit Meal" = "食事を編集";
-"Save" = "保存";
-"Cancel" = "キャンセル";
 
 // Import CSV
 "CSV File Format:" = "CSVファイルのフォーマット:";
 "Select CSV File" = "CSVファイルを選択";
 "Close" = "閉じる";
 "Import Error" = "インポートエラー";
+"Import CSV" = "CSVインポート";
 
 // Navigation
-"Add Meal" = "食事を追加";
-"Edit Meal" = "食事を編集";
-
-// Form Labels
 "Meal Type" = "食事タイプ";
 "Date" = "日付";
 "Add %@" = "%@を追加";

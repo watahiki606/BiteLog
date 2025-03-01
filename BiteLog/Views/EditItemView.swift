@@ -44,25 +44,26 @@ struct EditItemView: View {
               VStack(spacing: 16) {
                 CustomTextField(
                   icon: "tag.fill",
-                  placeholder: "ブランド名",
+                  placeholder: NSLocalizedString("Brand", comment: "Brand name field"),
                   text: $brandName
                 )
 
                 CustomTextField(
                   icon: "cart.fill",
-                  placeholder: "商品名",
+                  placeholder: NSLocalizedString("Product", comment: "Product name field"),
                   text: $productName
                 )
 
                 CustomTextField(
                   icon: "scalemass.fill",
-                  placeholder: "量 (例: 1個, 100g)",
+                  placeholder: NSLocalizedString(
+                    "Portion (e.g. 1 piece, 100g)", comment: "Portion field"),
                   text: $portion
                 )
 
                 CustomTextField(
                   icon: "number",
-                  placeholder: "食事量 (例: 1.5)",
+                  placeholder: NSLocalizedString("Servings (e.g. 1.5)", comment: "Servings field"),
                   text: $numberOfServings
                 )
 

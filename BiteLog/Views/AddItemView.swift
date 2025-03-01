@@ -100,7 +100,7 @@ struct AddItemView: View {
                       Image(systemName: "fork.knife")
                         .foregroundColor(.blue)
                         .frame(width: 24)
-                      Text(mealType.rawValue)
+                      Text(mealType.localizedName)
                         .font(.body)
                         .foregroundColor(.primary)
                       Spacer()

@@ -78,7 +78,7 @@ struct DayContentView: View {
             VStack(spacing: 8) {
               // セクションヘッダー
               HStack {
-                Text(mealType.rawValue)
+                Text(mealType.localizedName)
                   .font(.headline)
                   .foregroundColor(.primary)
 

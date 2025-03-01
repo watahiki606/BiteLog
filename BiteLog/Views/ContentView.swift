@@ -49,10 +49,12 @@ struct ContentView: View {
         ToolbarItem(placement: .navigationBarTrailing) {
           Menu {
             Button(action: { showingImportCSV = true }) {
-              Label("CSVインポート", systemImage: "square.and.arrow.down")
+              Label(
+                NSLocalizedString("Import CSV", comment: "Menu item"),
+                systemImage: "square.and.arrow.down")
             }
             Button(action: { showingSettings = true }) {
-              Label("Settings", systemImage: "gearshape")
+              Label(NSLocalizedString("Settings", comment: "Menu item"), systemImage: "gearshape")
             }
             // 将来的な機能拡張のためのメニュー項目をここに追加可能
           } label: {

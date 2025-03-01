@@ -8,7 +8,7 @@ enum MealType: String, CaseIterable, Codable {
   case snack = "Snack"
 
   var localizedName: String {
-    NSLocalizedString(self.rawValue, comment: "Meal type")
+    return NSLocalizedString(self.rawValue, comment: "Meal type")
   }
 }
 
