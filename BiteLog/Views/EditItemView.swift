@@ -8,7 +8,8 @@ struct EditItemView: View {
 
   @State private var brandName: String
   @State private var productName: String
-  @State private var portion: String
+  @State private var portionAmount: String
+  @State private var portionUnit: String
   @State private var numberOfServings: String
   @State private var calories: String
   @State private var protein: String
@@ -21,7 +22,8 @@ struct EditItemView: View {
     self.item = item
     _brandName = State(initialValue: item.brandName)
     _productName = State(initialValue: item.productName)
-    _portion = State(initialValue: item.portion)
+    _portionAmount = State(initialValue: String(item.portionAmount))
+    _portionUnit = State(initialValue: item.portionUnit)
     _numberOfServings = State(initialValue: String(item.numberOfServings))
     _calories = State(initialValue: String(item.baseCalories))
     _protein = State(initialValue: String(item.baseProtein))
@@ -54,12 +56,21 @@ struct EditItemView: View {
                   text: $productName
                 )
 
-                CustomTextField(
-                  icon: "scalemass.fill",
-                  placeholder: NSLocalizedString(
-                    "Portion (e.g. 1 piece, 100g)", comment: "Portion field"),
-                  text: $portion
-                )
+                // Portion入力を数量と単位に分ける
+                HStack {
+                  CustomTextField(
+                    icon: "number",
+                    placeholder: NSLocalizedString("Amount", comment: "Portion amount field"),
+                    text: $portionAmount
+                  )
+                  .frame(width: 120)
+
+                  CustomTextField(
+                    icon: "text.badge.checkmark",
+                    placeholder: NSLocalizedString("Unit", comment: "Portion unit field"),
+                    text: $portionUnit
+                  )
+                }
 
                 CustomTextField(
                   icon: "number",
@@ -159,7 +170,7 @@ struct EditItemView: View {
                 .bold()
             }
             .disabled(
-              brandName.isEmpty || productName.isEmpty || portion.isEmpty || calories.isEmpty)
+              brandName.isEmpty || productName.isEmpty || portionAmount.isEmpty || calories.isEmpty)
           }
         }
       }
@@ -169,7 +180,8 @@ struct EditItemView: View {
   private func updateItem() {
     item.brandName = brandName
     item.productName = productName
-    item.portion = portion
+    item.portionAmount = Double(portionAmount) ?? 1.0
+    item.portionUnit = portionUnit
     item.numberOfServings = Double(numberOfServings) ?? 1.0
     item.baseCalories = Double(calories) ?? 0
     item.baseProtein = Double(protein) ?? 0

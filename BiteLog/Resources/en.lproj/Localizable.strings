@@ -59,3 +59,7 @@
 "Processing %d / %d rows" = "Processing %d / %d rows";
 "No permission to access file" = "No permission to access file";
 "Unknown error occurred" = "Unknown error occurred";
+
+// New strings for portion fields
+"Amount" = "Amount";
+"Unit" = "Unit";

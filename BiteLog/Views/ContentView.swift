@@ -112,9 +112,11 @@ struct ItemRowView: View {
               .font(.headline)
               .lineLimit(1)
 
-            Text("\(item.portion) × \(item.numberOfServings, specifier: "%.1f")")
-              .font(.subheadline)
-              .foregroundColor(.secondary)
+            Text(
+              "\(item.portionAmount, specifier: "%.1f") \(item.portionUnit) × \(item.numberOfServings, specifier: "%.1f")"
+            )
+            .font(.subheadline)
+            .foregroundColor(.secondary)
           }
 
           Spacer()

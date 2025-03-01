@@ -20,7 +20,8 @@ final class Item {
   var id: String
   var brandName: String
   var productName: String
-  var portion: String
+  var portionAmount: Double
+  var portionUnit: String
   var numberOfServings: Double
   var baseCalories: Double
   var baseProtein: Double
@@ -35,15 +36,22 @@ final class Item {
     set { mealTypeRawValue = newValue.rawValue }
   }
 
+  @Transient
+  var portion: String {
+    return "\(portionAmount) \(portionUnit)"
+  }
+
   init(
-    brandName: String, productName: String, portion: String,
+    brandName: String, productName: String,
+    portionAmount: Double, portionUnit: String,
     calories: Double, protein: Double, fat: Double, carbohydrates: Double,
     mealType: MealType, timestamp: Date, numberOfServings: Double = 1.0
   ) {
     self.id = UUID().uuidString
     self.brandName = brandName
     self.productName = productName
-    self.portion = portion
+    self.portionAmount = portionAmount
+    self.portionUnit = portionUnit
     self.numberOfServings = numberOfServings
     self.baseCalories = calories
     self.baseProtein = protein

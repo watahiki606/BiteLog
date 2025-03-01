@@ -59,3 +59,7 @@
 "Processing %d / %d rows" = "%d / %d 行処理中";
 "No permission to access file" = "ファイルにアクセスする権限がありません";
 "Unknown error occurred" = "不明なエラーが発生しました";
+
+// New strings for portion fields
+"Amount" = "数量";
+"Unit" = "単位";

@@ -11,7 +11,8 @@ struct AddItemView: View {
   @State private var searchText = ""
   @State private var brandName = ""
   @State private var productName = ""
-  @State private var portion: String = ""
+  @State private var portionAmount: String = "1.0"
+  @State private var portionUnit: String = "個"
   @State private var numberOfServings: String = "1.0"
   @State private var calories: String = ""
   @State private var protein: String = ""
@@ -82,12 +83,21 @@ struct AddItemView: View {
                       text: $productName
                     )
 
-                    CustomTextField(
-                      icon: "scalemass.fill",
-                      placeholder: NSLocalizedString(
-                        "Portion (e.g. 1 piece, 100g)", comment: "Portion field"),
-                      text: $portion
-                    )
+                    // Portion入力を数量と単位に分ける
+                    HStack {
+                      CustomTextField(
+                        icon: "number",
+                        placeholder: NSLocalizedString("Amount", comment: "Portion amount field"),
+                        text: $portionAmount
+                      )
+                      .frame(width: 120)
+
+                      CustomTextField(
+                        icon: "text.badge.checkmark",
+                        placeholder: NSLocalizedString("Unit", comment: "Portion unit field"),
+                        text: $portionUnit
+                      )
+                    }
 
                     CustomTextField(
                       icon: "number",
@@ -193,7 +203,7 @@ struct AddItemView: View {
                 .bold()
             }
             .disabled(
-              brandName.isEmpty || productName.isEmpty || portion.isEmpty || calories.isEmpty)
+              brandName.isEmpty || productName.isEmpty || portionAmount.isEmpty || calories.isEmpty)
           }
         }
         .onChange(of: searchText) { _, _ in
@@ -210,7 +220,8 @@ struct AddItemView: View {
     let newItem = Item(
       brandName: brandName,
       productName: productName,
-      portion: portion,
+      portionAmount: Double(portionAmount) ?? 1.0,
+      portionUnit: portionUnit,
       calories: Double(calories) ?? 0,
       protein: Double(protein) ?? 0,
       fat: Double(fat) ?? 0,
@@ -226,7 +237,8 @@ struct AddItemView: View {
     let newItem = Item(
       brandName: item.brandName,
       productName: item.productName,
-      portion: item.portion,
+      portionAmount: item.portionAmount,
+      portionUnit: item.portionUnit,
       calories: item.baseCalories,
       protein: item.baseProtein,
       fat: item.baseFat,
