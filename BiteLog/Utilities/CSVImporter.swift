@@ -46,7 +46,7 @@ class CSVImporter {
       }
 
       // 日本語と英語の両方の食事タイプをサポート
-      guard let mealType = MealType.fromJapaneseText(columns[1]) else {
+      guard let mealType = MealType(rawValue: columns[1]) else {
         throw CSVImportError.invalidData("\(index + 2)行目: 無効な食事タイプです: \(columns[1])")
       }
 

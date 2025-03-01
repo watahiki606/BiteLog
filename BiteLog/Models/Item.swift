@@ -10,18 +10,6 @@ enum MealType: String, CaseIterable, Codable {
   var localizedName: String {
     NSLocalizedString(self.rawValue, comment: "Meal type")
   }
-
-  // 日本語テキストから適切なMealTypeを取得するスタティックメソッド
-  static func fromJapaneseText(_ text: String) -> MealType? {
-    switch text {
-    case "朝食": return .breakfast
-    case "昼食": return .lunch
-    case "夕食": return .dinner
-    case "間食": return .snack
-    default: return MealType(rawValue: text)  // 既に英語の場合はそのまま
-    }
-  }
-
 }
 
 @Model
