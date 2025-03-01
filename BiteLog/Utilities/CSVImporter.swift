@@ -45,7 +45,8 @@ class CSVImporter {
         throw CSVImportError.invalidData("\(index + 2)行目: 日付の形式が不正です: \(columns[0])")
       }
 
-      guard let mealType = MealType(rawValue: columns[1]) else {
+      // 日本語と英語の両方の食事タイプをサポート
+      guard let mealType = MealType.fromJapaneseText(columns[1]) else {
         throw CSVImportError.invalidData("\(index + 2)行目: 無効な食事タイプです: \(columns[1])")
       }
 

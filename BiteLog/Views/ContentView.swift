@@ -4,10 +4,12 @@ import SwiftUI
 struct ContentView: View {
   @Environment(\.modelContext) private var modelContext
   @Query(sort: \Item.timestamp) private var allItems: [Item]
+  @EnvironmentObject private var languageManager: LanguageManager
 
   @State private var selectedDate = Date()
   @State private var showingAddItemFor: (date: Date, mealType: MealType)?
   @State private var showingImportCSV = false
+  @State private var showingSettings = false
   @State private var dragOffset = CGFloat.zero
   @State private var showingDatePicker = false
 
@@ -17,7 +19,7 @@ struct ContentView: View {
         VStack(spacing: 16) {
           // 日別集計
           VStack(spacing: 0) {
-            Text("1日の合計")
+            Text(NSLocalizedString("Daily Total", comment: "Daily nutrition summary"))
               .font(.headline)
               .padding(.bottom, 8)
               .frame(maxWidth: .infinity, alignment: .leading)
@@ -28,16 +30,16 @@ struct ContentView: View {
 
             VStack(spacing: 12) {
               NutrientRow(
-                label: "カロリー",
+                label: NSLocalizedString("Calories", comment: "Nutrient label"),
                 value: dailyTotals.calories,
                 unit: "kcal",
-                format: "%.0f",
+                format: "%.1f",
                 icon: "flame.fill",
                 color: .orange
               )
 
               NutrientRow(
-                label: "タンパク質",
+                label: NSLocalizedString("Protein", comment: "Nutrient label"),
                 value: dailyTotals.protein,
                 unit: "g",
                 format: "%.1f",
@@ -46,7 +48,7 @@ struct ContentView: View {
               )
 
               NutrientRow(
-                label: "脂質",
+                label: NSLocalizedString("Fat", comment: "Nutrient label"),
                 value: dailyTotals.fat,
                 unit: "g",
                 format: "%.1f",
@@ -55,7 +57,7 @@ struct ContentView: View {
               )
 
               NutrientRow(
-                label: "炭水化物",
+                label: NSLocalizedString("Carbs", comment: "Nutrient label"),
                 value: dailyTotals.carbs,
                 unit: "g",
                 format: "%.1f",
@@ -85,9 +87,11 @@ struct ContentView: View {
                 Button(action: {
                   showingAddItemFor = (selectedDate, mealType)
                 }) {
-                  Label("追加", systemImage: "plus.circle.fill")
-                    .font(.subheadline)
-                    .foregroundColor(.blue)
+                  Label(
+                    NSLocalizedString("Add", comment: "Add button"), systemImage: "plus.circle.fill"
+                  )
+                  .font(.subheadline)
+                  .foregroundColor(.blue)
                 }
               }
               .padding(.horizontal)
@@ -97,10 +101,13 @@ struct ContentView: View {
               if filteredItems.contains(where: { $0.mealType == mealType }) {
                 HStack(spacing: 12) {
                   NutrientBadge(
-                    value: totals.calories, unit: "kcal", name: "カロリー", color: .orange,
+                    value: totals.calories, unit: "kcal",
+                    name: NSLocalizedString("Calories", comment: "Nutrient short name"),
+                    color: .orange,
                     icon: "flame.fill")
                   NutrientBadge(
-                    value: totals.protein, unit: "g", name: "P", color: .blue, icon: "p.circle.fill"
+                    value: totals.protein, unit: "g",
+                    name: "P", color: .blue, icon: "p.circle.fill"
                   )
                   NutrientBadge(
                     value: totals.fat, unit: "g", name: "F", color: .yellow, icon: "f.circle.fill")
@@ -185,6 +192,9 @@ struct ContentView: View {
             Button(action: { showingImportCSV = true }) {
               Label("CSVインポート", systemImage: "square.and.arrow.down")
             }
+            Button(action: { showingSettings = true }) {
+              Label("Settings", systemImage: "gearshape")
+            }
             // 将来的な機能拡張のためのメニュー項目をここに追加可能
           } label: {
             Image(systemName: "ellipsis.circle")
@@ -210,6 +220,9 @@ struct ContentView: View {
       }
       .sheet(isPresented: $showingImportCSV) {
         ImportCSVView()
+      }
+      .sheet(isPresented: $showingSettings) {
+        SettingsView()
       }
     }
   }
@@ -320,7 +333,7 @@ struct DayContentView: View {
         VStack(spacing: 16) {
           // 日別集計
           VStack(spacing: 0) {
-            Text("1日の合計")
+            Text(NSLocalizedString("Daily Total", comment: "Daily nutrition summary"))
               .font(.headline)
               .padding(.bottom, 8)
               .frame(maxWidth: .infinity, alignment: .leading)
@@ -331,16 +344,16 @@ struct DayContentView: View {
 
             VStack(spacing: 12) {
               NutrientRow(
-                label: "カロリー",
+                label: NSLocalizedString("Calories", comment: "Nutrient label"),
                 value: dailyTotals.calories,
                 unit: "kcal",
-                format: "%.0f",
+                format: "%.1f",
                 icon: "flame.fill",
                 color: .orange
               )
 
               NutrientRow(
-                label: "タンパク質",
+                label: NSLocalizedString("Protein", comment: "Nutrient label"),
                 value: dailyTotals.protein,
                 unit: "g",
                 format: "%.1f",
@@ -349,7 +362,7 @@ struct DayContentView: View {
               )
 
               NutrientRow(
-                label: "脂質",
+                label: NSLocalizedString("Fat", comment: "Nutrient label"),
                 value: dailyTotals.fat,
                 unit: "g",
                 format: "%.1f",
@@ -358,7 +371,7 @@ struct DayContentView: View {
               )
 
               NutrientRow(
-                label: "炭水化物",
+                label: NSLocalizedString("Carbs", comment: "Nutrient label"),
                 value: dailyTotals.carbs,
                 unit: "g",
                 format: "%.1f",
@@ -388,9 +401,11 @@ struct DayContentView: View {
                 Button(action: {
                   onAddTapped(date, mealType)
                 }) {
-                  Label("追加", systemImage: "plus.circle.fill")
-                    .font(.subheadline)
-                    .foregroundColor(.blue)
+                  Label(
+                    NSLocalizedString("Add", comment: "Add button"), systemImage: "plus.circle.fill"
+                  )
+                  .font(.subheadline)
+                  .foregroundColor(.blue)
                 }
               }
               .padding(.horizontal)
@@ -400,10 +415,13 @@ struct DayContentView: View {
               if filteredItems.contains(where: { $0.mealType == mealType }) {
                 HStack(spacing: 12) {
                   NutrientBadge(
-                    value: totals.calories, unit: "kcal", name: "カロリー", color: .orange,
+                    value: totals.calories, unit: "kcal",
+                    name: NSLocalizedString("Calories", comment: "Nutrient short name"),
+                    color: .orange,
                     icon: "flame.fill")
                   NutrientBadge(
-                    value: totals.protein, unit: "g", name: "P", color: .blue, icon: "p.circle.fill"
+                    value: totals.protein, unit: "g",
+                    name: "P", color: .blue, icon: "p.circle.fill"
                   )
                   NutrientBadge(
                     value: totals.fat, unit: "g", name: "F", color: .yellow, icon: "f.circle.fill")
@@ -618,9 +636,12 @@ struct EmptyMealView: View {
           .font(.body)
           .foregroundColor(.accentColor)
 
-        Text("\(mealType.rawValue)を追加")
-          .font(.subheadline)
-          .foregroundColor(.primary.opacity(0.8))
+        Text(
+          String(
+            format: NSLocalizedString("Add %@", comment: "Add meal type"), mealType.localizedName)
+        )
+        .font(.subheadline)
+        .foregroundColor(.primary.opacity(0.8))
       }
       .frame(maxWidth: .infinity)
       .padding()
@@ -760,18 +781,18 @@ struct DatePickerSheet: View {
     NavigationStack {
       VStack {
         DatePicker(
-          "日付を選択",
+          NSLocalizedString("Select Date", comment: "Date picker title"),
           selection: $selectedDate,
           displayedComponents: .date
         )
         .datePickerStyle(.graphical)
         .padding()
       }
-      .navigationTitle("日付を選択")
+      .navigationTitle(NSLocalizedString("Select Date", comment: "Date picker title"))
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .confirmationAction) {
-          Button("完了") {
+          Button(NSLocalizedString("Done", comment: "Button title")) {
             isPresented = false
           }
         }

@@ -12,34 +12,46 @@ struct ImportCSVView: View {
   var body: some View {
     NavigationStack {
       VStack(spacing: 20) {
-        Text("CSVファイルのフォーマット:")
+        Text(NSLocalizedString("CSV File Format:", comment: "CSV import instruction"))
           .font(.headline)
 
-        Text("日付,食事タイプ,ブランド名,商品名,量,カロリー,炭水化物,脂質,タンパク質\n2024-03-20,朝食,ブランドA,商品B,1個,200,30,10,8")
-          .font(.system(.footnote, design: .monospaced))
-          .padding()
-          .background(Color.gray.opacity(0.1))
-          .cornerRadius(8)
+        Text(
+          "Date,Meal Type,Brand,Product,Portion,Calories,Carbs,Fat,Protein\n2024-03-20,Breakfast,Brand A,Product B,1 piece,200,30,10,8"
+        )
+        .font(.system(.footnote, design: .monospaced))
+        .padding()
+        .background(Color.gray.opacity(0.1))
+        .cornerRadius(8)
+
+        Text(
+          NSLocalizedString(
+            "*Japanese meal types (朝食, 昼食, 夕食, 間食) are also supported", comment: "CSV import note")
+        )
+        .font(.caption)
+        .foregroundColor(.secondary)
 
         Button(action: {
           showingFilePicker = true
         }) {
-          Label("CSVファイルを選択", systemImage: "doc.badge.plus")
-            .font(.headline)
-            .padding()
-            .frame(maxWidth: .infinity)
-            .background(Color.blue)
-            .foregroundColor(.white)
-            .cornerRadius(10)
+          Label(
+            NSLocalizedString("Select CSV File", comment: "Button title"),
+            systemImage: "doc.badge.plus"
+          )
+          .font(.headline)
+          .padding()
+          .frame(maxWidth: .infinity)
+          .background(Color.blue)
+          .foregroundColor(.white)
+          .cornerRadius(10)
         }
         .padding(.horizontal)
 
         Spacer()
       }
       .padding()
-      .navigationTitle("CSVインポート")
+      .navigationTitle(NSLocalizedString("Import CSV", comment: "Navigation title"))
       .toolbar {
-        Button("閉じる") { dismiss() }
+        Button(NSLocalizedString("Close", comment: "Button title")) { dismiss() }
       }
       .fileImporter(
         isPresented: $showingFilePicker,
@@ -50,7 +62,8 @@ struct ImportCSVView: View {
           do {
             // ファイルのセキュリティスコープドアクセスを開始
             guard url.startAccessingSecurityScopedResource() else {
-              throw CSVImportError.invalidData("ファイルへのアクセス権限がありません")
+              throw CSVImportError.invalidData(
+                NSLocalizedString("No permission to access file", comment: "Error message"))
             }
             defer {
               // 関数を抜ける前に必ずアクセスを停止
@@ -71,13 +84,16 @@ struct ImportCSVView: View {
           showingError = true
         }
       }
-      .alert("インポートエラー", isPresented: $showingError) {
+      .alert(NSLocalizedString("Import Error", comment: "Alert title"), isPresented: $showingError)
+      {
         Button("OK") {}
       } message: {
         if let csvError = importError as? CSVImportError {
           Text(csvError.localizedDescription)
         } else {
-          Text(importError?.localizedDescription ?? "不明なエラーが発生しました")
+          Text(
+            importError?.localizedDescription
+              ?? NSLocalizedString("Unknown error occurred", comment: "Error message"))
         }
       }
     }

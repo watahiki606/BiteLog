@@ -47,10 +47,13 @@ struct AddItemView: View {
               .foregroundColor(.secondary)
               .padding(.leading, 8)
 
-            TextField("過去の食事を検索", text: $searchText)
-              .padding(10)
-              .background(Color(UIColor.secondarySystemBackground))
-              .cornerRadius(10)
+            TextField(
+              NSLocalizedString("Search past meals", comment: "Search placeholder"),
+              text: $searchText
+            )
+            .padding(10)
+            .background(Color(UIColor.secondarySystemBackground))
+            .cornerRadius(10)
 
             if !searchText.isEmpty {
               Button(action: {
@@ -70,29 +73,31 @@ struct AddItemView: View {
             ScrollView {
               VStack(spacing: 24) {
                 // 基本情報カード
-                CardView(title: "基本情報") {
+                CardView(title: NSLocalizedString("Basic Info", comment: "Form section title")) {
                   VStack(spacing: 16) {
                     CustomTextField(
                       icon: "tag.fill",
-                      placeholder: "ブランド名",
+                      placeholder: NSLocalizedString("Brand", comment: "Brand name field"),
                       text: $brandName
                     )
 
                     CustomTextField(
                       icon: "cart.fill",
-                      placeholder: "商品名",
+                      placeholder: NSLocalizedString("Product", comment: "Product name field"),
                       text: $productName
                     )
 
                     CustomTextField(
                       icon: "scalemass.fill",
-                      placeholder: "量 (例: 1個, 100g)",
+                      placeholder: NSLocalizedString(
+                        "Portion (e.g. 1 piece, 100g)", comment: "Portion field"),
                       text: $portion
                     )
 
                     CustomTextField(
                       icon: "number",
-                      placeholder: "食事量 (例: 1.5)",
+                      placeholder: NSLocalizedString(
+                        "Servings (e.g. 1.5)", comment: "Servings field"),
                       text: $numberOfServings
                     )
 
@@ -113,12 +118,12 @@ struct AddItemView: View {
                 }
 
                 // 栄養素カード
-                CardView(title: "栄養成分") {
+                CardView(title: NSLocalizedString("Nutrition", comment: "Form section title")) {
                   VStack(spacing: 16) {
                     NutrientInputField(
                       icon: "flame.fill",
                       iconColor: .orange,
-                      label: "カロリー",
+                      label: NSLocalizedString("Calories", comment: "Nutrient label"),
                       value: $calories,
                       unit: "kcal"
                     )
@@ -126,7 +131,7 @@ struct AddItemView: View {
                     NutrientInputField(
                       icon: "p.circle.fill",
                       iconColor: .blue,
-                      label: "タンパク質",
+                      label: NSLocalizedString("Protein", comment: "Nutrient label"),
                       value: $protein,
                       unit: "g"
                     )
@@ -134,7 +139,7 @@ struct AddItemView: View {
                     NutrientInputField(
                       icon: "f.circle.fill",
                       iconColor: .yellow,
-                      label: "脂質",
+                      label: NSLocalizedString("Fat", comment: "Nutrient label"),
                       value: $fat,
                       unit: "g"
                     )
@@ -142,7 +147,7 @@ struct AddItemView: View {
                     NutrientInputField(
                       icon: "c.circle.fill",
                       iconColor: .green,
-                      label: "炭水化物",
+                      label: NSLocalizedString("Carbs", comment: "Nutrient label"),
                       value: $carbohydrates,
                       unit: "g"
                     )
@@ -179,17 +184,17 @@ struct AddItemView: View {
             }
           }
         }
-        .navigationTitle("食事を追加")
+        .navigationTitle(NSLocalizedString("Add Meal", comment: "Navigation title"))
         .toolbar {
           ToolbarItem(placement: .cancellationAction) {
-            Button("キャンセル") { dismiss() }
+            Button(NSLocalizedString("Cancel", comment: "Button title")) { dismiss() }
           }
           ToolbarItem(placement: .confirmationAction) {
             Button(action: {
               addItem()
               dismiss()
             }) {
-              Text("保存")
+              Text(NSLocalizedString("Save", comment: "Button title"))
                 .bold()
             }
             .disabled(

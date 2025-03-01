@@ -40,7 +40,7 @@ struct EditItemView: View {
         ScrollView {
           VStack(spacing: 24) {
             // 基本情報カード
-            CardView(title: "基本情報") {
+            CardView(title: NSLocalizedString("Basic Info", comment: "Form section title")) {
               VStack(spacing: 16) {
                 CustomTextField(
                   icon: "tag.fill",
@@ -71,9 +71,11 @@ struct EditItemView: View {
                     .foregroundColor(.blue)
                     .frame(width: 24)
 
-                  Picker("食事タイプ", selection: $mealType) {
+                  Picker(
+                    NSLocalizedString("Meal Type", comment: "Picker label"), selection: $mealType
+                  ) {
                     ForEach(MealType.allCases, id: \.self) { type in
-                      Text(type.rawValue).tag(type)
+                      Text(type.localizedName).tag(type)
                     }
                   }
                   .pickerStyle(.menu)
@@ -88,9 +90,12 @@ struct EditItemView: View {
                     .foregroundColor(.blue)
                     .frame(width: 24)
 
-                  DatePicker("日時", selection: $date, displayedComponents: [.date])
-                    .labelsHidden()
-                    .datePickerStyle(.compact)
+                  DatePicker(
+                    NSLocalizedString("Date", comment: "Date picker label"), selection: $date,
+                    displayedComponents: [.date]
+                  )
+                  .labelsHidden()
+                  .datePickerStyle(.compact)
                 }
                 .padding(.vertical, 8)
                 .padding(.horizontal, 12)
@@ -100,12 +105,12 @@ struct EditItemView: View {
             }
 
             // 栄養素カード
-            CardView(title: "栄養成分") {
+            CardView(title: NSLocalizedString("Nutrition", comment: "Form section title")) {
               VStack(spacing: 16) {
                 NutrientInputField(
                   icon: "flame.fill",
                   iconColor: .orange,
-                  label: "カロリー",
+                  label: NSLocalizedString("Calories", comment: "Nutrient label"),
                   value: $calories,
                   unit: "kcal"
                 )
@@ -113,7 +118,7 @@ struct EditItemView: View {
                 NutrientInputField(
                   icon: "p.circle.fill",
                   iconColor: .blue,
-                  label: "タンパク質",
+                  label: NSLocalizedString("Protein", comment: "Nutrient label"),
                   value: $protein,
                   unit: "g"
                 )
@@ -121,7 +126,7 @@ struct EditItemView: View {
                 NutrientInputField(
                   icon: "f.circle.fill",
                   iconColor: .yellow,
-                  label: "脂質",
+                  label: NSLocalizedString("Fat", comment: "Nutrient label"),
                   value: $fat,
                   unit: "g"
                 )
@@ -129,7 +134,7 @@ struct EditItemView: View {
                 NutrientInputField(
                   icon: "c.circle.fill",
                   iconColor: .green,
-                  label: "炭水化物",
+                  label: NSLocalizedString("Carbs", comment: "Nutrient label"),
                   value: $carbohydrates,
                   unit: "g"
                 )
@@ -139,17 +144,17 @@ struct EditItemView: View {
           }
           .padding()
         }
-        .navigationTitle("食事を編集")
+        .navigationTitle(NSLocalizedString("Edit Meal", comment: "Navigation title"))
         .toolbar {
           ToolbarItem(placement: .cancellationAction) {
-            Button("キャンセル") { dismiss() }
+            Button(NSLocalizedString("Cancel", comment: "Button title")) { dismiss() }
           }
           ToolbarItem(placement: .confirmationAction) {
             Button(action: {
               updateItem()
               dismiss()
             }) {
-              Text("保存")
+              Text(NSLocalizedString("Save", comment: "Button title"))
                 .bold()
             }
             .disabled(

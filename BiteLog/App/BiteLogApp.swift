@@ -3,6 +3,8 @@ import SwiftUI
 
 @main
 struct BiteLogApp: App {
+  @StateObject private var languageManager = LanguageManager()
+
   var sharedModelContainer: ModelContainer = {
     let schema = Schema([
       Item.self
@@ -20,6 +22,8 @@ struct BiteLogApp: App {
     WindowGroup {
       ContentView()
         .tint(Color.accentColor)
+        .environment(\.locale, languageManager.locale)
+        .environmentObject(languageManager)
     }
     .modelContainer(sharedModelContainer)
   }
