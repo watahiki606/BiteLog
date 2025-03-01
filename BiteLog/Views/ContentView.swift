@@ -3,7 +3,6 @@ import SwiftUI
 
 struct ContentView: View {
   @Environment(\.modelContext) private var modelContext
-  @Query(sort: \Item.timestamp) private var allItems: [Item]
   @EnvironmentObject private var languageManager: LanguageManager
 
   @State private var selectedDate = Date()
@@ -87,46 +86,6 @@ struct ContentView: View {
     }
   }
 
-  private var filteredItems: [Item] {
-    let calendar = Calendar.current
-    let startOfDay = calendar.startOfDay(for: selectedDate)
-    let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-
-    let descriptor = FetchDescriptor<Item>(
-      predicate: #Predicate<Item> { item in
-        item.timestamp >= startOfDay && item.timestamp < endOfDay
-      },
-      sortBy: [SortDescriptor(\.timestamp)]
-    )
-    return (try? modelContext.fetch(descriptor)) ?? []
-  }
-
-  private var dailyTotals: (calories: Double, protein: Double, fat: Double, carbs: Double) {
-    filteredItems.reduce((0, 0, 0, 0)) { result, item in
-      (
-        result.0 + item.calories,
-        result.1 + item.protein,
-        result.2 + item.fat,
-        result.3 + item.carbohydrates
-      )
-    }
-  }
-
-  // 各食事タイプごとのPFC合計を計算する関数
-  private func mealTypeTotals(for mealType: MealType) -> (
-    calories: Double, protein: Double, fat: Double, carbs: Double
-  ) {
-    let mealItems = filteredItems.filter { $0.mealType == mealType }
-    return mealItems.reduce((0, 0, 0, 0)) { result, item in
-      (
-        result.0 + item.calories,
-        result.1 + item.protein,
-        result.2 + item.fat,
-        result.3 + item.carbohydrates
-      )
-    }
-  }
-
   private var dateFormatter: DateFormatter {
     let formatter = DateFormatter()
     formatter.dateStyle = .medium
@@ -141,46 +100,6 @@ struct DayContentView: View {
   let selectedDate: Date
   let onAddTapped: (Date, MealType) -> Void
   let modelContext: ModelContext
-
-  var filteredItems: [Item] {
-    let calendar = Calendar.current
-    let startOfDay = calendar.startOfDay(for: date)
-    let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-
-    let descriptor = FetchDescriptor<Item>(
-      predicate: #Predicate<Item> { item in
-        item.timestamp >= startOfDay && item.timestamp < endOfDay
-      },
-      sortBy: [SortDescriptor(\.timestamp)]
-    )
-    return (try? modelContext.fetch(descriptor)) ?? []
-  }
-
-  var dailyTotals: (calories: Double, protein: Double, fat: Double, carbs: Double) {
-    filteredItems.reduce((0, 0, 0, 0)) { result, item in
-      (
-        result.0 + item.calories,
-        result.1 + item.protein,
-        result.2 + item.fat,
-        result.3 + item.carbohydrates
-      )
-    }
-  }
-
-  // 各食事タイプごとのPFC合計を計算する関数
-  func mealTypeTotals(for mealType: MealType) -> (
-    calories: Double, protein: Double, fat: Double, carbs: Double
-  ) {
-    let mealItems = filteredItems.filter { $0.mealType == mealType }
-    return mealItems.reduce((0, 0, 0, 0)) { result, item in
-      (
-        result.0 + item.calories,
-        result.1 + item.protein,
-        result.2 + item.fat,
-        result.3 + item.carbohydrates
-      )
-    }
-  }
 
   var body: some View {
     VStack {
@@ -338,6 +257,46 @@ struct DayContentView: View {
       }
       .background(Color(UIColor.systemGroupedBackground))
 
+    }
+  }
+
+  private var filteredItems: [Item] {
+    let calendar = Calendar.current
+    let startOfDay = calendar.startOfDay(for: date)
+    let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+
+    let descriptor = FetchDescriptor<Item>(
+      predicate: #Predicate<Item> { item in
+        item.timestamp >= startOfDay && item.timestamp < endOfDay
+      },
+      sortBy: [SortDescriptor(\.timestamp)]
+    )
+    return (try? modelContext.fetch(descriptor)) ?? []
+  }
+
+  private var dailyTotals: (calories: Double, protein: Double, fat: Double, carbs: Double) {
+    filteredItems.reduce((0, 0, 0, 0)) { result, item in
+      (
+        result.0 + item.calories,
+        result.1 + item.protein,
+        result.2 + item.fat,
+        result.3 + item.carbohydrates
+      )
+    }
+  }
+
+  // 各食事タイプごとのPFC合計を計算する関数
+  private func mealTypeTotals(for mealType: MealType) -> (
+    calories: Double, protein: Double, fat: Double, carbs: Double
+  ) {
+    let mealItems = filteredItems.filter { $0.mealType == mealType }
+    return mealItems.reduce((0, 0, 0, 0)) { result, item in
+      (
+        result.0 + item.calories,
+        result.1 + item.protein,
+        result.2 + item.fat,
+        result.3 + item.carbohydrates
+      )
     }
   }
 }
