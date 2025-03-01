@@ -42,7 +42,7 @@
 "CSV File Format:" = "CSVファイルのフォーマット:";
 "Select CSV File" = "CSVファイルを選択";
 "Close" = "閉じる";
-"Import Error" = "インポートエラー"; 
+"Import Error" = "インポートエラー";
 
 // Navigation
 "Add Meal" = "食事を追加";
@@ -52,3 +52,15 @@
 "Meal Type" = "食事タイプ";
 "Date" = "日付";
 "Add %@" = "%@を追加";
+
+// CSV Import
+"CSV file format is invalid" = "CSVファイルのフォーマットが正しくありません";
+"Failed to read data: %@" = "データの読み込みに失敗しました: %@";
+"Import was cancelled" = "インポートはキャンセルされました";
+"Import Complete" = "インポート完了";
+"%d rows imported" = "%d行のデータをインポートしました";
+"Processing time: %.2f seconds" = "処理時間: %.2f秒";
+"Importing CSV file" = "CSVファイルをインポート中";
+"Processing %d / %d rows" = "%d / %d 行処理中";
+"No permission to access file" = "ファイルにアクセスする権限がありません";
+"Unknown error occurred" = "不明なエラーが発生しました";

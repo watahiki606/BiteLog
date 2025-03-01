@@ -52,3 +52,15 @@
 "Meal Type" = "Meal Type";
 "Date" = "Date";
 "Add %@" = "Add %@";
+
+// CSV Import
+"CSV file format is invalid" = "CSV file format is invalid";
+"Failed to read data: %@" = "Failed to read data: %@";
+"Import was cancelled" = "Import was cancelled";
+"Import Complete" = "Import Complete";
+"%d rows imported" = "%d rows imported";
+"Processing time: %.2f seconds" = "Processing time: %.2f seconds";
+"Importing CSV file" = "Importing CSV file";
+"Processing %d / %d rows" = "Processing %d / %d rows";
+"No permission to access file" = "No permission to access file";
+"Unknown error occurred" = "Unknown error occurred";
