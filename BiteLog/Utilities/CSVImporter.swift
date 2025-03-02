@@ -70,20 +70,18 @@ class CSVImporter {
     var errorCount = 0
     var lastLoggedProgress: Int = 0
 
-    // ヘッダー行を解析して列のインデックスを取得
+    // ヘッダーのインデックスを取得
     let headers = parseCSVLine(rows[0]).map { $0.lowercased() }
     let dateIndex = headers.firstIndex(of: "date") ?? 0
     let mealTypeIndex = headers.firstIndex(of: "meal_type") ?? 1
     let brandNameIndex = headers.firstIndex(of: "brand_name") ?? 2
     let productNameIndex = headers.firstIndex(of: "product_name") ?? 3
-    let caloriesIndex = headers.firstIndex(of: "calories") ?? 5
-    let carbsIndex = headers.firstIndex(of: "carbs") ?? 6
-    let fatIndex = headers.firstIndex(of: "fat") ?? 7
-    let proteinIndex = headers.firstIndex(of: "protein") ?? 8
-
-    // 新しいフィールドのインデックス
-    let portionAmountIndex = headers.firstIndex(of: "portion_amount") ?? 9
-    let portionUnitIndex = headers.firstIndex(of: "portion_unit") ?? 10
+    let caloriesIndex = headers.firstIndex(of: "calories") ?? 4
+    let carbsIndex = headers.firstIndex(of: "carbs") ?? 5
+    let fatIndex = headers.firstIndex(of: "fat") ?? 6
+    let proteinIndex = headers.firstIndex(of: "protein") ?? 7
+    let portionAmountIndex = headers.firstIndex(of: "portion_amount") ?? 8
+    let portionUnitIndex = headers.firstIndex(of: "portion_unit") ?? 9
 
     // 2行目以降のデータを処理
     for (index, row) in rows.dropFirst().enumerated() where !row.isEmpty {
@@ -133,39 +131,24 @@ class CSVImporter {
           .replacingOccurrences(of: "\"", with: "")
           .replacingOccurrences(of: ",", with: "")
 
-        // 新しいフィールドの処理
+        // Portion情報を取得
         let cleanedPortionAmount =
           columns.indices.contains(portionAmountIndex)
           ? columns[portionAmountIndex].replacingOccurrences(of: "\"", with: "")
-            .replacingOccurrences(of: ",", with: "") : "1.0"
+          : "1.0"
         let portionUnit =
-          columns.indices.contains(portionUnitIndex) ? columns[portionUnitIndex] : "個"
+          columns.indices.contains(portionUnitIndex)
+          ? columns[portionUnitIndex]
+          : "個"
 
-        guard let calories = Double(cleanedCalories),
-          let carbs = Double(cleanedCarbs),
-          let fat = Double(cleanedFat),
-          let protein = Double(cleanedProtein),
-          let portionAmount = Double(cleanedPortionAmount)
-        else {
-          print(
-            "数値変換エラー - カロリー: \(cleanedCalories), 炭水化物: \(cleanedCarbs), 脂質: \(cleanedFat), タンパク質: \(cleanedProtein), 量: \(cleanedPortionAmount)"
-          )
-          throw CSVImportError.invalidData("\(index + 2)行目: 栄養価の数値が不正です")
-        }
+        // 数値に変換
+        let calories = Double(cleanedCalories) ?? 0
+        let carbs = Double(cleanedCarbs) ?? 0
+        let fat = Double(cleanedFat) ?? 0
+        let protein = Double(cleanedProtein) ?? 0
+        let portionAmount = Double(cleanedPortionAmount) ?? 1.0
 
-        // オプションで食事量を取得（該当の列があれば）
-        var numberOfServings = 1.0
-        if columns.count > portionAmountIndex + 1
-          && columns.indices.contains(portionAmountIndex + 1)
-        {
-          let cleanedServings = columns[portionAmountIndex + 1]
-            .replacingOccurrences(of: "\"", with: "")
-            .replacingOccurrences(of: ",", with: "")
-          if let servingsValue = Double(cleanedServings) {
-            numberOfServings = servingsValue
-          }
-        }
-
+        // アイテムの作成
         let item = Item(
           brandName: columns[brandNameIndex],
           productName: columns[productNameIndex],
@@ -176,8 +159,7 @@ class CSVImporter {
           fat: fat,
           carbohydrates: carbs,
           mealType: mealType,
-          timestamp: date,
-          numberOfServings: numberOfServings
+          timestamp: date
         )
 
         context.insert(item)

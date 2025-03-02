@@ -95,7 +95,7 @@ struct ImportCSVView: View {
             .font(.headline)
 
           Text(
-            "Date,Meal Type,Brand,Product,Portion,Calories,Carbs,Fat,Protein,Portion Amount,Portion Unit\n2024-03-20,Breakfast,Brand A,Product B,1 piece,200,30,10,8,1.0,piece"
+            "Date,Meal Type,Brand,Product,Calories,Carbs,Fat,Protein,Portion Amount,Portion Unit\n2024-03-20,Breakfast,Brand A,Product B,200,30,10,8,1.0,piece"
           )
           .font(.system(.footnote, design: .monospaced))
           .padding()
