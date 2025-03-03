@@ -71,7 +71,6 @@ class CSVImporter {
     var lastLoggedProgress: Int = 0
     var foodMastersToInsert: [FoodMaster] = []  // FoodMaster のバッチ挿入用配列
     var logItemsToInsert: [LogItem] = []  // LogItem のバッチ挿入用配列
-    var processedRowsCount = 0  // 処理済み行数
 
     // ヘッダーのインデックスを取得
     let headers = parseCSVLine(rows[0]).map { $0.lowercased() }
@@ -134,11 +133,6 @@ class CSVImporter {
           .replacingOccurrences(of: "\"", with: "")
           .replacingOccurrences(of: ",", with: "")
 
-        // Portion情報を取得
-        let cleanedPortionAmount =
-          columns.indices.contains(portionAmountIndex)
-          ? columns[portionAmountIndex].replacingOccurrences(of: "\"", with: "")
-          : "1.0"
         let portionUnit = columns[portionUnitIndex]
         let portionAmount = columns[portionAmountIndex]  // portion_amount 列をそのまま取得
 
@@ -189,15 +183,7 @@ class CSVImporter {
         )
         logItemsToInsert.append(logItem)  // バッチ挿入用配列に追加
         successCount += 1
-        processedRowsCount += 1  // 処理済み行数をカウント
 
-        // 進捗ハンドラを呼び出す頻度を調整 (例: 10行ごとに更新)
-        if processedRowsCount % 10 == 0 {
-          let progress = Double(processedRowsCount) / Double(totalRows)
-          if progressHandler?(progress, processedRowsCount, totalRows) ?? false {
-            throw CSVImportError.cancelled
-          }
-        }
       } catch {
         errorCount += 1
         logger.error("行\(index + 2)の処理中にエラー: \(error.localizedDescription)")
