@@ -29,7 +29,7 @@ class CSVImporter {
 
   static func importCSV(
     from url: URL, context: ModelContext, progressHandler: ProgressHandler? = nil
-  ) throws {
+  ) throws -> Int {
     let startTime = Date()
     logger.info("CSVインポート開始: \(url.lastPathComponent)")
 
@@ -220,6 +220,9 @@ class CSVImporter {
     logger.info(
       "CSVインポート完了: 成功=\(successCount)行, 失敗=\(errorCount)行, 処理時間=\(String(format: "%.2f", elapsedTime))秒"
     )
+
+    // インポートされた行数を返す
+    return successCount
   }
 
   // CSVライン解析用のヘルパーメソッド

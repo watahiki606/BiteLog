@@ -10,9 +10,6 @@ struct ImportCSVView: View {
   @State private var showingError = false
   @State private var isImporting = false
   @State private var importCompleted = false
-  @State private var progress: Double = 0
-  @State private var currentRow: Int = 0
-  @State private var totalRows: Int = 0
   @State private var importedRowCount: Int = 0
   @State private var importTask: Task<Void, Error>?
   @State private var importDuration: Double = 0
@@ -59,22 +56,13 @@ struct ImportCSVView: View {
                 .padding(.top, 8)
               }
             } else {
-              // インポート中表示
+              // インポート中表示（進捗バーなし）
               Text(NSLocalizedString("Importing CSV file", comment: "CSV import status"))
                 .font(.headline)
+                .padding()
 
-              ProgressView(value: progress)
-                .progressViewStyle(.linear)
-                .padding(.horizontal)
-
-              Text(
-                String(
-                  format: NSLocalizedString(
-                    "Processing %d / %d rows", comment: "CSV import progress"), currentRow,
-                  totalRows)
-              )
-              .font(.subheadline)
-              .foregroundColor(.secondary)
+              ProgressView()
+                .padding()
 
               Button(NSLocalizedString("Cancel", comment: "Button title")) {
                 importTask?.cancel()
@@ -140,9 +128,6 @@ struct ImportCSVView: View {
           // インポート開始
           isImporting = true
           importCompleted = false
-          progress = 0
-          currentRow = 0
-          totalRows = 0
           importedRowCount = 0
 
           importTask = Task {
@@ -157,25 +142,17 @@ struct ImportCSVView: View {
                 url.stopAccessingSecurityScopedResource()
               }
 
-              // 進捗ハンドラを設定してインポート
-              try CSVImporter.importCSV(from: url, context: modelContext) {
-                newProgress, row, total in
-                // メインスレッドで進捗状況を更新
-                DispatchQueue.main.async {
-                  self.progress = newProgress
-                  self.currentRow = row
-                  self.totalRows = total
-                }
-                // タスクがキャンセルされたかどうかをチェック
-                return Task.isCancelled
-              }
+              // インポート実行
+              let startTime = Date()
+              let importResult = try CSVImporter.importCSV(from: url, context: modelContext)
+              let endTime = Date()
+              importDuration = endTime.timeIntervalSince(startTime)
 
               // インポート完了
-              DispatchQueue.main.async {
-                self.importedRowCount = self.currentRow
-                self.progress = 1.0
+              await MainActor.run {
+                // インポート結果を設定
+                self.importedRowCount = importResult
                 self.importCompleted = true
-                // 自動的に閉じないようにする（ユーザーが閉じるボタンをタップする）
               }
             } catch let error as CSVImportError {
               await handleImportError(error)
