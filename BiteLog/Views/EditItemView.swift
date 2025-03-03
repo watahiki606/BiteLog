@@ -13,7 +13,6 @@ struct EditItemView: View {
   @State private var fat: String = ""
   @State private var protein: String = ""
   @State private var portionUnit: String = ""
-  @State private var portion: String = ""  // String型のまま（UIで入力用）
   @State private var numberOfServings: String = "1"
   @State private var mealType: MealType = .breakfast
   @State private var date: Date = Date()
@@ -29,7 +28,6 @@ struct EditItemView: View {
     _fat = State(initialValue: String(format: "%.0f", item.foodMaster?.fat ?? 0))
     _protein = State(initialValue: String(format: "%.0f", item.foodMaster?.protein ?? 0))
     _portionUnit = State(initialValue: item.foodMaster?.portionUnit ?? "")
-    _portion = State(initialValue: String(format: "%.1f", item.foodMaster?.portion ?? 0))  // Double型からString型に変換
     _numberOfServings = State(initialValue: String(format: "%.1f", item.numberOfServings))
     _mealType = State(initialValue: item.mealType)
     _date = State(initialValue: item.timestamp)
@@ -59,27 +57,19 @@ struct EditItemView: View {
                   text: $productName
                 )
 
-                // Portion入力を数量と単位に分ける
                 HStack {
                   CustomTextField(
                     icon: "number",
-                    placeholder: NSLocalizedString("Amount", comment: "Portion amount field"),
-                    text: $portion
+                    placeholder: NSLocalizedString("Servings (e.g. 1.5)", comment: "Servings field"),
+                    text: $numberOfServings
                   )
-                  .frame(width: 120)
-
+                  
                   CustomTextField(
                     icon: "text.badge.checkmark",
                     placeholder: NSLocalizedString("Unit", comment: "Portion unit field"),
                     text: $portionUnit
                   )
                 }
-
-                CustomTextField(
-                  icon: "number",
-                  placeholder: NSLocalizedString("Servings (e.g. 1.5)", comment: "Servings field"),
-                  text: $numberOfServings
-                )
 
                 HStack {
                   Image(systemName: "fork.knife")
@@ -173,7 +163,7 @@ struct EditItemView: View {
                 .bold()
             }
             .disabled(
-              brandName.isEmpty || productName.isEmpty || portion.isEmpty || calories.isEmpty)
+              brandName.isEmpty || productName.isEmpty || numberOfServings.isEmpty || calories.isEmpty)
           }
         }
       }
@@ -188,13 +178,6 @@ struct EditItemView: View {
       let carbohydratesValue = Double(carbohydrates) ?? 0
       let fatValue = Double(fat) ?? 0
       let proteinValue = Double(protein) ?? 0
-      let portionValue = Double(portion) ?? 0
-
-      // 1単位あたりの栄養価を計算
-      let caloriesPerUnit = portionValue > 0 ? caloriesValue / portionValue : caloriesValue
-      let carbsPerUnit = portionValue > 0 ? carbohydratesValue / portionValue : carbohydratesValue
-      let fatPerUnit = portionValue > 0 ? fatValue / portionValue : fatValue
-      let proteinPerUnit = portionValue > 0 ? proteinValue / portionValue : proteinValue
 
       // 基本情報のみで検索
       let basicPredicate = #Predicate<FoodMaster> { food in
@@ -213,10 +196,10 @@ struct EditItemView: View {
         
         // 取得した結果から栄養価が一致するものを探す
         for candidate in existingFoodMasters {
-          if abs(candidate.calories - caloriesPerUnit) < 0.1 &&
-             abs(candidate.carbohydrates - carbsPerUnit) < 0.1 &&
-             abs(candidate.fat - fatPerUnit) < 0.1 &&
-             abs(candidate.protein - proteinPerUnit) < 0.1 {
+          if abs(candidate.calories - caloriesValue) < 0.1 &&
+             abs(candidate.carbohydrates - carbohydratesValue) < 0.1 &&
+             abs(candidate.fat - fatValue) < 0.1 &&
+             abs(candidate.protein - proteinValue) < 0.1 {
             matchedFoodMaster = candidate
             break
           }
@@ -228,10 +211,10 @@ struct EditItemView: View {
           foodMasterItem = FoodMaster(
             brandName: brandName,
             productName: productName,
-            calories: caloriesPerUnit,
-            carbohydrates: carbsPerUnit,
-            fat: fatPerUnit,
-            protein: proteinPerUnit,
+            calories: caloriesValue,
+            carbohydrates: carbohydratesValue,
+            fat: fatValue,
+            protein: proteinValue,
             portionUnit: portionUnit,
             portion: 1.0  // 1単位あたりに正規化
           )
@@ -241,10 +224,10 @@ struct EditItemView: View {
         foodMasterItem = FoodMaster(
           brandName: brandName,
           productName: productName,
-          calories: caloriesPerUnit,
-          carbohydrates: carbsPerUnit,
-          fat: fatPerUnit,
-          protein: proteinPerUnit,
+          calories: caloriesValue,
+          carbohydrates: carbohydratesValue,
+          fat: fatValue,
+          protein: proteinValue,
           portionUnit: portionUnit,
           portion: 1.0  // 1単位あたりに正規化
         )

@@ -109,7 +109,7 @@ struct ItemRowView: View {
         Text(item.brandName)
           .font(.subheadline)
           .foregroundColor(.secondary)
-        Text(String(format: "%.1f %@", item.portion, item.portionUnit))
+        Text(String(format: "%.1f %@", item.numberOfServings, item.portionUnit))
           .font(.footnote)
           .foregroundColor(.secondary)
       }

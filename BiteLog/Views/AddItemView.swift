@@ -16,8 +16,7 @@ struct AddItemView: View {
   @State private var fat: String = ""
   @State private var protein: String = ""
   @State private var portionUnit: String = ""
-  @State private var portion: String = ""
-  @State private var numberOfServings: Double = 1.0
+  @State private var numberOfServings: String = "1.0"
   @State private var date: Date
   @State private var foodMaster: FoodMaster?
   @State private var searchResults: [FoodMaster] = []
@@ -84,28 +83,20 @@ struct AddItemView: View {
                       text: $productName
                     )
 
-                    // Portion入力を数量と単位に分ける
+                    // 数量と単位の入力
                     HStack {
                       CustomTextField(
                         icon: "number",
-                        placeholder: NSLocalizedString("Amount", comment: "Portion amount field"),
-                        text: $portion
+                        placeholder: NSLocalizedString("Servings (e.g. 1.5)", comment: "Servings field"),
+                        text: $numberOfServings
                       )
-                      .frame(width: 120)
-
+                      
                       CustomTextField(
                         icon: "text.badge.checkmark",
                         placeholder: NSLocalizedString("Unit", comment: "Portion unit field"),
                         text: $portionUnit
                       )
                     }
-
-                    Stepper(
-                      "Servings: \(numberOfServings, specifier: "%.1f")",
-                      value: $numberOfServings,
-                      in: 0.1...10,
-                      step: 0.1
-                    )
 
                     HStack {
                       Image(systemName: "fork.knife")
@@ -172,7 +163,16 @@ struct AddItemView: View {
                     addItemFromPast(item)
                     dismiss()
                   } label: {
-                    PastItemCard(item: item)
+                    PastItemCard(item: item, onSelect: { foodMaster, servings in
+                      let newLogItem = LogItem(
+                        timestamp: date,
+                        mealType: mealType,
+                        numberOfServings: servings,
+                        foodMaster: foodMaster
+                      )
+                      modelContext.insert(newLogItem)
+                      dismiss()
+                    })
                   }
                   .buttonStyle(ScaleButtonStyle())
                   .onAppear {
@@ -197,14 +197,14 @@ struct AddItemView: View {
           }
           ToolbarItem(placement: .confirmationAction) {
             Button(action: {
-              addItem()
+              saveItem()
               dismiss()
             }) {
               Text(NSLocalizedString("Save", comment: "Button title"))
                 .bold()
             }
             .disabled(
-              brandName.isEmpty || productName.isEmpty || portion.isEmpty || calories.isEmpty)
+              brandName.isEmpty || productName.isEmpty || numberOfServings.isEmpty || calories.isEmpty)
           }
         }
         .onChange(of: searchText) { _, _ in
@@ -217,90 +217,51 @@ struct AddItemView: View {
     }
   }
 
-  private func addItem() {
-    // FoodMaster を作成または取得
-    var foodMasterItem: FoodMaster?
+  private func saveItem() {
+    // 入力値を数値に変換
     let caloriesValue = Double(calories) ?? 0
     let carbohydratesValue = Double(carbohydrates) ?? 0
     let fatValue = Double(fat) ?? 0
     let proteinValue = Double(protein) ?? 0
-    let portionValue = Double(portion) ?? 0
+    let servingsValue = Double(numberOfServings) ?? 1.0
 
-    // 1単位あたりの栄養価を計算
-    let caloriesPerUnit = portionValue > 0 ? caloriesValue / portionValue : caloriesValue
-    let carbsPerUnit = portionValue > 0 ? carbohydratesValue / portionValue : carbohydratesValue
-    let fatPerUnit = portionValue > 0 ? fatValue / portionValue : fatValue
-    let proteinPerUnit = portionValue > 0 ? proteinValue / portionValue : proteinValue
+    // FoodMasterの検索または作成
+    var foodMasterItem: FoodMaster?
 
-    // 基本情報のみで検索
-    let basicPredicate = #Predicate<FoodMaster> { food in
-      food.brandName == brandName &&
-      food.productName == productName &&
-      food.portionUnit == portionUnit
-    }
-
-    let fetchDescriptor = FetchDescriptor<FoodMaster>(
-      predicate: basicPredicate
-    )
-
-    // 基本情報で検索した結果から栄養価が一致するものを探す
-    if let existingFoodMasters = try? modelContext.fetch(fetchDescriptor) {
-      var matchedFoodMaster: FoodMaster? = nil
-      
-      // 取得した結果から栄養価が一致するものを探す
-      for candidate in existingFoodMasters {
-        if abs(candidate.calories - caloriesPerUnit) < 0.1 &&
-           abs(candidate.carbohydrates - carbsPerUnit) < 0.1 &&
-           abs(candidate.fat - fatPerUnit) < 0.1 &&
-           abs(candidate.protein - proteinPerUnit) < 0.1 {
-          matchedFoodMaster = candidate
-          break
-        }
-      }
-      
-      if let firstFoodMaster = matchedFoodMaster {
-        foodMasterItem = firstFoodMaster
-      } else {
-        foodMasterItem = FoodMaster(
-          brandName: brandName,
-          productName: productName,
-          calories: caloriesPerUnit,
-          carbohydrates: carbsPerUnit,
-          fat: fatPerUnit,
-          protein: proteinPerUnit,
-          portionUnit: portionUnit,
-          portion: 1.0  // 1単位あたりに正規化
-        )
-        modelContext.insert(foodMasterItem!)
-      }
+    if let existingFoodMaster = foodMaster {
+      // 既存のFoodMasterを使用
+      foodMasterItem = existingFoodMaster
     } else {
+      // 新しいFoodMasterを作成
       foodMasterItem = FoodMaster(
         brandName: brandName,
         productName: productName,
-        calories: caloriesPerUnit,
-        carbohydrates: carbsPerUnit,
-        fat: fatPerUnit,
-        protein: proteinPerUnit,
+        calories: caloriesValue,
+        carbohydrates: carbohydratesValue,
+        fat: fatValue,
+        protein: proteinValue,
         portionUnit: portionUnit,
         portion: 1.0  // 1単位あたりに正規化
       )
       modelContext.insert(foodMasterItem!)
     }
 
+    // LogItemの作成
     let newLogItem = LogItem(
       timestamp: date,
       mealType: mealType,
-      numberOfServings: portionValue,  // 入力された数量を使用
+      numberOfServings: servingsValue,
       foodMaster: foodMasterItem
     )
     modelContext.insert(newLogItem)
+    dismiss()
   }
 
   private func addItemFromPast(_ foodMasterItem: FoodMaster) {
     let newLogItem = LogItem(
       timestamp: date,
       mealType: mealType,
-      numberOfServings: numberOfServings,
+      numberOfServings: Double(numberOfServings) ?? 1.0,
       foodMaster: foodMasterItem
     )
     modelContext.insert(newLogItem)
@@ -340,6 +301,8 @@ struct AddItemView: View {
 // 過去の食事アイテムカード
 struct PastItemCard: View {
   let item: FoodMaster
+  @State private var numberOfServings: String = "1.0"
+  var onSelect: (FoodMaster, Double) -> Void
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -368,7 +331,37 @@ struct PastItemCard: View {
         MacroNutrientBadge(label: "C", value: item.carbohydrates, color: .green)
       }
 
-      Text("\(item.portion) \(item.portionUnit)")
+      HStack {
+        Text("Servings:")
+          .font(.subheadline)
+          .foregroundColor(.secondary)
+        
+        TextField("1.0", text: $numberOfServings)
+          .keyboardType(.decimalPad)
+          .frame(width: 60)
+          .multilineTextAlignment(.trailing)
+          .padding(4)
+          .background(Color(UIColor.secondarySystemBackground))
+          .cornerRadius(4)
+        
+        Text(item.portionUnit)
+          .font(.subheadline)
+          .foregroundColor(.secondary)
+          
+        Spacer()
+        
+        Button(action: {
+          onSelect(item, Double(numberOfServings) ?? 1.0)
+        }) {
+          Text("Add")
+            .font(.subheadline.bold())
+            .foregroundColor(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color.blue)
+            .cornerRadius(8)
+        }
+      }
     }
     .padding()
     .background(Color(UIColor.systemBackground))
