@@ -142,23 +142,53 @@ class CSVImporter {
         let fat = Double(cleanedFat) ?? 0
         let protein = Double(cleanedProtein) ?? 0
 
+        // CSVデータの値をログに出力（デバッグ用）
+        logger.debug("CSVから読み込んだデータ: \(columns[productNameIndex]), \(columns[brandNameIndex]), calories=\(calories), carbs=\(carbs), fat=\(fat), protein=\(protein), portionUnit=\(portionUnit), portionAmount=\(portionAmount)")
+
         // FoodMasterの検索または作成
         let foodMaster: FoodMaster
-        let fetchDescriptor = FetchDescriptor<FoodMaster>(
-          predicate: #Predicate<FoodMaster> { food in
+        
+        // 複雑なPredicateを分割して複数の条件に分ける
+        let brandNamePredicate = #Predicate<FoodMaster> { food in
             food.brandName == columns[brandNameIndex]
-              && food.productName == columns[productNameIndex]
-              && food.calories == calories
-              && food.carbohydrates == carbs
-              && food.fat == fat
-              && food.protein == protein
-              && food.portionUnit == portionUnit
-          }
+        }
+        let productNamePredicate = #Predicate<FoodMaster> { food in
+            food.productName == columns[productNameIndex]
+        }
+        let nutritionPredicate = #Predicate<FoodMaster> { food in
+            food.calories == calories &&
+            food.carbohydrates == carbs &&
+            food.fat == fat &&
+            food.protein == protein
+        }
+        let portionPredicate = #Predicate<FoodMaster> { food in
+            food.portionUnit == portionUnit &&
+            food.portion == portionAmount
+        }
+        
+        // デバッグ用のログを追加
+        logger.debug("検索条件: brandName=\(columns[brandNameIndex]), productName=\(columns[productNameIndex]), calories=\(calories), carbs=\(carbs), fat=\(fat), protein=\(protein), portionUnit=\(portionUnit), portionAmount=\(portionAmount)")
+        
+        // 複数のPredicateを組み合わせる
+        let combinedPredicate = #Predicate<FoodMaster> { food in
+            brandNamePredicate.evaluate(food) &&
+            productNamePredicate.evaluate(food) &&
+            nutritionPredicate.evaluate(food) &&
+            portionPredicate.evaluate(food)
+        }
+        
+        let fetchDescriptor = FetchDescriptor<FoodMaster>(
+          predicate: combinedPredicate
         )
 
         if let existingFoodMaster = try context.fetch(fetchDescriptor).first {
           foodMaster = existingFoodMaster
-          logger.debug("既存のFoodMasterが見つかりました: \(existingFoodMaster.productName)")
+          logger.debug("既存のFoodMasterが見つかりました: \(existingFoodMaster.productName), \(existingFoodMaster.brandName), calories=\(existingFoodMaster.calories), carbs=\(existingFoodMaster.carbohydrates), fat=\(existingFoodMaster.fat), protein=\(existingFoodMaster.protein), portionUnit=\(existingFoodMaster.portionUnit), portion=\(existingFoodMaster.portion)")
+          
+          // 検索条件と既存データの比較をログに出力（デバッグ用）
+          if existingFoodMaster.productName == "きゅうり" {
+            logger.debug("きゅうりの比較: CSV値=[calories:\(calories), carbs:\(carbs), fat:\(fat), protein:\(protein), portionUnit:\(portionUnit), portionAmount:\(portionAmount)], DB値=[calories:\(existingFoodMaster.calories), carbs:\(existingFoodMaster.carbohydrates), fat:\(existingFoodMaster.fat), protein:\(existingFoodMaster.protein), portionUnit:\(existingFoodMaster.portionUnit), portion:\(existingFoodMaster.portion)]")
+          }
         } else {
           foodMaster = FoodMaster(
             brandName: columns[brandNameIndex],
@@ -171,7 +201,25 @@ class CSVImporter {
             portion: portionAmount  // CSVの portion_amount 列を FoodMaster の portion に設定
           )
           foodMastersToInsert.append(foodMaster)  // バッチ挿入用配列に追加
-          logger.debug("新しいFoodMasterを作成しました: \(foodMaster.productName)")
+          
+          // すべての食品データについてデバッグログを出力
+          logger.debug(
+            "新しいFoodMasterを作成: \(foodMaster.productName), \(foodMaster.brandName), CSV値=[calories:\(cleanedCalories), carbs:\(cleanedCarbs), fat:\(cleanedFat), protein:\(cleanedProtein), portionUnit:\(portionUnit), portionAmount:\(portionAmount)], 設定値=[calories:\(foodMaster.calories), carbs:\(foodMaster.carbohydrates), fat:\(foodMaster.fat), protein:\(foodMaster.protein), portionUnit:\(foodMaster.portionUnit), portion:\(foodMaster.portion)]"
+          )
+          
+          if foodMaster.productName == "きゅうり" {
+            print(
+              foodMaster.productName, foodMaster.brandName, foodMaster.calories,
+              foodMaster.carbohydrates,
+              foodMaster.fat,
+              foodMaster.protein,
+              foodMaster.portionUnit,
+              foodMaster.portion
+            )
+            logger.debug(
+              "新しいFoodMasterを作成しました: \(foodMaster.productName), \(foodMaster.brandName), \(foodMaster.calories), \(foodMaster.carbohydrates), \(foodMaster.fat), \(foodMaster.protein), \(foodMaster.portionUnit), \(foodMaster.portion)"
+            )
+          }
         }
 
         // LogItemの作成
