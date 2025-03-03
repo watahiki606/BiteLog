@@ -12,6 +12,7 @@ final class FoodMaster {
   var protein: Double
   var portionUnit: String
   var portion: Double  // 数量を表すので Double 型に変更
+  @Attribute(.unique) var uniqueKey: String  // 栄養素に基づく一意キー
 
   init(
     id: UUID = UUID(), brandName: String, productName: String, calories: Double,
@@ -26,5 +27,12 @@ final class FoodMaster {
     self.protein = protein
     self.portionUnit = portionUnit
     self.portion = portion
+    
+    // 栄養素に基づく一意キーを生成
+    let caloriesStr = String(format: "%.2f", calories)
+    let carbsStr = String(format: "%.2f", carbohydrates)
+    let fatStr = String(format: "%.2f", fat)
+    let proteinStr = String(format: "%.2f", protein)
+    self.uniqueKey = "\(brandName)|\(productName)|\(caloriesStr)|\(carbsStr)|\(fatStr)|\(proteinStr)|\(portionUnit)"
   }
 }

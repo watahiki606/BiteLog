@@ -54,6 +54,18 @@ class CSVImporter {
 
     return columns
   }
+  
+  // FoodMasterの一意性を確認するためのユニークキーを生成するヘルパーメソッド
+  private static func createUniqueKey(brandName: String, productName: String, calories: Double, carbs: Double, fat: Double, protein: Double, portionUnit: String) -> String {
+    // 数値は小数点以下2桁に丸めて文字列化
+    let caloriesStr = String(format: "%.2f", calories)
+    let carbsStr = String(format: "%.2f", carbs)
+    let fatStr = String(format: "%.2f", fat)
+    let proteinStr = String(format: "%.2f", protein)
+    
+    // すべての栄養素を含めた文字列を作成
+    return "\(brandName)|\(productName)|\(caloriesStr)|\(carbsStr)|\(fatStr)|\(proteinStr)|\(portionUnit)"
+  }
 
   static func importCSV(
     from url: URL, context: ModelContext, progressHandler: ProgressHandler? = nil
@@ -99,6 +111,19 @@ class CSVImporter {
     var lastLoggedProgress: Int = 0
     var foodMastersToInsert: [FoodMaster] = []  // FoodMaster のバッチ挿入用配列
     var logItemsToInsert: [LogItem] = []  // LogItem のバッチ挿入用配列
+    
+    // 既存のFoodMasterをユニークキーでキャッシュするための辞書
+    var existingFoodMasterCache: [String: FoodMaster] = [:]
+    
+    // 既存のFoodMasterをすべて取得してキャッシュに格納
+    let fetchDescriptor = FetchDescriptor<FoodMaster>()
+    if let existingFoodMasters = try? context.fetch(fetchDescriptor) {
+        for foodMaster in existingFoodMasters {
+            existingFoodMasterCache[foodMaster.uniqueKey] = foodMaster
+        }
+    }
+    
+    logger.info("既存のFoodMaster \(existingFoodMasterCache.count)件をキャッシュしました")
 
     // ヘッダーのインデックスを取得
     let headers = parseCSVLine(rows[0]).map { $0.lowercased() }
@@ -176,7 +201,7 @@ class CSVImporter {
         // CSVデータの値をログに出力（デバッグ用）
         logger.debug("CSVから読み込んだデータ: \(columns[productNameIndex]), \(columns[brandNameIndex]), calories=\(calories), carbs=\(carbs), fat=\(fat), protein=\(protein), portionUnit=\(portionUnit), portionAmount=\(portionAmount)")
 
-        // 1portion_unitあたりの栄養価を計算
+        // 1portion_unitあたりの栄養価を計算（portion_amountが1になるように正規化）
         let caloriesPerUnit = portionAmount > 0 ? calories / portionAmount : calories
         let carbsPerUnit = portionAmount > 0 ? carbs / portionAmount : carbs
         let fatPerUnit = portionAmount > 0 ? fat / portionAmount : fat
@@ -187,73 +212,23 @@ class CSVImporter {
         // FoodMasterの検索または作成
         var foodMaster: FoodMaster
         
-        // 基本情報のみで検索し、その後フィルタリングする
-        let basicPredicate = #Predicate<FoodMaster> { food in
-            food.brandName == columns[brandNameIndex] &&
-            food.productName == columns[productNameIndex] &&
-            food.portionUnit == portionUnit
-        }
-        
-        let fetchDescriptor = FetchDescriptor<FoodMaster>(
-          predicate: basicPredicate
+        // ユニークキーを生成
+        let uniqueKey = createUniqueKey(
+            brandName: columns[brandNameIndex],
+            productName: columns[productNameIndex],
+            calories: caloriesPerUnit,
+            carbs: carbsPerUnit,
+            fat: fatPerUnit,
+            protein: proteinPerUnit,
+            portionUnit: portionUnit
         )
-
-        // 基本情報で検索した結果から栄養価が一致するものを探す
-        if let existingFoodMasters = try? context.fetch(fetchDescriptor) {
-            var matchedFoodMaster: FoodMaster? = nil
-            
-            // 取得した結果から栄養価が一致するものを探す
-            for candidate in existingFoodMasters {
-                if abs(candidate.calories - caloriesPerUnit) < 0.1 &&
-                   abs(candidate.carbohydrates - carbsPerUnit) < 0.1 &&
-                   abs(candidate.fat - fatPerUnit) < 0.1 &&
-                   abs(candidate.protein - proteinPerUnit) < 0.1 {
-                    matchedFoodMaster = candidate
-                    break
-                }
-            }
-            
-            if let existingFoodMaster = matchedFoodMaster {
-                foodMaster = existingFoodMaster
-                logger.debug("既存のFoodMasterが見つかりました: \(existingFoodMaster.productName), \(existingFoodMaster.brandName), calories=\(existingFoodMaster.calories), carbs=\(existingFoodMaster.carbohydrates), fat=\(existingFoodMaster.fat), protein=\(existingFoodMaster.protein), portionUnit=\(existingFoodMaster.portionUnit), portion=\(existingFoodMaster.portion)")
-                
-                // 検索条件と既存データの比較をログに出力（デバッグ用）
-                if existingFoodMaster.productName == "きゅうり" {
-                    logger.debug("きゅうりの比較: CSV値=[calories:\(caloriesPerUnit), carbs:\(carbsPerUnit), fat:\(fatPerUnit), protein:\(proteinPerUnit), portionUnit:\(portionUnit), portionAmount:1.0], DB値=[calories:\(existingFoodMaster.calories), carbs:\(existingFoodMaster.carbohydrates), fat:\(existingFoodMaster.fat), protein:\(existingFoodMaster.protein), portionUnit:\(existingFoodMaster.portionUnit), portion:\(existingFoodMaster.portion)]")
-                }
-            } else {
-                foodMaster = FoodMaster(
-                  brandName: columns[brandNameIndex],
-                  productName: columns[productNameIndex],
-                  calories: caloriesPerUnit,
-                  carbohydrates: carbsPerUnit,
-                  fat: fatPerUnit,
-                  protein: proteinPerUnit,
-                  portionUnit: portionUnit,
-                  portion: 1.0  // 1単位あたりに正規化
-                )
-                foodMastersToInsert.append(foodMaster)  // バッチ挿入用配列に追加
-                
-                // すべての食品データについてデバッグログを出力
-                logger.debug(
-                  "新しいFoodMasterを作成: \(foodMaster.productName), \(foodMaster.brandName), CSV値=[calories:\(cleanedCalories), carbs:\(cleanedCarbs), fat:\(cleanedFat), protein:\(cleanedProtein), portionUnit:\(portionUnit), portionAmount:\(cleanedPortionAmount)], 設定値=[calories:\(foodMaster.calories), carbs:\(foodMaster.carbohydrates), fat:\(foodMaster.fat), protein:\(foodMaster.protein), portionUnit:\(foodMaster.portionUnit), portion:\(foodMaster.portion)]"
-                )
-                
-                if foodMaster.productName == "きゅうり" {
-                  print(
-                    foodMaster.productName, foodMaster.brandName, foodMaster.calories,
-                    foodMaster.carbohydrates,
-                    foodMaster.fat,
-                    foodMaster.protein,
-                    foodMaster.portionUnit,
-                    foodMaster.portion
-                  )
-                  logger.debug(
-                    "新しいFoodMasterを作成しました: \(foodMaster.productName), \(foodMaster.brandName), \(foodMaster.calories), \(foodMaster.carbohydrates), \(foodMaster.fat), \(foodMaster.protein), \(foodMaster.portionUnit), \(foodMaster.portion)"
-                  )
-                }
-            }
+        
+        // キャッシュから既存のFoodMasterを検索
+        if let existingFoodMaster = existingFoodMasterCache[uniqueKey] {
+            foodMaster = existingFoodMaster
+            logger.debug("既存のFoodMasterが見つかりました: \(existingFoodMaster.productName), \(existingFoodMaster.brandName), calories=\(existingFoodMaster.calories), carbs=\(existingFoodMaster.carbohydrates), fat=\(existingFoodMaster.fat), protein=\(existingFoodMaster.protein), portionUnit=\(existingFoodMaster.portionUnit), portion=\(existingFoodMaster.portion)")
         } else {
+            // 新しいFoodMasterを作成
             foodMaster = FoodMaster(
               brandName: columns[brandNameIndex],
               productName: columns[productNameIndex],
@@ -264,6 +239,9 @@ class CSVImporter {
               portionUnit: portionUnit,
               portion: 1.0  // 1単位あたりに正規化
             )
+            
+            // キャッシュに追加
+            existingFoodMasterCache[uniqueKey] = foodMaster
             foodMastersToInsert.append(foodMaster)  // バッチ挿入用配列に追加
             
             logger.debug(
