@@ -132,15 +132,18 @@ class CSVImporter {
         let cleanedProtein = columns[proteinIndex]
           .replacingOccurrences(of: "\"", with: "")
           .replacingOccurrences(of: ",", with: "")
+        let cleanedPortionAmount = columns[portionAmountIndex]
+          .replacingOccurrences(of: "\"", with: "")
+          .replacingOccurrences(of: ",", with: "")
 
         let portionUnit = columns[portionUnitIndex]
-        let portionAmount = columns[portionAmountIndex]  // portion_amount 列をそのまま取得
 
         // 数値に変換
         let calories = Double(cleanedCalories) ?? 0
         let carbs = Double(cleanedCarbs) ?? 0
         let fat = Double(cleanedFat) ?? 0
         let protein = Double(cleanedProtein) ?? 0
+        let portionAmount = Double(cleanedPortionAmount) ?? 0  // Double型に変換
 
         // CSVデータの値をログに出力（デバッグ用）
         logger.debug("CSVから読み込んだデータ: \(columns[productNameIndex]), \(columns[brandNameIndex]), calories=\(calories), carbs=\(carbs), fat=\(fat), protein=\(protein), portionUnit=\(portionUnit), portionAmount=\(portionAmount)")
@@ -163,7 +166,7 @@ class CSVImporter {
         }
         let portionPredicate = #Predicate<FoodMaster> { food in
             food.portionUnit == portionUnit &&
-            food.portion == portionAmount
+            food.portion == portionAmount  // 両方ともDouble型になったので比較可能
         }
         
         // デバッグ用のログを追加
@@ -198,13 +201,13 @@ class CSVImporter {
             fat: fat,
             protein: protein,
             portionUnit: portionUnit,
-            portion: portionAmount  // CSVの portion_amount 列を FoodMaster の portion に設定
+            portion: portionAmount  // Double型に変換された値を渡す
           )
           foodMastersToInsert.append(foodMaster)  // バッチ挿入用配列に追加
           
           // すべての食品データについてデバッグログを出力
           logger.debug(
-            "新しいFoodMasterを作成: \(foodMaster.productName), \(foodMaster.brandName), CSV値=[calories:\(cleanedCalories), carbs:\(cleanedCarbs), fat:\(cleanedFat), protein:\(cleanedProtein), portionUnit:\(portionUnit), portionAmount:\(portionAmount)], 設定値=[calories:\(foodMaster.calories), carbs:\(foodMaster.carbohydrates), fat:\(foodMaster.fat), protein:\(foodMaster.protein), portionUnit:\(foodMaster.portionUnit), portion:\(foodMaster.portion)]"
+            "新しいFoodMasterを作成: \(foodMaster.productName), \(foodMaster.brandName), CSV値=[calories:\(cleanedCalories), carbs:\(cleanedCarbs), fat:\(cleanedFat), protein:\(cleanedProtein), portionUnit:\(portionUnit), portionAmount:\(cleanedPortionAmount)], 設定値=[calories:\(foodMaster.calories), carbs:\(foodMaster.carbohydrates), fat:\(foodMaster.fat), protein:\(foodMaster.protein), portionUnit:\(foodMaster.portionUnit), portion:\(foodMaster.portion)]"
           )
           
           if foodMaster.productName == "きゅうり" {

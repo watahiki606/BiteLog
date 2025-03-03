@@ -11,11 +11,11 @@ final class FoodMaster {
   var fat: Double
   var protein: Double
   var portionUnit: String
-  var portion: String  // portionAmount を portion に変更、型を String に変更
+  var portion: Double  // 数量を表すので Double 型に変更
 
   init(
     id: UUID = UUID(), brandName: String, productName: String, calories: Double,
-    carbohydrates: Double, fat: Double, protein: Double, portionUnit: String, portion: String
+    carbohydrates: Double, fat: Double, protein: Double, portionUnit: String, portion: Double
   ) {
     self.id = id
     self.brandName = brandName
@@ -25,6 +25,6 @@ final class FoodMaster {
     self.fat = fat
     self.protein = protein
     self.portionUnit = portionUnit
-    self.portion = portion  // portion を設定
+    self.portion = portion
   }
 }

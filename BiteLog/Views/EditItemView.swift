@@ -13,7 +13,7 @@ struct EditItemView: View {
   @State private var fat: String = ""
   @State private var protein: String = ""
   @State private var portionUnit: String = ""
-  @State private var portion: String = ""
+  @State private var portion: String = ""  // String型のまま（UIで入力用）
   @State private var numberOfServings: String = "1"
   @State private var mealType: MealType = .breakfast
   @State private var date: Date = Date()
@@ -29,7 +29,7 @@ struct EditItemView: View {
     _fat = State(initialValue: String(format: "%.0f", item.foodMaster?.fat ?? 0))
     _protein = State(initialValue: String(format: "%.0f", item.foodMaster?.protein ?? 0))
     _portionUnit = State(initialValue: item.foodMaster?.portionUnit ?? "")
-    _portion = State(initialValue: item.foodMaster?.portion ?? "")
+    _portion = State(initialValue: String(format: "%.1f", item.foodMaster?.portion ?? 0))  // Double型からString型に変換
     _numberOfServings = State(initialValue: String(format: "%.1f", item.numberOfServings))
     _mealType = State(initialValue: item.mealType)
     _date = State(initialValue: item.timestamp)
@@ -214,7 +214,7 @@ struct EditItemView: View {
           fat: fatValue,
           protein: proteinValue,
           portionUnit: portionUnit,
-          portion: portion
+          portion: Double(portion) ?? 0  // String型からDouble型に変換
         )
         modelContext.insert(foodMasterItem!)
       }

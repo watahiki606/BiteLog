@@ -250,7 +250,7 @@ struct AddItemView: View {
         fat: fatValue,
         protein: proteinValue,
         portionUnit: portionUnit,
-        portion: portion
+        portion: Double(portion) ?? 0
       )
       modelContext.insert(foodMasterItem!)
     }

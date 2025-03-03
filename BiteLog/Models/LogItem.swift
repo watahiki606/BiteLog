@@ -20,8 +20,8 @@ final class LogItem {
   var baseCarbohydrates: Double {
     return (foodMaster?.carbohydrates ?? 0) * numberOfServings
   }
-  var portion: String {
-    return foodMaster?.portion ?? ""
+  var portion: Double {
+    return foodMaster?.portion ?? 0
   }
   var brandName: String {
     return foodMaster?.brandName ?? ""
