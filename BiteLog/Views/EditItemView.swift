@@ -188,33 +188,65 @@ struct EditItemView: View {
       let carbohydratesValue = Double(carbohydrates) ?? 0
       let fatValue = Double(fat) ?? 0
       let proteinValue = Double(protein) ?? 0
+      let portionValue = Double(portion) ?? 0
+
+      // 1単位あたりの栄養価を計算
+      let caloriesPerUnit = portionValue > 0 ? caloriesValue / portionValue : caloriesValue
+      let carbsPerUnit = portionValue > 0 ? carbohydratesValue / portionValue : carbohydratesValue
+      let fatPerUnit = portionValue > 0 ? fatValue / portionValue : fatValue
+      let proteinPerUnit = portionValue > 0 ? proteinValue / portionValue : proteinValue
+
+      // 基本情報のみで検索
+      let basicPredicate = #Predicate<FoodMaster> { food in
+        food.brandName == brandName &&
+        food.productName == productName &&
+        food.portionUnit == portionUnit
+      }
 
       let fetchDescriptor = FetchDescriptor<FoodMaster>(
-        predicate: #Predicate<FoodMaster> { food in
-          food.brandName == brandName
-            && food.productName == productName
-            && food.calories == caloriesValue
-            && food.carbohydrates == carbohydratesValue
-            && food.fat == fatValue
-            && food.protein == proteinValue
-            && food.portionUnit == portionUnit
-        }
+        predicate: basicPredicate
       )
 
-      if let existingFoodMaster = try? modelContext.fetch(fetchDescriptor),
-        let firstFoodMaster = existingFoodMaster.first
-      {
-        foodMasterItem = firstFoodMaster
+      // 基本情報で検索した結果から栄養価が一致するものを探す
+      if let existingFoodMasters = try? modelContext.fetch(fetchDescriptor) {
+        var matchedFoodMaster: FoodMaster? = nil
+        
+        // 取得した結果から栄養価が一致するものを探す
+        for candidate in existingFoodMasters {
+          if abs(candidate.calories - caloriesPerUnit) < 0.1 &&
+             abs(candidate.carbohydrates - carbsPerUnit) < 0.1 &&
+             abs(candidate.fat - fatPerUnit) < 0.1 &&
+             abs(candidate.protein - proteinPerUnit) < 0.1 {
+            matchedFoodMaster = candidate
+            break
+          }
+        }
+        
+        if let firstFoodMaster = matchedFoodMaster {
+          foodMasterItem = firstFoodMaster
+        } else {
+          foodMasterItem = FoodMaster(
+            brandName: brandName,
+            productName: productName,
+            calories: caloriesPerUnit,
+            carbohydrates: carbsPerUnit,
+            fat: fatPerUnit,
+            protein: proteinPerUnit,
+            portionUnit: portionUnit,
+            portion: 1.0  // 1単位あたりに正規化
+          )
+          modelContext.insert(foodMasterItem!)
+        }
       } else {
         foodMasterItem = FoodMaster(
           brandName: brandName,
           productName: productName,
-          calories: caloriesValue,
-          carbohydrates: carbohydratesValue,
-          fat: fatValue,
-          protein: proteinValue,
+          calories: caloriesPerUnit,
+          carbohydrates: carbsPerUnit,
+          fat: fatPerUnit,
+          protein: proteinPerUnit,
           portionUnit: portionUnit,
-          portion: Double(portion) ?? 0  // String型からDouble型に変換
+          portion: 1.0  // 1単位あたりに正規化
         )
         modelContext.insert(foodMasterItem!)
       }
