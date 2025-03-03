@@ -1,10 +1,13 @@
+import SwiftData
 import SwiftUI
 
 struct SettingsView: View {
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.modelContext) private var modelContext
   @EnvironmentObject private var languageManager: LanguageManager
   @State private var showingRestartAlert = false
   @State private var selectedNewLanguage: AppLanguage?
+  @State private var showingDeleteConfirmation = false
 
   var body: some View {
     NavigationStack {
@@ -27,6 +30,17 @@ struct SettingsView: View {
               }
             }
             .foregroundColor(.primary)
+          }
+        }
+
+        Section(header: Text("Data Management")) {
+          Button(
+            role: .destructive,
+            action: {
+              showingDeleteConfirmation = true
+            }
+          ) {
+            Text("Delete All Data")
           }
         }
       }
@@ -58,6 +72,27 @@ struct SettingsView: View {
             "The app needs to restart to apply the language change. Restart now?",
             comment: "Alert message"))
       }
+      .alert(isPresented: $showingDeleteConfirmation) {
+        Alert(
+          title: Text("Delete All Data?"),
+          message: Text("Are you sure you want to delete all data? This action cannot be undone."),
+          primaryButton: .destructive(Text("Delete")) {
+            deleteAllData()
+          },
+          secondaryButton: .cancel(Text("Cancel"))
+        )
+      }
+    }
+  }
+
+  private func deleteAllData() {
+    let context: ModelContext = modelContext
+    do {
+      try context.delete(model: LogItem.self)
+      try context.delete(model: FoodMaster.self)
+      print("All data deleted successfully.")
+    } catch {
+      print("Failed to delete data: \(error)")
     }
   }
 }
