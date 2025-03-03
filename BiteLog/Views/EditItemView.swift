@@ -4,33 +4,36 @@ import SwiftUI
 struct EditItemView: View {
   @Environment(\.dismiss) var dismiss
   @Environment(\.modelContext) private var modelContext
-  @Bindable var item: Item
+  @Bindable var item: LogItem
 
-  @State private var brandName: String
-  @State private var productName: String
-  @State private var portionAmount: String
-  @State private var portionUnit: String
-  @State private var numberOfServings: String
-  @State private var calories: String
-  @State private var protein: String
-  @State private var fat: String
-  @State private var carbohydrates: String
-  @State private var mealType: MealType
-  @State private var date: Date
+  @State private var brandName: String = ""
+  @State private var productName: String = ""
+  @State private var calories: String = ""
+  @State private var carbohydrates: String = ""
+  @State private var fat: String = ""
+  @State private var protein: String = ""
+  @State private var portionUnit: String = ""
+  @State private var portion: String = ""
+  @State private var numberOfServings: String = "1"
+  @State private var mealType: MealType = .breakfast
+  @State private var date: Date = Date()
+  @State private var foodMaster: FoodMaster?
 
-  init(item: Item) {
+  init(item: LogItem) {
     self.item = item
     _brandName = State(initialValue: item.brandName)
     _productName = State(initialValue: item.productName)
-    _portionAmount = State(initialValue: String(item.portionAmount))
-    _portionUnit = State(initialValue: item.portionUnit)
-    _numberOfServings = State(initialValue: String(item.numberOfServings))
-    _calories = State(initialValue: String(item.baseCalories))
-    _protein = State(initialValue: String(item.baseProtein))
-    _fat = State(initialValue: String(item.baseFat))
-    _carbohydrates = State(initialValue: String(item.baseCarbohydrates))
+    _calories = State(initialValue: String(format: "%.0f", item.foodMaster?.calories ?? 0))
+    _carbohydrates = State(
+      initialValue: String(format: "%.0f", item.foodMaster?.carbohydrates ?? 0))
+    _fat = State(initialValue: String(format: "%.0f", item.foodMaster?.fat ?? 0))
+    _protein = State(initialValue: String(format: "%.0f", item.foodMaster?.protein ?? 0))
+    _portionUnit = State(initialValue: item.foodMaster?.portionUnit ?? "")
+    _portion = State(initialValue: item.foodMaster?.portion ?? "")
+    _numberOfServings = State(initialValue: String(format: "%.1f", item.numberOfServings))
     _mealType = State(initialValue: item.mealType)
     _date = State(initialValue: item.timestamp)
+    _foodMaster = State(initialValue: item.foodMaster)
   }
 
   var body: some View {
@@ -61,7 +64,7 @@ struct EditItemView: View {
                   CustomTextField(
                     icon: "number",
                     placeholder: NSLocalizedString("Amount", comment: "Portion amount field"),
-                    text: $portionAmount
+                    text: $portion
                   )
                   .frame(width: 120)
 
@@ -170,7 +173,7 @@ struct EditItemView: View {
                 .bold()
             }
             .disabled(
-              brandName.isEmpty || productName.isEmpty || portionAmount.isEmpty || calories.isEmpty)
+              brandName.isEmpty || productName.isEmpty || portion.isEmpty || calories.isEmpty)
           }
         }
       }
@@ -178,17 +181,48 @@ struct EditItemView: View {
   }
 
   private func updateItem() {
-    item.brandName = brandName
-    item.productName = productName
-    item.portionAmount = Double(portionAmount) ?? 1.0
-    item.portionUnit = portionUnit
-    item.numberOfServings = Double(numberOfServings) ?? 1.0
-    item.baseCalories = Double(calories) ?? 0
-    item.baseProtein = Double(protein) ?? 0
-    item.baseFat = Double(fat) ?? 0
-    item.baseCarbohydrates = Double(carbohydrates) ?? 0
-    item.mealType = mealType
-    item.timestamp = date
+    // FoodMaster を更新または取得
+    var foodMasterItem: FoodMaster? = foodMaster
+    if foodMasterItem == nil {
+      let caloriesValue = Double(calories) ?? 0
+      let carbohydratesValue = Double(carbohydrates) ?? 0
+      let fatValue = Double(fat) ?? 0
+      let proteinValue = Double(protein) ?? 0
 
+      let fetchDescriptor = FetchDescriptor<FoodMaster>(
+        predicate: #Predicate<FoodMaster> { food in
+          food.brandName == brandName
+            && food.productName == productName
+            && food.calories == caloriesValue
+            && food.carbohydrates == carbohydratesValue
+            && food.fat == fatValue
+            && food.protein == proteinValue
+            && food.portionUnit == portionUnit
+        }
+      )
+
+      if let existingFoodMaster = try? modelContext.fetch(fetchDescriptor),
+        let firstFoodMaster = existingFoodMaster.first
+      {
+        foodMasterItem = firstFoodMaster
+      } else {
+        foodMasterItem = FoodMaster(
+          brandName: brandName,
+          productName: productName,
+          calories: caloriesValue,
+          carbohydrates: carbohydratesValue,
+          fat: fatValue,
+          protein: proteinValue,
+          portionUnit: portionUnit,
+          portion: portion
+        )
+        modelContext.insert(foodMasterItem!)
+      }
+    }
+
+    item.timestamp = date
+    item.mealType = mealType
+    item.numberOfServings = Double(numberOfServings) ?? 1.0
+    item.foodMaster = foodMasterItem
   }
 }

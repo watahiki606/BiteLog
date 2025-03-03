@@ -98,48 +98,33 @@ struct ContentView: View {
 
 // 新しいアイテム行ビュー
 struct ItemRowView: View {
-  let item: Item
+  let item: LogItem
   @State private var showingEditSheet = false
 
   var body: some View {
-    Button {
-      showingEditSheet = true
-    } label: {
-      VStack(alignment: .leading, spacing: 8) {
-        HStack {
-          VStack(alignment: .leading, spacing: 4) {
-            Text("\(item.brandName) \(item.productName)")
-              .font(.headline)
-              .lineLimit(1)
-
-            Text(
-              "\(item.portionAmount, specifier: "%.1f") \(item.portionUnit) × \(item.numberOfServings, specifier: "%.1f")"
-            )
-            .font(.subheadline)
-            .foregroundColor(.secondary)
-          }
-
-          Spacer()
-
-          Text("\(item.calories, specifier: "%.0f")")
-            .font(.system(size: 18, weight: .bold))
-            + Text(" kcal")
-            .font(.system(size: 14))
-            .foregroundColor(.secondary)
-        }
-
-        HStack(spacing: 12) {
-          MacroView(label: "P", value: item.protein, color: .blue)
-          MacroView(label: "F", value: item.fat, color: .yellow)
-          MacroView(label: "C", value: item.carbohydrates, color: .green)
-        }
+    HStack {
+      VStack(alignment: .leading) {
+        Text(item.productName)
+          .font(.headline)
+        Text(item.brandName)
+          .font(.subheadline)
+          .foregroundColor(.secondary)
+        Text("\(item.portion) \(item.portionUnit)")
+          .font(.footnote)
+          .foregroundColor(.secondary)
       }
-      .padding()
-      .background(Color(UIColor.systemBackground))
-      .cornerRadius(10)
-      .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
+      Spacer()
+      HStack {
+        MacroView(label: "Cal", value: item.calories, color: .red)
+        MacroView(label: "P", value: item.protein, color: .blue)
+        MacroView(label: "F", value: item.fat, color: .yellow)
+        MacroView(label: "C", value: item.carbohydrates, color: .green)
+      }
     }
-    .buttonStyle(PlainButtonStyle())
+    .contentShape(Rectangle())
+    .onTapGesture {
+      showingEditSheet = true
+    }
     .sheet(isPresented: $showingEditSheet) {
       EditItemView(item: item)
     }
@@ -148,7 +133,7 @@ struct ItemRowView: View {
 
 #Preview {
   ContentView()
-    .modelContainer(for: Item.self, inMemory: true)
+    .modelContainer(for: [FoodMaster.self, LogItem.self], inMemory: true)
 }
 
 // 栄養素行のコンポーネント

@@ -7,7 +7,8 @@ struct BiteLogApp: App {
 
   var sharedModelContainer: ModelContainer = {
     let schema = Schema([
-      Item.self
+      FoodMaster.self,
+      LogItem.self,
     ])
     let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 

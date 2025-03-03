@@ -167,14 +167,14 @@ struct DayContentView: View {
     }
   }
 
-  private var filteredItems: [Item] {
+  private var filteredItems: [LogItem] {
     let calendar = Calendar.current
     let startOfDay = calendar.startOfDay(for: date)
     let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
 
-    let descriptor = FetchDescriptor<Item>(
-      predicate: #Predicate<Item> { item in
-        item.timestamp >= startOfDay && item.timestamp < endOfDay
+    let descriptor = FetchDescriptor<LogItem>(
+      predicate: #Predicate<LogItem> { logItem in
+        logItem.timestamp >= startOfDay && logItem.timestamp < endOfDay
       },
       sortBy: [SortDescriptor(\.timestamp)]
     )

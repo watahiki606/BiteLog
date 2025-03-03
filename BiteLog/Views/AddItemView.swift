@@ -11,15 +11,16 @@ struct AddItemView: View {
   @State private var searchText = ""
   @State private var brandName = ""
   @State private var productName = ""
-  @State private var portionAmount: String = "1.0"
-  @State private var portionUnit: String = "個"
-  @State private var numberOfServings: String = "1.0"
   @State private var calories: String = ""
-  @State private var protein: String = ""
-  @State private var fat: String = ""
   @State private var carbohydrates: String = ""
+  @State private var fat: String = ""
+  @State private var protein: String = ""
+  @State private var portionUnit: String = ""
+  @State private var portion: String = ""
+  @State private var numberOfServings: Double = 1.0
   @State private var date: Date
-  @State private var searchResults: [Item] = []
+  @State private var foodMaster: FoodMaster?
+  @State private var searchResults: [FoodMaster] = []
   @State private var currentOffset = 0
   @State private var hasMoreData = true
   private let pageSize = 100
@@ -88,7 +89,7 @@ struct AddItemView: View {
                       CustomTextField(
                         icon: "number",
                         placeholder: NSLocalizedString("Amount", comment: "Portion amount field"),
-                        text: $portionAmount
+                        text: $portion
                       )
                       .frame(width: 120)
 
@@ -99,11 +100,11 @@ struct AddItemView: View {
                       )
                     }
 
-                    CustomTextField(
-                      icon: "number",
-                      placeholder: NSLocalizedString(
-                        "Servings (e.g. 1.5)", comment: "Servings field"),
-                      text: $numberOfServings
+                    Stepper(
+                      "Servings: \(numberOfServings, specifier: "%.1f")",
+                      value: $numberOfServings,
+                      in: 0.1...10,
+                      step: 0.1
                     )
 
                     HStack {
@@ -203,7 +204,7 @@ struct AddItemView: View {
                 .bold()
             }
             .disabled(
-              brandName.isEmpty || productName.isEmpty || portionAmount.isEmpty || calories.isEmpty)
+              brandName.isEmpty || productName.isEmpty || portion.isEmpty || calories.isEmpty)
           }
         }
         .onChange(of: searchText) { _, _ in
@@ -217,37 +218,61 @@ struct AddItemView: View {
   }
 
   private func addItem() {
-    let newItem = Item(
-      brandName: brandName,
-      productName: productName,
-      portionAmount: Double(portionAmount) ?? 1.0,
-      portionUnit: portionUnit,
-      calories: Double(calories) ?? 0,
-      protein: Double(protein) ?? 0,
-      fat: Double(fat) ?? 0,
-      carbohydrates: Double(carbohydrates) ?? 0,
-      mealType: mealType,
-      timestamp: date,
-      numberOfServings: Double(numberOfServings) ?? 1.0
+    // FoodMaster を作成または取得
+    var foodMasterItem: FoodMaster?
+    let caloriesValue = Double(calories) ?? 0
+    let carbohydratesValue = Double(carbohydrates) ?? 0
+    let fatValue = Double(fat) ?? 0
+    let proteinValue = Double(protein) ?? 0
+
+    let fetchDescriptor = FetchDescriptor<FoodMaster>(
+      predicate: #Predicate<FoodMaster> { food in
+        food.brandName == brandName
+          && food.productName == productName
+          && food.calories == caloriesValue
+          && food.carbohydrates == carbohydratesValue
+          && food.fat == fatValue
+          && food.protein == proteinValue
+          && food.portionUnit == portionUnit
+      }
     )
-    modelContext.insert(newItem)
+
+    if let existingFoodMaster = try? modelContext.fetch(fetchDescriptor),
+      let firstFoodMaster = existingFoodMaster.first
+    {
+      foodMasterItem = firstFoodMaster
+    } else {
+      foodMasterItem = FoodMaster(
+        brandName: brandName,
+        productName: productName,
+        calories: caloriesValue,
+        carbohydrates: carbohydratesValue,
+        fat: fatValue,
+        protein: proteinValue,
+        portionUnit: portionUnit,
+        portion: portion
+      )
+      modelContext.insert(foodMasterItem!)
+    }
+
+    let newLogItem = LogItem(
+      timestamp: date,
+      mealType: mealType,
+      numberOfServings: numberOfServings,
+      foodMaster: foodMasterItem
+    )
+    modelContext.insert(newLogItem)
   }
 
-  private func addItemFromPast(_ item: Item) {
-    let newItem = Item(
-      brandName: item.brandName,
-      productName: item.productName,
-      portionAmount: item.portionAmount,
-      portionUnit: item.portionUnit,
-      calories: item.baseCalories,
-      protein: item.baseProtein,
-      fat: item.baseFat,
-      carbohydrates: item.baseCarbohydrates,
-      mealType: mealType,
+  private func addItemFromPast(_ foodMasterItem: FoodMaster) {
+    let newLogItem = LogItem(
       timestamp: date,
-      numberOfServings: Double(numberOfServings) ?? 1.0
+      mealType: mealType,
+      numberOfServings: numberOfServings,
+      foodMaster: foodMasterItem
     )
-    modelContext.insert(newItem)
+    modelContext.insert(newLogItem)
+    dismiss()
   }
 
   private func loadMoreItems() {
@@ -258,12 +283,12 @@ struct AddItemView: View {
       return
     }
 
-    var descriptor = FetchDescriptor<Item>(
-      predicate: #Predicate<Item> { item in
-        item.brandName.localizedStandardContains(searchText)
-          || item.productName.localizedStandardContains(searchText)
+    var descriptor = FetchDescriptor<FoodMaster>(
+      predicate: #Predicate<FoodMaster> { food in
+        food.brandName.localizedStandardContains(searchText)
+          || food.productName.localizedStandardContains(searchText)
       },
-      sortBy: [SortDescriptor(\Item.timestamp, order: .reverse)]
+      sortBy: [SortDescriptor(\FoodMaster.productName, order: .forward)]
     )
     descriptor.fetchOffset = currentOffset
     descriptor.fetchLimit = pageSize
@@ -282,7 +307,7 @@ struct AddItemView: View {
 
 // 過去の食事アイテムカード
 struct PastItemCard: View {
-  let item: Item
+  let item: FoodMaster
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -291,7 +316,7 @@ struct PastItemCard: View {
           Text("\(item.brandName) \(item.productName)")
             .font(.headline)
 
-          Text(item.portion)
+          Text("\(item.portionUnit)")
             .font(.subheadline)
             .foregroundColor(.secondary)
         }
@@ -310,6 +335,8 @@ struct PastItemCard: View {
         MacroNutrientBadge(label: "F", value: item.fat, color: .yellow)
         MacroNutrientBadge(label: "C", value: item.carbohydrates, color: .green)
       }
+
+      Text("\(item.portion) \(item.portionUnit)")
     }
     .padding()
     .background(Color(UIColor.systemBackground))

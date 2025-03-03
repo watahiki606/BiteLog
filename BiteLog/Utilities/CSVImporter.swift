@@ -69,6 +69,9 @@ class CSVImporter {
     var successCount = 0
     var errorCount = 0
     var lastLoggedProgress: Int = 0
+    var foodMastersToInsert: [FoodMaster] = []  // FoodMaster のバッチ挿入用配列
+    var logItemsToInsert: [LogItem] = []  // LogItem のバッチ挿入用配列
+    var processedRowsCount = 0  // 処理済み行数
 
     // ヘッダーのインデックスを取得
     let headers = parseCSVLine(rows[0]).map { $0.lowercased() }
@@ -136,37 +139,80 @@ class CSVImporter {
           columns.indices.contains(portionAmountIndex)
           ? columns[portionAmountIndex].replacingOccurrences(of: "\"", with: "")
           : "1.0"
-        let portionUnit =
-          columns.indices.contains(portionUnitIndex)
-          ? columns[portionUnitIndex]
-          : "個"
+        let portionUnit = columns[portionUnitIndex]
+        let portionAmount = columns[portionAmountIndex]  // portion_amount 列をそのまま取得
 
         // 数値に変換
         let calories = Double(cleanedCalories) ?? 0
         let carbs = Double(cleanedCarbs) ?? 0
         let fat = Double(cleanedFat) ?? 0
         let protein = Double(cleanedProtein) ?? 0
-        let portionAmount = Double(cleanedPortionAmount) ?? 1.0
 
-        // アイテムの作成
-        let item = Item(
-          brandName: columns[brandNameIndex],
-          productName: columns[productNameIndex],
-          portionAmount: portionAmount,
-          portionUnit: portionUnit,
-          calories: calories,
-          protein: protein,
-          fat: fat,
-          carbohydrates: carbs,
-          mealType: mealType,
-          timestamp: date
+        // FoodMasterの検索または作成
+        let foodMaster: FoodMaster
+        let fetchDescriptor = FetchDescriptor<FoodMaster>(
+          predicate: #Predicate<FoodMaster> { food in
+            food.brandName == columns[brandNameIndex]
+              && food.productName == columns[productNameIndex]
+              && food.calories == calories
+              && food.carbohydrates == carbs
+              && food.fat == fat
+              && food.protein == protein
+              && food.portionUnit == portionUnit
+          }
         )
 
-        context.insert(item)
+        if let existingFoodMaster = try context.fetch(fetchDescriptor).first {
+          foodMaster = existingFoodMaster
+          logger.debug("既存のFoodMasterが見つかりました: \(existingFoodMaster.productName)")
+        } else {
+          foodMaster = FoodMaster(
+            brandName: columns[brandNameIndex],
+            productName: columns[productNameIndex],
+            calories: calories,
+            carbohydrates: carbs,
+            fat: fat,
+            protein: protein,
+            portionUnit: portionUnit,
+            portion: portionAmount  // CSVの portion_amount 列を FoodMaster の portion に設定
+          )
+          foodMastersToInsert.append(foodMaster)  // バッチ挿入用配列に追加
+          logger.debug("新しいFoodMasterを作成しました: \(foodMaster.productName)")
+        }
+
+        // LogItemの作成
+        let logItem = LogItem(
+          timestamp: date,
+          mealType: mealType,
+          numberOfServings: 1.0,  // CSVインポート時は常に1とする
+          foodMaster: foodMaster  // FoodMasterを関連付ける
+        )
+        logItemsToInsert.append(logItem)  // バッチ挿入用配列に追加
         successCount += 1
+        processedRowsCount += 1  // 処理済み行数をカウント
+
+        // 進捗ハンドラを呼び出す頻度を調整 (例: 10行ごとに更新)
+        if processedRowsCount % 10 == 0 {
+          let progress = Double(processedRowsCount) / Double(totalRows)
+          if progressHandler?(progress, processedRowsCount, totalRows) ?? false {
+            throw CSVImportError.cancelled
+          }
+        }
       } catch {
         errorCount += 1
         logger.error("行\(index + 2)の処理中にエラー: \(error.localizedDescription)")
+      }
+    }
+
+    // バッチ挿入を実行
+    if !foodMastersToInsert.isEmpty {
+      for foodMaster in foodMastersToInsert {
+        context.insert(foodMaster)
+      }
+    }
+    if !logItemsToInsert.isEmpty {
+      for logItem in logItemsToInsert {
+        context.insert(logItem)
       }
     }
 
