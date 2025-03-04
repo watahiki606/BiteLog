@@ -8,29 +8,53 @@ struct EditItemView: View {
 
   @State private var brandName: String = ""
   @State private var productName: String = ""
-  @State private var calories: String = ""
-  @State private var carbohydrates: String = ""
-  @State private var fat: String = ""
-  @State private var protein: String = ""
   @State private var portionUnit: String = ""
   @State private var numberOfServings: String = "1"
-  @State private var mealType: MealType = .breakfast
-  @State private var date: Date = Date()
   @State private var foodMaster: FoodMaster?
+  
+  // 栄養素の値を計算プロパティとして定義
+  private var calories: String {
+    return String(format: "%.2f", foodMaster?.calories ?? 0)
+  }
+  
+  private var protein: String {
+    return String(format: "%.2f", foodMaster?.protein ?? 0)
+  }
+  
+  private var fat: String {
+    return String(format: "%.2f", foodMaster?.fat ?? 0)
+  }
+  
+  private var carbohydrates: String {
+    return String(format: "%.2f", foodMaster?.carbohydrates ?? 0)
+  }
+  
+  private var servingsValue: Double {
+    return Double(numberOfServings) ?? 1.0
+  }
+  
+  private var totalCalories: Double {
+    return (foodMaster?.calories ?? 0) * servingsValue
+  }
+  
+  private var totalProtein: Double {
+    return (foodMaster?.protein ?? 0) * servingsValue
+  }
+  
+  private var totalFat: Double {
+    return (foodMaster?.fat ?? 0) * servingsValue
+  }
+  
+  private var totalCarbs: Double {
+    return (foodMaster?.carbohydrates ?? 0) * servingsValue
+  }
 
   init(item: LogItem) {
     self.item = item
     _brandName = State(initialValue: item.brandName)
     _productName = State(initialValue: item.productName)
-    _calories = State(initialValue: String(format: "%.0f", item.foodMaster?.calories ?? 0))
-    _carbohydrates = State(
-      initialValue: String(format: "%.0f", item.foodMaster?.carbohydrates ?? 0))
-    _fat = State(initialValue: String(format: "%.0f", item.foodMaster?.fat ?? 0))
-    _protein = State(initialValue: String(format: "%.0f", item.foodMaster?.protein ?? 0))
     _portionUnit = State(initialValue: item.foodMaster?.portionUnit ?? "")
     _numberOfServings = State(initialValue: String(format: "%.1f", item.numberOfServings))
-    _mealType = State(initialValue: item.mealType)
-    _date = State(initialValue: item.timestamp)
     _foodMaster = State(initialValue: item.foodMaster)
   }
 
@@ -70,80 +94,58 @@ struct EditItemView: View {
                     text: $portionUnit
                   )
                 }
-
-                HStack {
-                  Image(systemName: "fork.knife")
-                    .foregroundColor(.blue)
-                    .frame(width: 24)
-
-                  Picker(
-                    NSLocalizedString("Meal Type", comment: "Picker label"), selection: $mealType
-                  ) {
-                    ForEach(MealType.allCases, id: \.self) { type in
-                      Text(type.localizedName).tag(type)
-                    }
-                  }
-                  .pickerStyle(.menu)
-                }
-                .padding(.vertical, 8)
-                .padding(.horizontal, 12)
-                .background(Color(UIColor.secondarySystemBackground))
-                .cornerRadius(10)
-
-                HStack {
-                  Image(systemName: "calendar")
-                    .foregroundColor(.blue)
-                    .frame(width: 24)
-
-                  DatePicker(
-                    NSLocalizedString("Date", comment: "Date picker label"), selection: $date,
-                    displayedComponents: [.date]
-                  )
-                  .labelsHidden()
-                  .datePickerStyle(.compact)
-                }
-                .padding(.vertical, 8)
-                .padding(.horizontal, 12)
-                .background(Color(UIColor.secondarySystemBackground))
-                .cornerRadius(10)
+                
+                Text(NSLocalizedString("Adjust servings to calculate total nutrition intake", comment: "Servings explanation"))
+                  .font(.caption)
+                  .foregroundColor(.secondary)
+                  .padding(.bottom, 4)
               }
             }
 
             // 栄養素カード
             CardView(title: NSLocalizedString("Nutrition", comment: "Form section title")) {
               VStack(spacing: 16) {
-                NutrientInputField(
+                Text(NSLocalizedString("Values shown as: per serving → total based on servings", comment: "Nutrition explanation"))
+                  .font(.caption)
+                  .foregroundColor(.secondary)
+                  .padding(.bottom, 4)
+                
+                // 栄養素表示を共通化
+                EditNutrientRow(
                   icon: "flame.fill",
                   iconColor: .orange,
                   label: NSLocalizedString("Calories", comment: "Nutrient label"),
-                  value: $calories,
+                  value: calories,
+                  totalValue: totalCalories,
                   unit: "kcal"
                 )
-
-                NutrientInputField(
+                
+                EditNutrientRow(
                   icon: "p.circle.fill",
                   iconColor: .blue,
                   label: NSLocalizedString("Protein", comment: "Nutrient label"),
-                  value: $protein,
+                  value: protein,
+                  totalValue: totalProtein,
                   unit: "g"
                 )
-
-                NutrientInputField(
+                
+                EditNutrientRow(
                   icon: "f.circle.fill",
                   iconColor: .yellow,
                   label: NSLocalizedString("Fat", comment: "Nutrient label"),
-                  value: $fat,
+                  value: fat,
+                  totalValue: totalFat,
                   unit: "g"
                 )
-
-                NutrientInputField(
+                
+                EditNutrientRow(
                   icon: "c.circle.fill",
                   iconColor: .green,
                   label: NSLocalizedString("Carbs", comment: "Nutrient label"),
-                  value: $carbohydrates,
+                  value: carbohydrates,
+                  totalValue: totalCarbs,
                   unit: "g"
                 )
-
               }
             }
           }
@@ -163,7 +165,7 @@ struct EditItemView: View {
                 .bold()
             }
             .disabled(
-              brandName.isEmpty || productName.isEmpty || numberOfServings.isEmpty || calories.isEmpty)
+              brandName.isEmpty || productName.isEmpty || numberOfServings.isEmpty || Double(numberOfServings) == 0)
           }
         }
       }
@@ -171,73 +173,87 @@ struct EditItemView: View {
   }
 
   private func updateItem() {
-    // FoodMaster を更新または取得
-    var foodMasterItem: FoodMaster? = foodMaster
-    if foodMasterItem == nil {
-      let caloriesValue = Double(calories) ?? 0
-      let carbohydratesValue = Double(carbohydrates) ?? 0
-      let fatValue = Double(fat) ?? 0
-      let proteinValue = Double(protein) ?? 0
-
-      // 基本情報のみで検索
-      let basicPredicate = #Predicate<FoodMaster> { food in
-        food.brandName == brandName &&
-        food.productName == productName &&
-        food.portionUnit == portionUnit
-      }
-
-      let fetchDescriptor = FetchDescriptor<FoodMaster>(
-        predicate: basicPredicate
-      )
-
-      // 基本情報で検索した結果から栄養価が一致するものを探す
-      if let existingFoodMasters = try? modelContext.fetch(fetchDescriptor) {
-        var matchedFoodMaster: FoodMaster? = nil
-        
-        // 取得した結果から栄養価が一致するものを探す
-        for candidate in existingFoodMasters {
-          if abs(candidate.calories - caloriesValue) < 0.1 &&
-             abs(candidate.carbohydrates - carbohydratesValue) < 0.1 &&
-             abs(candidate.fat - fatValue) < 0.1 &&
-             abs(candidate.protein - proteinValue) < 0.1 {
-            matchedFoodMaster = candidate
-            break
-          }
-        }
-        
-        if let firstFoodMaster = matchedFoodMaster {
-          foodMasterItem = firstFoodMaster
-        } else {
-          foodMasterItem = FoodMaster(
-            brandName: brandName,
-            productName: productName,
-            calories: caloriesValue,
-            carbohydrates: carbohydratesValue,
-            fat: fatValue,
-            protein: proteinValue,
-            portionUnit: portionUnit,
-            portion: 1.0  // 1単位あたりに正規化
-          )
-          modelContext.insert(foodMasterItem!)
-        }
-      } else {
-        foodMasterItem = FoodMaster(
-          brandName: brandName,
-          productName: productName,
-          calories: caloriesValue,
-          carbohydrates: carbohydratesValue,
-          fat: fatValue,
-          protein: proteinValue,
-          portionUnit: portionUnit,
-          portion: 1.0  // 1単位あたりに正規化
-        )
-        modelContext.insert(foodMasterItem!)
-      }
+    // サービング数のみ更新
+    item.numberOfServings = servingsValue
+    
+    // FoodMasterが既に存在する場合はそのまま使用
+    if foodMaster != nil {
+      return
+    }
+    
+    // 基本情報のみで検索
+    let basicPredicate = #Predicate<FoodMaster> { food in
+      food.brandName == brandName &&
+      food.productName == productName &&
+      food.portionUnit == portionUnit
     }
 
-    item.timestamp = date
-    item.mealType = mealType
-    item.numberOfServings = Double(numberOfServings) ?? 1.0
-    item.foodMaster = foodMasterItem
+    let fetchDescriptor = FetchDescriptor<FoodMaster>(
+      predicate: basicPredicate
+    )
+
+    // 基本情報で検索した結果を使用
+    if let existingFoodMasters = try? modelContext.fetch(fetchDescriptor), !existingFoodMasters.isEmpty {
+      // 既存のFoodMasterを使用
+      item.foodMaster = existingFoodMasters.first
+    } else {
+      // 新しいFoodMasterを作成
+      let newFoodMaster = FoodMaster(
+        brandName: brandName,
+        productName: productName,
+        calories: Double(calories) ?? 0,
+        carbohydrates: Double(carbohydrates) ?? 0,
+        fat: Double(fat) ?? 0,
+        protein: Double(protein) ?? 0,
+        portionUnit: portionUnit,
+        portion: 1.0  // 1単位あたりに正規化
+      )
+      modelContext.insert(newFoodMaster)
+      item.foodMaster = newFoodMaster
+    }
+  }
+}
+
+// 栄養素表示用の共通コンポーネント
+struct EditNutrientRow: View {
+  let icon: String
+  let iconColor: Color
+  let label: String
+  let value: String
+  let totalValue: Double
+  let unit: String
+  
+  var body: some View {
+    HStack {
+      Image(systemName: icon)
+        .foregroundColor(iconColor)
+        .frame(width: 24)
+      
+      Text(label)
+        .foregroundColor(.primary)
+      
+      Spacer()
+      
+      Text(value.isEmpty ? "0" : value)
+        .multilineTextAlignment(.trailing)
+      
+      Text(unit)
+        .foregroundColor(.secondary)
+        .frame(width: unit == "kcal" ? 40 : 20, alignment: .leading)
+      
+      Text("→")
+        .foregroundColor(.secondary)
+        .padding(.horizontal, 4)
+      
+      Text(String(format: "%.2f", totalValue))
+        .foregroundColor(.primary)
+      
+      Text(unit)
+        .foregroundColor(.secondary)
+    }
+    .padding(.vertical, 12)
+    .padding(.horizontal, 12)
+    .background(Color(UIColor.secondarySystemBackground))
+    .cornerRadius(10)
   }
 }
