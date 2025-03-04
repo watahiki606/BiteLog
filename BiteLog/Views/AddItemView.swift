@@ -265,7 +265,6 @@ struct AddItemView: View {
       foodMaster: foodMasterItem
     )
     modelContext.insert(newLogItem)
-    dismiss()
   }
 
   private func loadMoreItems() {

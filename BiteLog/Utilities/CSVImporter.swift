@@ -198,17 +198,12 @@ class CSVImporter {
         let protein = Double(cleanedProtein) ?? 0
         let portionAmount = Double(cleanedPortionAmount) ?? 0  // Double型に変換
 
-        // CSVデータの値をログに出力（デバッグ用）
-        logger.debug("CSVから読み込んだデータ: \(columns[productNameIndex]), \(columns[brandNameIndex]), calories=\(calories), carbs=\(carbs), fat=\(fat), protein=\(protein), portionUnit=\(portionUnit), portionAmount=\(portionAmount)")
-
         // 1portion_unitあたりの栄養価を計算（portion_amountが1になるように正規化）
         let caloriesPerUnit = portionAmount > 0 ? calories / portionAmount : calories
         let carbsPerUnit = portionAmount > 0 ? carbs / portionAmount : carbs
         let fatPerUnit = portionAmount > 0 ? fat / portionAmount : fat
         let proteinPerUnit = portionAmount > 0 ? protein / portionAmount : protein
         
-        logger.debug("1\(portionUnit)あたりの栄養価: calories=\(caloriesPerUnit), carbs=\(carbsPerUnit), fat=\(fatPerUnit), protein=\(proteinPerUnit)")
-
         // FoodMasterの検索または作成
         var foodMaster: FoodMaster
         
@@ -226,7 +221,6 @@ class CSVImporter {
         // キャッシュから既存のFoodMasterを検索
         if let existingFoodMaster = existingFoodMasterCache[uniqueKey] {
             foodMaster = existingFoodMaster
-            logger.debug("既存のFoodMasterが見つかりました: \(existingFoodMaster.productName), \(existingFoodMaster.brandName), calories=\(existingFoodMaster.calories), carbs=\(existingFoodMaster.carbohydrates), fat=\(existingFoodMaster.fat), protein=\(existingFoodMaster.protein), portionUnit=\(existingFoodMaster.portionUnit), portion=\(existingFoodMaster.portion)")
         } else {
             // 新しいFoodMasterを作成
             foodMaster = FoodMaster(
@@ -243,10 +237,6 @@ class CSVImporter {
             // キャッシュに追加
             existingFoodMasterCache[uniqueKey] = foodMaster
             foodMastersToInsert.append(foodMaster)  // バッチ挿入用配列に追加
-            
-            logger.debug(
-              "新しいFoodMasterを作成: \(foodMaster.productName), \(foodMaster.brandName), CSV値=[calories:\(cleanedCalories), carbs:\(cleanedCarbs), fat:\(cleanedFat), protein:\(cleanedProtein), portionUnit:\(portionUnit), portionAmount:\(cleanedPortionAmount)], 設定値=[calories:\(foodMaster.calories), carbs:\(foodMaster.carbohydrates), fat:\(foodMaster.fat), protein:\(foodMaster.protein), portionUnit:\(foodMaster.portionUnit), portion:\(foodMaster.portion)]"
-            )
         }
 
         // LogItemの作成

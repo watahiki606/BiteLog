@@ -55,37 +55,39 @@ struct NutrientInputField: View {
   @Binding var value: String
   let unit: String
   @FocusState private var isFocused: Bool
+  var isReadOnly: Bool = true  // デフォルトで読み取り専用
 
   var body: some View {
-    Button {
-      isFocused = true
-    } label: {
-      HStack {
-        Image(systemName: icon)
-          .foregroundColor(iconColor)
-          .frame(width: 24)
+    HStack {
+      Image(systemName: icon)
+        .foregroundColor(iconColor)
+        .frame(width: 24)
 
-        Text(label)
-          .foregroundColor(.primary)
+      Text(label)
+        .foregroundColor(.primary)
 
-        Spacer()
+      Spacer()
 
+      if isReadOnly {
+        Text(value.isEmpty ? "0" : value)
+          .multilineTextAlignment(.trailing)
+          .frame(width: 80)
+      } else {
         TextField("0", text: $value)
           .keyboardType(.decimalPad)
           .multilineTextAlignment(.trailing)
           .frame(width: 80)
           .focused($isFocused)
-
-        Text(unit)
-          .foregroundColor(.secondary)
-          .frame(width: 40, alignment: .leading)
       }
-      .padding(.vertical, 12)
-      .padding(.horizontal, 12)
-      .background(Color(UIColor.secondarySystemBackground))
-      .cornerRadius(10)
+
+      Text(unit)
+        .foregroundColor(.secondary)
+        .frame(width: 40, alignment: .leading)
     }
-    .buttonStyle(PlainButtonStyle())
+    .padding(.vertical, 12)
+    .padding(.horizontal, 12)
+    .background(Color(UIColor.secondarySystemBackground))
+    .cornerRadius(10)
   }
 }
 
@@ -101,7 +103,7 @@ struct MacroNutrientBadge: View {
         .font(.footnote.bold())
         .foregroundColor(color)
 
-      Text("\(value, specifier: "%.1f")g")
+      Text("\(value, specifier: "%.2f")g")
         .font(.footnote)
     }
     .padding(.vertical, 4)

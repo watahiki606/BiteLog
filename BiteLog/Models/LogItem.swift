@@ -8,39 +8,34 @@ final class LogItem {
   var numberOfServings: Double
   @Relationship var foodMaster: FoodMaster?  // FoodMasterへのリレーションシップ
 
-  var baseCalories: Double {
+  var calories: Double {
     return (foodMaster?.calories ?? 0) * numberOfServings
   }
-  var baseProtein: Double {
+  
+  var protein: Double {
     return (foodMaster?.protein ?? 0) * numberOfServings
   }
-  var baseFat: Double {
+  
+  var fat: Double {
     return (foodMaster?.fat ?? 0) * numberOfServings
   }
-  var baseCarbohydrates: Double {
+  
+  var carbohydrates: Double {
     return (foodMaster?.carbohydrates ?? 0) * numberOfServings
   }
+  
   var portion: Double {
     return foodMaster?.portion ?? 0
   }
+  
   var brandName: String {
     return foodMaster?.brandName ?? ""
   }
+  
   var productName: String {
     return foodMaster?.productName ?? ""
   }
-  var calories: Double {
-    return baseCalories
-  }
-  var protein: Double {
-    return baseProtein
-  }
-  var fat: Double {
-    return baseFat
-  }
-  var carbohydrates: Double {
-    return baseCarbohydrates
-  }
+  
   var portionUnit: String {
     return foodMaster?.portionUnit ?? ""
   }

@@ -158,7 +158,7 @@ struct EditItemView: View {
           }
           ToolbarItem(placement: .confirmationAction) {
             Button(action: {
-              updateItem()
+              saveLogItemAndUpdateFoodMaster()
               dismiss()
             }) {
               Text(NSLocalizedString("Save", comment: "Button title"))
@@ -172,16 +172,19 @@ struct EditItemView: View {
     }
   }
 
-  private func updateItem() {
+  private func saveLogItemAndUpdateFoodMaster() {
     // サービング数のみ更新
     item.numberOfServings = servingsValue
     
-    // FoodMasterが既に存在する場合はそのまま使用
-    if foodMaster != nil {
+    // 商品情報が変更されていない場合は早期リターン
+    if foodMaster != nil && 
+       foodMaster?.brandName == brandName && 
+       foodMaster?.productName == productName && 
+       foodMaster?.portionUnit == portionUnit {
       return
     }
     
-    // 基本情報のみで検索
+    // 基本情報で検索
     let basicPredicate = #Predicate<FoodMaster> { food in
       food.brandName == brandName &&
       food.productName == productName &&
