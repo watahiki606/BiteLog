@@ -47,6 +47,8 @@
 "Delete All Data" = "すべてのデータを削除";
 "No Food Items" = "フード情報がありません";
 "Add your first food item to start tracking your nutrition." = "フード情報を追加して栄養成分を記録を開始します。";
+"Delete Food Item?" = "フード情報を削除しますか？";
+"This will permanently delete this food item from your master data. This action cannot be undone." = "このフード情報をマスターデータから完全に削除します。この操作は元に戻すことができません。";
 
 // Import CSV
 "CSV File Format:" = "CSVファイルのフォーマット:";
