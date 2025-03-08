@@ -14,6 +14,9 @@ struct FoodMasterManagementView: View {
   private let pageSize = 20
   @State private var isLoading = false
   
+  // キーボードを閉じるためのFocusStateを追加
+  @FocusState private var searchFieldIsFocused: Bool
+  
   var filteredFoodMasters: [FoodMaster] {
     if searchText.isEmpty {
       return Array(foodMasters.prefix(pageSize * (currentPage + 1)))
@@ -37,6 +40,10 @@ struct FoodMasterManagementView: View {
           .padding(10)
           .background(Color(UIColor.secondarySystemBackground))
           .cornerRadius(10)
+          .focused($searchFieldIsFocused) // FocusStateを設定
+          .onTapGesture {
+            searchFieldIsFocused = true // 明示的にフォーカスを設定
+          }
         
         if !searchText.isEmpty {
           Button(action: {
@@ -46,6 +53,15 @@ struct FoodMasterManagementView: View {
               .foregroundColor(.secondary)
               .padding(.trailing, 8)
           }
+        }
+        
+        // 検索中の場合のみCancelボタンを表示
+        if searchFieldIsFocused {
+          Button(NSLocalizedString("Cancel", comment: "Cancel search")) {
+            searchText = ""
+            searchFieldIsFocused = false // キーボードを閉じる
+          }
+          .transition(.move(edge: .trailing).combined(with: .opacity))
         }
       }
       .padding(.horizontal)
@@ -62,6 +78,8 @@ struct FoodMasterManagementView: View {
               .contentShape(Rectangle())
               .onTapGesture {
                 selectedFoodMaster = foodMaster
+                // リスト項目をタップしたらキーボードを閉じる
+                searchFieldIsFocused = false
               }
               .onAppear {
                 // リストの最後のアイテムが表示されたら次のページを読み込む
