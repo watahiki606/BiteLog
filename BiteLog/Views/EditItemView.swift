@@ -77,9 +77,7 @@ struct EditItemView: View {
                         .font(.headline)
                         .lineLimit(2)
                       
-                      Text("\(foodMaster.portionUnit)")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                      
                     }
                     
                     Spacer()
