@@ -9,7 +9,6 @@ struct FoodMasterManagementView: View {
   @State private var searchText = ""
   @State private var showingAddForm = false
   @State private var selectedFoodMaster: FoodMaster?
-  @State private var showingEditForm = false
   @State private var showingDeleteConfirmation = false
   
   // ページネーション用
@@ -56,9 +55,6 @@ struct FoodMasterManagementView: View {
       if foodMasters.isEmpty {
         // フードが0件の場合に表示する登録促進ビュー
         EmptyFoodMasterView(showAddForm: $showingAddForm)
-          .onTapGesture {
-            dismissKeyboard()
-          }
       } else {
         // フード一覧
         List {
@@ -66,9 +62,7 @@ struct FoodMasterManagementView: View {
             FoodMasterRow(foodMaster: foodMaster)
               .contentShape(Rectangle())
               .onTapGesture {
-                dismissKeyboard()
                 selectedFoodMaster = foodMaster
-                showingEditForm = true
               }
               .swipeActions {
                 Button(role: .destructive) {
@@ -83,7 +77,6 @@ struct FoodMasterManagementView: View {
           // もっと読み込むボタン（検索していない場合のみ表示）
           if searchText.isEmpty && foodMasters.count > pageSize * (currentPage + 1) {
             Button(NSLocalizedString("Load More", comment: "Load more")) {
-              dismissKeyboard()
               currentPage += 1
             }
           }
@@ -91,21 +84,15 @@ struct FoodMasterManagementView: View {
         .listStyle(.insetGrouped)
       }
     }
-    .contentShape(Rectangle())
-    .onTapGesture {
-      dismissKeyboard()
-    }
     .navigationTitle(NSLocalizedString("Manage food", comment: "Manage food"))
     .toolbar {
       ToolbarItem(placement: .primaryAction) {
         Button {
-          dismissKeyboard()
           showingAddForm = true
         } label: {
           Image(systemName: "plus")
         }
       }
-
     }
     .sheet(isPresented: $showingAddForm) {
       FoodMasterFormView(mode: .add)
@@ -113,9 +100,7 @@ struct FoodMasterManagementView: View {
     .sheet(item: $selectedFoodMaster, onDismiss: {
       selectedFoodMaster = nil
     }) { foodMaster in
-      if showingEditForm {
-        FoodMasterFormView(mode: .edit(foodMaster))
-      }
+      FoodMasterFormView(mode: .edit(foodMaster))
     }
     .alert(NSLocalizedString("Delete Food Item?", comment: "Delete food item confirmation"), isPresented: $showingDeleteConfirmation) {
       Button(NSLocalizedString("Cancel", comment: "Cancel"), role: .cancel) {}
@@ -127,11 +112,6 @@ struct FoodMasterManagementView: View {
     } message: {
       Text(NSLocalizedString("This will permanently delete this food item from your master data. This action cannot be undone.", comment: "Delete food item warning"))
     }
-  }
-  
-  // キーボードを閉じる関数
-  private func dismissKeyboard() {
-    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
   }
   
   private func deleteFoodMaster(_ foodMaster: FoodMaster) {
