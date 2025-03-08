@@ -6,11 +6,14 @@ struct EditItemView: View {
   @Environment(\.modelContext) private var modelContext
   @Bindable var item: LogItem
 
-  @State private var brandName: String = ""
-  @State private var productName: String = ""
-  @State private var portionUnit: String = ""
+  @State private var searchText = ""
   @State private var numberOfServings: String = "1"
   @State private var foodMaster: FoodMaster?
+  @State private var showingFoodSearch = false
+  @State private var searchResults: [FoodMaster] = []
+  @State private var currentOffset = 0
+  @State private var hasMoreData = true
+  private let pageSize = 100
   
   // 栄養素の値を計算プロパティとして定義
   private var calories: String {
@@ -51,9 +54,6 @@ struct EditItemView: View {
 
   init(item: LogItem) {
     self.item = item
-    _brandName = State(initialValue: item.brandName)
-    _productName = State(initialValue: item.productName)
-    _portionUnit = State(initialValue: item.foodMaster?.portionUnit ?? "")
     _numberOfServings = State(initialValue: String(format: "%.1f", item.numberOfServings))
     _foodMaster = State(initialValue: item.foodMaster)
   }
@@ -66,36 +66,70 @@ struct EditItemView: View {
 
         ScrollView {
           VStack(spacing: 24) {
-            // 基本情報カード
-            CardView(title: NSLocalizedString("Basic Info", comment: "Form section title")) {
+            // 食品情報カード
+            CardView(title: NSLocalizedString("Food Item", comment: "Form section title")) {
               VStack(spacing: 16) {
-                CustomTextField(
-                  icon: "tag.fill",
-                  placeholder: NSLocalizedString("Brand", comment: "Brand name field"),
-                  text: $brandName
-                )
-
-                CustomTextField(
-                  icon: "cart.fill",
-                  placeholder: NSLocalizedString("Product", comment: "Product name field"),
-                  text: $productName
-                )
-
-                HStack {
-                  CustomTextField(
-                    icon: "number",
-                    placeholder: NSLocalizedString("Servings (e.g. 1.5)", comment: "Servings field"),
-                    text: $numberOfServings
-                  )
-                  
-                  CustomTextField(
-                    icon: "text.badge.checkmark",
-                    placeholder: NSLocalizedString("Unit", comment: "Portion unit field"),
-                    text: $portionUnit
-                  )
+                // 食品情報表示
+                if let foodMaster = foodMaster {
+                  HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                      Text("\(foodMaster.brandName) \(foodMaster.productName)")
+                        .font(.headline)
+                        .lineLimit(2)
+                      
+                      Text("\(foodMaster.portionUnit)")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                  }
+                  .padding(.vertical, 8)
+                  .padding(.horizontal, 12)
+                  .background(Color(UIColor.secondarySystemBackground))
+                  .cornerRadius(10)
+                } else {
+                  Button(action: {
+                    showingFoodSearch = true
+                  }) {
+                    HStack {
+                      Image(systemName: "magnifyingglass")
+                        .foregroundColor(.blue)
+                      Text(NSLocalizedString("Search for food", comment: "Search for food"))
+                        .foregroundColor(.blue)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color(UIColor.secondarySystemBackground))
+                    .cornerRadius(10)
+                  }
                 }
                 
-                Text(NSLocalizedString("Adjust servings to calculate total nutrition intake", comment: "Servings explanation"))
+                // サービング数入力
+                HStack {
+                  Text(NSLocalizedString("Servings:", comment: "Servings label"))
+                    .font(.body)
+                  
+                  TextField("1.0", text: $numberOfServings)
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.trailing)
+                    .padding(8)
+                    .background(Color(UIColor.tertiarySystemBackground))
+                    .cornerRadius(8)
+                    .frame(width: 80)
+                  
+                  if let foodMaster = foodMaster {
+                    Text(foodMaster.portionUnit)
+                      .font(.body)
+                      .foregroundColor(.secondary)
+                  }
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .background(Color(UIColor.secondarySystemBackground))
+                .cornerRadius(10)
+                
+                Text(NSLocalizedString("Adjust the serving size to calculate the intake", comment: "Servings explanation"))
                   .font(.caption)
                   .foregroundColor(.secondary)
                   .padding(.bottom, 4)
@@ -103,49 +137,51 @@ struct EditItemView: View {
             }
 
             // 栄養素カード
-            CardView(title: NSLocalizedString("Nutrition", comment: "Form section title")) {
-              VStack(spacing: 16) {
-                Text(NSLocalizedString("Values shown as: per serving → total based on servings", comment: "Nutrition explanation"))
-                  .font(.caption)
-                  .foregroundColor(.secondary)
-                  .padding(.bottom, 4)
-                
-                // 栄養素表示を共通化
-                EditNutrientRow(
-                  icon: "flame.fill",
-                  iconColor: .orange,
-                  label: NSLocalizedString("Calories", comment: "Nutrient label"),
-                  value: calories,
-                  totalValue: totalCalories,
-                  unit: "kcal"
-                )
-                
-                EditNutrientRow(
-                  icon: "p.circle.fill",
-                  iconColor: .blue,
-                  label: NSLocalizedString("Protein", comment: "Nutrient label"),
-                  value: protein,
-                  totalValue: totalProtein,
-                  unit: "g"
-                )
-                
-                EditNutrientRow(
-                  icon: "f.circle.fill",
-                  iconColor: .yellow,
-                  label: NSLocalizedString("Fat", comment: "Nutrient label"),
-                  value: fat,
-                  totalValue: totalFat,
-                  unit: "g"
-                )
-                
-                EditNutrientRow(
-                  icon: "c.circle.fill",
-                  iconColor: .green,
-                  label: NSLocalizedString("Carbs", comment: "Nutrient label"),
-                  value: carbohydrates,
-                  totalValue: totalCarbs,
-                  unit: "g"
-                )
+            if foodMaster != nil {
+              CardView(title: NSLocalizedString("Nutrition", comment: "Form section title")) {
+                VStack(spacing: 16) {
+                  Text(NSLocalizedString("Values shown as: per serving → total based on servings", comment: "Nutrition explanation"))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.bottom, 4)
+                  
+                  // 栄養素表示を共通化
+                  EditNutrientRow(
+                    icon: "flame.fill",
+                    iconColor: .orange,
+                    label: NSLocalizedString("Calories", comment: "Nutrient label"),
+                    value: calories,
+                    totalValue: totalCalories,
+                    unit: "kcal"
+                  )
+                  
+                  EditNutrientRow(
+                    icon: "p.circle.fill",
+                    iconColor: .blue,
+                    label: NSLocalizedString("Protein", comment: "Nutrient label"),
+                    value: protein,
+                    totalValue: totalProtein,
+                    unit: "g"
+                  )
+                  
+                  EditNutrientRow(
+                    icon: "f.circle.fill",
+                    iconColor: .yellow,
+                    label: NSLocalizedString("Fat", comment: "Nutrient label"),
+                    value: fat,
+                    totalValue: totalFat,
+                    unit: "g"
+                  )
+                  
+                  EditNutrientRow(
+                    icon: "c.circle.fill",
+                    iconColor: .green,
+                    label: NSLocalizedString("Carbs", comment: "Nutrient label"),
+                    value: carbohydrates,
+                    totalValue: totalCarbs,
+                    unit: "g"
+                  )
+                }
               }
             }
           }
@@ -158,61 +194,178 @@ struct EditItemView: View {
           }
           ToolbarItem(placement: .confirmationAction) {
             Button(action: {
-              saveLogItemAndUpdateFoodMaster()
+              saveLogItem()
               dismiss()
             }) {
               Text(NSLocalizedString("Save", comment: "Button title"))
                 .bold()
             }
-            .disabled(
-              brandName.isEmpty || productName.isEmpty || numberOfServings.isEmpty || Double(numberOfServings) == 0)
+            .disabled(foodMaster == nil || numberOfServings.isEmpty || Double(numberOfServings) == 0)
           }
+        }
+        .sheet(isPresented: $showingFoodSearch) {
+          FoodSearchView(onSelect: { selectedFoodMaster in
+            foodMaster = selectedFoodMaster
+          })
         }
       }
     }
   }
 
-  private func saveLogItemAndUpdateFoodMaster() {
+  private func saveLogItem() {
     // サービング数のみ更新
     item.numberOfServings = servingsValue
     
-    // 商品情報が変更されていない場合は早期リターン
-    if foodMaster != nil && 
-       foodMaster?.brandName == brandName && 
-       foodMaster?.productName == productName && 
-       foodMaster?.portionUnit == portionUnit {
+    // FoodMasterの更新
+    if let selectedFoodMaster = foodMaster {
+      item.foodMaster = selectedFoodMaster
+    }
+  }
+}
+
+// 食品検索ビュー
+struct FoodSearchView: View {
+  @Environment(\.dismiss) var dismiss
+  @Environment(\.modelContext) private var modelContext
+  
+  var onSelect: (FoodMaster) -> Void
+  
+  @State private var searchText = ""
+  @State private var searchResults: [FoodMaster] = []
+  @State private var currentOffset = 0
+  @State private var hasMoreData = true
+  private let pageSize = 100
+  
+  var body: some View {
+    NavigationStack {
+      VStack {
+        // 検索バー
+        HStack {
+          Image(systemName: "magnifyingglass")
+            .foregroundColor(.secondary)
+            .padding(.leading, 8)
+          
+          TextField("食品を検索", text: $searchText)
+            .padding(10)
+            .background(Color(UIColor.secondarySystemBackground))
+            .cornerRadius(10)
+          
+          if !searchText.isEmpty {
+            Button(action: {
+              searchText = ""
+            }) {
+              Image(systemName: "xmark.circle.fill")
+                .foregroundColor(.secondary)
+                .padding(.trailing, 8)
+            }
+          }
+        }
+        .padding(.horizontal)
+        .padding(.top, 8)
+        
+        if searchText.isEmpty {
+          // 検索を促すメッセージ
+          VStack(spacing: 16) {
+            Image(systemName: "magnifyingglass")
+              .font(.system(size: 48))
+              .foregroundColor(.secondary)
+            
+            Text(NSLocalizedString("Search for food", comment: "Search for food"))
+              .font(.headline)
+              .foregroundColor(.secondary)
+            
+            Text(NSLocalizedString("Register food in the food tab", comment: "Search for food"))
+              .font(.subheadline)
+              .foregroundColor(.secondary)
+              .multilineTextAlignment(.center)
+              .padding(.horizontal)
+          }
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+          // 検索結果一覧
+          List {
+            ForEach(searchResults) { item in
+              Button {
+                onSelect(item)
+                dismiss()
+              } label: {
+                FoodMasterRow(foodMaster: item)
+              }
+              .onAppear {
+                if searchResults.index(searchResults.endIndex, offsetBy: -2)
+                  == searchResults.firstIndex(of: item)
+                {
+                  if hasMoreData {
+                    loadMoreItems()
+                  }
+                }
+              }
+            }
+            
+            if searchResults.isEmpty && !searchText.isEmpty {
+              VStack(spacing: 16) {
+                Image(systemName: "exclamationmark.magnifyingglass")
+                  .font(.system(size: 48))
+                  .foregroundColor(.secondary)
+                
+                Text(NSLocalizedString("No search results found", comment: "No search results message"))
+                  .font(.headline)
+                  .foregroundColor(.secondary)
+                
+                Text(NSLocalizedString("Register new food items in the food tab", comment: "No search results message"))
+                  .font(.subheadline)
+                  .foregroundColor(.secondary)
+                  .multilineTextAlignment(.center)
+                  .padding(.horizontal)
+              }
+              .frame(maxWidth: .infinity)
+              .padding(.vertical, 40)
+              .listRowBackground(Color.clear)
+            }
+          }
+        }
+      }
+      .navigationTitle(NSLocalizedString("Select food", comment: "Navigation title"))
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          Button(NSLocalizedString("Cancel", comment: "Button title")) { dismiss() }
+        }
+      }
+      .onChange(of: searchText) { _, _ in
+        searchResults = []
+        currentOffset = 0
+        hasMoreData = true
+        loadMoreItems()
+      }
+    }
+  }
+  
+  private func loadMoreItems() {
+    guard !searchText.isEmpty else {
+      searchResults = []
+      currentOffset = 0
+      hasMoreData = true
       return
     }
     
-    // 基本情報で検索
-    let basicPredicate = #Predicate<FoodMaster> { food in
-      food.brandName == brandName &&
-      food.productName == productName &&
-      food.portionUnit == portionUnit
-    }
-
-    let fetchDescriptor = FetchDescriptor<FoodMaster>(
-      predicate: basicPredicate
+    var descriptor = FetchDescriptor<FoodMaster>(
+      predicate: #Predicate<FoodMaster> { food in
+        food.brandName.localizedStandardContains(searchText)
+          || food.productName.localizedStandardContains(searchText)
+      },
+      sortBy: [SortDescriptor(\FoodMaster.productName, order: .forward)]
     )
-
-    // 基本情報で検索した結果を使用
-    if let existingFoodMasters = try? modelContext.fetch(fetchDescriptor), !existingFoodMasters.isEmpty {
-      // 既存のFoodMasterを使用
-      item.foodMaster = existingFoodMasters.first
-    } else {
-      // 新しいFoodMasterを作成
-      let newFoodMaster = FoodMaster(
-        brandName: brandName,
-        productName: productName,
-        calories: Double(calories) ?? 0,
-        carbohydrates: Double(carbohydrates) ?? 0,
-        fat: Double(fat) ?? 0,
-        protein: Double(protein) ?? 0,
-        portionUnit: portionUnit,
-        portion: 1.0  // 1単位あたりに正規化
-      )
-      modelContext.insert(newFoodMaster)
-      item.foodMaster = newFoodMaster
+    descriptor.fetchOffset = currentOffset
+    descriptor.fetchLimit = pageSize
+    
+    if let newItems = try? modelContext.fetch(descriptor) {
+      if currentOffset == 0 {
+        searchResults = newItems
+      } else {
+        searchResults.append(contentsOf: newItems)
+      }
+      currentOffset += newItems.count
+      hasMoreData = newItems.count == pageSize
     }
   }
 }

@@ -10,81 +10,115 @@ struct ContentView: View {
   @State private var showingImportCSV = false
   @State private var showingSettings = false
   @State private var showingDatePicker = false
+  @State private var selectedTab = 0
 
   var body: some View {
-    NavigationStack {
-      DayContentView(
-        date: selectedDate,
-        selectedDate: selectedDate,
-        onAddTapped: { date, mealType in
-          showingAddItemFor = (date, mealType)
-        },
-        modelContext: modelContext
-      )
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .principal) {
-          HStack {
-            Button(action: {
-              selectedDate = selectedDate.addingTimeInterval(-86400)
-            }) {
-              Image(systemName: "chevron.left")
-            }
-
-            Button(action: {
-              showingDatePicker = true
-            }) {
-              Text(dateFormatter.string(from: selectedDate))
-                .font(.headline)
-            }
-
-            Button(action: {
-              selectedDate = selectedDate.addingTimeInterval(86400)
-            }) {
-              Image(systemName: "chevron.right")
-            }
-          }
-        }
-
-        ToolbarItem(placement: .navigationBarTrailing) {
-          Menu {
-            Button(action: { showingImportCSV = true }) {
-              Label(
-                NSLocalizedString("Import CSV", comment: "Menu item"),
-                systemImage: "square.and.arrow.down")
-            }
-            Button(action: { showingSettings = true }) {
-              Label(NSLocalizedString("Settings", comment: "Menu item"), systemImage: "gearshape")
-            }
-            // 将来的な機能拡張のためのメニュー項目をここに追加可能
-          } label: {
-            Image(systemName: "ellipsis.circle")
-          }
-        }
-      }
-      .sheet(
-        isPresented: Binding(
-          get: { showingAddItemFor != nil },
-          set: { if !$0 { showingAddItemFor = nil } }
-        )
-      ) {
-        if let itemInfo = showingAddItemFor {
-          AddItemView(
-            preselectedMealType: itemInfo.mealType,
-            selectedDate: itemInfo.date
+    TabView(selection: $selectedTab) {
+      // ログタブ
+      NavigationStack {
+        VStack(spacing: 0) {
+          DayContentView(
+            date: selectedDate,
+            selectedDate: selectedDate,
+            onAddTapped: { date, mealType in
+              showingAddItemFor = (date, mealType)
+            },
+            modelContext: modelContext
           )
-          .presentationDetents([.medium, .large])
+          .navigationBarTitleDisplayMode(.inline)
+          .toolbar {
+            ToolbarItem(placement: .principal) {
+              HStack {
+                Button(action: {
+                  selectedDate = selectedDate.addingTimeInterval(-86400)
+                }) {
+                  Image(systemName: "chevron.left")
+                }
+
+                Button(action: {
+                  showingDatePicker = true
+                }) {
+                  Text(dateFormatter.string(from: selectedDate))
+                    .font(.headline)
+                }
+
+                Button(action: {
+                  selectedDate = selectedDate.addingTimeInterval(86400)
+                }) {
+                  Image(systemName: "chevron.right")
+                }
+              }
+            }
+
+            ToolbarItem(placement: .navigationBarTrailing) {
+              Menu {
+                Button {
+                  showingAddItemFor = nil
+                } label: {
+                  Label(NSLocalizedString("Add Meal", comment: "Add meal type"), systemImage: "plus")
+                }
+                
+                Button {
+                  showingImportCSV = true
+                } label: {
+                  Label(NSLocalizedString("Import CSV", comment: "Import CSV"), systemImage: "square.and.arrow.down")
+                }
+                
+                Button {
+                  selectedTab = 1
+                } label: {
+                  Label(NSLocalizedString("Manage Food Data", comment: "Manage food data"), systemImage: "list.bullet.clipboard")
+                }
+                
+                Button {
+                  showingSettings = true
+                } label: {
+                  Label(NSLocalizedString("Settings", comment: "Settings"), systemImage: "gearshape")
+                }
+              } label: {
+                Image(systemName: "ellipsis.circle")
+              }
+            }
+          }
+        }
+        .navigationTitle("BiteLog")
+        .sheet(
+          isPresented: Binding(
+            get: { showingAddItemFor != nil },
+            set: { if !$0 { showingAddItemFor = nil } }
+          )
+        ) {
+          if let itemInfo = showingAddItemFor {
+            AddItemView(
+              preselectedMealType: itemInfo.mealType,
+              selectedDate: itemInfo.date
+            )
+            .presentationDetents([.medium, .large])
+          }
+        }
+        .sheet(isPresented: $showingDatePicker) {
+          DatePickerSheet(selectedDate: $selectedDate, isPresented: $showingDatePicker)
+        }
+        .sheet(isPresented: $showingImportCSV) {
+          ImportCSVView()
+        }
+        .sheet(isPresented: $showingSettings) {
+          SettingsView()
         }
       }
-      .sheet(isPresented: $showingDatePicker) {
-        DatePickerSheet(selectedDate: $selectedDate, isPresented: $showingDatePicker)
+      .tabItem {
+        Label(NSLocalizedString("Log", comment: "Log"), systemImage: "book")
       }
-      .sheet(isPresented: $showingImportCSV) {
-        ImportCSVView()
+      .tag(0)
+      
+      // フード管理タブ
+      NavigationStack {
+        FoodMasterManagementView()
       }
-      .sheet(isPresented: $showingSettings) {
-        SettingsView()
+      .tabItem {
+        Label(NSLocalizedString("Food", comment: "Food"), systemImage: "list.bullet.clipboard")
       }
+      .tag(1)
     }
   }
 
