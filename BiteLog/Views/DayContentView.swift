@@ -136,7 +136,7 @@ struct DayContentView: View {
                             modelContext.delete(item)
                           }
                         } label: {
-                          Label("削除", systemImage: "trash")
+                          Label(NSLocalizedString("Delete", comment: "Delete button"), systemImage: "trash")
                         }
                       }
                   }

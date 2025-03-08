@@ -243,7 +243,7 @@ struct FoodSearchView: View {
             .foregroundColor(.secondary)
             .padding(.leading, 8)
           
-          TextField("食品を検索", text: $searchText)
+          TextField(NSLocalizedString("Search food items", comment: "Search placeholder"), text: $searchText)
             .padding(10)
             .background(Color(UIColor.secondarySystemBackground))
             .cornerRadius(10)

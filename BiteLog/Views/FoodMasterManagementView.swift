@@ -278,7 +278,7 @@ struct FoodMasterFormView: View {
           TextField(NSLocalizedString("Portion Unit (e.g. piece, g)", comment: "Portion unit"), text: $portionUnit)
         }
         
-        Section(header: Text(NSLocalizedString("Nutrition (per 1 \(portionUnit.isEmpty ? "unit" : portionUnit))", comment: "Nutrition"))) {
+        Section(header: Text(String(format: NSLocalizedString("Nutrition (per 1 %@)", comment: "Nutrition with unit"), portionUnit.isEmpty ? NSLocalizedString("unit", comment: "Default unit") : portionUnit))) {
           HStack {
             Text(NSLocalizedString("Calories", comment: "Calories"))
             Spacer()

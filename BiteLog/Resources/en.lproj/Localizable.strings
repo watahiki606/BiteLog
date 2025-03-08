@@ -32,7 +32,7 @@
 "Portion (e.g. 1 piece, 100g)" = "Portion (e.g. 1 piece, 100g)";
 "Servings (e.g. 1.5)" = "Servings (e.g. 1.5)";
 "Nutrition" = "Nutrition";
-"Search past meals" = "Search past meals";
+"Search food items" = "Search food items";
 "Add Meal" = "Add Meal";
 "Edit Meal" = "Edit Meal";
 
@@ -63,3 +63,24 @@
 // New strings for portion fields
 "Amount" = "Amount";
 "Unit" = "Unit";
+
+// Additional strings
+"Search for food" = "Search for food";
+"Register food in the food tab" = "Register food in the food tab";
+"Register new food items in the food tab" = "Register new food items in the food tab";
+"No search results found" = "No search results found";
+"Manage food" = "Manage food";
+"Manage Food Data" = "Manage Food Data";
+"Log" = "Log";
+"Food" = "Food";
+"Food Item" = "Food Item";
+"Servings:" = "Servings:";
+"Adjust the serving size to calculate the intake" = "Adjust the serving size to calculate the intake";
+"Values shown as: per serving → total based on servings" = "Values shown as: per serving → total based on servings";
+"Select food" = "Select food";
+"Nutrition (per 1 %@)" = "Nutrition (per 1 %@)";
+"unit" = "unit";
+
+// Delete confirmation
+"Delete All Data?" = "Delete All Data?";
+"Are you sure you want to delete all data? This action cannot be undone." = "Are you sure you want to delete all data? This action cannot be undone.";

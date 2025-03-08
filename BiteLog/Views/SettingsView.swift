@@ -74,12 +74,12 @@ struct SettingsView: View {
       }
       .alert(isPresented: $showingDeleteConfirmation) {
         Alert(
-          title: Text("Delete All Data?"),
-          message: Text("Are you sure you want to delete all data? This action cannot be undone."),
-          primaryButton: .destructive(Text("Delete")) {
+          title: Text(NSLocalizedString("Delete All Data?", comment: "Delete confirmation title")),
+          message: Text(NSLocalizedString("Are you sure you want to delete all data? This action cannot be undone.", comment: "Delete confirmation message")),
+          primaryButton: .destructive(Text(NSLocalizedString("Delete", comment: "Delete button"))) {
             deleteAllData()
           },
-          secondaryButton: .cancel(Text("Cancel"))
+          secondaryButton: .cancel(Text(NSLocalizedString("Cancel", comment: "Cancel button")))
         )
       }
     }
