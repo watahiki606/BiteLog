@@ -9,6 +9,7 @@ struct FoodMasterManagementView: View {
   @State private var searchText = ""
   @State private var showingAddForm = false
   @State private var selectedFoodMaster: FoodMaster?
+  @State private var deleteFoodMaster: FoodMaster?
   @State private var showingDeleteConfirmation = false
   
   // ページネーション用
@@ -58,21 +59,15 @@ struct FoodMasterManagementView: View {
       } else {
         // フード一覧
         List {
-          ForEach(filteredFoodMasters) { foodMaster in
+          ForEach(filteredFoodMasters, id: \.self) { foodMaster in
             FoodMasterRow(foodMaster: foodMaster)
               .contentShape(Rectangle())
               .onTapGesture {
                 selectedFoodMaster = foodMaster
               }
-              .swipeActions {
-                Button(role: .destructive) {
-                  selectedFoodMaster = foodMaster
-                  showingDeleteConfirmation = true
-                } label: {
-                  Label("Delete", systemImage: "trash")
-                }
-              }
+              
           }
+          .onDelete(perform: deleteFoodMasters)
           
           // もっと読み込むボタン（検索していない場合のみ表示）
           if searchText.isEmpty && foodMasters.count > pageSize * (currentPage + 1) {
@@ -102,19 +97,16 @@ struct FoodMasterManagementView: View {
     }) { foodMaster in
       FoodMasterFormView(mode: .edit(foodMaster))
     }
-    .alert(NSLocalizedString("Delete Food Item?", comment: "Delete food item confirmation"), isPresented: $showingDeleteConfirmation) {
-      Button(NSLocalizedString("Cancel", comment: "Cancel"), role: .cancel) {}
-      Button(NSLocalizedString("Delete", comment: "Delete"), role: .destructive) {
-        if let foodMaster = selectedFoodMaster {
-          deleteFoodMaster(foodMaster)
-        }
-      }
-    } message: {
-      Text(NSLocalizedString("This will permanently delete this food item from your master data. This action cannot be undone.", comment: "Delete food item warning"))
+  }
+  
+  private func deleteFoodMasters(offsets: IndexSet) {
+    for index in offsets {
+      let foodMaster = filteredFoodMasters[index]
+      deleteFoodMasterItem(foodMaster)
     }
   }
   
-  private func deleteFoodMaster(_ foodMaster: FoodMaster) {
+  private func deleteFoodMasterItem(_ foodMaster: FoodMaster) {
     // 関連するLogItemを検索
     let foodMasterId = foodMaster.id
     let descriptor = FetchDescriptor<LogItem>(
