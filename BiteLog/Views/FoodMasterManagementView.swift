@@ -2,15 +2,12 @@ import SwiftData
 import SwiftUI
 
 struct FoodMasterManagementView: View {
-  @Environment(\.dismiss) var dismiss
   @Environment(\.modelContext) private var modelContext
   @Query private var foodMasters: [FoodMaster]
   
   @State private var searchText = ""
   @State private var showingAddForm = false
   @State private var selectedFoodMaster: FoodMaster?
-  @State private var deleteFoodMaster: FoodMaster?
-  @State private var showingDeleteConfirmation = false
   
   // ページネーション用
   @State private var currentPage = 0
@@ -157,7 +154,6 @@ struct FoodMasterManagementView: View {
     
     // FoodMasterを削除
     modelContext.delete(foodMaster)
-    selectedFoodMaster = nil
   }
 }
 
@@ -401,9 +397,6 @@ extension FoodMasterFormView.FormMode: Identifiable {
     }
   }
 }
-
-// FoodMasterをIdentifiableとして扱うための拡張
-extension FoodMaster: Identifiable {}
 
 #Preview {
   FoodMasterManagementView()
