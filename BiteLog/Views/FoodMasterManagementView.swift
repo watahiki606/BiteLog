@@ -15,6 +15,7 @@ struct FoodMasterManagementView: View {
   // ページネーション用
   @State private var currentPage = 0
   private let pageSize = 20
+  @State private var isLoading = false
   
   var filteredFoodMasters: [FoodMaster] {
     if searchText.isEmpty {
@@ -65,14 +66,28 @@ struct FoodMasterManagementView: View {
               .onTapGesture {
                 selectedFoodMaster = foodMaster
               }
-              
+              .onAppear {
+                // リストの最後のアイテムが表示されたら次のページを読み込む
+                if searchText.isEmpty && foodMaster == filteredFoodMasters.last && 
+                   foodMasters.count > pageSize * (currentPage + 1) && !isLoading {
+                  loadMoreContent()
+                }
+              }
           }
           .onDelete(perform: deleteFoodMasters)
           
-          // もっと読み込むボタン（検索していない場合のみ表示）
+          // ローディングインジケーター（別のセクションとして追加）
           if searchText.isEmpty && foodMasters.count > pageSize * (currentPage + 1) {
-            Button(NSLocalizedString("Load More", comment: "Load more")) {
-              currentPage += 1
+            Section {
+              HStack {
+                Spacer()
+                if isLoading {
+                  ProgressView()
+                    .id("loadingIndicator-\(currentPage)") // 強制的に再描画させるためのID
+                } 
+                Spacer()
+              }
+              .padding(.vertical, 8)
             }
           }
         }
@@ -96,6 +111,20 @@ struct FoodMasterManagementView: View {
       selectedFoodMaster = nil
     }) { foodMaster in
       FoodMasterFormView(mode: .edit(foodMaster))
+    }
+  }
+  
+  private func loadMoreContent() {
+    guard !isLoading else { return }
+    
+    isLoading = true
+    
+    // 非同期処理をシミュレート（実際のアプリでは必要に応じて調整）
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+      withAnimation {
+        currentPage += 1
+        isLoading = false
+      }
     }
   }
   
