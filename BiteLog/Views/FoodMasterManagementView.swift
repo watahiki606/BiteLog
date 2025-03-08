@@ -117,15 +117,15 @@ struct FoodMasterManagementView: View {
         FoodMasterFormView(mode: .edit(foodMaster))
       }
     }
-    .alert("Delete Food Item?", isPresented: $showingDeleteConfirmation) {
-      Button("Cancel", role: .cancel) {}
-      Button("Delete", role: .destructive) {
+    .alert(NSLocalizedString("Delete Food Item?", comment: "Delete food item confirmation"), isPresented: $showingDeleteConfirmation) {
+      Button(NSLocalizedString("Cancel", comment: "Cancel"), role: .cancel) {}
+      Button(NSLocalizedString("Delete", comment: "Delete"), role: .destructive) {
         if let foodMaster = selectedFoodMaster {
           deleteFoodMaster(foodMaster)
         }
       }
     } message: {
-      Text("This will permanently delete this food item from your master data. This action cannot be undone.")
+      Text(NSLocalizedString("This will permanently delete this food item from your master data. This action cannot be undone.", comment: "Delete food item warning"))
     }
   }
   
