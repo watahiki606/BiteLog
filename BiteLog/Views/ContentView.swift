@@ -136,25 +136,39 @@ struct ItemRowView: View {
   @State private var showingEditSheet = false
 
   var body: some View {
-    HStack {
-      VStack(alignment: .leading) {
-        Text(item.productName)
+    VStack(alignment: .leading, spacing: 4) {
+      HStack {
+        Text("\(item.brandName) \(item.productName)")
           .font(.headline)
-        Text(item.brandName)
+        
+        Spacer()
+        
+        Text("\(item.calories, specifier: "%.0f") kcal")
           .font(.subheadline)
           .foregroundColor(.secondary)
-        Text(String(format: "%.1f %@", item.numberOfServings, item.portionUnit))
-          .font(.footnote)
+      }
+      
+      HStack {
+        Text("P: \(item.protein, specifier: "%.1f")g")
+          .font(.caption)
+          .foregroundColor(.blue)
+        
+        Text("F: \(item.fat, specifier: "%.1f")g")
+          .font(.caption)
+          .foregroundColor(.yellow)
+        
+        Text("C: \(item.carbohydrates, specifier: "%.1f")g")
+          .font(.caption)
+          .foregroundColor(.green)
+        
+        Spacer()
+        
+        Text("\(item.numberOfServings, specifier: "%.1f") \(item.portionUnit)")
+          .font(.caption)
           .foregroundColor(.secondary)
       }
-      Spacer()
-      HStack {
-        MacroView(label: "Cal", value: item.calories, color: .red)
-        MacroView(label: "P", value: item.protein, color: .blue)
-        MacroView(label: "F", value: item.fat, color: .yellow)
-        MacroView(label: "C", value: item.carbohydrates, color: .green)
-      }
     }
+    .padding(.vertical, 4)
     .contentShape(Rectangle())
     .onTapGesture {
       showingEditSheet = true
