@@ -62,20 +62,8 @@ struct AddItemView: View {
           if foodMasters.isEmpty {
             // マスターデータが0件の場合に表示するビュー
             EmptyFoodMasterPromptView(selectedTab: $selectedTab, dismiss: dismiss)
-          } else if searchText.isEmpty {
-            // 検索を促すメッセージ
-            VStack(spacing: 16) {
-              Image(systemName: "magnifyingglass")
-                .font(.system(size: 48))
-                .foregroundColor(.secondary)
-
-              Text(NSLocalizedString("Search for food", comment: "Search for food"))
-                .font(.headline)
-                .foregroundColor(.secondary)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
           } else {
-            // 検索結果一覧
+            // 検索結果一覧（検索ワードが空でも全てのアイテムを表示）
             ScrollView {
               LazyVStack(spacing: 12) {
                 ForEach(searchResults, id: \.id) { item in
@@ -108,7 +96,7 @@ struct AddItemView: View {
                   }
                 }
 
-                if searchResults.isEmpty && !searchText.isEmpty {
+                if searchResults.isEmpty && !foodMasters.isEmpty && currentOffset > 0 {
                   VStack(spacing: 16) {
                     Image(systemName: "exclamationmark.magnifyingglass")
                       .font(.system(size: 48))
@@ -167,6 +155,12 @@ struct AddItemView: View {
           hasMoreData = true
           loadMoreItems()
         }
+        .onAppear {
+          // 初回表示時にデータを読み込む
+          if searchResults.isEmpty && currentOffset == 0 {
+            loadMoreItems()
+          }
+        }
       }
     }
   }
@@ -182,20 +176,24 @@ struct AddItemView: View {
   }
 
   private func loadMoreItems() {
-    guard !searchText.isEmpty else {
-      searchResults = []
-      currentOffset = 0
-      hasMoreData = true
-      return
+    var descriptor: FetchDescriptor<FoodMaster>
+    
+    if searchText.isEmpty {
+      // 検索ワードが空の場合は全てのアイテムを取得
+      descriptor = FetchDescriptor<FoodMaster>(
+        sortBy: [SortDescriptor(\FoodMaster.productName, order: .forward)]
+      )
+    } else {
+      // 検索ワードがある場合は検索条件に合うアイテムを取得
+      descriptor = FetchDescriptor<FoodMaster>(
+        predicate: #Predicate<FoodMaster> { food in
+          food.brandName.localizedStandardContains(searchText)
+            || food.productName.localizedStandardContains(searchText)
+        },
+        sortBy: [SortDescriptor(\FoodMaster.productName, order: .forward)]
+      )
     }
-
-    var descriptor = FetchDescriptor<FoodMaster>(
-      predicate: #Predicate<FoodMaster> { food in
-        food.brandName.localizedStandardContains(searchText)
-          || food.productName.localizedStandardContains(searchText)
-      },
-      sortBy: [SortDescriptor(\FoodMaster.productName, order: .forward)]
-    )
+    
     descriptor.fetchOffset = currentOffset
     descriptor.fetchLimit = pageSize
 
