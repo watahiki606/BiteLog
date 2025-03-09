@@ -282,7 +282,7 @@ struct FoodSearchView: View {
         } else {
           // 検索結果一覧
           List {
-            ForEach(searchResults) { item in
+            ForEach(searchResults, id: \.id) { item in
               Button {
                 onSelect(item)
                 dismiss()

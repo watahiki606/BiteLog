@@ -13,7 +13,7 @@ struct SettingsView: View {
     NavigationStack {
       Form {
         Section(header: Text(NSLocalizedString("Language", comment: "Settings section"))) {
-          ForEach(AppLanguage.allCases) { language in
+          ForEach(AppLanguage.allCases, id: \.self) { language in
             Button(action: {
               if languageManager.selectedLanguage != language {
                 selectedNewLanguage = language

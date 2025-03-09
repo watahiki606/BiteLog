@@ -81,7 +81,7 @@ struct AddItemView: View {
             // 検索結果一覧
             ScrollView {
               LazyVStack(spacing: 12) {
-                ForEach(searchResults) { item in
+                ForEach(searchResults, id: \.id) { item in
                   Button {
                     addItemFromPast(item)
                     dismiss()
