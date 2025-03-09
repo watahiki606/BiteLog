@@ -7,7 +7,6 @@ struct DayContentView: View {
   let selectedDate: Date
   let onAddTapped: (Date, MealType) -> Void
   let modelContext: ModelContext
-  
   // 削除後の更新を強制するためのState
   @State private var refreshID = UUID()
 
@@ -140,12 +139,11 @@ struct DayContentView: View {
                   .onDelete(perform: { indexSet in
                     // 削除対象のアイテムを取得
                     let itemsToDelete = indexSet.map { mealItems[$0] }
-                    
                     // アイテムを削除
                     for item in itemsToDelete {
                       modelContext.delete(item)
                     }
-                    
+
                     // 変更を保存
                     do {
                       try modelContext.save()
@@ -155,11 +153,17 @@ struct DayContentView: View {
                       print("Error saving after deletion: \(error)")
                     }
                   })
+                  EmptyMealView(mealType: mealType) {
+                    onAddTapped(date, mealType)
+                  }
+                  .listRowBackground(Color.clear)
+                  .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+
                 }
                 .scrollDisabled(true)
                 .listStyle(.plain)
-                .frame(height: CGFloat(mealItems.count) * 110)
-                .id(refreshID) // リストを強制的に再描画
+                .frame(height: CGFloat(mealItems.count + 1) * 58)
+                .id(refreshID)  // リストを強制的に再描画
               }
             }
             .padding(.vertical, 8)
