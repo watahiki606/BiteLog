@@ -75,7 +75,7 @@ struct DayContentView: View {
 
           // 食事リスト
           ForEach(MealType.allCases, id: \.self) { mealType in
-            VStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 8) {
               // セクションヘッダー
               HStack {
                 Text(mealType.localizedName)
@@ -114,9 +114,11 @@ struct DayContentView: View {
                   NutrientBadge(
                     value: totals.carbs, unit: "g", name: "C", color: .green, icon: "c.circle.fill")
                 }
-                .padding(.vertical, 8)
+                .padding(.vertical, 4)
                 .padding(.horizontal)
               }
+
+              Divider()
 
               // 食事アイテム
               let mealItems = filteredItems.filter { $0.mealType == mealType }
@@ -136,7 +138,9 @@ struct DayContentView: View {
                             modelContext.delete(item)
                           }
                         } label: {
-                          Label(NSLocalizedString("Delete", comment: "Delete button"), systemImage: "trash")
+                          Label(
+                            NSLocalizedString("Delete", comment: "Delete button"),
+                            systemImage: "trash")
                         }
                       }
                   }

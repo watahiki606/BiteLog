@@ -62,16 +62,19 @@ struct AddItemView: View {
               Image(systemName: "magnifyingglass")
                 .font(.system(size: 48))
                 .foregroundColor(.secondary)
-              
+
               Text(NSLocalizedString("Search for food", comment: "Search for food"))
                 .font(.headline)
                 .foregroundColor(.secondary)
-              
-              Text(NSLocalizedString("Register food in the food tab", comment: "Register food in the food tab"))
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
+
+              Text(
+                NSLocalizedString(
+                  "Register food in the food tab", comment: "Register food in the food tab")
+              )
+              .font(.subheadline)
+              .foregroundColor(.secondary)
+              .multilineTextAlignment(.center)
+              .padding(.horizontal)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
           } else {
@@ -83,16 +86,18 @@ struct AddItemView: View {
                     addItemFromPast(item)
                     dismiss()
                   } label: {
-                    PastItemCard(item: item, onSelect: { foodMaster, servings in
-                      let newLogItem = LogItem(
-                        timestamp: date,
-                        mealType: mealType,
-                        numberOfServings: servings,
-                        foodMaster: foodMaster
-                      )
-                      modelContext.insert(newLogItem)
-                      dismiss()
-                    })
+                    PastItemCard(
+                      item: item,
+                      onSelect: { foodMaster, servings in
+                        let newLogItem = LogItem(
+                          timestamp: date,
+                          mealType: mealType,
+                          numberOfServings: servings,
+                          foodMaster: foodMaster
+                        )
+                        modelContext.insert(newLogItem)
+                        dismiss()
+                      })
                   }
                   .buttonStyle(ScaleButtonStyle())
                   .onAppear {
@@ -105,22 +110,29 @@ struct AddItemView: View {
                     }
                   }
                 }
-                
+
                 if searchResults.isEmpty && !searchText.isEmpty {
                   VStack(spacing: 16) {
                     Image(systemName: "exclamationmark.magnifyingglass")
                       .font(.system(size: 48))
                       .foregroundColor(.secondary)
-                    
-                    Text(NSLocalizedString("No search results found", comment: "No search results message"))
-                      .font(.headline)
-                      .foregroundColor(.secondary)
-                    
-                    Text(NSLocalizedString("Register new food items in the food tab", comment: "No search results message"))
-                      .font(.subheadline)
-                      .foregroundColor(.secondary)
-                      .multilineTextAlignment(.center)
-                      .padding(.horizontal)
+
+                    Text(
+                      NSLocalizedString(
+                        "No search results found", comment: "No search results message")
+                    )
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+
+                    Text(
+                      NSLocalizedString(
+                        "Register new food items in the food tab",
+                        comment: "No search results message")
+                    )
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
                   }
                   .frame(maxWidth: .infinity)
                   .padding(.vertical, 40)
@@ -199,9 +211,6 @@ struct PastItemCard: View {
           Text("\(item.brandName) \(item.productName)")
             .font(.headline)
 
-          Text("\(item.portionUnit)")
-            .font(.subheadline)
-            .foregroundColor(.secondary)
         }
 
         Spacer()
@@ -223,7 +232,7 @@ struct PastItemCard: View {
         Text("Servings:")
           .font(.subheadline)
           .foregroundColor(.secondary)
-        
+
         TextField("1.0", text: $numberOfServings)
           .keyboardType(.decimalPad)
           .frame(width: 60)
@@ -231,13 +240,13 @@ struct PastItemCard: View {
           .padding(4)
           .background(Color(UIColor.secondarySystemBackground))
           .cornerRadius(4)
-        
+
         Text(item.portionUnit)
           .font(.subheadline)
           .foregroundColor(.secondary)
-          
+
         Spacer()
-        
+
         Button(action: {
           onSelect(item, Double(numberOfServings) ?? 1.0)
         }) {

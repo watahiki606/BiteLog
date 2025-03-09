@@ -225,20 +225,15 @@ struct NutrientBadge: View {
   let icon: String
 
   var body: some View {
-    VStack(spacing: 2) {
-      HStack(spacing: 3) {
-        Text(name)
-          .font(.system(size: 12, weight: .medium))
-      }
-      .foregroundColor(color.opacity(0.8))
-
+    HStack(spacing: 2) {
+      Text(name)
+        .font(.system(size: 12, weight: .medium))
+        .foregroundColor(color.opacity(0.8))
+      
       Text("\(value, specifier: value >= 100 ? "%.0f" : "%.1f")\(unit)")
         .font(.system(size: 13, weight: .medium))
     }
-    .frame(maxWidth: .infinity)
-    .padding(.vertical, 5)
-    .background(color.opacity(0.06))
-    .cornerRadius(4)
+    .padding(.vertical, 2)
   }
 }
 
