@@ -3,7 +3,8 @@ import SwiftUI
 
 struct FoodMasterManagementView: View {
   @Environment(\.modelContext) private var modelContext
-  @Query private var foodMasters: [FoodMaster]
+  @State private var foodMasters: [FoodMaster] = []
+  @State private var isDataLoaded = false
   
   @State private var searchText = ""
   @State private var showingAddForm = false
@@ -13,20 +14,13 @@ struct FoodMasterManagementView: View {
   @State private var currentPage = 0
   private let pageSize = 20
   @State private var isLoading = false
+  @State private var hasMoreData = true
   
   // キーボードを閉じるためのFocusStateを追加
   @FocusState private var searchFieldIsFocused: Bool
   
-  var filteredFoodMasters: [FoodMaster] {
-    if searchText.isEmpty {
-      return Array(foodMasters.prefix(pageSize * (currentPage + 1)))
-    } else {
-      return foodMasters.filter { foodMaster in
-        foodMaster.brandName.localizedCaseInsensitiveContains(searchText) ||
-        foodMaster.productName.localizedCaseInsensitiveContains(searchText)
-      }
-    }
-  }
+  // 検索テキストが変更されたときのタイマー
+  @State private var searchDebounceTimer: Timer?
   
   var body: some View {
     VStack {
@@ -44,10 +38,19 @@ struct FoodMasterManagementView: View {
           .onTapGesture {
             searchFieldIsFocused = true // 明示的にフォーカスを設定
           }
+          .onChange(of: searchText) { oldValue, newValue in
+            // 検索テキストが変更されたら、タイマーをリセットして新しいタイマーを設定
+            searchDebounceTimer?.invalidate()
+            searchDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { _ in
+              // タイマーが発火したら検索を実行
+              resetAndSearch()
+            }
+          }
         
         if !searchText.isEmpty {
           Button(action: {
             searchText = ""
+            resetAndSearch()
           }) {
             Image(systemName: "xmark.circle.fill")
               .foregroundColor(.secondary)
@@ -60,6 +63,7 @@ struct FoodMasterManagementView: View {
           Button(NSLocalizedString("Cancel", comment: "Cancel search")) {
             searchText = ""
             searchFieldIsFocused = false // キーボードを閉じる
+            resetAndSearch()
           }
           .transition(.move(edge: .trailing).combined(with: .opacity))
         }
@@ -67,13 +71,17 @@ struct FoodMasterManagementView: View {
       .padding(.horizontal)
       .padding(.top, 8)
       
-      if foodMasters.isEmpty {
+      if !isDataLoaded {
+        // データロード中の表示
+        ProgressView()
+          .padding()
+      } else if foodMasters.isEmpty {
         // フードが0件の場合に表示する登録促進ビュー
         EmptyFoodMasterView(showAddForm: $showingAddForm)
       } else {
         // フード一覧
         List {
-          ForEach(filteredFoodMasters, id: \.self) { foodMaster in
+          ForEach(foodMasters, id: \.self) { foodMaster in
             FoodMasterRow(foodMaster: foodMaster)
               .contentShape(Rectangle())
               .onTapGesture {
@@ -83,8 +91,7 @@ struct FoodMasterManagementView: View {
               }
               .onAppear {
                 // リストの最後のアイテムが表示されたら次のページを読み込む
-                if searchText.isEmpty && foodMaster == filteredFoodMasters.last && 
-                   foodMasters.count > pageSize * (currentPage + 1) && !isLoading {
+                if foodMaster == foodMasters.last && hasMoreData && !isLoading {
                   loadMoreContent()
                 }
               }
@@ -92,7 +99,7 @@ struct FoodMasterManagementView: View {
           .onDelete(perform: deleteFoodMasters)
           
           // ローディングインジケーター（別のセクションとして追加）
-          if searchText.isEmpty && foodMasters.count > pageSize * (currentPage + 1) {
+          if hasMoreData {
             Section {
               HStack {
                 Spacer()
@@ -119,33 +126,97 @@ struct FoodMasterManagementView: View {
         }
       }
     }
-    .sheet(isPresented: $showingAddForm) {
+    .sheet(isPresented: $showingAddForm, onDismiss: {
+      // フォームが閉じられたら再度データをロード
+      resetAndSearch()
+    }) {
       FoodMasterFormView(mode: .add)
     }
     .sheet(item: $selectedFoodMaster, onDismiss: {
       selectedFoodMaster = nil
+      // 編集フォームが閉じられたら再度データをロード
+      resetAndSearch()
     }) { foodMaster in
       FoodMasterFormView(mode: .edit(foodMaster))
+    }
+    .onAppear {
+      // 画面が表示されたときにデータをロード
+      loadFoodMasters()
+    }
+  }
+  
+  private func resetAndSearch() {
+    // 検索条件が変更されたら、ページをリセットして最初から検索
+    currentPage = 0
+    foodMasters = []
+    hasMoreData = true
+    loadFoodMasters()
+  }
+  
+  private func loadFoodMasters() {
+    print("DEBUG: Loading food masters... Page: \(currentPage), Search: \(searchText)")
+    
+    guard !isLoading else { return }
+    isLoading = true
+    isDataLoaded = false
+    
+    // FetchDescriptorを使用してデータをロード
+    let sortDescriptors = [
+      SortDescriptor(\FoodMaster.usageCount, order: .reverse),
+      SortDescriptor(\FoodMaster.lastUsedDate, order: .reverse),
+      SortDescriptor(\FoodMaster.productName, order: .forward)
+    ]
+    
+    var descriptor = FetchDescriptor<FoodMaster>(sortBy: sortDescriptors)
+    
+    // 検索条件がある場合は絞り込み
+    if !searchText.isEmpty {
+      descriptor.predicate = #Predicate<FoodMaster> { foodMaster in
+        foodMaster.brandName.localizedStandardContains(searchText) || 
+        foodMaster.productName.localizedStandardContains(searchText)
+      }
+    }
+    
+    // ページネーション設定
+    descriptor.fetchLimit = pageSize
+    descriptor.fetchOffset = currentPage * pageSize
+    
+    do {
+      let newItems = try modelContext.fetch(descriptor)
+      
+      // 新しいアイテムを追加
+      withAnimation {
+        if currentPage == 0 {
+          foodMasters = newItems
+        } else {
+          foodMasters.append(contentsOf: newItems)
+        }
+        
+        // 次のページがあるかどうかを判定
+        hasMoreData = newItems.count == pageSize
+        
+        isDataLoaded = true
+        isLoading = false
+      }
+      
+      print("DEBUG: Loaded \(newItems.count) food masters for page \(currentPage)")
+    } catch {
+      print("ERROR: Error fetching food masters: \(error)")
+      isLoading = false
+      isDataLoaded = true
     }
   }
   
   private func loadMoreContent() {
-    guard !isLoading else { return }
+    guard !isLoading && hasMoreData else { return }
     
-    isLoading = true
-    
-    // 非同期処理をシミュレート（実際のアプリでは必要に応じて調整）
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-      withAnimation {
-        currentPage += 1
-        isLoading = false
-      }
-    }
+    currentPage += 1
+    loadFoodMasters()
   }
   
   private func deleteFoodMasters(offsets: IndexSet) {
     for index in offsets {
-      let foodMaster = filteredFoodMasters[index]
+      let foodMaster = foodMasters[index]
       deleteFoodMasterItem(foodMaster)
     }
   }
@@ -153,6 +224,11 @@ struct FoodMasterManagementView: View {
   private func deleteFoodMasterItem(_ foodMaster: FoodMaster) {
     // FoodMasterManagerを使用して安全に削除
     FoodMasterManager.safeDeleteFoodMaster(foodMaster: foodMaster, modelContext: modelContext)
+    
+    // 削除後にリストを更新
+    if let index = foodMasters.firstIndex(where: { $0.id == foodMaster.id }) {
+      foodMasters.remove(at: index)
+    }
   }
 }
 
