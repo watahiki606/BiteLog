@@ -180,8 +180,13 @@ struct AddItemView: View {
     
     if searchText.isEmpty {
       // 検索ワードが空の場合は全てのアイテムを取得
+      // 使用頻度の高い順にソート、同じ使用頻度の場合は最後に使用された日時の新しい順
       descriptor = FetchDescriptor<FoodMaster>(
-        sortBy: [SortDescriptor(\FoodMaster.productName, order: .forward)]
+        sortBy: [
+          SortDescriptor(\FoodMaster.usageCount, order: .reverse),
+          SortDescriptor(\FoodMaster.lastUsedDate, order: .reverse),
+          SortDescriptor(\FoodMaster.productName, order: .forward)
+        ]
       )
     } else {
       // 検索ワードがある場合は検索条件に合うアイテムを取得
@@ -190,7 +195,11 @@ struct AddItemView: View {
           food.brandName.localizedStandardContains(searchText)
             || food.productName.localizedStandardContains(searchText)
         },
-        sortBy: [SortDescriptor(\FoodMaster.productName, order: .forward)]
+        sortBy: [
+          SortDescriptor(\FoodMaster.usageCount, order: .reverse),
+          SortDescriptor(\FoodMaster.lastUsedDate, order: .reverse),
+          SortDescriptor(\FoodMaster.productName, order: .forward)
+        ]
       )
     }
     

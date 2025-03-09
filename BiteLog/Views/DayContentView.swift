@@ -141,6 +141,8 @@ struct DayContentView: View {
                     let itemsToDelete = indexSet.map { mealItems[$0] }
                     // アイテムを削除
                     for item in itemsToDelete {
+                      // FoodMasterの使用頻度をデクリメント
+                      FoodMasterManager.decrementUsageCountForLogItemDeletion(logItem: item, modelContext: modelContext)
                       modelContext.delete(item)
                     }
 
