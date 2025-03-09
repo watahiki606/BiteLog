@@ -59,12 +59,30 @@ struct DayContentView: View {
               )
 
               NutrientRow(
-                label: NSLocalizedString("Carbs", comment: "Nutrient label"),
+                label: NSLocalizedString("Sugar", comment: "Nutrient label"),
+                value: dailyTotals.sugar,
+                unit: "g",
+                format: "%.1f",
+                icon: "s.circle.fill",
+                color: .green
+              )
+              
+              NutrientRow(
+                label: NSLocalizedString("Dietary Fiber", comment: "Nutrient label"),
+                value: dailyTotals.fiber,
+                unit: "g",
+                format: "%.1f",
+                icon: "leaf.circle.fill",
+                color: .brown
+              )
+              
+              NutrientRow(
+                label: NSLocalizedString("Carbs (Sugar + Fiber)", comment: "Nutrient label"),
                 value: dailyTotals.carbs,
                 unit: "g",
                 format: "%.1f",
                 icon: "c.circle.fill",
-                color: .green
+                color: .gray
               )
             }
             .padding(.vertical, 8)
@@ -114,7 +132,9 @@ struct DayContentView: View {
                   NutrientBadge(
                     value: totals.fat, unit: "g", name: "F", color: .yellow, icon: "f.circle.fill")
                   NutrientBadge(
-                    value: totals.carbs, unit: "g", name: "C", color: .green, icon: "c.circle.fill")
+                    value: totals.sugar, unit: "g", name: "S", color: .green, icon: "s.circle.fill")
+                  NutrientBadge(
+                    value: totals.fiber, unit: "g", name: "Fiber", color: .brown, icon: "leaf.circle.fill")
                 }
                 .padding(.vertical, 4)
                 .padding(.horizontal)
@@ -197,28 +217,32 @@ struct DayContentView: View {
     return (try? modelContext.fetch(descriptor)) ?? []
   }
 
-  private var dailyTotals: (calories: Double, protein: Double, fat: Double, carbs: Double) {
-    filteredItems.reduce((0, 0, 0, 0)) { result, item in
+  private var dailyTotals: (calories: Double, protein: Double, fat: Double, sugar: Double, fiber: Double, carbs: Double) {
+    filteredItems.reduce((0, 0, 0, 0, 0, 0)) { result, item in
       (
         result.0 + item.calories,
         result.1 + item.protein,
         result.2 + item.fat,
-        result.3 + item.carbohydrates
+        result.3 + item.sugar,
+        result.4 + item.dietaryFiber,
+        result.5 + item.carbohydrates
       )
     }
   }
 
   // 各食事タイプごとのPFC合計を計算する関数
   private func mealTypeTotals(for mealType: MealType) -> (
-    calories: Double, protein: Double, fat: Double, carbs: Double
+    calories: Double, protein: Double, fat: Double, sugar: Double, fiber: Double, carbs: Double
   ) {
     let mealItems = filteredItems.filter { $0.mealType == mealType }
-    return mealItems.reduce((0, 0, 0, 0)) { result, item in
+    return mealItems.reduce((0, 0, 0, 0, 0, 0)) { result, item in
       (
         result.0 + item.calories,
         result.1 + item.protein,
         result.2 + item.fat,
-        result.3 + item.carbohydrates
+        result.3 + item.sugar,
+        result.4 + item.dietaryFiber,
+        result.5 + item.carbohydrates
       )
     }
   }

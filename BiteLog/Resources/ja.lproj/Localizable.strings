@@ -100,3 +100,10 @@
 "You need to register food items before you can add meals." = "フードを登録してからフードを追加できます。";
 "Go to Food Management" = "フード管理に移動";
 "Register new food items in the food tab" = "フードタブで新しいフードを登録";
+"Carbs (Sugar + Fiber)" = "炭水化物（糖質 + 食物繊維）";
+"Carbohydrates (Sugar + Fiber)" = "炭水化物（糖質 + 食物繊維）";
+"Dietary Fiber" = "食物繊維";
+"Sugar" = "糖質";
+"Carbohydrates" = "炭水化物";
+"Carbs" = "炭水化物";
+

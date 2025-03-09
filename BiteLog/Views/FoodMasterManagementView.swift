@@ -322,9 +322,13 @@ struct FoodMasterRow: View {
           .font(.caption)
           .foregroundColor(.yellow)
 
-        Text("C: \(foodMaster.carbohydrates, specifier: "%.1f")g")
+        Text("S: \(foodMaster.sugar, specifier: "%.1f")g")
           .font(.caption)
           .foregroundColor(.green)
+          
+        Text("Fiber: \(foodMaster.dietaryFiber, specifier: "%.1f")g")
+          .font(.caption)
+          .foregroundColor(.brown)
 
         Spacer()
 
@@ -351,7 +355,8 @@ struct FoodMasterFormView: View {
   @State private var brandName = ""
   @State private var productName = ""
   @State private var calories = ""
-  @State private var carbohydrates = ""
+  @State private var sugar = ""
+  @State private var dietaryFiber = ""
   @State private var fat = ""
   @State private var protein = ""
   @State private var portionUnit = ""
@@ -411,12 +416,31 @@ struct FoodMasterFormView: View {
           }
 
           HStack {
-            Text(NSLocalizedString("Carbohydrates", comment: "Carbohydrates"))
+            Text(NSLocalizedString("Sugar", comment: "Sugar"))
             Spacer()
-            TextField(NSLocalizedString("0", comment: "0"), text: $carbohydrates)
+            TextField(NSLocalizedString("0", comment: "0"), text: $sugar)
               .keyboardType(.decimalPad)
               .multilineTextAlignment(.trailing)
             Text(NSLocalizedString("g", comment: "g"))
+          }
+          
+          HStack {
+            Text(NSLocalizedString("Dietary Fiber", comment: "Dietary Fiber"))
+            Spacer()
+            TextField(NSLocalizedString("0", comment: "0"), text: $dietaryFiber)
+              .keyboardType(.decimalPad)
+              .multilineTextAlignment(.trailing)
+            Text(NSLocalizedString("g", comment: "g"))
+          }
+          
+          // 炭水化物の合計を表示（編集不可）
+          HStack {
+            Text(NSLocalizedString("Carbohydrates (Sugar + Fiber)", comment: "Carbohydrates"))
+            Spacer()
+            Text(String(format: "%.1f", (Double(sugar) ?? 0) + (Double(dietaryFiber) ?? 0)))
+              .foregroundColor(.secondary)
+            Text(NSLocalizedString("g", comment: "g"))
+              .foregroundColor(.secondary)
           }
         }
       }
@@ -442,7 +466,8 @@ struct FoodMasterFormView: View {
           brandName = foodMaster.brandName
           productName = foodMaster.productName
           calories = String(format: "%.1f", foodMaster.calories)
-          carbohydrates = String(format: "%.1f", foodMaster.carbohydrates)
+          sugar = String(format: "%.1f", foodMaster.sugar)
+          dietaryFiber = String(format: "%.1f", foodMaster.dietaryFiber)
           fat = String(format: "%.1f", foodMaster.fat)
           protein = String(format: "%.1f", foodMaster.protein)
           portionUnit = foodMaster.portionUnit
@@ -454,7 +479,8 @@ struct FoodMasterFormView: View {
   private func saveFoodMaster() {
     // 入力値を数値に変換
     let caloriesValue = Double(calories) ?? 0
-    let carbohydratesValue = Double(carbohydrates) ?? 0
+    let sugarValue = Double(sugar) ?? 0
+    let dietaryFiberValue = Double(dietaryFiber) ?? 0
     let fatValue = Double(fat) ?? 0
     let proteinValue = Double(protein) ?? 0
 
@@ -465,7 +491,8 @@ struct FoodMasterFormView: View {
         brandName: brandName,
         productName: productName,
         calories: caloriesValue,
-        carbohydrates: carbohydratesValue,
+        sugar: sugarValue,
+        dietaryFiber: dietaryFiberValue,
         fat: fatValue,
         protein: proteinValue,
         portionUnit: portionUnit,
@@ -478,18 +505,20 @@ struct FoodMasterFormView: View {
       foodMaster.brandName = brandName
       foodMaster.productName = productName
       foodMaster.calories = caloriesValue
-      foodMaster.carbohydrates = carbohydratesValue
+      foodMaster.sugar = sugarValue
+      foodMaster.dietaryFiber = dietaryFiberValue
       foodMaster.fat = fatValue
       foodMaster.protein = proteinValue
       foodMaster.portionUnit = portionUnit
 
       // uniqueKeyも更新
       let caloriesStr = String(format: "%.2f", caloriesValue)
-      let carbsStr = String(format: "%.2f", carbohydratesValue)
+      let sugarStr = String(format: "%.2f", sugarValue)
+      let fiberStr = String(format: "%.2f", dietaryFiberValue)
       let fatStr = String(format: "%.2f", fatValue)
       let proteinStr = String(format: "%.2f", proteinValue)
       foodMaster.uniqueKey =
-        "\(brandName)|\(productName)|\(caloriesStr)|\(carbsStr)|\(fatStr)|\(proteinStr)|\(portionUnit)"
+        "\(brandName)|\(productName)|\(caloriesStr)|\(sugarStr)|\(fiberStr)|\(fatStr)|\(proteinStr)|\(portionUnit)"
     }
   }
 }

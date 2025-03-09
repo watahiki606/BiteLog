@@ -43,11 +43,20 @@ struct EditItemView: View {
     return "0.00"
   }
   
-  private var carbohydrates: String {
+  private var sugar: String {
     if let foodMaster = foodMaster {
-      return String(format: "%.2f", foodMaster.carbohydrates)
-    } else if item.isMasterDeleted, let backupCarbohydrates = item.backupCarbohydrates {
-      return String(format: "%.2f", backupCarbohydrates)
+      return String(format: "%.2f", foodMaster.sugar)
+    } else if item.isMasterDeleted, let backupSugar = item.backupSugar {
+      return String(format: "%.2f", backupSugar)
+    }
+    return "0.00"
+  }
+  
+  private var dietaryFiber: String {
+    if let foodMaster = foodMaster {
+      return String(format: "%.2f", foodMaster.dietaryFiber)
+    } else if item.isMasterDeleted, let backupDietaryFiber = item.backupDietaryFiber {
+      return String(format: "%.2f", backupDietaryFiber)
     }
     return "0.00"
   }
@@ -83,13 +92,26 @@ struct EditItemView: View {
     return 0
   }
   
-  private var totalCarbs: Double {
+  private var totalSugar: Double {
     if let foodMaster = foodMaster {
-      return foodMaster.carbohydrates * servingsValue
-    } else if item.isMasterDeleted, let backupCarbohydrates = item.backupCarbohydrates {
-      return backupCarbohydrates * servingsValue
+      return foodMaster.sugar * servingsValue
+    } else if item.isMasterDeleted, let backupSugar = item.backupSugar {
+      return backupSugar * servingsValue
     }
     return 0
+  }
+  
+  private var totalDietaryFiber: Double {
+    if let foodMaster = foodMaster {
+      return foodMaster.dietaryFiber * servingsValue
+    } else if item.isMasterDeleted, let backupDietaryFiber = item.backupDietaryFiber {
+      return backupDietaryFiber * servingsValue
+    }
+    return 0
+  }
+  
+  private var totalCarbs: Double {
+    return totalSugar + totalDietaryFiber
   }
 
   init(item: LogItem) {
@@ -239,11 +261,54 @@ struct EditItemView: View {
                   EditNutrientRow(
                     icon: "c.circle.fill",
                     iconColor: .green,
-                    label: NSLocalizedString("Carbs", comment: "Nutrient label"),
-                    value: carbohydrates,
-                    totalValue: totalCarbs,
+                    label: NSLocalizedString("Sugar", comment: "Nutrient label"),
+                    value: sugar,
+                    totalValue: totalSugar,
                     unit: "g"
                   )
+                  
+                  EditNutrientRow(
+                    icon: "leaf.circle.fill",
+                    iconColor: .brown,
+                    label: NSLocalizedString("Dietary Fiber", comment: "Nutrient label"),
+                    value: dietaryFiber,
+                    totalValue: totalDietaryFiber,
+                    unit: "g"
+                  )
+                  
+                  // 炭水化物の合計を表示
+                  HStack {
+                    Image(systemName: "c.circle.fill")
+                      .foregroundColor(.gray)
+                      .frame(width: 24)
+                    
+                    Text(NSLocalizedString("Carbs (Sugar + Fiber)", comment: "Nutrient label"))
+                      .foregroundColor(.secondary)
+                    
+                    Spacer()
+                    
+                    Text(String(format: "%.2f", Double(sugar)! + Double(dietaryFiber)!))
+                      .multilineTextAlignment(.trailing)
+                      .foregroundColor(.secondary)
+                    
+                    Text("g")
+                      .foregroundColor(.secondary)
+                      .frame(width: 20, alignment: .leading)
+                    
+                    Text("→")
+                      .foregroundColor(.secondary)
+                      .padding(.horizontal, 4)
+                    
+                    Text(String(format: "%.2f", totalCarbs))
+                      .foregroundColor(.secondary)
+                    
+                    Text("g")
+                      .foregroundColor(.secondary)
+                  }
+                  .padding(.vertical, 12)
+                  .padding(.horizontal, 12)
+                  .background(Color(UIColor.secondarySystemBackground))
+                  .cornerRadius(10)
                 }
               }
             }

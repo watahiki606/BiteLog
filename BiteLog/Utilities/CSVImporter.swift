@@ -56,15 +56,16 @@ class CSVImporter {
   }
   
   // FoodMasterの一意性を確認するためのユニークキーを生成するヘルパーメソッド
-  private static func createUniqueKey(brandName: String, productName: String, calories: Double, carbs: Double, fat: Double, protein: Double, portionUnit: String) -> String {
+  private static func createUniqueKey(brandName: String, productName: String, calories: Double, sugar: Double, dietaryFiber: Double, fat: Double, protein: Double, portionUnit: String) -> String {
     // 数値は小数点以下2桁に丸めて文字列化
     let caloriesStr = String(format: "%.2f", calories)
-    let carbsStr = String(format: "%.2f", carbs)
+    let sugarStr = String(format: "%.2f", sugar)
+    let fiberStr = String(format: "%.2f", dietaryFiber)
     let fatStr = String(format: "%.2f", fat)
     let proteinStr = String(format: "%.2f", protein)
     
     // すべての栄養素を含めた文字列を作成
-    return "\(brandName)|\(productName)|\(caloriesStr)|\(carbsStr)|\(fatStr)|\(proteinStr)|\(portionUnit)"
+    return "\(brandName)|\(productName)|\(caloriesStr)|\(sugarStr)|\(fiberStr)|\(fatStr)|\(proteinStr)|\(portionUnit)"
   }
 
   static func importCSV(
@@ -133,6 +134,7 @@ class CSVImporter {
     let productNameIndex = headers.firstIndex(of: "product_name") ?? 3
     let caloriesIndex = headers.firstIndex(of: "calories") ?? 4
     let carbsIndex = headers.firstIndex(of: "carbs") ?? 5
+    let dietaryFiberIndex = headers.firstIndex(of: "dietary_fiber") // 食物繊維のインデックス（存在しない場合はnil）
     let fatIndex = headers.firstIndex(of: "fat") ?? 6
     let proteinIndex = headers.firstIndex(of: "protein") ?? 7
     let portionAmountIndex = headers.firstIndex(of: "portion_amount") ?? 8
@@ -179,6 +181,17 @@ class CSVImporter {
         let cleanedCarbs = columns[carbsIndex]
           .replacingOccurrences(of: "\"", with: "")
           .replacingOccurrences(of: ",", with: "")
+        
+        // 食物繊維の値を取得（存在しない場合は0）
+        let cleanedDietaryFiber: String
+        if let fiberIndex = dietaryFiberIndex, fiberIndex < columns.count {
+          cleanedDietaryFiber = columns[fiberIndex]
+            .replacingOccurrences(of: "\"", with: "")
+            .replacingOccurrences(of: ",", with: "")
+        } else {
+          cleanedDietaryFiber = "0"
+        }
+        
         let cleanedFat = columns[fatIndex]
           .replacingOccurrences(of: "\"", with: "")
           .replacingOccurrences(of: ",", with: "")
@@ -194,13 +207,17 @@ class CSVImporter {
         // 数値に変換
         let calories = Double(cleanedCalories) ?? 0
         let carbs = Double(cleanedCarbs) ?? 0
+        let dietaryFiber = Double(cleanedDietaryFiber) ?? 0
+        // 糖質 = 炭水化物 - 食物繊維（食物繊維が炭水化物より大きい場合は0）
+        let sugar = max(0, carbs - dietaryFiber)
         let fat = Double(cleanedFat) ?? 0
         let protein = Double(cleanedProtein) ?? 0
         let portionAmount = Double(cleanedPortionAmount) ?? 0  // Double型に変換
 
         // 1portion_unitあたりの栄養価を計算（portion_amountが1になるように正規化）
         let caloriesPerUnit = portionAmount > 0 ? calories / portionAmount : calories
-        let carbsPerUnit = portionAmount > 0 ? carbs / portionAmount : carbs
+        let sugarPerUnit = portionAmount > 0 ? sugar / portionAmount : sugar
+        let fiberPerUnit = portionAmount > 0 ? dietaryFiber / portionAmount : dietaryFiber
         let fatPerUnit = portionAmount > 0 ? fat / portionAmount : fat
         let proteinPerUnit = portionAmount > 0 ? protein / portionAmount : protein
         
@@ -212,7 +229,8 @@ class CSVImporter {
             brandName: columns[brandNameIndex],
             productName: columns[productNameIndex],
             calories: caloriesPerUnit,
-            carbs: carbsPerUnit,
+            sugar: sugarPerUnit,
+            dietaryFiber: fiberPerUnit,
             fat: fatPerUnit,
             protein: proteinPerUnit,
             portionUnit: portionUnit
@@ -227,7 +245,8 @@ class CSVImporter {
               brandName: columns[brandNameIndex],
               productName: columns[productNameIndex],
               calories: caloriesPerUnit,
-              carbohydrates: carbsPerUnit,
+              sugar: sugarPerUnit,
+              dietaryFiber: fiberPerUnit,
               fat: fatPerUnit,
               protein: proteinPerUnit,
               portionUnit: portionUnit,

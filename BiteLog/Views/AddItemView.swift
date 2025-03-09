@@ -288,7 +288,8 @@ struct PastItemCard: View {
       HStack(spacing: 8) {
         MacroNutrientBadge(label: "P", value: item.protein, color: .blue)
         MacroNutrientBadge(label: "F", value: item.fat, color: .yellow)
-        MacroNutrientBadge(label: "C", value: item.carbohydrates, color: .green)
+        MacroNutrientBadge(label: "S", value: item.sugar, color: .green)
+        MacroNutrientBadge(label: "Fiber", value: item.dietaryFiber, color: .brown)
       }
 
       HStack {

@@ -13,7 +13,8 @@ final class LogItem {
   var backupBrandName: String?
   var backupProductName: String?
   var backupCalories: Double?
-  var backupCarbohydrates: Double?
+  var backupSugar: Double?
+  var backupDietaryFiber: Double?
   var backupFat: Double?
   var backupProtein: Double?
   var backupPortionUnit: String?
@@ -47,13 +48,26 @@ final class LogItem {
     return 0
   }
   
-  var carbohydrates: Double {
+  var sugar: Double {
     if let foodMaster = foodMaster {
-      return foodMaster.carbohydrates * numberOfServings
-    } else if let backupCarbohydrates = backupCarbohydrates {
-      return backupCarbohydrates * numberOfServings
+      return foodMaster.sugar * numberOfServings
+    } else if let backupSugar = backupSugar {
+      return backupSugar * numberOfServings
     }
     return 0
+  }
+  
+  var dietaryFiber: Double {
+    if let foodMaster = foodMaster {
+      return foodMaster.dietaryFiber * numberOfServings
+    } else if let backupDietaryFiber = backupDietaryFiber {
+      return backupDietaryFiber * numberOfServings
+    }
+    return 0
+  }
+  
+  var carbohydrates: Double {
+    return sugar + dietaryFiber
   }
   
   var portion: Double {
@@ -99,7 +113,8 @@ final class LogItem {
       self.backupBrandName = food.brandName
       self.backupProductName = food.productName
       self.backupCalories = food.calories
-      self.backupCarbohydrates = food.carbohydrates
+      self.backupSugar = food.sugar
+      self.backupDietaryFiber = food.dietaryFiber
       self.backupFat = food.fat
       self.backupProtein = food.protein
       self.backupPortionUnit = food.portionUnit
@@ -117,7 +132,8 @@ final class LogItem {
       self.backupBrandName = food.brandName
       self.backupProductName = food.productName
       self.backupCalories = food.calories
-      self.backupCarbohydrates = food.carbohydrates
+      self.backupSugar = food.sugar
+      self.backupDietaryFiber = food.dietaryFiber
       self.backupFat = food.fat
       self.backupProtein = food.protein
       self.backupPortionUnit = food.portionUnit

@@ -10,7 +10,8 @@ final class FoodMaster {
   var brandName: String
   var productName: String
   var calories: Double
-  var carbohydrates: Double
+  var dietaryFiber: Double // 食物繊維を追加
+  var sugar: Double // 糖質を追加
   var fat: Double
   var protein: Double
   var portionUnit: String
@@ -20,16 +21,22 @@ final class FoodMaster {
   // 使用頻度関連のプロパティ
   var usageCount: Int = 0  // 使用回数
   var lastUsedDate: Date?  // 最後に使用された日時
+  
+  // 炭水化物は食物繊維と糖質の合計として計算
+  var carbohydrates: Double {
+    return sugar + dietaryFiber
+  }
 
   init(
     id: UUID = UUID(), brandName: String, productName: String, calories: Double,
-    carbohydrates: Double, fat: Double, protein: Double, portionUnit: String, portion: Double
+    sugar: Double, dietaryFiber: Double, fat: Double, protein: Double, portionUnit: String, portion: Double
   ) {
     self.id = id
     self.brandName = brandName
     self.productName = productName
     self.calories = calories
-    self.carbohydrates = carbohydrates
+    self.sugar = sugar
+    self.dietaryFiber = dietaryFiber
     self.fat = fat
     self.protein = protein
     self.portionUnit = portionUnit
@@ -37,11 +44,12 @@ final class FoodMaster {
 
     // 栄養素に基づく一意キーを生成
     let caloriesStr = String(format: "%.2f", calories)
-    let carbsStr = String(format: "%.2f", carbohydrates)
+    let sugarStr = String(format: "%.2f", sugar)
+    let fiberStr = String(format: "%.2f", dietaryFiber)
     let fatStr = String(format: "%.2f", fat)
     let proteinStr = String(format: "%.2f", protein)
     self.uniqueKey =
-      "\(brandName)|\(productName)|\(caloriesStr)|\(carbsStr)|\(fatStr)|\(proteinStr)|\(portionUnit)"
+      "\(brandName)|\(productName)|\(caloriesStr)|\(sugarStr)|\(fiberStr)|\(fatStr)|\(proteinStr)|\(portionUnit)"
   }
 
   // 使用頻度を更新するメソッド
