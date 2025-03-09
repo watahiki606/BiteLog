@@ -337,11 +337,6 @@ struct FoodSearchView: View {
               .font(.headline)
               .foregroundColor(.secondary)
             
-            Text(NSLocalizedString("Register food in the food tab", comment: "Search for food"))
-              .font(.subheadline)
-              .foregroundColor(.secondary)
-              .multilineTextAlignment(.center)
-              .padding(.horizontal)
           }
           .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {

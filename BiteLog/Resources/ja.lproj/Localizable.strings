@@ -34,8 +34,8 @@
 "Search food items" = "フードを検索";
 "Add Meal" = "フードを追加";
 "Edit Meal" = "フードを編集";
-"Edit Food Item" = "フード情報を編集";
-"Add Food Item" = "フード情報を追加";
+"Edit Food Item" = "フードを編集";
+"Add Food Item" = "フードを追加";
 "Brand Name" = "ブランド名";
 "Product Name" = "商品名";
 "Portion Unit (e.g. piece, g)" = "量の単位 (例: 個, g)";
@@ -45,10 +45,10 @@
 "Calories" = "カロリー";
 "DATA MANAGEMENT" = "データ管理";
 "Delete All Data" = "すべてのデータを削除";
-"No Food Items" = "フード情報がありません";
-"Add your first food item to start tracking your nutrition." = "フード情報を追加して栄養成分を記録を開始します。";
-"Delete Food Item?" = "フード情報を削除しますか？";
-"This will permanently delete this food item from your master data and all related log entries. This action cannot be undone." = "このフード情報をマスターデータから完全に削除します。関連するログエントリも削除されます。この操作は元に戻すことができません。";
+"No Food Items" = "フードがありません";
+"Add your first food item to start tracking your nutrition." = "フードを追加して栄養成分を記録を開始します。";
+"Delete Food Item?" = "フードを削除しますか？";
+
 
 // Import CSV
 "CSV File Format:" = "CSVファイルのフォーマット:";
@@ -78,14 +78,13 @@
 "Amount" = "数量";
 "Unit" = "単位";
 "Search for food" = "フードを検索";
-"Register food in the food tab" = "フードをフードタブに登録";
-"Register new food items in the food tab" = "新しいフードをフードタブで登録";
+"Add new food items from the food tab" = "フードタブから新しいフードを登録";
 "No search results found" = "検索結果が見つかりません";
 "Manage food" = "フードを管理";
 "Manage Food Data" = "フードデータを管理";
 "Log" = "ログ";
 "Food" = "フード";
-"Food Item" = "フード情報";
+"Food Item" = "フード";
 "Servings:" = "数量:";
 "Adjust the serving size to calculate the intake" = "摂取量を計算するために数量を調整してください";
 "Values shown as: per serving → total based on servings" = "表示値: 1食分 → 合計摂取量";
@@ -97,3 +96,7 @@
 "Delete All Data?" = "すべてのデータを削除しますか？";
 "Are you sure you want to delete all data? This action cannot be undone." = "すべてのデータを削除してもよろしいですか？この操作は元に戻せません。";
 "(Deleted)" = "（削除済み）";
+"No Food Items Registered" = "フードが登録されていません";
+"You need to register food items before you can add meals." = "フードを登録してからフードを追加できます。";
+"Go to Food Management" = "フード管理に移動";
+"Register new food items in the food tab" = "フードタブで新しいフードを登録";

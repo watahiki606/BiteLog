@@ -176,6 +176,7 @@ struct EmptyFoodMasterView: View {
         .multilineTextAlignment(.center)
         .foregroundColor(.secondary)
         .padding(.horizontal, 40)
+        .lineLimit(nil)
       
       Button {
         showAddForm = true

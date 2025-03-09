@@ -91,7 +91,8 @@ struct ContentView: View {
           if let itemInfo = showingAddItemFor {
             AddItemView(
               preselectedMealType: itemInfo.mealType,
-              selectedDate: itemInfo.date
+              selectedDate: itemInfo.date,
+              selectedTab: $selectedTab
             )
             .presentationDetents([.medium, .large])
           }

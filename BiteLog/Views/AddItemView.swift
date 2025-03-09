@@ -4,6 +4,8 @@ import SwiftUI
 struct AddItemView: View {
   @Environment(\.dismiss) var dismiss
   @Environment(\.modelContext) private var modelContext
+  @Query private var foodMasters: [FoodMaster]
+  @Binding var selectedTab: Int
 
   let mealType: MealType
   var selectedDate: Date
@@ -16,10 +18,11 @@ struct AddItemView: View {
   @State private var hasMoreData = true
   private let pageSize = 100
 
-  init(preselectedMealType: MealType, selectedDate: Date) {
+  init(preselectedMealType: MealType, selectedDate: Date, selectedTab: Binding<Int>) {
     self.mealType = preselectedMealType
     self.selectedDate = selectedDate
     _date = State(initialValue: selectedDate)
+    _selectedTab = selectedTab
   }
 
   var body: some View {
@@ -56,7 +59,10 @@ struct AddItemView: View {
           .padding(.horizontal)
           .padding(.top, 8)
 
-          if searchText.isEmpty {
+          if foodMasters.isEmpty {
+            // マスターデータが0件の場合に表示するビュー
+            EmptyFoodMasterPromptView(selectedTab: $selectedTab, dismiss: dismiss)
+          } else if searchText.isEmpty {
             // 検索を促すメッセージ
             VStack(spacing: 16) {
               Image(systemName: "magnifyingglass")
@@ -66,15 +72,6 @@ struct AddItemView: View {
               Text(NSLocalizedString("Search for food", comment: "Search for food"))
                 .font(.headline)
                 .foregroundColor(.secondary)
-
-              Text(
-                NSLocalizedString(
-                  "Register food in the food tab", comment: "Register food in the food tab")
-              )
-              .font(.subheadline)
-              .foregroundColor(.secondary)
-              .multilineTextAlignment(.center)
-              .padding(.horizontal)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
           } else {
@@ -133,6 +130,22 @@ struct AddItemView: View {
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
+                    .lineLimit(nil)
+                    
+                    // 検索結果がない場合にもマスターデータ登録画面タブへのボタンを表示
+                    Button {
+                      dismiss()
+                      selectedTab = 1  // フード管理タブに切り替え
+                    } label: {
+                      Text(NSLocalizedString("Go to Food Management", comment: "Go to food management button"))
+                        .fontWeight(.semibold)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                    }
+                    .padding(.top, 10)
                   }
                   .frame(maxWidth: .infinity)
                   .padding(.vertical, 40)
@@ -195,6 +208,49 @@ struct AddItemView: View {
       currentOffset += newItems.count
       hasMoreData = newItems.count == pageSize
     }
+  }
+}
+
+// マスターデータが0件の場合に表示するビュー
+struct EmptyFoodMasterPromptView: View {
+  @Binding var selectedTab: Int
+  var dismiss: DismissAction
+  
+  var body: some View {
+    VStack(spacing: 10) {
+      Spacer()
+      
+      Image(systemName: "fork.knife")
+        .font(.system(size: 48))
+        .foregroundColor(.secondary)
+      
+      Text(NSLocalizedString("No Food Items Registered", comment: "No food items"))
+        .font(.title2)
+        .fontWeight(.bold)
+      
+      Text(NSLocalizedString("You need to register food items before you can add meals.", comment: "Register food prompt"))
+        .multilineTextAlignment(.center)
+        .foregroundColor(.secondary)
+        .padding(.horizontal, 40)
+        .lineLimit(nil)
+      
+      Button {
+        dismiss()
+        selectedTab = 1  // フード管理タブに切り替え
+      } label: {
+        Text(NSLocalizedString("Go to Food Management", comment: "Go to food management button"))
+          .fontWeight(.semibold)
+          .padding(.horizontal, 20)
+          .padding(.vertical, 10)
+          .background(Color.blue)
+          .foregroundColor(.white)
+          .cornerRadius(10)
+      }
+      .padding(.top, 10)
+      
+      Spacer()
+    }
+    .padding()
   }
 }
 
