@@ -17,19 +17,39 @@ struct EditItemView: View {
   
   // 栄養素の値を計算プロパティとして定義
   private var calories: String {
-    return String(format: "%.2f", foodMaster?.calories ?? 0)
+    if let foodMaster = foodMaster {
+      return String(format: "%.2f", foodMaster.calories)
+    } else if item.isMasterDeleted, let backupCalories = item.backupCalories {
+      return String(format: "%.2f", backupCalories)
+    }
+    return "0.00"
   }
   
   private var protein: String {
-    return String(format: "%.2f", foodMaster?.protein ?? 0)
+    if let foodMaster = foodMaster {
+      return String(format: "%.2f", foodMaster.protein)
+    } else if item.isMasterDeleted, let backupProtein = item.backupProtein {
+      return String(format: "%.2f", backupProtein)
+    }
+    return "0.00"
   }
   
   private var fat: String {
-    return String(format: "%.2f", foodMaster?.fat ?? 0)
+    if let foodMaster = foodMaster {
+      return String(format: "%.2f", foodMaster.fat)
+    } else if item.isMasterDeleted, let backupFat = item.backupFat {
+      return String(format: "%.2f", backupFat)
+    }
+    return "0.00"
   }
   
   private var carbohydrates: String {
-    return String(format: "%.2f", foodMaster?.carbohydrates ?? 0)
+    if let foodMaster = foodMaster {
+      return String(format: "%.2f", foodMaster.carbohydrates)
+    } else if item.isMasterDeleted, let backupCarbohydrates = item.backupCarbohydrates {
+      return String(format: "%.2f", backupCarbohydrates)
+    }
+    return "0.00"
   }
   
   private var servingsValue: Double {
@@ -37,19 +57,39 @@ struct EditItemView: View {
   }
   
   private var totalCalories: Double {
-    return (foodMaster?.calories ?? 0) * servingsValue
+    if let foodMaster = foodMaster {
+      return foodMaster.calories * servingsValue
+    } else if item.isMasterDeleted, let backupCalories = item.backupCalories {
+      return backupCalories * servingsValue
+    }
+    return 0
   }
   
   private var totalProtein: Double {
-    return (foodMaster?.protein ?? 0) * servingsValue
+    if let foodMaster = foodMaster {
+      return foodMaster.protein * servingsValue
+    } else if item.isMasterDeleted, let backupProtein = item.backupProtein {
+      return backupProtein * servingsValue
+    }
+    return 0
   }
   
   private var totalFat: Double {
-    return (foodMaster?.fat ?? 0) * servingsValue
+    if let foodMaster = foodMaster {
+      return foodMaster.fat * servingsValue
+    } else if item.isMasterDeleted, let backupFat = item.backupFat {
+      return backupFat * servingsValue
+    }
+    return 0
   }
   
   private var totalCarbs: Double {
-    return (foodMaster?.carbohydrates ?? 0) * servingsValue
+    if let foodMaster = foodMaster {
+      return foodMaster.carbohydrates * servingsValue
+    } else if item.isMasterDeleted, let backupCarbohydrates = item.backupCarbohydrates {
+      return backupCarbohydrates * servingsValue
+    }
+    return 0
   }
 
   init(item: LogItem) {
@@ -76,8 +116,33 @@ struct EditItemView: View {
                       Text("\(foodMaster.brandName) \(foodMaster.productName)")
                         .font(.headline)
                         .lineLimit(2)
-                      
-                      
+                    }
+                    
+                    Spacer()
+                  }
+                  .padding(.vertical, 8)
+                  .padding(.horizontal, 12)
+                  .background(Color(UIColor.secondarySystemBackground))
+                  .cornerRadius(10)
+                } else if item.isMasterDeleted {
+                  // 削除されたFoodMasterの情報を表示
+                  HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                      HStack {
+                        Text("\(item.backupBrandName ?? "") \(item.backupProductName ?? "")")
+                          .font(.headline)
+                          .lineLimit(2)
+                          .foregroundColor(.secondary)
+                          .strikethrough()
+                        
+                        Text(NSLocalizedString("(Deleted)", comment: "Deleted food master indicator"))
+                          .font(.caption)
+                          .foregroundColor(.red)
+                          .padding(.horizontal, 4)
+                          .padding(.vertical, 2)
+                          .background(Color.red.opacity(0.1))
+                          .cornerRadius(4)
+                      }
                     }
                     
                     Spacer()
@@ -135,7 +200,7 @@ struct EditItemView: View {
             }
 
             // 栄養素カード
-            if foodMaster != nil {
+            if foodMaster != nil || item.isMasterDeleted {
               CardView(title: NSLocalizedString("Nutrition", comment: "Form section title")) {
                 VStack(spacing: 16) {
                   Text(NSLocalizedString("Values shown as: per serving → total based on servings", comment: "Nutrition explanation"))
@@ -198,7 +263,7 @@ struct EditItemView: View {
               Text(NSLocalizedString("Save", comment: "Button title"))
                 .bold()
             }
-            .disabled(foodMaster == nil || numberOfServings.isEmpty || Double(numberOfServings) == 0)
+            .disabled((foodMaster == nil && !item.isMasterDeleted) || numberOfServings.isEmpty || Double(numberOfServings) == 0)
           }
         }
         .sheet(isPresented: $showingFoodSearch) {

@@ -96,3 +96,4 @@
 // Delete confirmation
 "Delete All Data?" = "すべてのデータを削除しますか？";
 "Are you sure you want to delete all data? This action cannot be undone." = "すべてのデータを削除してもよろしいですか？この操作は元に戻せません。";
+"(Deleted)" = "（削除済み）";

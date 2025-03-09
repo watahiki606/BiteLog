@@ -138,8 +138,24 @@ struct ItemRowView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 4) {
       HStack {
-        Text("\(item.brandName) \(item.productName)")
-          .font(.headline)
+        if item.isMasterDeleted {
+          // 削除されたFoodMasterの場合、削除済みであることを示す
+          Text("\(item.brandName) \(item.productName)")
+            .font(.headline)
+            .foregroundColor(.secondary)
+            .strikethrough() // 取り消し線を追加
+          
+          Text(NSLocalizedString("(Deleted)", comment: "Deleted food master indicator"))
+            .font(.caption)
+            .foregroundColor(.red)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 2)
+            .background(Color.red.opacity(0.1))
+            .cornerRadius(4)
+        } else {
+          Text("\(item.brandName) \(item.productName)")
+            .font(.headline)
+        }
         
         Spacer()
         

@@ -151,27 +151,8 @@ struct FoodMasterManagementView: View {
   }
   
   private func deleteFoodMasterItem(_ foodMaster: FoodMaster) {
-    // 関連するLogItemを検索
-    let foodMasterId = foodMaster.id
-    let descriptor = FetchDescriptor<LogItem>(
-      predicate: #Predicate<LogItem> { logItem in
-        if let itemFoodMaster = logItem.foodMaster {
-          return itemFoodMaster.id == foodMasterId
-        } else {
-          return false
-        }
-      }
-    )
-    
-    if let relatedLogItems = try? modelContext.fetch(descriptor), !relatedLogItems.isEmpty {
-      // 関連するLogItemがある場合は、FoodMasterへの参照をnilに設定
-      for logItem in relatedLogItems {
-        logItem.foodMaster = nil
-      }
-    }
-    
-    // FoodMasterを削除
-    modelContext.delete(foodMaster)
+    // FoodMasterManagerを使用して安全に削除
+    FoodMasterManager.safeDeleteFoodMaster(foodMaster: foodMaster, modelContext: modelContext)
   }
 }
 

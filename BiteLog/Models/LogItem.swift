@@ -7,37 +7,81 @@ final class LogItem {
   var mealType: MealType
   var numberOfServings: Double
   @Relationship var foodMaster: FoodMaster?  // FoodMasterへのリレーションシップ
+  
+  // FoodMasterが削除された場合のバックアップデータ
+  var backupFoodId: UUID?
+  var backupBrandName: String?
+  var backupProductName: String?
+  var backupCalories: Double?
+  var backupCarbohydrates: Double?
+  var backupFat: Double?
+  var backupProtein: Double?
+  var backupPortionUnit: String?
+  var backupPortion: Double?
+  var isMasterDeleted: Bool = false
 
   var calories: Double {
-    return (foodMaster?.calories ?? 0) * numberOfServings
+    if let foodMaster = foodMaster {
+      return foodMaster.calories * numberOfServings
+    } else if let backupCalories = backupCalories {
+      return backupCalories * numberOfServings
+    }
+    return 0
   }
   
   var protein: Double {
-    return (foodMaster?.protein ?? 0) * numberOfServings
+    if let foodMaster = foodMaster {
+      return foodMaster.protein * numberOfServings
+    } else if let backupProtein = backupProtein {
+      return backupProtein * numberOfServings
+    }
+    return 0
   }
   
   var fat: Double {
-    return (foodMaster?.fat ?? 0) * numberOfServings
+    if let foodMaster = foodMaster {
+      return foodMaster.fat * numberOfServings
+    } else if let backupFat = backupFat {
+      return backupFat * numberOfServings
+    }
+    return 0
   }
   
   var carbohydrates: Double {
-    return (foodMaster?.carbohydrates ?? 0) * numberOfServings
+    if let foodMaster = foodMaster {
+      return foodMaster.carbohydrates * numberOfServings
+    } else if let backupCarbohydrates = backupCarbohydrates {
+      return backupCarbohydrates * numberOfServings
+    }
+    return 0
   }
   
   var portion: Double {
-    return foodMaster?.portion ?? 0
+    if let foodMaster = foodMaster {
+      return foodMaster.portion
+    }
+    return backupPortion ?? 0
   }
   
   var brandName: String {
-    return foodMaster?.brandName ?? ""
+    if let foodMaster = foodMaster {
+      return foodMaster.brandName
+    }
+    return backupBrandName ?? ""
   }
   
   var productName: String {
-    return foodMaster?.productName ?? ""
+    if let foodMaster = foodMaster {
+      return foodMaster.productName
+    }
+    return backupProductName ?? ""
   }
   
   var portionUnit: String {
-    return foodMaster?.portionUnit ?? ""
+    if let foodMaster = foodMaster {
+      return foodMaster.portionUnit
+    }
+    return backupPortionUnit ?? ""
   }
 
   init(
@@ -48,5 +92,34 @@ final class LogItem {
     self.mealType = mealType
     self.numberOfServings = numberOfServings
     self.foodMaster = foodMaster
+    
+    // FoodMasterの情報をバックアップ
+    if let food = foodMaster {
+      self.backupFoodId = food.id
+      self.backupBrandName = food.brandName
+      self.backupProductName = food.productName
+      self.backupCalories = food.calories
+      self.backupCarbohydrates = food.carbohydrates
+      self.backupFat = food.fat
+      self.backupProtein = food.protein
+      self.backupPortionUnit = food.portionUnit
+      self.backupPortion = food.portion
+    }
+  }
+  
+  // FoodMasterが削除される前に呼び出すメソッド
+  func backupFoodMasterData() {
+    if let food = foodMaster {
+      self.backupFoodId = food.id
+      self.backupBrandName = food.brandName
+      self.backupProductName = food.productName
+      self.backupCalories = food.calories
+      self.backupCarbohydrates = food.carbohydrates
+      self.backupFat = food.fat
+      self.backupProtein = food.protein
+      self.backupPortionUnit = food.portionUnit
+      self.backupPortion = food.portion
+      self.isMasterDeleted = true
+    }
   }
 }
