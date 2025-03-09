@@ -130,7 +130,7 @@ struct DayContentView: View {
                 }
               } else {
                 List {
-                  ForEach(mealItems) { item in
+                  ForEach(mealItems, id: \.id) { item in
                     ItemRowView(item: item)
                       .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
                       .listRowBackground(Color.clear)
