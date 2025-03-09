@@ -7,6 +7,9 @@ struct DayContentView: View {
   let selectedDate: Date
   let onAddTapped: (Date, MealType) -> Void
   let modelContext: ModelContext
+  
+  // 削除後の更新を強制するためのState
+  @State private var refreshID = UUID()
 
   var body: some View {
     VStack {
@@ -132,28 +135,31 @@ struct DayContentView: View {
                     ItemRowView(item: item)
                       .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
                       .listRowBackground(Color.clear)
-                      .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) {
-                          withAnimation {
-                            modelContext.delete(item)
-                          }
-                        } label: {
-                          Label(
-                            NSLocalizedString("Delete", comment: "Delete button"),
-                            systemImage: "trash")
-                        }
-                      }
+
                   }
                   .onDelete(perform: { indexSet in
-                    for index in indexSet {
-                      modelContext.delete(mealItems[index])
+                    // 削除対象のアイテムを取得
+                    let itemsToDelete = indexSet.map { mealItems[$0] }
+                    
+                    // アイテムを削除
+                    for item in itemsToDelete {
+                      modelContext.delete(item)
+                    }
+                    
+                    // 変更を保存
+                    do {
+                      try modelContext.save()
+                      // 更新を強制するためにrefreshIDを更新
+                      refreshID = UUID()
+                    } catch {
+                      print("Error saving after deletion: \(error)")
                     }
                   })
                 }
                 .scrollDisabled(true)
                 .listStyle(.plain)
                 .frame(height: CGFloat(mealItems.count) * 110)
-                .background(Color.clear)
+                .id(refreshID) // リストを強制的に再描画
               }
             }
             .padding(.vertical, 8)
