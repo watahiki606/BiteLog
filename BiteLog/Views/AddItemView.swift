@@ -4,7 +4,6 @@ import SwiftUI
 struct AddItemView: View {
   @Environment(\.dismiss) var dismiss
   @Environment(\.modelContext) private var modelContext
-  @Query private var foodMasters: [FoodMaster]
   @Binding var selectedTab: Int
 
   let mealType: MealType
@@ -14,9 +13,20 @@ struct AddItemView: View {
   @State private var numberOfServings: String = "1.0"
   @State private var date: Date
   @State private var searchResults: [FoodMaster] = []
-  @State private var currentOffset = 0
+  @State private var isDataLoaded = false
+  @State private var isInitialLoading = true  // 初回ロード用のフラグ
+  
+  // ページネーション用
+  @State private var currentPage = 0
+  @State private var isLoading = false
   @State private var hasMoreData = true
-  private let pageSize = 100
+  private let pageSize = 20  // ページサイズを小さくする
+  
+  // キーボードを閉じるためのFocusState
+  @FocusState private var searchFieldIsFocused: Bool
+  
+  // 検索テキストが変更されたときのタイマー
+  @State private var searchDebounceTimer: Timer?
 
   init(preselectedMealType: MealType, selectedDate: Date, selectedTab: Binding<Int>) {
     self.mealType = preselectedMealType
@@ -45,101 +55,139 @@ struct AddItemView: View {
             .padding(10)
             .background(Color(UIColor.secondarySystemBackground))
             .cornerRadius(10)
+            .focused($searchFieldIsFocused)  // FocusStateを設定
+            .onTapGesture {
+              searchFieldIsFocused = true  // 明示的にフォーカスを設定
+            }
+            .onChange(of: searchText) { oldValue, newValue in
+              // 検索テキストが変更されたら、タイマーをリセットして新しいタイマーを設定
+              searchDebounceTimer?.invalidate()
+              searchDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+                // タイマーが発火したら検索を実行
+                resetAndSearch()
+              }
+            }
 
             if !searchText.isEmpty {
               Button(action: {
                 searchText = ""
+                resetAndSearch()
               }) {
                 Image(systemName: "xmark.circle.fill")
                   .foregroundColor(.secondary)
                   .padding(.trailing, 8)
               }
             }
+            
+            // 検索中の場合のみCancelボタンを表示
+            if searchFieldIsFocused {
+              Button(NSLocalizedString("Cancel", comment: "Cancel search")) {
+                searchText = ""
+                searchFieldIsFocused = false  // キーボードを閉じる
+                resetAndSearch()
+              }
+              .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
           }
           .padding(.horizontal)
           .padding(.top, 8)
 
-          if foodMasters.isEmpty {
+          if isInitialLoading {
+            // 初回データロード中の表示
+            ProgressView()
+              .padding()
+          } else if searchResults.isEmpty && !isDataLoaded {
             // マスターデータが0件の場合に表示するビュー
             EmptyFoodMasterPromptView(selectedTab: $selectedTab, dismiss: dismiss)
           } else {
-            // 検索結果一覧（検索ワードが空でも全てのアイテムを表示）
-            ScrollView {
-              LazyVStack(spacing: 12) {
-                ForEach(searchResults, id: \.id) { item in
-                  Button {
-                    addItemFromPast(item)
-                    dismiss()
-                  } label: {
-                    PastItemCard(
-                      item: item,
-                      onSelect: { foodMaster, servings in
-                        let newLogItem = LogItem(
-                          timestamp: date,
-                          mealType: mealType,
-                          numberOfServings: servings,
-                          foodMaster: foodMaster
-                        )
-                        modelContext.insert(newLogItem)
-                        dismiss()
-                      })
-                  }
-                  .buttonStyle(ScaleButtonStyle())
-                  .onAppear {
-                    if searchResults.index(searchResults.endIndex, offsetBy: -2)
-                      == searchResults.firstIndex(of: item)
-                    {
-                      if hasMoreData {
-                        loadMoreItems()
-                      }
-                    }
-                  }
-                }
-
-                if searchResults.isEmpty && !foodMasters.isEmpty && currentOffset > 0 {
-                  VStack(spacing: 16) {
-                    Image(systemName: "exclamationmark.magnifyingglass")
-                      .font(.system(size: 48))
-                      .foregroundColor(.secondary)
-
-                    Text(
-                      NSLocalizedString(
-                        "No search results found", comment: "No search results message")
-                    )
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-
-                    Text(
-                      NSLocalizedString(
-                        "Register new food items in the food tab",
-                        comment: "No search results message")
-                    )
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-                    .lineLimit(nil)
-                    
-                    // 検索結果がない場合にもマスターデータ登録画面タブへのボタンを表示
-                    Button {
+            // 検索結果一覧
+            List {
+              ForEach(searchResults, id: \.id) { item in
+                Button {
+                  addItemFromPast(item)
+                  dismiss()
+                } label: {
+                  PastItemCard(
+                    item: item,
+                    onSelect: { foodMaster, servings in
+                      let newLogItem = LogItem(
+                        timestamp: date,
+                        mealType: mealType,
+                        numberOfServings: servings,
+                        foodMaster: foodMaster
+                      )
+                      modelContext.insert(newLogItem)
                       dismiss()
-                      selectedTab = 1  // フード管理タブに切り替え
-                    } label: {
-                      Text(NSLocalizedString("Go to Food Management", comment: "Go to food management button"))
-                        .fontWeight(.semibold)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 10)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                    }
-                    .padding(.top, 10)
+                    })
+                }
+                .buttonStyle(ScaleButtonStyle())
+                .onAppear {
+                  // リストの最後のアイテムが表示されたら次のページを読み込む
+                  if item == searchResults.last && hasMoreData && !isLoading {
+                    loadMoreContent()
                   }
-                  .frame(maxWidth: .infinity)
-                  .padding(.vertical, 40)
                 }
               }
-              .padding()
+              
+              // ローディングインジケーター
+              if hasMoreData {
+                Section {
+                  HStack {
+                    Spacer()
+                    if isLoading {
+                      ProgressView()
+                    }
+                    Spacer()
+                  }
+                  .padding(.vertical, 8)
+                  .id("loadingIndicator")  // IDを固定して不要な再描画を防止
+                }
+              }
+            }
+            .listStyle(.insetGrouped)
+            
+            // 検索結果がない場合のメッセージ
+            if searchResults.isEmpty && isDataLoaded {
+              VStack(spacing: 16) {
+                Image(systemName: "exclamationmark.magnifyingglass")
+                  .font(.system(size: 48))
+                  .foregroundColor(.secondary)
+
+                Text(
+                  NSLocalizedString(
+                    "No search results found", comment: "No search results message")
+                )
+                .font(.headline)
+                .foregroundColor(.secondary)
+
+                Text(
+                  NSLocalizedString(
+                    "Register new food items in the food tab",
+                    comment: "No search results message")
+                )
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+                .lineLimit(nil)
+                
+                // 検索結果がない場合にもマスターデータ登録画面タブへのボタンを表示
+                Button {
+                  dismiss()
+                  selectedTab = 1  // フード管理タブに切り替え
+                } label: {
+                  Text(NSLocalizedString("Go to Food Management", comment: "Go to food management button"))
+                    .fontWeight(.semibold)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                }
+                .padding(.top, 10)
+              }
+              .frame(maxWidth: .infinity)
+              .padding(.vertical, 40)
             }
           }
         }
@@ -149,62 +197,90 @@ struct AddItemView: View {
             Button(NSLocalizedString("Cancel", comment: "Button title")) { dismiss() }
           }
         }
-        .onChange(of: searchText) { _, _ in
-          searchResults = []
-          currentOffset = 0
-          hasMoreData = true
-          loadMoreItems()
-        }
         .onAppear {
-          // 初回表示時にデータを読み込む
-          if searchResults.isEmpty && currentOffset == 0 {
-            loadMoreItems()
+          // 画面が表示されたときにデータをロード
+          if !isDataLoaded {
+            loadFoodMasters()
           }
         }
       }
     }
   }
 
-  private func loadMoreItems() {
-    var descriptor: FetchDescriptor<FoodMaster>
-    
-    if searchText.isEmpty {
-      // 検索ワードが空の場合は全てのアイテムを取得
-      // 使用頻度の高い順にソート、同じ使用頻度の場合は最後に使用された日時の新しい順
-      descriptor = FetchDescriptor<FoodMaster>(
-        sortBy: [
-          SortDescriptor(\FoodMaster.usageCount, order: .reverse),
-          SortDescriptor(\FoodMaster.lastUsedDate, order: .reverse),
-          SortDescriptor(\FoodMaster.productName, order: .forward)
-        ]
-      )
-    } else {
-      // 検索ワードがある場合は検索条件に合うアイテムを取得
-      descriptor = FetchDescriptor<FoodMaster>(
-        predicate: #Predicate<FoodMaster> { food in
-          food.brandName.localizedStandardContains(searchText)
-            || food.productName.localizedStandardContains(searchText)
-        },
-        sortBy: [
-          SortDescriptor(\FoodMaster.usageCount, order: .reverse),
-          SortDescriptor(\FoodMaster.lastUsedDate, order: .reverse),
-          SortDescriptor(\FoodMaster.productName, order: .forward)
-        ]
-      )
-    }
-    
-    descriptor.fetchOffset = currentOffset
-    descriptor.fetchLimit = pageSize
+  private func resetAndSearch() {
+    // 検索条件が変更されたら、ページをリセットして最初から検索
+    isInitialLoading = true  // 検索時は初回ロード状態に戻す
+    currentPage = 0
+    searchResults = []
+    hasMoreData = true
+    loadFoodMasters()
+  }
 
-    if let newItems = try? modelContext.fetch(descriptor) {
-      if currentOffset == 0 {
-        searchResults = newItems
-      } else {
-        searchResults.append(contentsOf: newItems)
+  private func loadFoodMasters() {
+    guard !isLoading else { return }
+    isLoading = true
+
+    // FetchDescriptorを使用してデータをロード
+    let sortDescriptors = [
+      SortDescriptor(\FoodMaster.usageCount, order: .reverse),
+      SortDescriptor(\FoodMaster.lastUsedDate, order: .reverse),
+      SortDescriptor(\FoodMaster.productName, order: .forward),
+    ]
+
+    var descriptor = FetchDescriptor<FoodMaster>(sortBy: sortDescriptors)
+
+    // 検索条件がある場合は絞り込み
+    if !searchText.isEmpty {
+      descriptor.predicate = #Predicate<FoodMaster> { foodMaster in
+        foodMaster.brandName.localizedStandardContains(searchText)
+          || foodMaster.productName.localizedStandardContains(searchText)
       }
-      currentOffset += newItems.count
-      hasMoreData = newItems.count == pageSize
     }
+
+    // ページネーション設定
+    descriptor.fetchLimit = pageSize
+    descriptor.fetchOffset = currentPage * pageSize
+
+    Task {
+      do {
+        // バックグラウンドスレッドでデータをフェッチ
+        let newItems = try modelContext.fetch(descriptor)
+
+        // メインスレッドでUIを更新
+        await MainActor.run {
+          // 新しいアイテムを追加
+          if currentPage == 0 {
+            // 最初のページの場合は置き換え
+            withAnimation(.easeInOut(duration: 0.3)) {
+              searchResults = newItems
+            }
+          } else {
+            // 追加ページの場合は追加
+            searchResults.append(contentsOf: newItems)
+          }
+
+          // 次のページがあるかどうかを判定
+          hasMoreData = newItems.count == pageSize
+
+          isDataLoaded = true
+          isInitialLoading = false
+          isLoading = false
+        }
+      } catch {
+        await MainActor.run {
+          isLoading = false
+          isDataLoaded = true
+          isInitialLoading = false
+        }
+      }
+    }
+  }
+
+  private func loadMoreContent() {
+    guard !isLoading && hasMoreData else { return }
+
+    currentPage += 1
+    loadFoodMasters()
   }
 
   private func addItemFromPast(_ foodMasterItem: FoodMaster) {

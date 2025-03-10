@@ -44,7 +44,7 @@ struct FoodMasterManagementView: View {
         .onChange(of: searchText) { oldValue, newValue in
           // 検索テキストが変更されたら、タイマーをリセットして新しいタイマーを設定
           searchDebounceTimer?.invalidate()
-          searchDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { _ in
+          searchDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
             // タイマーが発火したら検索を実行
             resetAndSearch()
           }
