@@ -10,8 +10,8 @@ final class FoodMaster {
   var brandName: String
   var productName: String
   var calories: Double
-  var dietaryFiber: Double // 食物繊維を追加
-  var sugar: Double // 糖質を追加
+  var dietaryFiber: Double  // 食物繊維を追加
+  var sugar: Double  // 糖質を追加
   var fat: Double
   var protein: Double
   var portionUnit: String
@@ -21,7 +21,8 @@ final class FoodMaster {
   // 使用頻度関連のプロパティ
   var usageCount: Int = 0  // 使用回数
   var lastUsedDate: Date?  // 最後に使用された日時
-  
+  var lastNumberOfServings: Double = 1.0  // 最後に使用したサービング数
+
   // 炭水化物は食物繊維と糖質の合計として計算
   var carbohydrates: Double {
     return sugar + dietaryFiber
@@ -29,7 +30,8 @@ final class FoodMaster {
 
   init(
     id: UUID = UUID(), brandName: String, productName: String, calories: Double,
-    sugar: Double, dietaryFiber: Double, fat: Double, protein: Double, portionUnit: String, portion: Double
+    sugar: Double, dietaryFiber: Double, fat: Double, protein: Double, portionUnit: String,
+    portion: Double
   ) {
     self.id = id
     self.brandName = brandName
@@ -41,6 +43,7 @@ final class FoodMaster {
     self.protein = protein
     self.portionUnit = portionUnit
     self.portion = portion
+    self.lastNumberOfServings = 1.0  // デフォルト値を設定
 
     // 栄養素に基づく一意キーを生成
     let caloriesStr = String(format: "%.2f", calories)
@@ -52,10 +55,11 @@ final class FoodMaster {
       "\(brandName)|\(productName)|\(caloriesStr)|\(sugarStr)|\(fiberStr)|\(fatStr)|\(proteinStr)|\(portionUnit)"
   }
 
-  // 使用頻度を更新するメソッド
-  func incrementUsage() {
+  // 使用頻度とサービング数を更新するメソッド
+  func incrementUsageWithServings(_ servings: Double) {
     self.usageCount += 1
     self.lastUsedDate = Date()
+    self.lastNumberOfServings = servings
   }
 
   // 使用頻度をデクリメントするメソッド

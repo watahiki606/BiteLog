@@ -165,16 +165,6 @@ struct AddItemView: View {
     }
   }
 
-  private func addItemFromPast(_ foodMasterItem: FoodMaster) {
-    let newLogItem = LogItem(
-      timestamp: date,
-      mealType: mealType,
-      numberOfServings: Double(numberOfServings) ?? 1.0,
-      foodMaster: foodMasterItem
-    )
-    modelContext.insert(newLogItem)
-  }
-
   private func loadMoreItems() {
     var descriptor: FetchDescriptor<FoodMaster>
     
@@ -215,6 +205,17 @@ struct AddItemView: View {
       currentOffset += newItems.count
       hasMoreData = newItems.count == pageSize
     }
+  }
+
+  private func addItemFromPast(_ foodMasterItem: FoodMaster) {
+    // 選択されたFoodMasterからLogItemを作成
+    let newLogItem = LogItem(
+      timestamp: date,
+      mealType: mealType,
+      numberOfServings: Double(numberOfServings) ?? 1.0,
+      foodMaster: foodMasterItem
+    )
+    modelContext.insert(newLogItem)
   }
 }
 
@@ -264,8 +265,15 @@ struct EmptyFoodMasterPromptView: View {
 // 過去の食事アイテムカード
 struct PastItemCard: View {
   let item: FoodMaster
-  @State private var numberOfServings: String = "1.0"
+  @State private var numberOfServings: String
   var onSelect: (FoodMaster, Double) -> Void
+
+  init(item: FoodMaster, onSelect: @escaping (FoodMaster, Double) -> Void) {
+    self.item = item
+    self.onSelect = onSelect
+    // 最後に使用したサービング数を初期値として設定
+    _numberOfServings = State(initialValue: String(format: "%.1f", item.lastNumberOfServings))
+  }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {

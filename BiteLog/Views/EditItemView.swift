@@ -334,6 +334,8 @@ struct EditItemView: View {
         .sheet(isPresented: $showingFoodSearch) {
           FoodSearchView(onSelect: { selectedFoodMaster in
             foodMaster = selectedFoodMaster
+            // 最後に使用したサービング数を初期値として設定
+            numberOfServings = String(format: "%.1f", selectedFoodMaster.lastNumberOfServings)
           })
         }
       }
@@ -347,6 +349,8 @@ struct EditItemView: View {
     // FoodMasterの更新
     if let selectedFoodMaster = foodMaster {
       item.foodMaster = selectedFoodMaster
+      // 最後に使用したサービング数を更新
+      selectedFoodMaster.lastNumberOfServings = servingsValue
     }
   }
 }

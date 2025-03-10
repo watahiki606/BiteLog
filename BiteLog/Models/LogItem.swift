@@ -120,8 +120,8 @@ final class LogItem {
       self.backupPortionUnit = food.portionUnit
       self.backupPortion = food.portion
       
-      // FoodMasterの使用頻度を更新
-      food.incrementUsage()
+      // FoodMasterの使用頻度とサービング数を更新
+      food.incrementUsageWithServings(numberOfServings)
     }
   }
   
