@@ -209,9 +209,7 @@ struct AddItemView: View {
 
   private func resetAndSearch() {
     // 検索条件が変更されたら、ページをリセットして最初から検索
-    isInitialLoading = true  // 検索時は初回ロード状態に戻す
     currentPage = 0
-    searchResults = []
     hasMoreData = true
     loadFoodMasters()
   }

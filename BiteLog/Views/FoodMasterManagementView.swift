@@ -81,6 +81,7 @@ struct FoodMasterManagementView: View {
       } else if foodMasters.isEmpty {
         // フードが0件の場合に表示する登録促進ビュー
         EmptyFoodMasterView(showAddForm: $showingAddForm)
+
       } else {
         // フード一覧
         List {
@@ -158,15 +159,12 @@ struct FoodMasterManagementView: View {
 
   private func resetAndSearch() {
     // 検索条件が変更されたら、ページをリセットして最初から検索
-    isInitialLoading = true  // 検索時は初回ロード状態に戻す
     currentPage = 0
-    foodMasters = []
     hasMoreData = true
     loadFoodMasters()
   }
 
   private func loadFoodMasters() {
-
     guard !isLoading else { return }
     isLoading = true
 
@@ -325,7 +323,7 @@ struct FoodMasterRow: View {
         Text("S: \(foodMaster.sugar, specifier: "%.1f")g")
           .font(.caption)
           .foregroundColor(.green)
-          
+
         Text("Fiber: \(foodMaster.dietaryFiber, specifier: "%.1f")g")
           .font(.caption)
           .foregroundColor(.brown)
@@ -423,7 +421,7 @@ struct FoodMasterFormView: View {
               .multilineTextAlignment(.trailing)
             Text(NSLocalizedString("g", comment: "g"))
           }
-          
+
           HStack {
             Text(NSLocalizedString("Dietary Fiber", comment: "Dietary Fiber"))
             Spacer()
@@ -432,7 +430,7 @@ struct FoodMasterFormView: View {
               .multilineTextAlignment(.trailing)
             Text(NSLocalizedString("g", comment: "g"))
           }
-          
+
           // 炭水化物の合計を表示（編集不可）
           HStack {
             Text(NSLocalizedString("Carbohydrates (Sugar + Fiber)", comment: "Carbohydrates"))
