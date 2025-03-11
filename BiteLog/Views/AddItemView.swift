@@ -104,7 +104,13 @@ struct AddItemView: View {
             List {
               ForEach(searchResults, id: \.id) { item in
                 Button {
-                  addItemFromPast(item)
+                  let newLogItem = LogItem(
+                    timestamp: date,
+                    mealType: mealType,
+                    numberOfServings: item.lastNumberOfServings,
+                    foodMaster: item
+                  )
+                  modelContext.insert(newLogItem)
                   dismiss()
                 } label: {
                   PastItemCard(
@@ -280,17 +286,6 @@ struct AddItemView: View {
     currentPage += 1
     loadFoodMasters()
   }
-
-  private func addItemFromPast(_ foodMasterItem: FoodMaster) {
-    // 選択されたFoodMasterからLogItemを作成
-    let newLogItem = LogItem(
-      timestamp: date,
-      mealType: mealType,
-      numberOfServings: Double(numberOfServings) ?? 1.0,
-      foodMaster: foodMasterItem
-    )
-    modelContext.insert(newLogItem)
-  }
 }
 
 // マスターデータが0件の場合に表示するビュー
@@ -341,6 +336,11 @@ struct PastItemCard: View {
   let item: FoodMaster
   @State private var numberOfServings: String
   var onSelect: (FoodMaster, Double) -> Void
+  
+  // 現在のサービング数を計算するための計算プロパティ
+  private var currentServings: Double {
+    return Double(numberOfServings) ?? item.lastNumberOfServings
+  }
 
   init(item: FoodMaster, onSelect: @escaping (FoodMaster, Double) -> Void) {
     self.item = item
@@ -360,7 +360,8 @@ struct PastItemCard: View {
 
         Spacer()
 
-        Text("\(item.calories, specifier: "%.0f")")
+        // カロリーを現在のサービング数に応じて計算
+        Text("\(item.calories * currentServings, specifier: "%.0f")")
           .font(.title3.bold())
           + Text(" kcal")
           .font(.subheadline)
@@ -368,10 +369,11 @@ struct PastItemCard: View {
       }
 
       HStack(spacing: 8) {
-        MacroNutrientBadge(label: "P", value: item.protein, color: .blue)
-        MacroNutrientBadge(label: "F", value: item.fat, color: .yellow)
-        MacroNutrientBadge(label: "S", value: item.sugar, color: .green)
-        MacroNutrientBadge(label: "Fiber", value: item.dietaryFiber, color: .brown)
+        // 栄養素の値も現在のサービング数に応じて計算
+        MacroNutrientBadge(label: "P", value: item.protein * currentServings, color: .blue)
+        MacroNutrientBadge(label: "F", value: item.fat * currentServings, color: .yellow)
+        MacroNutrientBadge(label: "S", value: item.sugar * currentServings, color: .green)
+        MacroNutrientBadge(label: "Fiber", value: item.dietaryFiber * currentServings, color: .brown)
       }
 
       HStack {
@@ -394,7 +396,7 @@ struct PastItemCard: View {
         Spacer()
 
         Button(action: {
-          onSelect(item, Double(numberOfServings) ?? 1.0)
+          onSelect(item, currentServings)
         }) {
           Text("Add")
             .font(.subheadline.bold())
