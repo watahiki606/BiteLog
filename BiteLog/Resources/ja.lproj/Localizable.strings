@@ -50,13 +50,27 @@
 "Delete Food Item?" = "フードを削除しますか？";
 
 
-// Import CSV
+// Import/Export CSV
 "CSV File Format:" = "CSVファイルのフォーマット:";
 "Select CSV File" = "CSVファイルを選択";
 "Close" = "閉じる";
 "Import Error" = "インポートエラー";
 "Import CSV" = "CSVインポート";
-
+"Export CSV" = "CSVエクスポート";
+"Export Type" = "エクスポートタイプ";
+"Select Data to Export" = "エクスポートするデータを選択";
+"Choose the type of data you want to export as CSV." = "CSVとしてエクスポートするデータの種類を選択してください。";
+"Export Progress" = "エクスポート進捗";
+"Export as CSV" = "CSVとしてエクスポート";
+"Export Failed" = "エクスポート失敗";
+"Export Successful" = "エクスポート成功";
+"Failed to write data to CSV file" = "CSVファイルへのデータ書き込みに失敗しました";
+"Failed to create CSV file" = "CSVファイルの作成に失敗しました";
+"Log" = "ログ";
+"Food" = "フード";
+"Data Management" = "データ管理";
+"Tap OK to share the file" = "OKをタップしてファイルを共有";
+"exported successfully" = "正常にエクスポートされました";
 // Navigation
 "Meal Type" = "フードタイプ";
 "Date" = "日付";

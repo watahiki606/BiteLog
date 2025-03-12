@@ -157,7 +157,7 @@ struct EditItemView: View {
                           .foregroundColor(.secondary)
                           .strikethrough()
                         
-                        Text(NSLocalizedString("(Deleted)", comment: "Deleted food master indicator"))
+                        Text(NSLocalizedString("(Deleted)", comment: "Deleted Food indicator"))
                           .font(.caption)
                           .foregroundColor(.red)
                           .padding(.horizontal, 4)

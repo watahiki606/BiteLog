@@ -33,14 +33,22 @@ struct SettingsView: View {
           }
         }
 
-        Section(header: Text("Data Management")) {
+        Section(header: Text(NSLocalizedString("Data Management", comment: "Data management section"))) {
+          NavigationLink(destination: ImportCSVView()) {
+            Text(NSLocalizedString("Import CSV", comment: "Import CSV"))
+          }
+          
+          NavigationLink(destination: ExportCSVView()) {
+            Text(NSLocalizedString("Export CSV", comment: "Export CSV"))
+          }
+          
           Button(
             role: .destructive,
             action: {
               showingDeleteConfirmation = true
             }
           ) {
-            Text("Delete All Data")
+            Text(NSLocalizedString("Delete All Data", comment: "Delete all data"))
           }
         }
       }
