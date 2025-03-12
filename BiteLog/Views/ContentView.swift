@@ -65,6 +65,21 @@ struct ContentView: View {
           }
         }
         .navigationTitle("BiteLog")
+        .sheet(
+          isPresented: Binding(
+            get: { showingAddItemFor != nil },
+            set: { if !$0 { showingAddItemFor = nil } }
+          )
+        ) {
+          if let itemInfo = showingAddItemFor {
+            AddItemView(
+              preselectedMealType: itemInfo.mealType,
+              selectedDate: itemInfo.date,
+              selectedTab: $selectedTab
+            )
+            .presentationDetents([.medium, .large])
+          }
+        }
         .sheet(isPresented: $showingSettings) {
           SettingsView()
         }
