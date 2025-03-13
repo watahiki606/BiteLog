@@ -121,3 +121,11 @@
 "Carbohydrates" = "炭水化物";
 "Carbs" = "炭水化物";
 
+// Data deletion
+"Success" = "成功";
+"Error" = "エラー";
+"OK" = "OK";
+"All data has been successfully deleted." = "すべてのデータが正常に削除されました。";
+"Failed to delete data: " = "データの削除に失敗しました: ";
+"Deleting data..." = "データを削除中...";
+
