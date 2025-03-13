@@ -30,9 +30,7 @@ struct ExportCSVView: View {
             }
           }
           .disabled(isExporting)
-        } footer: {
-          Text("Export your log data as CSV file.")
-        }
+        } 
       }
       .navigationTitle("Export CSV")
       .navigationBarTitleDisplayMode(.inline)
