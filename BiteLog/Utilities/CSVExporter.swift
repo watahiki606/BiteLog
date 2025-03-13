@@ -35,68 +35,6 @@ class CSVExporter {
     return result
   }
   
-  // FoodMasterをCSVファイルにエクスポート
-  static func exportFoodMaster(to url: URL, context: ModelContext, progressHandler: ProgressHandler? = nil) throws -> Int {
-    let startTime = Date()
-    logger.info("FoodMasterのCSVエクスポート開始")
-    
-    // すべてのFoodMasterを取得
-    let fetchDescriptor = FetchDescriptor<FoodMaster>(sortBy: [SortDescriptor(\.productName)])
-    guard let foodMasters = try? context.fetch(fetchDescriptor) else {
-      logger.error("FoodMasterの取得に失敗しました")
-      throw CSVExportError.dataWriteFailed
-    }
-    
-    let totalItems = foodMasters.count
-    logger.info("エクスポート対象: FoodMaster \(totalItems)件")
-    
-    // 進捗状況の初期報告
-    if let progressHandler = progressHandler {
-      if progressHandler(0.0, 0, totalItems) {
-        logger.notice("ユーザーによりエクスポートがキャンセルされました")
-        return 0
-      }
-    }
-    
-    // CSVヘッダー
-    let header = "brand_name,product_name,calories,carbs,dietary_fiber,fat,protein,portion_unit,portion"
-    var csvString = header + "\n"
-    
-    // FoodMasterをCSV形式に変換
-    for (index, item) in foodMasters.enumerated() {
-      // 進捗状況の報告（10アイテムごと）
-      if let progressHandler = progressHandler, index % 10 == 0 || index == totalItems - 1 {
-        let progress = Double(index + 1) / Double(totalItems)
-        if progressHandler(progress, index + 1, totalItems) {
-          logger.notice("ユーザーによりエクスポートがキャンセルされました (\(index + 1)/\(totalItems)件処理後)")
-          return index + 1
-        }
-      }
-      
-      let brandName = escapeCSV(item.brandName)
-      let productName = escapeCSV(item.productName)
-      
-      // 炭水化物 = 糖質 + 食物繊維
-      let carbs = item.sugar + item.dietaryFiber
-      
-      let row = "\(brandName),\(productName),\(item.calories),\(carbs),\(item.dietaryFiber),\(item.fat),\(item.protein),\(escapeCSV(item.portionUnit)),\(item.portion)"
-      csvString += row + "\n"
-    }
-    
-    // CSVファイルに書き込み
-    do {
-      try csvString.write(to: url, atomically: true, encoding: .utf8)
-    } catch {
-      logger.error("CSVファイルへの書き込みに失敗しました: \(error.localizedDescription)")
-      throw CSVExportError.dataWriteFailed
-    }
-    
-    let elapsedTime = Date().timeIntervalSince(startTime)
-    logger.info("FoodMasterのCSVエクスポート完了: \(totalItems)件, 処理時間=\(String(format: "%.2f", elapsedTime))秒")
-    
-    return totalItems
-  }
-  
   // LogItemをCSVファイルにエクスポート
   static func exportLogItems(to url: URL, context: ModelContext, progressHandler: ProgressHandler? = nil) throws -> Int {
     let startTime = Date()
