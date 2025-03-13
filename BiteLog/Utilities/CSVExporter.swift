@@ -59,7 +59,7 @@ class CSVExporter {
     }
     
     // CSVヘッダー
-    let header = "brand_name,product_name,calories,sugar,dietary_fiber,fat,protein,portion_unit,portion"
+    let header = "brand_name,product_name,calories,carbs,dietary_fiber,fat,protein,portion_unit,portion"
     var csvString = header + "\n"
     
     // FoodMasterをCSV形式に変換
@@ -76,7 +76,10 @@ class CSVExporter {
       let brandName = escapeCSV(item.brandName)
       let productName = escapeCSV(item.productName)
       
-      let row = "\(brandName),\(productName),\(item.calories),\(item.sugar),\(item.dietaryFiber),\(item.fat),\(item.protein),\(escapeCSV(item.portionUnit)),\(item.portion)"
+      // 炭水化物 = 糖質 + 食物繊維
+      let carbs = item.sugar + item.dietaryFiber
+      
+      let row = "\(brandName),\(productName),\(item.calories),\(carbs),\(item.dietaryFiber),\(item.fat),\(item.protein),\(escapeCSV(item.portionUnit)),\(item.portion)"
       csvString += row + "\n"
     }
     
@@ -118,7 +121,7 @@ class CSVExporter {
     }
     
     // CSVヘッダー
-    let header = "date,meal_type,brand_name,product_name,calories,sugar,dietary_fiber,fat,protein,number_of_servings,portion_unit"
+    let header = "date,meal_type,brand_name,product_name,calories,carbs,dietary_fiber,fat,protein,portion_amount,portion_unit"
     var csvString = header + "\n"
     
     // 日付フォーマッタ
@@ -142,7 +145,13 @@ class CSVExporter {
       let brandName = escapeCSV(item.brandName)
       let productName = escapeCSV(item.productName)
       
-      let row = "\(dateString),\(mealTypeString),\(brandName),\(productName),\(item.calories / item.numberOfServings),\(item.sugar / item.numberOfServings),\(item.dietaryFiber / item.numberOfServings),\(item.fat / item.numberOfServings),\(item.protein / item.numberOfServings),\(item.numberOfServings),\(escapeCSV(item.portionUnit))"
+      // 炭水化物 = 糖質 + 食物繊維
+      let carbs = item.sugar + item.dietaryFiber
+      
+      // portion_amountとしてnumberOfServingsを使用
+      let portionAmount = item.numberOfServings
+      
+      let row = "\(dateString),\(mealTypeString),\(brandName),\(productName),\(item.calories),\(carbs),\(item.dietaryFiber),\(item.fat),\(item.protein),\(portionAmount),\(escapeCSV(item.portionUnit))"
       csvString += row + "\n"
     }
     
