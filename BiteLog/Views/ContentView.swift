@@ -80,6 +80,9 @@ struct ContentView: View {
             .presentationDetents([.medium, .large])
           }
         }
+        .sheet(isPresented: $showingDatePicker) {
+          DatePickerSheet(selectedDate: $selectedDate, isPresented: $showingDatePicker)
+        }
         .sheet(isPresented: $showingSettings) {
           SettingsView()
         }
