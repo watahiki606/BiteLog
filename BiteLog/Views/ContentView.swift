@@ -7,7 +7,6 @@ struct ContentView: View {
 
   @State private var selectedDate = Date()
   @State private var showingAddItemFor: (date: Date, mealType: MealType)?
-  @State private var showingImportCSV = false
   @State private var showingSettings = false
   @State private var showingDatePicker = false
   @State private var selectedTab = 0
@@ -52,28 +51,12 @@ struct ContentView: View {
 
             ToolbarItem(placement: .navigationBarTrailing) {
               Menu {
-                Button {
-                  showingAddItemFor = nil
-                } label: {
-                  Label(NSLocalizedString("Add Meal", comment: "Add meal type"), systemImage: "plus")
-                }
-                
-                Button {
-                  showingImportCSV = true
-                } label: {
-                  Label(NSLocalizedString("Import CSV", comment: "Import CSV"), systemImage: "square.and.arrow.down")
-                }
-                
-                Button {
-                  selectedTab = 1
-                } label: {
-                  Label(NSLocalizedString("Manage Food Data", comment: "Manage food data"), systemImage: "list.bullet.clipboard")
-                }
-                
+
                 Button {
                   showingSettings = true
                 } label: {
-                  Label(NSLocalizedString("Settings", comment: "Settings"), systemImage: "gearshape")
+                  Label(
+                    NSLocalizedString("Settings", comment: "Settings"), systemImage: "gearshape")
                 }
               } label: {
                 Image(systemName: "ellipsis.circle")
@@ -100,9 +83,6 @@ struct ContentView: View {
         .sheet(isPresented: $showingDatePicker) {
           DatePickerSheet(selectedDate: $selectedDate, isPresented: $showingDatePicker)
         }
-        .sheet(isPresented: $showingImportCSV) {
-          ImportCSVView()
-        }
         .sheet(isPresented: $showingSettings) {
           SettingsView()
         }
@@ -111,7 +91,7 @@ struct ContentView: View {
         Label(NSLocalizedString("Log", comment: "Log"), systemImage: "book")
       }
       .tag(0)
-      
+
       // フード管理タブ
       NavigationStack {
         FoodMasterManagementView()
@@ -144,9 +124,9 @@ struct ItemRowView: View {
           Text("\(item.brandName) \(item.productName)")
             .font(.headline)
             .foregroundColor(.secondary)
-            .strikethrough() // 取り消し線を追加
-          
-          Text(NSLocalizedString("(Deleted)", comment: "Deleted food master indicator"))
+            .strikethrough()  // 取り消し線を追加
+
+          Text(NSLocalizedString("(Deleted)", comment: "Deleted Food indicator"))
             .font(.caption)
             .foregroundColor(.red)
             .padding(.horizontal, 4)
@@ -157,29 +137,29 @@ struct ItemRowView: View {
           Text("\(item.brandName) \(item.productName)")
             .font(.headline)
         }
-        
+
         Spacer()
-        
+
         Text("\(item.calories, specifier: "%.0f") kcal")
           .font(.subheadline)
           .foregroundColor(.secondary)
       }
-      
+
       HStack {
         Text("P: \(item.protein, specifier: "%.1f")g")
           .font(.caption)
           .foregroundColor(.blue)
-        
+
         Text("F: \(item.fat, specifier: "%.1f")g")
           .font(.caption)
           .foregroundColor(.yellow)
-        
+
         Text("C: \(item.carbohydrates, specifier: "%.1f")g")
           .font(.caption)
           .foregroundColor(.green)
-        
+
         Spacer()
-        
+
         Text("\(item.numberOfServings, specifier: "%.1f") \(item.portionUnit)")
           .font(.caption)
           .foregroundColor(.secondary)
@@ -246,7 +226,7 @@ struct NutrientBadge: View {
       Text(name)
         .font(.system(size: 12, weight: .medium))
         .foregroundColor(color.opacity(0.8))
-      
+
       Text("\(value, specifier: value >= 100 ? "%.0f" : "%.1f")\(unit)")
         .font(.system(size: 13, weight: .medium))
     }

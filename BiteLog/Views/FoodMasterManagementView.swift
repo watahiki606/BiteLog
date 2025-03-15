@@ -382,7 +382,7 @@ struct FoodMasterFormView: View {
         Section(
           header: Text(
             String(
-              format: NSLocalizedString("Nutrition (per 1 %@)", comment: "Nutrition with unit"),
+              format: NSLocalizedString("Nutrition (per %@)", comment: "Nutrition with unit"),
               portionUnit.isEmpty ? NSLocalizedString("unit", comment: "Default unit") : portionUnit
             ))
         ) {
@@ -441,6 +441,9 @@ struct FoodMasterFormView: View {
               .foregroundColor(.secondary)
           }
         }
+        .headerProminence(.increased)
+        .font(.subheadline)
+        .foregroundColor(.secondary)
       }
       .navigationTitle(title)
       .toolbar {

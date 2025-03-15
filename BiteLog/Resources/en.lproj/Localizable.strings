@@ -36,12 +36,24 @@
 "Add Meal" = "Add Meal";
 "Edit Meal" = "Edit Meal";
 
-// Import CSV
+// Import/Export CSV
 "CSV File Format:" = "CSV File Format:";
 "Select CSV File" = "Select CSV File";
 "Close" = "Close";
 "Import Error" = "Import Error"; 
 "Import CSV" = "Import CSV";
+"Export CSV" = "Export CSV";
+"Export Type" = "Export Type";
+"Select Data to Export" = "Select Data to Export";
+"Choose the type of data you want to export as CSV." = "Choose the type of data you want to export as CSV.";
+"Export Progress" = "Export Progress";
+"Export as CSV" = "Export as CSV";
+"Export Failed" = "Export Failed";
+"Export Successful" = "Export Successful";
+"Failed to write data to CSV file" = "Failed to write data to CSV file";
+"Failed to create CSV file" = "Failed to create CSV file";
+"Log" = "Log";
+"Food" = "Food";
 
 // Navigation
 "Meal Type" = "Meal Type";
@@ -77,7 +89,6 @@
 "Adjust the serving size to calculate the intake" = "Adjust the serving size to calculate the intake";
 "Values shown as: per serving → total based on servings" = "Values shown as: per serving → total based on servings";
 "Select food" = "Select food";
-"Nutrition (per 1 %@)" = "Nutrition (per 1 %@)";
 "unit" = "unit";
 
 // Delete confirmation
