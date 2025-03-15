@@ -38,7 +38,6 @@
 "Add Food Item" = "フードを追加";
 "Brand Name" = "ブランド名";
 "Product Name" = "商品名";
-"Portion Unit (e.g. piece, g)" = "量の単位 (例: 個, g)";
 "Carbohydrates" = "炭水化物";
 "Protein" = "タンパク質";
 "Fat" = "脂質";
@@ -103,7 +102,7 @@
 "Adjust the serving size to calculate the intake" = "摂取量を計算するために数量を調整してください";
 "Values shown as: per serving → total based on servings" = "表示値: 1食分 → 合計摂取量";
 "Select food" = "フードを選択";
-"Nutrition (per 1 %@)" = "栄養成分（1%@あたり）";
+"Nutrition (per %@)" = "栄養成分（%@あたり）";
 "unit" = "単位";
 
 // Delete confirmation
