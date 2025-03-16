@@ -250,6 +250,11 @@ struct AddItemView: View {
       }
     }
     
+    // 検索ワードをクリアして検索欄にフォーカスする
+    searchText = ""
+    resetAndSearch()
+    searchFieldIsFocused = true
+    
     // シートは閉じない（dismiss()を呼び出さない）
   }
 
