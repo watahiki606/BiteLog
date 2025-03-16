@@ -66,7 +66,7 @@ struct DayContentView: View {
                 icon: "s.circle.fill",
                 color: .green
               )
-              
+
               NutrientRow(
                 label: NSLocalizedString("Dietary Fiber", comment: "Nutrient label"),
                 value: dailyTotals.fiber,
@@ -75,7 +75,7 @@ struct DayContentView: View {
                 icon: "leaf.circle.fill",
                 color: .brown
               )
-              
+
               NutrientRow(
                 label: NSLocalizedString("Carbs (Sugar + Fiber)", comment: "Nutrient label"),
                 value: dailyTotals.carbs,
@@ -134,7 +134,8 @@ struct DayContentView: View {
                   NutrientBadge(
                     value: totals.sugar, unit: "g", name: "S", color: .green, icon: "s.circle.fill")
                   NutrientBadge(
-                    value: totals.fiber, unit: "g", name: "Fiber", color: .brown, icon: "leaf.circle.fill")
+                    value: totals.fiber, unit: "g", name: "Fiber", color: .brown,
+                    icon: "leaf.circle.fill")
                 }
                 .padding(.vertical, 4)
                 .padding(.horizontal)
@@ -145,6 +146,36 @@ struct DayContentView: View {
               // 食事アイテム
               let mealItems = filteredItems.filter { $0.mealType == mealType }
               if mealItems.isEmpty {
+                // 前日のミールがある場合、前日のミールを追加するボタンを表示
+                if hasPreviousDayItems(for: mealType) {
+                  Button(action: {
+                    // 前日のミールを今日に複製
+                    copyPreviousDayMeals(for: mealType)
+                  }) {
+                    HStack {
+                      Image(systemName: "arrow.counterclockwise")
+                        .font(.body)
+                        .foregroundColor(.blue)
+
+                      Text(
+                        String(
+                          format: NSLocalizedString(
+                            "Copy yesterday's %@", comment: "Copy previous day meal"),
+                          mealType.localizedName
+                        )
+                      )
+                      .font(.subheadline)
+                      .foregroundColor(.primary.opacity(0.8))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color(UIColor.systemBackground))
+                    .cornerRadius(6)
+                  }
+                  .buttonStyle(PlainButtonStyle())
+                  .padding(.horizontal)
+                }
+
                 EmptyMealView(mealType: mealType) {
                   onAddTapped(date, mealType)
                 }
@@ -162,7 +193,8 @@ struct DayContentView: View {
                     // アイテムを削除
                     for item in itemsToDelete {
                       // FoodMasterの使用頻度をデクリメント
-                      FoodMasterManager.decrementUsageCountForLogItemDeletion(logItem: item, modelContext: modelContext)
+                      FoodMasterManager.decrementUsageCountForLogItemDeletion(
+                        logItem: item, modelContext: modelContext)
                       modelContext.delete(item)
                     }
 
@@ -205,19 +237,59 @@ struct DayContentView: View {
 
   private var filteredItems: [LogItem] {
     let calendar = Calendar.current
+    
+    // 現在の日付の開始時刻と終了時刻を計算
     let startOfDay = calendar.startOfDay(for: date)
     let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-
+    
     let descriptor = FetchDescriptor<LogItem>(
       predicate: #Predicate<LogItem> { logItem in
         logItem.timestamp >= startOfDay && logItem.timestamp < endOfDay
       },
       sortBy: [SortDescriptor(\.timestamp)]
     )
+    
     return (try? modelContext.fetch(descriptor)) ?? []
   }
 
-  private var dailyTotals: (calories: Double, protein: Double, fat: Double, sugar: Double, fiber: Double, carbs: Double) {
+  // 前日の特定の食事タイプのアイテムを取得するメソッド
+  private func previousDayItems(for mealType: MealType) -> [LogItem] {
+    let calendar = Calendar.current
+    
+    // 現在の日付から前日を計算
+    let currentDate = date
+    let previousDay = calendar.date(byAdding: .day, value: -1, to: currentDate)!
+    
+    // 前日の日付の開始時刻と終了時刻を計算
+    let startOfPreviousDay = calendar.startOfDay(for: previousDay)
+    let endOfPreviousDay = calendar.date(byAdding: .day, value: 1, to: startOfPreviousDay)!
+    
+    let allPreviousDayDescriptor = FetchDescriptor<LogItem>(
+      predicate: #Predicate<LogItem> { logItem in
+        logItem.timestamp >= startOfPreviousDay && logItem.timestamp < endOfPreviousDay
+      },
+      sortBy: [SortDescriptor(\.timestamp)]
+    )
+    
+    guard let allItems = try? modelContext.fetch(allPreviousDayDescriptor) else {
+      return []
+    }
+    
+    let filteredItems = allItems.filter { item in
+      return item.mealType.rawValue == mealType.rawValue
+    }
+    
+    return filteredItems
+  }
+
+  // 前日の特定の食事タイプのアイテムが存在するかチェックするメソッド
+  private func hasPreviousDayItems(for mealType: MealType) -> Bool {
+    return !previousDayItems(for: mealType).isEmpty
+  }
+
+  private var dailyTotals:
+    (calories: Double, protein: Double, fat: Double, sugar: Double, fiber: Double, carbs: Double)
+  {
     filteredItems.reduce((0, 0, 0, 0, 0, 0)) { result, item in
       (
         result.0 + item.calories,
@@ -244,6 +316,39 @@ struct DayContentView: View {
         result.4 + item.dietaryFiber,
         result.5 + item.carbohydrates
       )
+    }
+  }
+
+  // 前日のミールを今日に複製するメソッド
+  private func copyPreviousDayMeals(for mealType: MealType) {
+    let prevItems = previousDayItems(for: mealType)
+
+    for prevItem in prevItems {
+      // 新しいLogItemを作成して今日の日付で保存
+      let newItem = LogItem(
+        timestamp: date,
+        mealType: mealType,
+        numberOfServings: prevItem.numberOfServings,
+        foodMaster: prevItem.foodMaster
+      )
+
+      modelContext.insert(newItem)
+
+      // FoodMasterの使用頻度を更新
+      if let foodMaster = prevItem.foodMaster {
+        foodMaster.usageCount += 1
+        foodMaster.lastUsedDate = Date()
+        foodMaster.lastNumberOfServings = prevItem.numberOfServings
+      }
+    }
+
+    // 変更を保存
+    do {
+      try modelContext.save()
+      // 更新を強制するためにrefreshIDを更新
+      refreshID = UUID()
+    } catch {
+      print("Error saving after copying meals: \(error)")
     }
   }
 }

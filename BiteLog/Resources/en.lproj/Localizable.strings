@@ -94,3 +94,7 @@
 // Delete confirmation
 "Delete All Data?" = "Delete All Data?";
 "Are you sure you want to delete all data? This action cannot be undone." = "Are you sure you want to delete all data? This action cannot be undone.";
+
+// Copy previous day meals
+"Copy yesterday's %@" = "Copy yesterday's %@";
+"Added %@ to %@" = "Added %@ to %@";
