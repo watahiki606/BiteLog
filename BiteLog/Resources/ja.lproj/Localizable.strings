@@ -128,3 +128,7 @@
 "Failed to delete data: " = "データの削除に失敗しました: ";
 "Deleting data..." = "データを削除中...";
 
+// Copy previous day meals
+"Copy yesterday's %@" = "昨日の%@をコピー";
+"Added %@ to %@" = "%@を%@に追加しました";
+
