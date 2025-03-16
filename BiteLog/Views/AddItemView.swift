@@ -27,6 +27,10 @@ struct AddItemView: View {
   
   // 検索テキストが変更されたときのタイマー
   @State private var searchDebounceTimer: Timer?
+  
+  // 追加成功時のフィードバック表示用
+  @State private var showAddedFeedback = false
+  @State private var lastAddedItem: String = ""
 
   init(preselectedMealType: MealType, selectedDate: Date, selectedTab: Binding<Int>) {
     self.mealType = preselectedMealType
@@ -91,6 +95,25 @@ struct AddItemView: View {
           }
           .padding(.horizontal)
           .padding(.top, 8)
+          
+          // 追加成功時のフィードバック表示
+          if showAddedFeedback {
+            HStack {
+              Image(systemName: "checkmark.circle.fill")
+                .foregroundColor(.green)
+              
+              Text(String(format: NSLocalizedString("%@ added to %@", comment: "Added food feedback"), lastAddedItem, mealType.localizedName))
+                .font(.subheadline)
+                .foregroundColor(.primary)
+              
+              Spacer()
+            }
+            .padding()
+            .background(Color.green.opacity(0.1))
+            .cornerRadius(10)
+            .padding(.horizontal)
+            .transition(.opacity.combined(with: .move(edge: .top)))
+          }
 
           if isInitialLoading {
             // 初回データロード中の表示
@@ -104,26 +127,12 @@ struct AddItemView: View {
             List {
               ForEach(searchResults, id: \.id) { item in
                 Button {
-                  let newLogItem = LogItem(
-                    timestamp: date,
-                    mealType: mealType,
-                    numberOfServings: item.lastNumberOfServings,
-                    foodMaster: item
-                  )
-                  modelContext.insert(newLogItem)
-                  dismiss()
+                  addFoodItem(item, servings: item.lastNumberOfServings)
                 } label: {
                   PastItemCard(
                     item: item,
                     onSelect: { foodMaster, servings in
-                      let newLogItem = LogItem(
-                        timestamp: date,
-                        mealType: mealType,
-                        numberOfServings: servings,
-                        foodMaster: foodMaster
-                      )
-                      modelContext.insert(newLogItem)
-                      dismiss()
+                      addFoodItem(foodMaster, servings: servings)
                     })
                 }
                 .buttonStyle(ScaleButtonStyle())
@@ -202,6 +211,11 @@ struct AddItemView: View {
           ToolbarItem(placement: .cancellationAction) {
             Button(NSLocalizedString("Cancel", comment: "Button title")) { dismiss() }
           }
+          
+          // 完了ボタンを追加
+          ToolbarItem(placement: .confirmationAction) {
+            Button(NSLocalizedString("Done", comment: "Button title")) { dismiss() }
+          }
         }
         .onAppear {
           // 画面が表示されたときにデータをロード
@@ -211,6 +225,32 @@ struct AddItemView: View {
         }
       }
     }
+  }
+  
+  // フードアイテムを追加する関数
+  private func addFoodItem(_ foodMaster: FoodMaster, servings: Double) {
+    let newLogItem = LogItem(
+      timestamp: date,
+      mealType: mealType,
+      numberOfServings: servings,
+      foodMaster: foodMaster
+    )
+    modelContext.insert(newLogItem)
+    
+    // 追加成功のフィードバックを表示
+    lastAddedItem = "\(foodMaster.brandName) \(foodMaster.productName)"
+    withAnimation {
+      showAddedFeedback = true
+    }
+    
+    // 2秒後にフィードバックを非表示
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+      withAnimation {
+        showAddedFeedback = false
+      }
+    }
+    
+    // シートは閉じない（dismiss()を呼び出さない）
   }
 
   private func resetAndSearch() {
