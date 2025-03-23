@@ -10,7 +10,6 @@ struct AddItemView: View {
   var selectedDate: Date
 
   @State private var searchText = ""
-  @State private var numberOfServings: String = "1.0"
   @State private var date: Date
   @State private var searchResults: [FoodMaster] = []
   @State private var isDataLoaded = false
@@ -45,194 +44,221 @@ struct AddItemView: View {
         Color(UIColor.systemGroupedBackground)
           .ignoresSafeArea()
 
-        VStack {
-          // 検索バー
-          HStack {
-            Image(systemName: "magnifyingglass")
-              .foregroundColor(.secondary)
-              .padding(.leading, 8)
-
-            TextField(
-              NSLocalizedString("Search food items", comment: "Search placeholder"),
-              text: $searchText
-            )
-            .padding(10)
-            .background(Color(UIColor.secondarySystemBackground))
-            .cornerRadius(10)
-            .focused($searchFieldIsFocused)  // FocusStateを設定
-            .onTapGesture {
-              searchFieldIsFocused = true  // 明示的にフォーカスを設定
-            }
-            .onChange(of: searchText) { oldValue, newValue in
-              // 検索テキストが変更されたら、タイマーをリセットして新しいタイマーを設定
-              searchDebounceTimer?.invalidate()
-              searchDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
-                // タイマーが発火したら検索を実行
-                resetAndSearch()
-              }
-            }
-
-            if !searchText.isEmpty {
-              Button(action: {
-                searchText = ""
-                resetAndSearch()
-              }) {
-                Image(systemName: "xmark.circle.fill")
-                  .foregroundColor(.secondary)
-                  .padding(.trailing, 8)
-              }
-            }
-            
-            // 検索中の場合のみCancelボタンを表示
-            if searchFieldIsFocused {
-              Button(NSLocalizedString("Cancel", comment: "Cancel search")) {
-                searchText = ""
-                searchFieldIsFocused = false  // キーボードを閉じる
-                resetAndSearch()
-              }
-              .transition(.move(edge: .trailing).combined(with: .opacity))
-            }
-          }
-          .padding(.horizontal)
-          .padding(.top, 8)
-          
-          // 追加成功時のフィードバック表示
-          if showAddedFeedback {
-            HStack {
-              Image(systemName: "checkmark.circle.fill")
-                .foregroundColor(.green)
-              
-              Text(String(format: NSLocalizedString("%@ added to %@", comment: "Added food feedback"), lastAddedItem, mealType.localizedName))
-                .font(.subheadline)
-                .foregroundColor(.primary)
-              
-              Spacer()
-            }
-            .padding()
-            .background(Color.green.opacity(0.1))
-            .cornerRadius(10)
-            .padding(.horizontal)
-            .transition(.opacity.combined(with: .move(edge: .top)))
-          }
-
-          if isInitialLoading {
-            // 初回データロード中の表示
-            ProgressView()
-              .padding()
-          } else if searchResults.isEmpty && !isDataLoaded {
-            // マスターデータが0件の場合に表示するビュー
-            EmptyFoodMasterPromptView(selectedTab: $selectedTab, dismiss: dismiss)
-          } else {
-            // 検索結果一覧
-            List {
-              ForEach(searchResults, id: \.id) { item in
-                Button {
-                  addFoodItem(item, servings: item.lastNumberOfServings)
-                } label: {
-                  PastItemCard(
-                    item: item,
-                    onSelect: { foodMaster, servings in
-                      addFoodItem(foodMaster, servings: servings)
-                    })
-                }
-                .buttonStyle(ScaleButtonStyle())
-                .onAppear {
-                  // リストの最後のアイテムが表示されたら次のページを読み込む
-                  if item == searchResults.last && hasMoreData && !isLoading {
-                    loadMoreContent()
-                  }
-                }
-              }
-              
-              // ローディングインジケーター
-              if hasMoreData {
-                Section {
-                  HStack {
-                    Spacer()
-                    if isLoading {
-                      ProgressView()
-                    }
-                    Spacer()
-                  }
-                  .padding(.vertical, 8)
-                  .id("loadingIndicator")  // IDを固定して不要な再描画を防止
-                }
-              }
-            }
-            .listStyle(.insetGrouped)
-            
-            // 検索結果がない場合のメッセージ
-            if searchResults.isEmpty && isDataLoaded {
-              VStack(spacing: 16) {
-                Image(systemName: "exclamationmark.magnifyingglass")
-                  .font(.system(size: 48))
-                  .foregroundColor(.secondary)
-
-                Text(
-                  NSLocalizedString(
-                    "No search results found", comment: "No search results message")
-                )
-                .font(.headline)
-                .foregroundColor(.secondary)
-
-                Text(
-                  NSLocalizedString(
-                    "Register new food items in the food tab",
-                    comment: "No search results message")
-                )
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-                .lineLimit(nil)
-                
-                // 検索結果がない場合にもマスターデータ登録画面タブへのボタンを表示
-                Button {
-                  dismiss()
-                  selectedTab = 1  // フード管理タブに切り替え
-                } label: {
-                  Text(NSLocalizedString("Go to Food Management", comment: "Go to food management button"))
-                    .fontWeight(.semibold)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
-                }
-                .padding(.top, 10)
-              }
-              .frame(maxWidth: .infinity)
-              .padding(.vertical, 40)
-            }
-          }
+        mainContentView
+      }
+      .navigationTitle(NSLocalizedString("Add Meal", comment: "Navigation title"))
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          Button(NSLocalizedString("Cancel", comment: "Button title")) { dismiss() }
         }
-        .navigationTitle(NSLocalizedString("Add Meal", comment: "Navigation title"))
-        .toolbar {
-          ToolbarItem(placement: .cancellationAction) {
-            Button(NSLocalizedString("Cancel", comment: "Button title")) { dismiss() }
-          }
-          
-          // 完了ボタンを追加
-          ToolbarItem(placement: .confirmationAction) {
-            Button(NSLocalizedString("Done", comment: "Button title")) { dismiss() }
-          }
+        
+        // 完了ボタンを追加
+        ToolbarItem(placement: .confirmationAction) {
+          Button(NSLocalizedString("Done", comment: "Button title")) { dismiss() }
         }
-        .onAppear {
-          // 画面が表示されたときにデータをロード
-          if !isDataLoaded {
-            loadFoodMasters()
-          }
+      }
+      .onAppear {
+        // 画面が表示されたときにデータをロード
+        if !isDataLoaded {
+          loadFoodMasters()
         }
       }
     }
   }
   
+  // メインコンテンツ部分を切り出し
+  private var mainContentView: some View {
+    VStack {
+      searchBarView
+      
+      // 追加成功時のフィードバック表示
+      feedbackView
+      
+      contentView
+    }
+  }
+  
+  // 検索バー部分
+  private var searchBarView: some View {
+    HStack {
+      Image(systemName: "magnifyingglass")
+        .foregroundColor(.secondary)
+        .padding(.leading, 8)
+
+      TextField(
+        NSLocalizedString("Search food items", comment: "Search placeholder"),
+        text: $searchText
+      )
+      .padding(10)
+      .background(Color(UIColor.secondarySystemBackground))
+      .cornerRadius(10)
+      .focused($searchFieldIsFocused)  // FocusStateを設定
+      .onTapGesture {
+        searchFieldIsFocused = true  // 明示的にフォーカスを設定
+      }
+      .onChange(of: searchText) { oldValue, newValue in
+        // 検索テキストが変更されたら、タイマーをリセットして新しいタイマーを設定
+        searchDebounceTimer?.invalidate()
+        searchDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+          // タイマーが発火したら検索を実行
+          resetAndSearch()
+        }
+      }
+
+      if !searchText.isEmpty {
+        Button(action: {
+          searchText = ""
+          resetAndSearch()
+        }) {
+          Image(systemName: "xmark.circle.fill")
+            .foregroundColor(.secondary)
+            .padding(.trailing, 8)
+        }
+      }
+      
+      // 検索中の場合のみCancelボタンを表示
+      if searchFieldIsFocused {
+        Button(NSLocalizedString("Cancel", comment: "Cancel search")) {
+          searchText = ""
+          searchFieldIsFocused = false  // キーボードを閉じる
+          resetAndSearch()
+        }
+        .transition(.move(edge: .trailing).combined(with: .opacity))
+      }
+    }
+    .padding(.horizontal)
+    .padding(.top, 8)
+  }
+  
+  // フィードバック表示部分
+  private var feedbackView: some View {
+    Group {
+      if showAddedFeedback {
+        HStack {
+          Image(systemName: "checkmark.circle.fill")
+            .foregroundColor(.green)
+          
+          Text(String(format: NSLocalizedString("%@ added to %@", comment: "Added food feedback"), lastAddedItem, mealType.localizedName))
+            .font(.subheadline)
+            .foregroundColor(.primary)
+          
+          Spacer()
+        }
+        .padding()
+        .background(Color.green.opacity(0.1))
+        .cornerRadius(10)
+        .padding(.horizontal)
+        .transition(.opacity.combined(with: .move(edge: .top)))
+      }
+    }
+  }
+  
+  // メインコンテンツ（状態に応じて表示内容が変わる部分）
+  private var contentView: some View {
+    Group {
+      if isInitialLoading {
+        // 初回データロード中の表示
+        ProgressView()
+          .padding()
+      } else if searchResults.isEmpty && !isDataLoaded {
+        // マスターデータが0件の場合に表示するビュー
+        EmptyFoodMasterPromptView(selectedTab: $selectedTab, dismiss: dismiss)
+      } else if searchResults.isEmpty && isDataLoaded {
+        // 検索結果がない場合のメッセージ
+        emptySearchResultsView
+      } else {
+        // 検索結果一覧
+        searchResultsListView
+      }
+    }
+  }
+  
+  // 検索結果一覧
+  private var searchResultsListView: some View {
+    List {
+      ForEach(searchResults, id: \.id) { item in
+        Button {
+          addFoodItem(item)
+        } label: {
+          PastItemCard(item: item)
+        }
+        .buttonStyle(ScaleButtonStyle())
+        .onAppear {
+          // リストの最後のアイテムが表示されたら次のページを読み込む
+          if item == searchResults.last && hasMoreData && !isLoading {
+            loadMoreContent()
+          }
+        }
+      }
+      
+      // ローディングインジケーター
+      if hasMoreData {
+        Section {
+          HStack {
+            Spacer()
+            if isLoading {
+              ProgressView()
+            }
+            Spacer()
+          }
+          .padding(.vertical, 8)
+          .id("loadingIndicator")  // IDを固定して不要な再描画を防止
+        }
+      }
+    }
+    .listStyle(.insetGrouped)
+  }
+  
+  // 検索結果がない場合のメッセージ
+  private var emptySearchResultsView: some View {
+    VStack(spacing: 16) {
+      Image(systemName: "exclamationmark.magnifyingglass")
+        .font(.system(size: 48))
+        .foregroundColor(.secondary)
+
+      Text(
+        NSLocalizedString(
+          "No search results found", comment: "No search results message")
+      )
+      .font(.headline)
+      .foregroundColor(.secondary)
+
+      Text(
+        NSLocalizedString(
+          "Register new food items in the food tab",
+          comment: "No search results message")
+      )
+      .font(.subheadline)
+      .foregroundColor(.secondary)
+      .multilineTextAlignment(.center)
+      .padding(.horizontal)
+      .lineLimit(nil)
+      
+      // 検索結果がない場合にもマスターデータ登録画面タブへのボタンを表示
+      Button {
+        dismiss()
+        selectedTab = 1  // フード管理タブに切り替え
+      } label: {
+        Text(NSLocalizedString("Go to Food Management", comment: "Go to food management button"))
+          .fontWeight(.semibold)
+          .padding(.horizontal, 20)
+          .padding(.vertical, 10)
+          .background(Color.blue)
+          .foregroundColor(.white)
+          .cornerRadius(10)
+      }
+      .padding(.top, 10)
+    }
+    .frame(maxWidth: .infinity)
+    .padding(.vertical, 40)
+  }
+  
   // フードアイテムを追加する関数
-  private func addFoodItem(_ foodMaster: FoodMaster, servings: Double) {
+  private func addFoodItem(_ foodMaster: FoodMaster) {
     let newLogItem = LogItem(
       timestamp: date,
       mealType: mealType,
-      numberOfServings: servings,
+      numberOfServings: foodMaster.lastNumberOfServings,
       foodMaster: foodMaster
     )
     modelContext.insert(newLogItem)
@@ -379,19 +405,14 @@ struct EmptyFoodMasterPromptView: View {
 // 過去の食事アイテムカード
 struct PastItemCard: View {
   let item: FoodMaster
-  @State private var numberOfServings: String
-  var onSelect: (FoodMaster, Double) -> Void
   
-  // 現在のサービング数を計算するための計算プロパティ
-  private var currentServings: Double {
-    return Double(numberOfServings) ?? item.lastNumberOfServings
+  // 常に最後に使用したサービング数を使用
+  private var servings: Double {
+    return item.lastNumberOfServings
   }
 
-  init(item: FoodMaster, onSelect: @escaping (FoodMaster, Double) -> Void) {
+  init(item: FoodMaster) {
     self.item = item
-    self.onSelect = onSelect
-    // 最後に使用したサービング数を初期値として設定
-    _numberOfServings = State(initialValue: String(format: "%.1f", item.lastNumberOfServings))
   }
 
   var body: some View {
@@ -400,13 +421,12 @@ struct PastItemCard: View {
         VStack(alignment: .leading, spacing: 4) {
           Text("\(item.brandName) \(item.productName)")
             .font(.headline)
-
         }
 
         Spacer()
 
-        // カロリーを現在のサービング数に応じて計算
-        Text("\(item.calories * currentServings, specifier: "%.0f")")
+        // カロリーを固定のサービング数に応じて計算
+        Text("\(item.calories * servings, specifier: "%.0f")")
           .font(.title3.bold())
           + Text(" kcal")
           .font(.subheadline)
@@ -414,43 +434,24 @@ struct PastItemCard: View {
       }
 
       HStack(spacing: 8) {
-        // 栄養素の値も現在のサービング数に応じて計算
-        MacroNutrientBadge(label: "P", value: item.protein * currentServings, color: .blue)
-        MacroNutrientBadge(label: "F", value: item.fat * currentServings, color: .yellow)
-        MacroNutrientBadge(label: "S", value: item.sugar * currentServings, color: .green)
-        MacroNutrientBadge(label: "Fiber", value: item.dietaryFiber * currentServings, color: .brown)
+        // 栄養素の値も固定のサービング数に応じて計算
+        MacroNutrientBadge(label: "P", value: item.protein * servings, color: .blue)
+        MacroNutrientBadge(label: "F", value: item.fat * servings, color: .yellow)
+        MacroNutrientBadge(label: "S", value: item.sugar * servings, color: .green)
+        MacroNutrientBadge(label: "Fiber", value: item.dietaryFiber * servings, color: .brown)
       }
-
+      
+      // 分量の表示を追加
       HStack {
-        Text("Servings:")
+        Text(NSLocalizedString("Servings:", comment: "Servings label"))
           .font(.subheadline)
           .foregroundColor(.secondary)
-
-        TextField("1.0", text: $numberOfServings)
-          .keyboardType(.decimalPad)
-          .frame(width: 60)
-          .multilineTextAlignment(.trailing)
-          .padding(4)
-          .background(Color(UIColor.secondarySystemBackground))
-          .cornerRadius(4)
-
-        Text(item.portionUnit)
+          
+        Text("\(servings, specifier: "%.1f") \(item.portionUnit)")
           .font(.subheadline)
-          .foregroundColor(.secondary)
-
+          .foregroundColor(.primary)
+          
         Spacer()
-
-        Button(action: {
-          onSelect(item, currentServings)
-        }) {
-          Text("Add")
-            .font(.subheadline.bold())
-            .foregroundColor(.white)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(Color.blue)
-            .cornerRadius(8)
-        }
       }
     }
     .padding()
