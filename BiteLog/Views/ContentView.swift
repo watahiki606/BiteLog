@@ -154,9 +154,13 @@ struct ItemRowView: View {
           .font(.caption)
           .foregroundColor(.yellow)
 
-        Text("C: \(item.carbohydrates, specifier: "%.1f")g")
+        Text("S: \(item.sugar, specifier: "%.1f")g")
           .font(.caption)
           .foregroundColor(.green)
+
+        Text("F: \(item.dietaryFiber, specifier: "%.1f")g")
+          .font(.caption)
+          .foregroundColor(.brown)
 
         Spacer()
 
