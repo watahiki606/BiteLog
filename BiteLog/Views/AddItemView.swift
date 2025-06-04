@@ -30,6 +30,8 @@ struct AddItemView: View {
   // 追加成功時のフィードバック表示用
   @State private var showAddedFeedback = false
   @State private var lastAddedItem: String = ""
+  @State private var feedbackQueue: [String] = []
+  @State private var isProcessingFeedback = false
 
   init(preselectedMealType: MealType, selectedDate: Date, selectedTab: Binding<Int>) {
     self.mealType = preselectedMealType
@@ -148,7 +150,10 @@ struct AddItemView: View {
         .background(Color.green.opacity(0.1))
         .cornerRadius(10)
         .padding(.horizontal)
-        .transition(.opacity.combined(with: .move(edge: .top)))
+        .transition(.asymmetric(
+          insertion: .move(edge: .top).combined(with: .opacity),
+          removal: .move(edge: .top).combined(with: .opacity)
+        ))
       }
     }
   }
@@ -263,18 +268,12 @@ struct AddItemView: View {
     )
     modelContext.insert(newLogItem)
     
-    // 追加成功のフィードバックを表示
-    lastAddedItem = "\(foodMaster.brandName) \(foodMaster.productName)"
-    withAnimation {
-      showAddedFeedback = true
-    }
+    // フィードバックをキューに追加
+    let feedbackText = "\(foodMaster.brandName) \(foodMaster.productName)"
+    feedbackQueue.append(feedbackText)
     
-    // 2秒後にフィードバックを非表示
-    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-      withAnimation {
-        showAddedFeedback = false
-      }
-    }
+    // キューの処理を開始
+    processFeedbackQueue()
     
     // 検索ワードをクリアして検索欄にフォーカスする
     searchText = ""
@@ -282,6 +281,39 @@ struct AddItemView: View {
     searchFieldIsFocused = true
     
     // シートは閉じない（dismiss()を呼び出さない）
+  }
+  
+  // フィードバックキューを処理する関数
+  private func processFeedbackQueue() {
+    guard !isProcessingFeedback, !feedbackQueue.isEmpty else { return }
+    
+    isProcessingFeedback = true
+    
+    // キューから最初のアイテムを取り出す
+    if let nextItem = feedbackQueue.first {
+      feedbackQueue.removeFirst()
+      lastAddedItem = nextItem
+      
+      // フィードバックを表示
+      withAnimation(.easeIn(duration: 0.2)) {
+        showAddedFeedback = true
+      }
+      
+      // 0.5秒後にフィードバックを非表示にして、次のアイテムを処理
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        withAnimation(.easeOut(duration: 0.2)) {
+          showAddedFeedback = false
+        }
+        
+        // 少し待ってから次のフィードバックを処理
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+          isProcessingFeedback = false
+          processFeedbackQueue()
+        }
+      }
+    } else {
+      isProcessingFeedback = false
+    }
   }
 
   private func resetAndSearch() {
