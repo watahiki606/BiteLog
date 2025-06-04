@@ -7,8 +7,28 @@ struct DayContentView: View {
   let selectedDate: Date
   let onAddTapped: (Date, MealType) -> Void
   let modelContext: ModelContext
-  // 削除後の更新を強制するためのState
-  @State private var refreshID = UUID()
+  
+  // 日付範囲でフィルタリングされたクエリを使用
+  @Query private var dayLogItems: [LogItem]
+  
+  init(date: Date, selectedDate: Date, onAddTapped: @escaping (Date, MealType) -> Void, modelContext: ModelContext) {
+    self.date = date
+    self.selectedDate = selectedDate
+    self.onAddTapped = onAddTapped
+    self.modelContext = modelContext
+    
+    let calendar = Calendar.current
+    let startOfDay = calendar.startOfDay(for: date)
+    let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+    
+    // 日付範囲でフィルタリングするクエリを設定
+    _dayLogItems = Query(
+      filter: #Predicate<LogItem> { logItem in
+        logItem.timestamp >= startOfDay && logItem.timestamp < endOfDay
+      },
+      sort: [SortDescriptor(\.timestamp)]
+    )
+  }
 
   var body: some View {
     VStack {
@@ -201,8 +221,6 @@ struct DayContentView: View {
                     // 変更を保存
                     do {
                       try modelContext.save()
-                      // 更新を強制するためにrefreshIDを更新
-                      refreshID = UUID()
                     } catch {
                       print("Error saving after deletion: \(error)")
                     }
@@ -217,7 +235,6 @@ struct DayContentView: View {
                 .scrollDisabled(true)
                 .listStyle(.plain)
                 .frame(height: CGFloat(mealItems.count + 1) * 58)
-                .id(refreshID)  // リストを強制的に再描画
               }
             }
             .padding(.vertical, 8)
@@ -236,20 +253,8 @@ struct DayContentView: View {
   }
 
   private var filteredItems: [LogItem] {
-    let calendar = Calendar.current
-    
-    // 現在の日付の開始時刻と終了時刻を計算
-    let startOfDay = calendar.startOfDay(for: date)
-    let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-    
-    let descriptor = FetchDescriptor<LogItem>(
-      predicate: #Predicate<LogItem> { logItem in
-        logItem.timestamp >= startOfDay && logItem.timestamp < endOfDay
-      },
-      sortBy: [SortDescriptor(\.timestamp)]
-    )
-    
-    return (try? modelContext.fetch(descriptor)) ?? []
+    // @Queryで既にフィルタリングされているデータを返す
+    return dayLogItems
   }
 
   // 前日の特定の食事タイプのアイテムを取得するメソッド
@@ -345,8 +350,6 @@ struct DayContentView: View {
     // 変更を保存
     do {
       try modelContext.save()
-      // 更新を強制するためにrefreshIDを更新
-      refreshID = UUID()
     } catch {
       print("Error saving after copying meals: \(error)")
     }
