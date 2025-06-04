@@ -95,7 +95,7 @@ struct FoodMasterManagementView: View {
               }
               .onAppear {
                 // リストの最後のアイテムが表示されたら次のページを読み込む
-                if foodMaster == foodMasters.last && hasMoreData && !isLoading {
+                if foodMaster.id == foodMasters.last?.id && hasMoreData && !isLoading {
                   loadMoreContent()
                 }
               }

@@ -158,7 +158,7 @@ struct ItemRowView: View {
           .font(.caption)
           .foregroundColor(.green)
 
-        Text("F: \(item.dietaryFiber, specifier: "%.1f")g")
+        Text("Fiber: \(item.dietaryFiber, specifier: "%.1f")g")
           .font(.caption)
           .foregroundColor(.brown)
 

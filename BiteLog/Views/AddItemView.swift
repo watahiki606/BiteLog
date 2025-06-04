@@ -185,7 +185,7 @@ struct AddItemView: View {
         .buttonStyle(ScaleButtonStyle())
         .onAppear {
           // リストの最後のアイテムが表示されたら次のページを読み込む
-          if item == searchResults.last && hasMoreData && !isLoading {
+          if item.id == searchResults.last?.id && hasMoreData && !isLoading {
             loadMoreContent()
           }
         }
