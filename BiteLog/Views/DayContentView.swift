@@ -11,6 +11,11 @@ struct DayContentView: View {
   // 日付範囲でフィルタリングされたクエリを使用
   @Query private var dayLogItems: [LogItem]
   
+  // 編集モードの状態
+  @State private var editMode: EditMode = .inactive
+  // 選択されたアイテムを保持
+  @State private var selectedItems: Set<LogItem> = []
+  
   init(date: Date, selectedDate: Date, onAddTapped: @escaping (Date, MealType) -> Void, modelContext: ModelContext) {
     self.date = date
     self.selectedDate = selectedDate
@@ -31,16 +36,61 @@ struct DayContentView: View {
   }
 
   var body: some View {
-    VStack {
-      // スクロール全体
-      ScrollView {
-        // 上部にスペースを追加して、ナビゲーションバーとの重なりを防ぐ
+    contentView
+      .toolbar {
+        ToolbarItem(placement: .navigationBarTrailing) {
+          if !filteredItems.isEmpty {
+            EditButton()
+              .environment(\.editMode, $editMode)
+          }
+        }
+        
+        ToolbarItem(placement: .navigationBarLeading) {
+          if editMode == .active && !selectedItems.isEmpty {
+            Button(action: {
+              deleteSelectedItems()
+            }) {
+              Label("Delete", systemImage: "trash")
+                .foregroundColor(.red)
+            }
+          }
+        }
+      }
+      .onChange(of: editMode) { oldValue, newValue in
+        if newValue == .inactive {
+          selectedItems.removeAll()
+        }
+      }
+  }
+  
+  @ViewBuilder
+  private var contentView: some View {
+    VStack(spacing: 0) {
+      scrollContent
+    }
+    .background(Color(UIColor.systemGroupedBackground))
+  }
+  
+  @ViewBuilder
+  private var scrollContent: some View {
+    ScrollView {
+      VStack(spacing: 16) {
         Color.clear.frame(height: 1)
           .padding(.top, 8)
-
-        VStack(spacing: 16) {
-          // 日別集計
-          VStack(spacing: 0) {
+        
+        dailySummaryCard
+        
+        ForEach(MealType.allCases, id: \.self) { mealType in
+          mealSection(for: mealType)
+        }
+      }
+      .padding(.vertical)
+    }
+  }
+  
+  @ViewBuilder
+  private var dailySummaryCard: some View {
+    VStack(spacing: 0) {
             Text(NSLocalizedString("Daily Total", comment: "Daily nutrition summary"))
               .font(.headline)
               .padding(.bottom, 8)
@@ -112,9 +162,10 @@ struct DayContentView: View {
           .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
           .padding(.horizontal)
           .padding(.vertical, 8)
-
-          // 食事リスト
-          ForEach(MealType.allCases, id: \.self) { mealType in
+  }
+  
+  @ViewBuilder
+  private func mealSection(for mealType: MealType) -> some View {
             VStack(alignment: .leading, spacing: 8) {
               // セクションヘッダー
               HStack {
@@ -200,30 +251,19 @@ struct DayContentView: View {
                   onAddTapped(date, mealType)
                 }
               } else {
-                List {
+                List(selection: editMode == .active ? $selectedItems : .constant(Set<LogItem>())) {
                   ForEach(mealItems, id: \.id) { item in
                     ItemRowView(item: item)
                       .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
                       .listRowBackground(Color.clear)
+                      .tag(item)
 
                   }
                   .onDelete(perform: { indexSet in
                     // 削除対象のアイテムを取得
                     let itemsToDelete = indexSet.map { mealItems[$0] }
                     // アイテムを削除
-                    for item in itemsToDelete {
-                      // FoodMasterの使用頻度をデクリメント
-                      FoodMasterManager.decrementUsageCountForLogItemDeletion(
-                        logItem: item, modelContext: modelContext)
-                      modelContext.delete(item)
-                    }
-
-                    // 変更を保存
-                    do {
-                      try modelContext.save()
-                    } catch {
-                      print("Error saving after deletion: \(error)")
-                    }
+                    deleteItems(itemsToDelete)
                   })
                   EmptyMealView(mealType: mealType) {
                     onAddTapped(date, mealType)
@@ -235,6 +275,7 @@ struct DayContentView: View {
                 .scrollDisabled(true)
                 .listStyle(.plain)
                 .frame(height: CGFloat(mealItems.count + 1) * 58)
+                .environment(\.editMode, $editMode)
               }
             }
             .padding(.vertical, 8)
@@ -242,14 +283,6 @@ struct DayContentView: View {
             .cornerRadius(12)
             .shadow(color: Color.black.opacity(0.05), radius: 3, x: 0, y: 1)
             .padding(.horizontal)
-          }
-        }
-        .padding(.vertical)
-
-      }
-      .background(Color(UIColor.systemGroupedBackground))
-
-    }
   }
 
   private var filteredItems: [LogItem] {
@@ -353,5 +386,30 @@ struct DayContentView: View {
     } catch {
       print("Error saving after copying meals: \(error)")
     }
+  }
+  
+  // 複数のアイテムを削除する
+  private func deleteItems(_ items: [LogItem]) {
+    for item in items {
+      // FoodMasterの使用頻度をデクリメント
+      FoodMasterManager.decrementUsageCountForLogItemDeletion(
+        logItem: item, modelContext: modelContext)
+      modelContext.delete(item)
+    }
+    
+    // 変更を保存
+    do {
+      try modelContext.save()
+    } catch {
+      print("Error saving after deletion: \(error)")
+    }
+  }
+  
+  // 選択されたアイテムを削除する
+  private func deleteSelectedItems() {
+    let itemsToDelete = Array(selectedItems)
+    deleteItems(itemsToDelete)
+    selectedItems.removeAll()
+    editMode = .inactive
   }
 }
