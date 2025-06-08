@@ -132,3 +132,6 @@
 "Copy yesterday's %@" = "昨日の%@をコピー";
 "Added %@ to %@" = "%@を%@に追加しました";
 
+// Delete multiple items
+"Delete %d items" = "%d件を削除";
+

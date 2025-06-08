@@ -13,8 +13,8 @@ struct DayContentView: View {
   
   // 編集モードの状態
   @State private var editMode: EditMode = .inactive
-  // 選択されたアイテムを保持
-  @State private var selectedItems: Set<LogItem> = []
+  // 選択されたアイテムのPersistentIdentifierを保持
+  @State private var selectedItemIDs: Set<PersistentIdentifier> = []
   
   init(date: Date, selectedDate: Date, onAddTapped: @escaping (Date, MealType) -> Void, modelContext: ModelContext) {
     self.date = date
@@ -45,20 +45,27 @@ struct DayContentView: View {
           }
         }
         
-        ToolbarItem(placement: .navigationBarLeading) {
-          if editMode == .active && !selectedItems.isEmpty {
-            Button(action: {
-              deleteSelectedItems()
-            }) {
-              Label("Delete", systemImage: "trash")
+        ToolbarItem(placement: .bottomBar) {
+          if editMode == .active && !selectedItemIDs.isEmpty {
+            HStack {
+              Button(action: {
+                deleteSelectedItems()
+              }) {
+                Label(
+                  String(format: NSLocalizedString("Delete %d items", comment: "Delete multiple items"), selectedItemIDs.count),
+                  systemImage: "trash"
+                )
                 .foregroundColor(.red)
+              }
+              
+              Spacer()
             }
           }
         }
       }
       .onChange(of: editMode) { oldValue, newValue in
         if newValue == .inactive {
-          selectedItems.removeAll()
+          selectedItemIDs.removeAll()
         }
       }
   }
@@ -251,15 +258,15 @@ struct DayContentView: View {
                   onAddTapped(date, mealType)
                 }
               } else {
-                List(selection: editMode == .active ? $selectedItems : .constant(Set<LogItem>())) {
-                  ForEach(mealItems, id: \.id) { item in
+                List(selection: $selectedItemIDs) {
+                  ForEach(mealItems, id: \.persistentModelID) { item in
                     ItemRowView(item: item)
                       .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
                       .listRowBackground(Color.clear)
-                      .tag(item)
+                      .tag(item.persistentModelID)
 
                   }
-                  .onDelete(perform: { indexSet in
+                  .onDelete(perform: editMode == .active ? nil : { indexSet in
                     // 削除対象のアイテムを取得
                     let itemsToDelete = indexSet.map { mealItems[$0] }
                     // アイテムを削除
@@ -407,9 +414,21 @@ struct DayContentView: View {
   
   // 選択されたアイテムを削除する
   private func deleteSelectedItems() {
-    let itemsToDelete = Array(selectedItems)
+    print("Selected item IDs count: \(selectedItemIDs.count)")
+    
+    // 選択されたIDに対応するアイテムを取得
+    let itemsToDelete = filteredItems.filter { item in
+      selectedItemIDs.contains(item.persistentModelID)
+    }
+    
+    if itemsToDelete.isEmpty {
+      print("No items found for deletion")
+      return
+    }
+    
+    print("Deleting \(itemsToDelete.count) items")
     deleteItems(itemsToDelete)
-    selectedItems.removeAll()
+    selectedItemIDs.removeAll()
     editMode = .inactive
   }
 }
