@@ -98,3 +98,6 @@
 // Copy previous day meals
 "Copy yesterday's %@" = "Copy yesterday's %@";
 "Added %@ to %@" = "Added %@ to %@";
+
+// Delete multiple items
+"Delete %d items" = "Delete %d items";
