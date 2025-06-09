@@ -45,20 +45,16 @@ struct DayContentView: View {
           }
         }
         
-        ToolbarItem(placement: .bottomBar) {
+        ToolbarItem(placement: .navigationBarLeading) {
           if editMode == .active && !selectedItemIDs.isEmpty {
-            HStack {
-              Button(action: {
-                deleteSelectedItems()
-              }) {
-                Label(
-                  String(format: NSLocalizedString("Delete %d items", comment: "Delete multiple items"), selectedItemIDs.count),
-                  systemImage: "trash"
-                )
-                .foregroundColor(.red)
-              }
-              
-              Spacer()
+            Button(action: {
+              deleteSelectedItems()
+            }) {
+              Label(
+                String(format: NSLocalizedString("Delete %d items", comment: "Delete multiple items"), selectedItemIDs.count),
+                systemImage: "trash"
+              )
+              .foregroundColor(.red)
             }
           }
         }
@@ -258,7 +254,7 @@ struct DayContentView: View {
                   onAddTapped(date, mealType)
                 }
               } else {
-                List(selection: $selectedItemIDs) {
+                List(selection: editMode == .active ? $selectedItemIDs : .constant(Set<PersistentIdentifier>())) {
                   ForEach(mealItems, id: \.persistentModelID) { item in
                     ItemRowView(item: item)
                       .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
@@ -414,20 +410,18 @@ struct DayContentView: View {
   
   // 選択されたアイテムを削除する
   private func deleteSelectedItems() {
-    print("Selected item IDs count: \(selectedItemIDs.count)")
-    
     // 選択されたIDに対応するアイテムを取得
-    let itemsToDelete = filteredItems.filter { item in
+    let itemsToDelete = dayLogItems.filter { item in
       selectedItemIDs.contains(item.persistentModelID)
     }
     
     if itemsToDelete.isEmpty {
-      print("No items found for deletion")
       return
     }
     
-    print("Deleting \(itemsToDelete.count) items")
+    // deleteItems関数を再利用
     deleteItems(itemsToDelete)
+    
     selectedItemIDs.removeAll()
     editMode = .inactive
   }
