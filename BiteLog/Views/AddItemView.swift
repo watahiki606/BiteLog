@@ -95,9 +95,6 @@ struct AddItemView: View {
       .background(Color(UIColor.secondarySystemBackground))
       .cornerRadius(10)
       .focused($searchFieldIsFocused)  // FocusStateを設定
-      .onTapGesture {
-        searchFieldIsFocused = true  // 明示的にフォーカスを設定
-      }
       .onChange(of: searchText) { oldValue, newValue in
         // 検索テキストが変更されたら、タイマーをリセットして新しいタイマーを設定
         searchDebounceTimer?.invalidate()
