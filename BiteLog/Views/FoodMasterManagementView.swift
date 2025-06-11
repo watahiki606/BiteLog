@@ -356,6 +356,19 @@ struct FoodMasterFormView: View {
   @State private var protein = ""
   @State private var portionUnit = ""
 
+  @FocusState private var focusedField: FocusedField?
+  
+  enum FocusedField {
+    case brandName
+    case productName
+    case portionUnit
+    case calories
+    case protein
+    case fat
+    case sugar
+    case dietaryFiber
+  }
+
   var title: String {
     switch mode {
     case .add:
@@ -370,10 +383,13 @@ struct FoodMasterFormView: View {
       Form {
         Section(header: Text(NSLocalizedString("Basic Info", comment: "Basic info"))) {
           TextField(NSLocalizedString("Brand Name", comment: "Brand name"), text: $brandName)
+            .focused($focusedField, equals: .brandName)
           TextField(NSLocalizedString("Product Name", comment: "Product name"), text: $productName)
+            .focused($focusedField, equals: .productName)
           TextField(
             NSLocalizedString("Portion Unit (e.g. piece, g)", comment: "Portion unit"),
             text: $portionUnit)
+            .focused($focusedField, equals: .portionUnit)
         }
 
         Section(
@@ -389,6 +405,7 @@ struct FoodMasterFormView: View {
             TextField(NSLocalizedString("0", comment: "0"), text: $calories)
               .keyboardType(.decimalPad)
               .multilineTextAlignment(.trailing)
+              .focused($focusedField, equals: .calories)
             Text(NSLocalizedString("kcal", comment: "kcal"))
           }
 
@@ -398,6 +415,7 @@ struct FoodMasterFormView: View {
             TextField(NSLocalizedString("0", comment: "0"), text: $protein)
               .keyboardType(.decimalPad)
               .multilineTextAlignment(.trailing)
+              .focused($focusedField, equals: .protein)
             Text(NSLocalizedString("g", comment: "g"))
           }
 
@@ -407,6 +425,7 @@ struct FoodMasterFormView: View {
             TextField(NSLocalizedString("0", comment: "0"), text: $fat)
               .keyboardType(.decimalPad)
               .multilineTextAlignment(.trailing)
+              .focused($focusedField, equals: .fat)
             Text(NSLocalizedString("g", comment: "g"))
           }
 
@@ -416,6 +435,7 @@ struct FoodMasterFormView: View {
             TextField(NSLocalizedString("0", comment: "0"), text: $sugar)
               .keyboardType(.decimalPad)
               .multilineTextAlignment(.trailing)
+              .focused($focusedField, equals: .sugar)
             Text(NSLocalizedString("g", comment: "g"))
           }
 
@@ -425,6 +445,7 @@ struct FoodMasterFormView: View {
             TextField(NSLocalizedString("0", comment: "0"), text: $dietaryFiber)
               .keyboardType(.decimalPad)
               .multilineTextAlignment(.trailing)
+              .focused($focusedField, equals: .dietaryFiber)
             Text(NSLocalizedString("g", comment: "g"))
           }
 
@@ -443,6 +464,27 @@ struct FoodMasterFormView: View {
         .foregroundColor(.secondary)
       }
       .navigationTitle(title)
+      .toolbar {
+        ToolbarItemGroup(placement: .keyboard) {
+          Button(action: {
+            focusPreviousField()
+          }) {
+            Image(systemName: "chevron.up")
+          }
+          
+          Button(action: {
+            focusNextField()
+          }) {
+            Image(systemName: "chevron.down")
+          }
+          
+          Spacer()
+          
+          Button(NSLocalizedString("Done", comment: "Done")) {
+            focusedField = nil
+          }
+        }
+      }
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
           Button(NSLocalizedString("Cancel", comment: "Cancel")) {
@@ -472,6 +514,32 @@ struct FoodMasterFormView: View {
         }
       }
     }
+  }
+  
+  private func focusNextField() {
+    let allFields: [FocusedField] = [.brandName, .productName, .portionUnit, .calories, .protein, .fat, .sugar, .dietaryFiber]
+    
+    guard let currentField = focusedField,
+          let currentIndex = allFields.firstIndex(of: currentField) else {
+      focusedField = allFields.first
+      return
+    }
+    
+    let nextIndex = (currentIndex + 1) % allFields.count
+    focusedField = allFields[nextIndex]
+  }
+  
+  private func focusPreviousField() {
+    let allFields: [FocusedField] = [.brandName, .productName, .portionUnit, .calories, .protein, .fat, .sugar, .dietaryFiber]
+    
+    guard let currentField = focusedField,
+          let currentIndex = allFields.firstIndex(of: currentField) else {
+      focusedField = allFields.last
+      return
+    }
+    
+    let previousIndex = currentIndex == 0 ? allFields.count - 1 : currentIndex - 1
+    focusedField = allFields[previousIndex]
   }
 
   private func saveFoodMaster() {
