@@ -86,12 +86,6 @@ struct DayContentView: View {
         ForEach(MealType.allCases, id: \.self) { mealType in
           mealSection(for: mealType)
         }
-        
-        // スクロール可能なバナー広告
-        AdaptiveBannerView()
-          .frame(height: 50)
-          .padding(.horizontal)
-          .padding(.top, 16)
       }
       .padding(.vertical)
     }
