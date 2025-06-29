@@ -12,8 +12,7 @@ struct ContentView: View {
   @State private var selectedTab = 0
 
   var body: some View {
-    VStack(spacing: 0) {
-      TabView(selection: $selectedTab) {
+    TabView(selection: $selectedTab) {
       // ログタブ
       NavigationStack {
         VStack(spacing: 0) {
@@ -102,14 +101,6 @@ struct ContentView: View {
       }
       .tag(1)
     }
-    
-    // 固定バナー広告
-    AdaptiveBannerView()
-      .frame(height: 50)
-      .background(Color(UIColor.systemBackground))
-      .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: -2)
-    }
-    .edgesIgnoringSafeArea(.bottom)
   }
 
   private var dateFormatter: DateFormatter {
