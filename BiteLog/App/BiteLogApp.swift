@@ -5,6 +5,12 @@ import SwiftUI
 struct BiteLogApp: App {
   @StateObject private var languageManager = LanguageManager()
 
+  init() {
+    // AdMob初期化（SDK v12対応済み）
+    // GADApplicationIdentifierはInfo.plistで設定済み
+    AdMobManager.shared.initialize()
+  }
+
   var sharedModelContainer: ModelContainer = {
     let schema = Schema([
       FoodMaster.self,
@@ -26,6 +32,12 @@ struct BiteLogApp: App {
         .environment(\.locale, languageManager.locale)
         .environmentObject(languageManager)
         .id(languageManager.selectedLanguage)
+        .onAppear {
+          // App Tracking Transparencyのリクエスト
+          AdMobManager.shared.requestTrackingAuthorization { authorized in
+            print("Tracking authorization status: \(authorized)")
+          }
+        }
     }
     .modelContainer(sharedModelContainer)
   }
