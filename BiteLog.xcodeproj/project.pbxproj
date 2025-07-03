@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		2DB876402E0F81EA00840645 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 2DB8763F2E0F81EA00840645 /* GoogleMobileAds */; };
+		2D1CB3D82E15FE4B00989B64 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 2D1CB3D72E15FE4B00989B64 /* GoogleMobileAds */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,7 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2DB876402E0F81EA00840645 /* GoogleMobileAds in Frameworks */,
+				2D1CB3D82E15FE4B00989B64 /* GoogleMobileAds in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -117,7 +117,7 @@
 			);
 			name = BiteLog;
 			packageProductDependencies = (
-				2DB8763F2E0F81EA00840645 /* GoogleMobileAds */,
+				2D1CB3D72E15FE4B00989B64 /* GoogleMobileAds */,
 			);
 			productName = BiteLog;
 			productReference = 2D086CB12D69707900C2CD95 /* BiteLog.app */;
@@ -203,7 +203,7 @@
 			mainGroup = 2D086CA82D69707900C2CD95;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				2DB8763E2E0F81EA00840645 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
+				2D1CB3D62E15FE4B00989B64 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2D086CB22D69707900C2CD95 /* Products */;
@@ -410,6 +410,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = BiteLog/Info.plist;
+				INFOPLIST_KEY_GADApplicationIdentifier = "ca-app-pub-3940256099942544~1458002511";
+				INFOPLIST_KEY_NSUserTrackingUsageDescription = "このアプリは、より関連性の高い広告を表示するために、あなたのアクティビティを追跡することがあります。";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -419,6 +421,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.4;
+				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = com.watahiki.BiteLog;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -441,6 +444,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = BiteLog/Info.plist;
+				INFOPLIST_KEY_GADApplicationIdentifier = "ca-app-pub-3786393697724703~6766055998";
+				INFOPLIST_KEY_NSUserTrackingUsageDescription = "このアプリは、より関連性の高い広告を表示するために、あなたのアクティビティを追跡することがあります。";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -450,6 +455,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.4;
+				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = com.watahiki.BiteLog;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -564,9 +570,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		2DB8763E2E0F81EA00840645 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
+		2D1CB3D62E15FE4B00989B64 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads.git";
+			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads";
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 12.6.0;
@@ -575,9 +581,9 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		2DB8763F2E0F81EA00840645 /* GoogleMobileAds */ = {
+		2D1CB3D72E15FE4B00989B64 /* GoogleMobileAds */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 2DB8763E2E0F81EA00840645 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
+			package = 2D1CB3D62E15FE4B00989B64 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
 			productName = GoogleMobileAds;
 		};
 /* End XCSwiftPackageProductDependency section */

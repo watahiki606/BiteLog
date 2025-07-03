@@ -6,9 +6,8 @@ struct BiteLogApp: App {
   @StateObject private var languageManager = LanguageManager()
 
   init() {
-    // TODO: AdMob初期化でクラッシュが発生中
-    // 原因: GADApplicationIdentifierがInfo.plistに設定されていない
-    // 解決策: Info.plist設定修正 or AdMobアカウント作成後の実際のID設定
+    // AdMob初期化（SDK v12対応済み）
+    // GADApplicationIdentifierはInfo.plistで設定済み
     AdMobManager.shared.initialize()
   }
 
