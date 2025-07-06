@@ -32,6 +32,9 @@ struct AddItemView: View {
   @State private var lastAddedItem: String = ""
   @State private var feedbackQueue: [String] = []
   @State private var isProcessingFeedback = false
+  
+  // 新規作成シート表示用
+  @State private var showQuickCreationSheet = false
 
   init(preselectedMealType: MealType, selectedDate: Date, selectedTab: Binding<Int>) {
     self.mealType = preselectedMealType
@@ -193,6 +196,39 @@ struct AddItemView: View {
         }
       }
       
+      // 検索テキストがある場合、「新規作成して追加」ボタンを表示
+      if !searchText.isEmpty && !hasMoreData {
+        Section {
+          Button {
+            showQuickCreationSheet = true
+          } label: {
+            HStack {
+              Image(systemName: "plus.circle.fill")
+                .font(.title2)
+                .foregroundColor(.blue)
+              
+              VStack(alignment: .leading, spacing: 4) {
+                Text(String(format: NSLocalizedString("Create and add \"%@\"", comment: "Create and add button"), searchText))
+                  .font(.headline)
+                  .foregroundColor(.primary)
+                
+                Text(NSLocalizedString("Quickly add a new food item", comment: "Quick add description"))
+                  .font(.caption)
+                  .foregroundColor(.secondary)
+              }
+              
+              Spacer()
+              
+              Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            }
+            .padding(.vertical, 8)
+          }
+          .buttonStyle(PlainButtonStyle())
+        }
+      }
+      
       // ローディングインジケーター
       if hasMoreData {
         Section {
@@ -209,6 +245,16 @@ struct AddItemView: View {
       }
     }
     .listStyle(.insetGrouped)
+    .sheet(isPresented: $showQuickCreationSheet) {
+      FoodMasterFormView(mode: .quickAdd(initialProductName: searchText)) { createdFood in
+        // 作成後すぐに追加
+        addFoodItem(createdFood)
+        // Log画面に戻る
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+          dismiss()
+        }
+      }
+    }
   }
   
   // 検索結果がない場合のメッセージ
@@ -224,6 +270,31 @@ struct AddItemView: View {
       )
       .font(.headline)
       .foregroundColor(.secondary)
+
+      // 検索テキストがある場合は「新規作成して追加」ボタンを表示
+      if !searchText.isEmpty {
+        Button {
+          showQuickCreationSheet = true
+        } label: {
+          HStack {
+            Image(systemName: "plus.circle.fill")
+              .font(.title2)
+            
+            Text(String(format: NSLocalizedString("Create and add \"%@\"", comment: "Create and add button"), searchText))
+              .fontWeight(.semibold)
+          }
+          .padding(.horizontal, 20)
+          .padding(.vertical, 10)
+          .background(Color.blue)
+          .foregroundColor(.white)
+          .cornerRadius(10)
+        }
+        .padding(.top, 10)
+        
+        Text(NSLocalizedString("or", comment: "Or text"))
+          .font(.subheadline)
+          .foregroundColor(.secondary)
+      }
 
       Text(
         NSLocalizedString(
@@ -245,14 +316,23 @@ struct AddItemView: View {
           .fontWeight(.semibold)
           .padding(.horizontal, 20)
           .padding(.vertical, 10)
-          .background(Color.blue)
-          .foregroundColor(.white)
+          .background(Color(UIColor.systemGray5))
+          .foregroundColor(.primary)
           .cornerRadius(10)
       }
-      .padding(.top, 10)
     }
     .frame(maxWidth: .infinity)
     .padding(.vertical, 40)
+    .sheet(isPresented: $showQuickCreationSheet) {
+      FoodMasterFormView(mode: .quickAdd(initialProductName: searchText)) { createdFood in
+        // 作成後すぐに追加
+        addFoodItem(createdFood)
+        // Log画面に戻る
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+          dismiss()
+        }
+      }
+    }
   }
   
   // フードアイテムを追加する関数
