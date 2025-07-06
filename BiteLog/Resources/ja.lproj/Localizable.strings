@@ -135,3 +135,14 @@
 // Delete multiple items
 "Delete %d items" = "%d件を削除";
 
+// Quick food creation
+"Create and add \"%@\"" = "「%@」を作成して追加";
+"Quickly add a new food item" = "新しいフードを素早く追加";
+"Quick Add Food" = "フードを素早く追加";
+"Food Information" = "フード情報";
+"Nutrition per Serving" = "1食分の栄養成分";
+"Portion Unit" = "分量の単位";
+"servings" = "食";
+"Unknown" = "不明";
+"or" = "または";
+
