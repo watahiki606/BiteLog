@@ -72,7 +72,7 @@ SweetPad: Generate Build Server Config
 - Bundle ID: `com.watahiki.BiteLog`
 - Minimum iOS version: iOS 18.2
 - Supported devices: iPhone only
-- Current version: 1.3
+- Current version: 1.6
 
 ## Testing Strategy
 

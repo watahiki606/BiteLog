@@ -101,3 +101,14 @@
 
 // Delete multiple items
 "Delete %d items" = "Delete %d items";
+
+// Quick food creation
+"Create and add \"%@\"" = "Create and add \"%@\"";
+"Quickly add a new food item" = "Quickly add a new food item";
+"Quick Add Food" = "Quick Add Food";
+"Food Information" = "Food Information";
+"Nutrition per Serving" = "Nutrition per Serving";
+"Portion Unit" = "Portion Unit";
+"servings" = "servings";
+"Unknown" = "Unknown";
+"or" = "or";
