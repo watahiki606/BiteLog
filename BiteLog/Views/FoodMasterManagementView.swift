@@ -341,9 +341,11 @@ struct FoodMasterFormView: View {
   enum FormMode: Equatable {
     case add
     case edit(FoodMaster)
+    case quickAdd(initialProductName: String)
   }
 
   let mode: FormMode
+  let onSaved: ((FoodMaster) -> Void)?
   @Environment(\.dismiss) var dismiss
   @Environment(\.modelContext) private var modelContext
 
@@ -357,6 +359,18 @@ struct FoodMasterFormView: View {
   @State private var portionUnit = ""
 
   @FocusState private var focusedField: FocusedField?
+  
+  // 状態保存用のキー
+  private var stateKey: String {
+    switch mode {
+    case .quickAdd(let productName):
+      return "quickAdd_\(productName)"
+    case .add:
+      return "add"
+    case .edit(let foodMaster):
+      return "edit_\(foodMaster.id.uuidString)"
+    }
+  }
   
   enum FocusedField {
     case brandName
@@ -375,6 +389,24 @@ struct FoodMasterFormView: View {
       return NSLocalizedString("Add Food Item", comment: "Add food item")
     case .edit:
       return NSLocalizedString("Edit Food Item", comment: "Edit food item")
+    case .quickAdd:
+      return NSLocalizedString("Quick Add Food", comment: "Quick add food")
+    }
+  }
+  
+  init(mode: FormMode, onSaved: ((FoodMaster) -> Void)? = nil) {
+    self.mode = mode
+    self.onSaved = onSaved
+    
+    // 初期値を設定（アプリ切り替え時の状態復元に対応）
+    switch mode {
+    case .quickAdd(let initialProductName):
+      _productName = State(initialValue: initialProductName)
+      _portionUnit = State(initialValue: "")
+    case .add:
+      _portionUnit = State(initialValue: "")
+    case .edit:
+      break
     }
   }
 
@@ -494,25 +526,30 @@ struct FoodMasterFormView: View {
 
         ToolbarItem(placement: .confirmationAction) {
           Button(NSLocalizedString("Save", comment: "Save")) {
-            saveFoodMaster()
+            let savedFoodMaster = saveFoodMaster()
+            if let savedFood = savedFoodMaster {
+              clearSavedState() // 保存成功時に状態をクリア
+              onSaved?(savedFood)
+            }
             dismiss()
           }
           .disabled(brandName.isEmpty || productName.isEmpty || portionUnit.isEmpty)
         }
       }
       .onAppear {
-        if case .edit(let foodMaster) = mode {
-          // 編集モードの場合、既存の値をフォームにセット
-          brandName = foodMaster.brandName
-          productName = foodMaster.productName
-          calories = String(format: "%.1f", foodMaster.calories)
-          sugar = String(format: "%.1f", foodMaster.sugar)
-          dietaryFiber = String(format: "%.1f", foodMaster.dietaryFiber)
-          fat = String(format: "%.1f", foodMaster.fat)
-          protein = String(format: "%.1f", foodMaster.protein)
-          portionUnit = foodMaster.portionUnit
-        }
+        loadState()
       }
+      .onDisappear {
+        saveState()
+      }
+      .onChange(of: brandName) { _, _ in saveState() }
+      .onChange(of: productName) { _, _ in saveState() }
+      .onChange(of: calories) { _, _ in saveState() }
+      .onChange(of: sugar) { _, _ in saveState() }
+      .onChange(of: dietaryFiber) { _, _ in saveState() }
+      .onChange(of: fat) { _, _ in saveState() }
+      .onChange(of: protein) { _, _ in saveState() }
+      .onChange(of: portionUnit) { _, _ in saveState() }
     }
   }
   
@@ -542,7 +579,7 @@ struct FoodMasterFormView: View {
     focusedField = allFields[previousIndex]
   }
 
-  private func saveFoodMaster() {
+  private func saveFoodMaster() -> FoodMaster? {
     // 入力値を数値に変換
     let caloriesValue = Double(calories) ?? 0
     let sugarValue = Double(sugar) ?? 0
@@ -551,10 +588,10 @@ struct FoodMasterFormView: View {
     let proteinValue = Double(protein) ?? 0
 
     switch mode {
-    case .add:
+    case .add, .quickAdd:
       // 新規追加
       let newFoodMaster = FoodMaster(
-        brandName: brandName,
+        brandName: brandName.isEmpty ? NSLocalizedString("Unknown", comment: "Unknown brand") : brandName,
         productName: productName,
         calories: caloriesValue,
         sugar: sugarValue,
@@ -565,6 +602,7 @@ struct FoodMasterFormView: View {
         portion: 1.0  // 1単位あたりに正規化
       )
       modelContext.insert(newFoodMaster)
+      return newFoodMaster
 
     case .edit(let foodMaster):
       // 既存データの更新
@@ -585,7 +623,75 @@ struct FoodMasterFormView: View {
       let proteinStr = String(format: "%.2f", proteinValue)
       foodMaster.uniqueKey =
         "\(brandName)|\(productName)|\(caloriesStr)|\(sugarStr)|\(fiberStr)|\(fatStr)|\(proteinStr)|\(portionUnit)"
+      return foodMaster
     }
+  }
+  
+  private func saveState() {
+    // クイック追加モードの場合のみ状態を保存
+    guard case .quickAdd = mode else { return }
+    
+    UserDefaults.standard.set(brandName, forKey: "\(stateKey)_brandName")
+    UserDefaults.standard.set(productName, forKey: "\(stateKey)_productName")
+    UserDefaults.standard.set(calories, forKey: "\(stateKey)_calories")
+    UserDefaults.standard.set(sugar, forKey: "\(stateKey)_sugar")
+    UserDefaults.standard.set(dietaryFiber, forKey: "\(stateKey)_dietaryFiber")
+    UserDefaults.standard.set(fat, forKey: "\(stateKey)_fat")
+    UserDefaults.standard.set(protein, forKey: "\(stateKey)_protein")
+    UserDefaults.standard.set(portionUnit, forKey: "\(stateKey)_portionUnit")
+  }
+  
+  private func loadState() {
+    switch mode {
+    case .edit(let foodMaster):
+      // 編集モードの場合、既存の値をフォームにセット
+      brandName = foodMaster.brandName
+      productName = foodMaster.productName
+      calories = String(format: "%.1f", foodMaster.calories)
+      sugar = String(format: "%.1f", foodMaster.sugar)
+      dietaryFiber = String(format: "%.1f", foodMaster.dietaryFiber)
+      fat = String(format: "%.1f", foodMaster.fat)
+      protein = String(format: "%.1f", foodMaster.protein)
+      portionUnit = foodMaster.portionUnit
+      
+    case .quickAdd(let initialProductName):
+      // 保存された状態があるかチェック
+      let savedBrandName = UserDefaults.standard.string(forKey: "\(stateKey)_brandName") ?? ""
+      let savedProductName = UserDefaults.standard.string(forKey: "\(stateKey)_productName") ?? initialProductName
+      let savedCalories = UserDefaults.standard.string(forKey: "\(stateKey)_calories") ?? ""
+      let savedSugar = UserDefaults.standard.string(forKey: "\(stateKey)_sugar") ?? ""
+      let savedDietaryFiber = UserDefaults.standard.string(forKey: "\(stateKey)_dietaryFiber") ?? ""
+      let savedFat = UserDefaults.standard.string(forKey: "\(stateKey)_fat") ?? ""
+      let savedProtein = UserDefaults.standard.string(forKey: "\(stateKey)_protein") ?? ""
+      let savedPortionUnit = UserDefaults.standard.string(forKey: "\(stateKey)_portionUnit") ?? ""
+      
+      brandName = savedBrandName
+      productName = savedProductName
+      calories = savedCalories
+      sugar = savedSugar
+      dietaryFiber = savedDietaryFiber
+      fat = savedFat
+      protein = savedProtein
+      portionUnit = savedPortionUnit
+      
+    case .add:
+      // 通常の追加モードの場合、特に何もしない
+      break
+    }
+  }
+  
+  private func clearSavedState() {
+    // クイック追加モードの場合のみ保存された状態をクリア
+    guard case .quickAdd = mode else { return }
+    
+    UserDefaults.standard.removeObject(forKey: "\(stateKey)_brandName")
+    UserDefaults.standard.removeObject(forKey: "\(stateKey)_productName")
+    UserDefaults.standard.removeObject(forKey: "\(stateKey)_calories")
+    UserDefaults.standard.removeObject(forKey: "\(stateKey)_sugar")
+    UserDefaults.standard.removeObject(forKey: "\(stateKey)_dietaryFiber")
+    UserDefaults.standard.removeObject(forKey: "\(stateKey)_fat")
+    UserDefaults.standard.removeObject(forKey: "\(stateKey)_protein")
+    UserDefaults.standard.removeObject(forKey: "\(stateKey)_portionUnit")
   }
 }
 
@@ -597,6 +703,8 @@ extension FoodMasterFormView.FormMode: Identifiable {
       return "add"
     case .edit(let foodMaster):
       return "edit_\(foodMaster.id.uuidString)"
+    case .quickAdd(let productName):
+      return "quickAdd_\(productName.hashValue)"
     }
   }
 }
