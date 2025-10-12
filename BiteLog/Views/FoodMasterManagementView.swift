@@ -309,19 +309,19 @@ struct FoodMasterRow: View {
       }
 
       HStack {
-        Text("P: \(foodMaster.protein, specifier: "%.3f")g")
+        Text("P: \(NutritionFormatter.formatNutrition(foodMaster.protein))g")
           .font(.caption)
           .foregroundColor(.blue)
 
-        Text("F: \(foodMaster.fat, specifier: "%.3f")g")
+        Text("F: \(NutritionFormatter.formatNutrition(foodMaster.fat))g")
           .font(.caption)
           .foregroundColor(.yellow)
 
-        Text("S: \(foodMaster.sugar, specifier: "%.3f")g")
+        Text("S: \(NutritionFormatter.formatNutrition(foodMaster.sugar))g")
           .font(.caption)
           .foregroundColor(.green)
 
-        Text("Fiber: \(foodMaster.dietaryFiber, specifier: "%.3f")g")
+        Text("Fiber: \(NutritionFormatter.formatNutrition(foodMaster.dietaryFiber))g")
           .font(.caption)
           .foregroundColor(.brown)
 
@@ -485,7 +485,7 @@ struct FoodMasterFormView: View {
           HStack {
             Text(NSLocalizedString("Carbohydrates (Sugar + Fiber)", comment: "Carbohydrates"))
             Spacer()
-            Text(String(format: "%.3f", (Double(sugar) ?? 0) + (Double(dietaryFiber) ?? 0)))
+            Text(NutritionFormatter.formatNutrition((Double(sugar) ?? 0) + (Double(dietaryFiber) ?? 0)))
               .foregroundColor(.secondary)
             Text(NSLocalizedString("g", comment: "g"))
               .foregroundColor(.secondary)
@@ -647,11 +647,11 @@ struct FoodMasterFormView: View {
       // 編集モードの場合、既存の値をフォームにセット
       brandName = foodMaster.brandName
       productName = foodMaster.productName
-      calories = String(format: "%.3f", foodMaster.calories)
-      sugar = String(format: "%.3f", foodMaster.sugar)
-      dietaryFiber = String(format: "%.3f", foodMaster.dietaryFiber)
-      fat = String(format: "%.3f", foodMaster.fat)
-      protein = String(format: "%.3f", foodMaster.protein)
+      calories = NutritionFormatter.formatCalories(foodMaster.calories)
+      sugar = NutritionFormatter.formatNutrition(foodMaster.sugar)
+      dietaryFiber = NutritionFormatter.formatNutrition(foodMaster.dietaryFiber)
+      fat = NutritionFormatter.formatNutrition(foodMaster.fat)
+      protein = NutritionFormatter.formatNutrition(foodMaster.protein)
       portionUnit = foodMaster.portionUnit
       
     case .quickAdd(let initialProductName):

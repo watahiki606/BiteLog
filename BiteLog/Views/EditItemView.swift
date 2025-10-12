@@ -116,7 +116,7 @@ struct EditItemView: View {
 
   init(item: LogItem) {
     self.item = item
-    _numberOfServings = State(initialValue: String(format: "%.3f", item.numberOfServings))
+    _numberOfServings = State(initialValue: NutritionFormatter.formatNutrition(item.numberOfServings))
     _foodMaster = State(initialValue: item.foodMaster)
   }
 
@@ -335,7 +335,7 @@ struct EditItemView: View {
           FoodSearchView(onSelect: { selectedFoodMaster in
             foodMaster = selectedFoodMaster
             // 最後に使用したサービング数を初期値として設定
-            numberOfServings = String(format: "%.3f", selectedFoodMaster.lastNumberOfServings)
+            numberOfServings = NutritionFormatter.formatNutrition(selectedFoodMaster.lastNumberOfServings)
           })
         }
       }

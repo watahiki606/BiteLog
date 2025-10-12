@@ -155,25 +155,25 @@ struct ItemRowView: View {
       }
 
       HStack {
-        Text("P: \(item.protein, specifier: "%.3f")g")
+        Text("P: \(NutritionFormatter.formatNutrition(item.protein))g")
           .font(.caption)
           .foregroundColor(.blue)
 
-        Text("F: \(item.fat, specifier: "%.3f")g")
+        Text("F: \(NutritionFormatter.formatNutrition(item.fat))g")
           .font(.caption)
           .foregroundColor(.yellow)
 
-        Text("S: \(item.sugar, specifier: "%.3f")g")
+        Text("S: \(NutritionFormatter.formatNutrition(item.sugar))g")
           .font(.caption)
           .foregroundColor(.green)
 
-        Text("F: \(item.dietaryFiber, specifier: "%.3f")g")
+        Text("F: \(NutritionFormatter.formatNutrition(item.dietaryFiber))g")
           .font(.caption)
           .foregroundColor(.brown)
 
         Spacer()
 
-        Text("\(item.numberOfServings, specifier: "%.3f") \(item.portionUnit)")
+        Text("\(NutritionFormatter.formatNutrition(item.numberOfServings)) \(item.portionUnit)")
           .font(.caption)
           .foregroundColor(.secondary)
       }
@@ -216,13 +216,22 @@ struct NutrientRow: View {
 
       Spacer()
 
-      Text("\(value, specifier: format)")
+      Text(formattedValue)
         .font(.system(size: 15, weight: .medium))
         + Text(" \(unit)")
         .font(.system(size: 14))
         .foregroundColor(.secondary)
     }
     .padding(.horizontal)
+  }
+
+  private var formattedValue: String {
+    // カロリーの場合は整数表示、それ以外は適応的フォーマット
+    if unit == "kcal" {
+      return NutritionFormatter.formatCalories(value)
+    } else {
+      return NutritionFormatter.formatNutrition(value)
+    }
   }
 }
 
@@ -286,7 +295,7 @@ struct MacroView: View {
         .font(.system(size: 11, weight: .medium))
         .foregroundColor(color.opacity(0.7))
 
-      Text("\(value, specifier: "%.3f")g")
+      Text("\(NutritionFormatter.formatNutrition(value))g")
         .font(.system(size: 13))
         .foregroundColor(.primary.opacity(0.8))
     }
