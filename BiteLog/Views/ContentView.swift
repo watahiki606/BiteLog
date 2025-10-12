@@ -106,10 +106,10 @@ struct ContentView: View {
     // 固定バナー広告
     AdaptiveBannerView()
       .frame(height: 50)
+      .padding(.bottom, 20)
       .background(Color(UIColor.systemBackground))
       .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: -2)
     }
-    .edgesIgnoringSafeArea(.bottom)
   }
 
   private var dateFormatter: DateFormatter {
