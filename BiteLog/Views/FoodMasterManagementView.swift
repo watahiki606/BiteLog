@@ -309,19 +309,19 @@ struct FoodMasterRow: View {
       }
 
       HStack {
-        Text("P: \(foodMaster.protein, specifier: "%.1f")g")
+        Text("P: \(foodMaster.protein, specifier: "%.3f")g")
           .font(.caption)
           .foregroundColor(.blue)
 
-        Text("F: \(foodMaster.fat, specifier: "%.1f")g")
+        Text("F: \(foodMaster.fat, specifier: "%.3f")g")
           .font(.caption)
           .foregroundColor(.yellow)
 
-        Text("S: \(foodMaster.sugar, specifier: "%.1f")g")
+        Text("S: \(foodMaster.sugar, specifier: "%.3f")g")
           .font(.caption)
           .foregroundColor(.green)
 
-        Text("Fiber: \(foodMaster.dietaryFiber, specifier: "%.1f")g")
+        Text("Fiber: \(foodMaster.dietaryFiber, specifier: "%.3f")g")
           .font(.caption)
           .foregroundColor(.brown)
 
@@ -485,7 +485,7 @@ struct FoodMasterFormView: View {
           HStack {
             Text(NSLocalizedString("Carbohydrates (Sugar + Fiber)", comment: "Carbohydrates"))
             Spacer()
-            Text(String(format: "%.1f", (Double(sugar) ?? 0) + (Double(dietaryFiber) ?? 0)))
+            Text(String(format: "%.3f", (Double(sugar) ?? 0) + (Double(dietaryFiber) ?? 0)))
               .foregroundColor(.secondary)
             Text(NSLocalizedString("g", comment: "g"))
               .foregroundColor(.secondary)
@@ -647,11 +647,11 @@ struct FoodMasterFormView: View {
       // 編集モードの場合、既存の値をフォームにセット
       brandName = foodMaster.brandName
       productName = foodMaster.productName
-      calories = String(format: "%.1f", foodMaster.calories)
-      sugar = String(format: "%.1f", foodMaster.sugar)
-      dietaryFiber = String(format: "%.1f", foodMaster.dietaryFiber)
-      fat = String(format: "%.1f", foodMaster.fat)
-      protein = String(format: "%.1f", foodMaster.protein)
+      calories = String(format: "%.3f", foodMaster.calories)
+      sugar = String(format: "%.3f", foodMaster.sugar)
+      dietaryFiber = String(format: "%.3f", foodMaster.dietaryFiber)
+      fat = String(format: "%.3f", foodMaster.fat)
+      protein = String(format: "%.3f", foodMaster.protein)
       portionUnit = foodMaster.portionUnit
       
     case .quickAdd(let initialProductName):
@@ -664,7 +664,7 @@ struct FoodMasterFormView: View {
       let savedFat = UserDefaults.standard.string(forKey: "\(stateKey)_fat") ?? ""
       let savedProtein = UserDefaults.standard.string(forKey: "\(stateKey)_protein") ?? ""
       let savedPortionUnit = UserDefaults.standard.string(forKey: "\(stateKey)_portionUnit") ?? ""
-      
+
       brandName = savedBrandName
       productName = savedProductName
       calories = savedCalories

@@ -155,25 +155,25 @@ struct ItemRowView: View {
       }
 
       HStack {
-        Text("P: \(item.protein, specifier: "%.1f")g")
+        Text("P: \(item.protein, specifier: "%.3f")g")
           .font(.caption)
           .foregroundColor(.blue)
 
-        Text("F: \(item.fat, specifier: "%.1f")g")
+        Text("F: \(item.fat, specifier: "%.3f")g")
           .font(.caption)
           .foregroundColor(.yellow)
 
-        Text("S: \(item.sugar, specifier: "%.1f")g")
+        Text("S: \(item.sugar, specifier: "%.3f")g")
           .font(.caption)
           .foregroundColor(.green)
 
-        Text("F: \(item.dietaryFiber, specifier: "%.1f")g")
+        Text("F: \(item.dietaryFiber, specifier: "%.3f")g")
           .font(.caption)
           .foregroundColor(.brown)
 
         Spacer()
 
-        Text("\(item.numberOfServings, specifier: "%.1f") \(item.portionUnit)")
+        Text("\(item.numberOfServings, specifier: "%.3f") \(item.portionUnit)")
           .font(.caption)
           .foregroundColor(.secondary)
       }
@@ -286,7 +286,7 @@ struct MacroView: View {
         .font(.system(size: 11, weight: .medium))
         .foregroundColor(color.opacity(0.7))
 
-      Text("\(value, specifier: "%.1f")g")
+      Text("\(value, specifier: "%.3f")g")
         .font(.system(size: 13))
         .foregroundColor(.primary.opacity(0.8))
     }

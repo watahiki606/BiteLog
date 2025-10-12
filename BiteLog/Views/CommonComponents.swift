@@ -103,7 +103,7 @@ struct MacroNutrientBadge: View {
         .font(.footnote.bold())
         .foregroundColor(color)
 
-      Text("\(value, specifier: "%.2f")g")
+      Text("\(value, specifier: "%.3f")g")
         .font(.footnote)
     }
     .padding(.vertical, 4)

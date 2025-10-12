@@ -556,7 +556,7 @@ struct PastItemCard: View {
           .font(.subheadline)
           .foregroundColor(.secondary)
           
-        Text("\(servings, specifier: "%.1f") \(item.portionUnit)")
+        Text("\(servings, specifier: "%.3f") \(item.portionUnit)")
           .font(.subheadline)
           .foregroundColor(.primary)
           
