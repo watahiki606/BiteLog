@@ -647,7 +647,7 @@ struct FoodMasterFormView: View {
       // 編集モードの場合、既存の値をフォームにセット
       brandName = foodMaster.brandName
       productName = foodMaster.productName
-      calories = NutritionFormatter.formatCalories(foodMaster.calories)
+      calories = NutritionFormatter.formatNutrition(foodMaster.calories)
       sugar = NutritionFormatter.formatNutrition(foodMaster.sugar)
       dietaryFiber = NutritionFormatter.formatNutrition(foodMaster.dietaryFiber)
       fat = NutritionFormatter.formatNutrition(foodMaster.fat)

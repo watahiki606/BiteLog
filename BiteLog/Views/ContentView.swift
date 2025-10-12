@@ -226,12 +226,8 @@ struct NutrientRow: View {
   }
 
   private var formattedValue: String {
-    // カロリーの場合は整数表示、それ以外は適応的フォーマット
-    if unit == "kcal" {
-      return NutritionFormatter.formatCalories(value)
-    } else {
-      return NutritionFormatter.formatNutrition(value)
-    }
+    // すべての栄養素に適応的フォーマットを使用
+    return NutritionFormatter.formatNutrition(value)
   }
 }
 

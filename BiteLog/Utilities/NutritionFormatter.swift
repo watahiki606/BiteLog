@@ -23,12 +23,4 @@ enum NutritionFormatter {
       return String(format: "%.3f", value)
     }
   }
-
-  /// カロリー用のフォーマット（常に整数表示）
-  ///
-  /// - Parameter value: フォーマットする数値
-  /// - Returns: フォーマットされた文字列
-  static func formatCalories(_ value: Double) -> String {
-    return String(format: "%.0f", value)
-  }
 }

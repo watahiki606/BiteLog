@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:github.com)",
+      "Bash(git checkout:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh api graphql:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(rm:*)",
+      "Bash(rg:*)",
+      "Bash(/opt/homebrew/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/arm64-darwin/rg -A 30 \"struct ItemRowView\" --type swift)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(gh issue create:*)",
+      "WebFetch(domain:developers.google.com)",
+      "mcp__ide__getDiagnostics",
+      "Bash(echo $?)",
+      "WebFetch(domain:stackoverflow.com)",
+      "Bash(sed:*)",
+      "WebFetch(domain:developer.apple.com)",
+      "Bash(gemini:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh pr create --title \"feat: Increase nutrition display precision to 3 decimal places\" --body \"$(cat <<''EOF''\n## Summary\n- Changed nutrition display precision from 1 decimal place to 3 decimal places\n- Applies to: protein, fat, sugar, dietary fiber, carbohydrates, and servings\n- Calories remain as integer display (no change)\n\n## Changes\n- **ContentView.swift**: Updated ItemRowView and MacroView nutrition formats\n- **FoodMasterManagementView.swift**: Updated FoodMasterRow and form display\n- **DayContentView.swift**: Updated daily summary nutrition display\n- **AddItemView.swift**: Updated servings display precision\n- **CommonComponents.swift**: Updated MacroNutrientBadge component\n- **EditItemView.swift**: Updated servings initial value format\n\n## Motivation\nProvides more accurate nutrition tracking for users who need precise measurements.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\nEOF\n)\" --base main)",
+      "Bash(gh pr diff:*)",
+      "Bash(xcbeautify:*)",
+      "Bash(gh pr create:*)"
+    ],
+    "deny": [],
+    "env": {
+      "MAX_THINKING_TOKENS": "31999"
+    }
+  }
+}
