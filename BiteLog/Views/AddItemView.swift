@@ -555,11 +555,11 @@ struct PastItemCard: View {
         Text(NSLocalizedString("Servings:", comment: "Servings label"))
           .font(.subheadline)
           .foregroundColor(.secondary)
-          
-        Text("\(servings, specifier: "%.1f") \(item.portionUnit)")
+
+        Text("\(NutritionFormatter.formatNutrition(servings)) \(item.portionUnit)")
           .font(.subheadline)
           .foregroundColor(.primary)
-          
+
         Spacer()
       }
     }

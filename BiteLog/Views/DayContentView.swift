@@ -123,7 +123,7 @@ struct DayContentView: View {
                 label: NSLocalizedString("Protein", comment: "Nutrient label"),
                 value: dailyTotals.protein,
                 unit: "g",
-                format: "%.1f",
+                format: "%.3f",
                 icon: "p.circle.fill",
                 color: .blue
               )
@@ -132,7 +132,7 @@ struct DayContentView: View {
                 label: NSLocalizedString("Fat", comment: "Nutrient label"),
                 value: dailyTotals.fat,
                 unit: "g",
-                format: "%.1f",
+                format: "%.3f",
                 icon: "f.circle.fill",
                 color: .yellow
               )
@@ -141,7 +141,7 @@ struct DayContentView: View {
                 label: NSLocalizedString("Sugar", comment: "Nutrient label"),
                 value: dailyTotals.sugar,
                 unit: "g",
-                format: "%.1f",
+                format: "%.3f",
                 icon: "s.circle.fill",
                 color: .green
               )
@@ -150,7 +150,7 @@ struct DayContentView: View {
                 label: NSLocalizedString("Dietary Fiber", comment: "Nutrient label"),
                 value: dailyTotals.fiber,
                 unit: "g",
-                format: "%.1f",
+                format: "%.3f",
                 icon: "leaf.circle.fill",
                 color: .brown
               )
@@ -159,7 +159,7 @@ struct DayContentView: View {
                 label: NSLocalizedString("Carbs (Sugar + Fiber)", comment: "Nutrient label"),
                 value: dailyTotals.carbs,
                 unit: "g",
-                format: "%.1f",
+                format: "%.3f",
                 icon: "c.circle.fill",
                 color: .gray
               )
