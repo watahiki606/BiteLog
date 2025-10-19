@@ -78,6 +78,7 @@ struct ContentView: View {
               selectedDate: itemInfo.date,
               selectedTab: $selectedTab
             )
+            .presentationDetents([.medium, .large])
           }
         }
         .sheet(isPresented: $showingDatePicker) {
@@ -101,7 +102,6 @@ struct ContentView: View {
       }
       .tag(1)
     }
-    .frame(maxHeight: .infinity)
     
     // 固定バナー広告
     AdaptiveBannerView()
