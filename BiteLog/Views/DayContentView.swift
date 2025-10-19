@@ -81,17 +81,18 @@ struct DayContentView: View {
         Color.clear.frame(height: 1)
           .padding(.top, 8)
         
+        // バナー広告
+        AdaptiveBannerView()
+          .frame(height: 50)
+          .padding(.horizontal)
+          .padding(.bottom, -30)
+          .padding(.top, -30)
+        
         dailySummaryCard
         
         ForEach(MealType.allCases, id: \.self) { mealType in
           mealSection(for: mealType)
         }
-        
-        // スクロール可能なバナー広告
-        AdaptiveBannerView()
-          .frame(height: 50)
-          .padding(.horizontal)
-          .padding(.top, 16)
       }
       .padding(.vertical)
     }
