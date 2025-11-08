@@ -202,13 +202,40 @@ class AIFoodAnalyzer {
       return String(text[jsonStart.upperBound..<jsonEnd.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
-    // { と } で囲まれた部分を抽出
-    if let jsonStart = text.range(of: "{"),
-       let jsonEnd = text.range(of: "}", options: .backwards),
-       jsonStart.lowerBound < jsonEnd.upperBound {
-      // 安全に範囲を作成
-      let range = jsonStart.lowerBound..<jsonEnd.upperBound
-      return String(text[range])
+    // { と } で囲まれた部分を抽出（ネスト対応）
+    if let jsonStart = text.firstIndex(of: "{") {
+      var braceCount = 0
+      var jsonEnd: String.Index?
+      var isInString = false
+      var previousChar: Character?
+      
+      for index in text[jsonStart...].indices {
+        let char = text[index]
+        
+        // 文字列リテラル内かどうかを判定（エスケープされた引用符を考慮）
+        if char == "\"" && previousChar != "\\" {
+          isInString.toggle()
+        }
+        
+        // 文字列リテラル内でない場合のみブレースをカウント
+        if !isInString {
+          if char == "{" {
+            braceCount += 1
+          } else if char == "}" {
+            braceCount -= 1
+            if braceCount == 0 {
+              jsonEnd = index
+              break
+            }
+          }
+        }
+        
+        previousChar = char
+      }
+      
+      if let end = jsonEnd {
+        return String(text[jsonStart...end])
+      }
     }
     
     return text.trimmingCharacters(in: .whitespacesAndNewlines)
