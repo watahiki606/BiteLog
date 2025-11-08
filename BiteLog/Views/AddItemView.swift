@@ -67,7 +67,7 @@ struct AddItemView: View {
         }
         
         // AIカメラボタン
-        ToolbarItem(placement: .navigationBarTrailing) {
+        ToolbarItem(placement: .confirmationAction) {
           Button {
             if AIFoodAnalyzer.shared.isAPIKeyConfigured() {
               showingPhotoPicker = true
@@ -78,11 +78,7 @@ struct AddItemView: View {
             Image(systemName: "camera.viewfinder")
               .font(.title3)
           }
-        }
-        
-        // 完了ボタンを追加
-        ToolbarItem(placement: .confirmationAction) {
-          Button(NSLocalizedString("Done", comment: "Button title")) { dismiss() }
+          .buttonStyle(PlainButtonStyle())
         }
       }
       .onAppear {
