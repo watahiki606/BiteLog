@@ -1,0 +1,14 @@
+import Foundation
+
+/// APIキー設定（サンプル）
+/// このファイルをコピーして APIKeys.swift を作成し、実際のAPIキーを入力してください
+/// 
+/// 1. このファイルをコピー: cp APIKeys.example.swift APIKeys.swift
+/// 2. APIKeys.swift を開いて、実際のAPIキーを入力
+/// 3. APIKeys.swift は .gitignore に追加されているので、GitHubにpushされません
+enum APIKeys {
+    /// OpenAI APIキー
+    /// https://platform.openai.com/api-keys から取得してください
+    static let openAI = "YOUR_OPENAI_API_KEY_HERE"
+}
+

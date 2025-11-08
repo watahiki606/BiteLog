@@ -12,61 +12,10 @@ struct SettingsView: View {
   @State private var showDeleteSuccessAlert = false
   @State private var showDeleteErrorAlert = false
   @State private var deleteErrorMessage = ""
-  
-  // AI機能用
-  @State private var apiKey: String = UserDefaults.standard.string(forKey: "openai_api_key") ?? ""
-  @State private var showingAPIKeyInfo = false
 
   var body: some View {
     NavigationStack {
       Form {
-        // AI機能セクション
-        Section(header: Text(NSLocalizedString("AI Features", comment: "Settings section"))) {
-          VStack(alignment: .leading, spacing: 8) {
-            Text(NSLocalizedString("OpenAI API Key", comment: "Settings label"))
-              .font(.subheadline)
-              .foregroundColor(.secondary)
-            
-            HStack {
-              if apiKey.isEmpty {
-                SecureField(NSLocalizedString("Enter API Key", comment: "Placeholder"), text: $apiKey)
-                  .textInputAutocapitalization(.never)
-                  .autocorrectionDisabled()
-              } else {
-                SecureField(NSLocalizedString("API Key Set", comment: "Label"), text: $apiKey)
-                  .textInputAutocapitalization(.never)
-                  .autocorrectionDisabled()
-              }
-              
-              if !apiKey.isEmpty {
-                Button {
-                  apiKey = ""
-                  UserDefaults.standard.removeObject(forKey: "openai_api_key")
-                } label: {
-                  Image(systemName: "xmark.circle.fill")
-                    .foregroundColor(.secondary)
-                }
-              }
-            }
-            
-            Button {
-              showingAPIKeyInfo = true
-            } label: {
-              HStack {
-                Image(systemName: "info.circle")
-                Text(NSLocalizedString("How to get API Key", comment: "Button title"))
-              }
-              .font(.caption)
-              .foregroundColor(.blue)
-            }
-          }
-          .onChange(of: apiKey) { oldValue, newValue in
-            if !newValue.isEmpty {
-              UserDefaults.standard.set(newValue, forKey: "openai_api_key")
-            }
-          }
-        }
-        
         Section(header: Text(NSLocalizedString("Language", comment: "Settings section"))) {
           ForEach(AppLanguage.allCases, id: \.self) { language in
             Button(action: {
@@ -162,19 +111,6 @@ struct SettingsView: View {
         Button(NSLocalizedString("OK", comment: "Button title"), role: .cancel) {}
       } message: {
         Text(deleteErrorMessage)
-      }
-      .alert(
-        NSLocalizedString("How to get API Key", comment: "Alert title"),
-        isPresented: $showingAPIKeyInfo
-      ) {
-        Button(NSLocalizedString("Open OpenAI Website", comment: "Button title")) {
-          if let url = URL(string: "https://platform.openai.com/api-keys") {
-            UIApplication.shared.open(url)
-          }
-        }
-        Button(NSLocalizedString("Cancel", comment: "Button title"), role: .cancel) {}
-      } message: {
-        Text(NSLocalizedString("You can get an API key from OpenAI's website. After signing up, go to API Keys section and create a new secret key.", comment: "API key info"))
       }
       .overlay {
         if isDeleting {

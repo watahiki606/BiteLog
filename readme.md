@@ -33,7 +33,25 @@ VS Codeで以下の拡張機能をインストール：
    - スキーマを選択
    - プロジェクトルートに`buildServer.json`が生成される
 
-### 4. フォーマッター設定
+### 4. APIキー設定（AI機能を使用する場合）
+
+1. `BiteLog/Config/APIKeys.swift`を開いて、OpenAI APIキーを設定：
+
+```swift
+enum APIKeys {
+    static let openAI = "your-actual-api-key-here"
+}
+```
+
+2. OpenAI APIキーの取得方法：
+   - [OpenAI Platform](https://platform.openai.com/api-keys)にアクセス
+   - サインアップ/ログイン
+   - API Keysセクションで新しいキーを作成
+
+**注意**: `APIKeys.swift`は`.gitignore`に追加されており、GitHubにpushされません
+**サンプル**: `BiteLog/Config/APIKeys.example.txt`にサンプルファイルがあります
+
+### 5. フォーマッター設定
 
 `.vscode/settings.json`に以下を追加：
 
@@ -46,7 +64,7 @@ VS Codeで以下の拡張機能をインストール：
 }
 ```
 
-### 5. デバッグ設定
+### 6. デバッグ設定
 
 `.vscode/launch.json`に以下を追加：
 

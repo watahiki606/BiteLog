@@ -33,23 +33,26 @@ class AIFoodAnalyzer {
   private init() {}
   
   // APIキーを取得
-  private var apiKey: String? {
-    return UserDefaults.standard.string(forKey: "openai_api_key")
+  private var apiKey: String {
+    return APIKeys.openAI
   }
   
   // APIキーが設定されているか確認
   func isAPIKeyConfigured() -> Bool {
-    guard let key = apiKey, !key.isEmpty else {
-      return false
-    }
-    return true
+    // プレースホルダーでないかチェック
+    let key = apiKey
+    return !key.isEmpty && 
+           key != "YOUR_OPENAI_API_KEY_HERE" && 
+           key != "あなたのAPIキーをここに入力してください"
   }
   
   // 写真から料理を分析
   func analyzeFood(image: UIImage) async throws -> FoodAnalysisResult {
-    guard let apiKey = apiKey, !apiKey.isEmpty else {
+    guard isAPIKeyConfigured() else {
       throw AnalysisError.apiKeyNotConfigured
     }
+    
+    let apiKey = self.apiKey
     
     // 画像をリサイズしてBase64に変換
     guard let resizedImage = resizeImage(image, maxSize: 1024),
