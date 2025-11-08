@@ -81,6 +81,7 @@ class AIFoodAnalyzer {
     - Sugar/Carbohydrate/糖質
     - Dietary Fiber/食物繊維
     - Total Carbohydrates/炭水化物
+    If "糖質" and "食物繊維" are both listed, use those values directly. If only "炭水化物" is listed, set sugar = 炭水化物 and dietaryFiber = 0.
     If a nutrition label is present, set confidence to "high".
     
     Return ONLY this JSON format (no other text):
