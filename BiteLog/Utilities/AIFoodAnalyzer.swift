@@ -187,13 +187,11 @@ class AIFoodAnalyzer {
     }
     
     let newSize = CGSize(width: size.width * ratio, height: size.height * ratio)
+    let renderer = UIGraphicsImageRenderer(size: newSize)
     
-    UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
-    image.draw(in: CGRect(origin: .zero, size: newSize))
-    let newImage = UIGraphicsGetImageFromCurrentImageContext()
-    UIGraphicsEndImageContext()
-    
-    return newImage
+    return renderer.image { _ in
+      image.draw(in: CGRect(origin: .zero, size: newSize))
+    }
   }
   
   // JSON部分を抽出
