@@ -35,6 +35,15 @@ struct AddItemView: View {
   
   // 新規作成シート表示用
   @State private var showQuickCreationSheet = false
+  
+  // AI機能用
+  @State private var showingPhotoPicker = false
+  @State private var selectedImage: UIImage?
+  @State private var isAnalyzing = false
+  @State private var analysisResult: FoodAnalysisResult?
+  @State private var showingAnalysisResult = false
+  @State private var showingAPIKeyError = false
+  @State private var analysisError: String?
 
   init(preselectedMealType: MealType, selectedDate: Date, selectedTab: Binding<Int>) {
     self.mealType = preselectedMealType
@@ -57,6 +66,20 @@ struct AddItemView: View {
           Button(NSLocalizedString("Cancel", comment: "Button title")) { dismiss() }
         }
         
+        // AIカメラボタン
+        ToolbarItem(placement: .navigationBarTrailing) {
+          Button {
+            if AIFoodAnalyzer.shared.isAPIKeyConfigured() {
+              showingPhotoPicker = true
+            } else {
+              showingAPIKeyError = true
+            }
+          } label: {
+            Image(systemName: "camera.viewfinder")
+              .font(.title3)
+          }
+        }
+        
         // 完了ボタンを追加
         ToolbarItem(placement: .confirmationAction) {
           Button(NSLocalizedString("Done", comment: "Button title")) { dismiss() }
@@ -66,6 +89,86 @@ struct AddItemView: View {
         // 画面が表示されたときにデータをロード
         if !isDataLoaded {
           loadFoodMasters()
+        }
+      }
+      .sheet(isPresented: $showingPhotoPicker) {
+        PhotoPickerView(selectedImage: $selectedImage) { image in
+          analyzeImage(image)
+        }
+      }
+      .sheet(isPresented: $showingAnalysisResult) {
+        if let result = analysisResult, let image = selectedImage {
+          AIAnalysisResultView(
+            result: result,
+            image: image,
+            mealType: mealType,
+            date: date,
+            onSave: {
+              dismiss()
+            }
+          )
+        }
+      }
+      .alert(NSLocalizedString("API Key Required", comment: "Alert title"), isPresented: $showingAPIKeyError) {
+        Button(NSLocalizedString("Open Settings", comment: "Button title")) {
+          dismiss()
+          selectedTab = 2  // 設定タブに移動
+        }
+        Button(NSLocalizedString("Cancel", comment: "Button title"), role: .cancel) {}
+      } message: {
+        Text(NSLocalizedString("Please set your OpenAI API key in Settings to use AI food analysis.", comment: "Alert message"))
+      }
+      .alert(NSLocalizedString("Analysis Error", comment: "Alert title"), isPresented: .constant(analysisError != nil)) {
+        Button(NSLocalizedString("OK", comment: "Button title"), role: .cancel) {
+          analysisError = nil
+        }
+      } message: {
+        if let error = analysisError {
+          Text(error)
+        }
+      }
+      .overlay {
+        if isAnalyzing {
+          ZStack {
+            Color.black.opacity(0.4)
+              .ignoresSafeArea()
+            VStack(spacing: 16) {
+              ProgressView()
+                .scaleEffect(1.5)
+                .tint(.white)
+              Text(NSLocalizedString("Analyzing food...", comment: "Loading message"))
+                .foregroundColor(.white)
+                .font(.headline)
+            }
+            .padding(30)
+            .background(RoundedRectangle(cornerRadius: 16).fill(Color(.systemBackground)))
+            .shadow(radius: 10)
+          }
+        }
+      }
+    }
+  }
+  
+  // AI画像分析
+  private func analyzeImage(_ image: UIImage) {
+    Task {
+      await MainActor.run {
+        isAnalyzing = true
+        showingPhotoPicker = false
+      }
+      
+      do {
+        let result = try await AIFoodAnalyzer.shared.analyzeFood(image: image)
+        
+        await MainActor.run {
+          isAnalyzing = false
+          analysisResult = result
+          showingAnalysisResult = true
+        }
+      } catch {
+        await MainActor.run {
+          isAnalyzing = false
+          analysisError = error.localizedDescription
         }
       }
     }

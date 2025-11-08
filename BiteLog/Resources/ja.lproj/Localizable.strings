@@ -146,3 +146,50 @@
 "Unknown" = "不明";
 "or" = "または";
 
+// AI Features
+"AI Features" = "AI機能";
+"OpenAI API Key" = "OpenAI APIキー";
+"Enter API Key" = "APIキーを入力";
+"API Key Set" = "APIキーが設定されています";
+"How to get API Key" = "APIキーの取得方法";
+"Open OpenAI Website" = "OpenAIのウェブサイトを開く";
+"You can get an API key from OpenAI's website. After signing up, go to API Keys section and create a new secret key." = "OpenAIのウェブサイトでAPIキーを取得できます。サインアップ後、API Keysセクションで新しいシークレットキーを作成してください。";
+
+// Photo Picker
+"Select Photo" = "写真を選択";
+"Take a photo or choose from your library" = "写真を撮るかライブラリから選択";
+"Take Photo" = "写真を撮る";
+"Choose from Library" = "ライブラリから選択";
+"AI Food Analysis" = "AI料理分析";
+"Reselect" = "再選択";
+"Analyze" = "分析する";
+
+// AI Analysis
+"Analyzing food..." = "料理を分析中...";
+"Analysis Complete" = "分析完了";
+"Analysis Result" = "分析結果";
+"Food Name" = "料理名";
+"Portion" = "分量";
+"Nutritional Information" = "栄養成分";
+"Note: Nutritional values are estimates by AI and may not be accurate." = "注: 栄養成分はAIによる推定値であり、正確でない場合があります。";
+"Save to Food Log" = "フードログに保存";
+"Save Food Item" = "フードを保存";
+"Save \"%@\" to %@?" = "「%@」を%@に保存しますか？";
+"High Confidence" = "信頼度：高";
+"Medium Confidence" = "信頼度：中";
+"Low Confidence" = "信頼度：低";
+
+// API Errors
+"API Key Required" = "APIキーが必要です";
+"Open Settings" = "設定を開く";
+"Please set your OpenAI API key in Settings to use AI food analysis." = "AI料理分析を使用するには、設定でOpenAI APIキーを設定してください。";
+"Analysis Error" = "分析エラー";
+"OpenAI API key is not configured. Please set it in Settings." = "OpenAI APIキーが設定されていません。設定で設定してください。";
+"Failed to process image." = "画像の処理に失敗しました。";
+"Invalid response from API." = "APIからの応答が無効です。";
+"Invalid API key. Please check your API key in Settings." = "APIキーが無効です。設定でAPIキーを確認してください。";
+"API rate limit exceeded. Please try again later." = "APIのレート制限を超えました。後でもう一度お試しください。";
+"API error (status code: %d)" = "APIエラー（ステータスコード: %d）";
+"No content returned from API." = "APIからコンテンツが返されませんでした。";
+"Failed to parse API response." = "APIレスポンスの解析に失敗しました。";
+

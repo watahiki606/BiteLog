@@ -30,6 +30,10 @@
     <string>ca-app-pub-3786393697724703~6766055998</string>
     <key>NSUserTrackingUsageDescription</key>
     <string>このアプリは、より関連性の高い広告を表示するために、あなたのアクティビティを追跡することがあります。</string>
+    <key>NSCameraUsageDescription</key>
+    <string>料理の写真を撮影してAIで栄養素を分析するためにカメラへのアクセスが必要です。</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>料理の写真を選択してAIで栄養素を分析するためにフォトライブラリへのアクセスが必要です。</string>
     <key>UIApplicationSupportsIndirectInputEvents</key>
     <true/>
     <key>NSAccentColorName</key>

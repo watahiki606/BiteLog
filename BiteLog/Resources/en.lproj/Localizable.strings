@@ -112,3 +112,69 @@
 "servings" = "servings";
 "Unknown" = "Unknown";
 "or" = "or";
+
+// AI Features
+"AI Features" = "AI Features";
+"OpenAI API Key" = "OpenAI API Key";
+"Enter API Key" = "Enter API Key";
+"API Key Set" = "API Key Set";
+"How to get API Key" = "How to get API Key";
+"Open OpenAI Website" = "Open OpenAI Website";
+"You can get an API key from OpenAI's website. After signing up, go to API Keys section and create a new secret key." = "You can get an API key from OpenAI's website. After signing up, go to API Keys section and create a new secret key.";
+
+// Photo Picker
+"Select Photo" = "Select Photo";
+"Take a photo or choose from your library" = "Take a photo or choose from your library";
+"Take Photo" = "Take Photo";
+"Choose from Library" = "Choose from Library";
+"AI Food Analysis" = "AI Food Analysis";
+"Reselect" = "Reselect";
+"Analyze" = "Analyze";
+
+// AI Analysis
+"Analyzing food..." = "Analyzing food...";
+"Analysis Complete" = "Analysis Complete";
+"Analysis Result" = "Analysis Result";
+"Food Name" = "Food Name";
+"Portion" = "Portion";
+"Nutritional Information" = "Nutritional Information";
+"Sugar" = "Sugar";
+"Dietary Fiber" = "Dietary Fiber";
+"Carbohydrates" = "Carbohydrates";
+"Note: Nutritional values are estimates by AI and may not be accurate." = "Note: Nutritional values are estimates by AI and may not be accurate.";
+"Save to Food Log" = "Save to Food Log";
+"Save Food Item" = "Save Food Item";
+"Save \"%@\" to %@?" = "Save \"%@\" to %@?";
+"High Confidence" = "High Confidence";
+"Medium Confidence" = "Medium Confidence";
+"Low Confidence" = "Low Confidence";
+
+// API Errors
+"API Key Required" = "API Key Required";
+"Open Settings" = "Open Settings";
+"Please set your OpenAI API key in Settings to use AI food analysis." = "Please set your OpenAI API key in Settings to use AI food analysis.";
+"Analysis Error" = "Analysis Error";
+"OpenAI API key is not configured. Please set it in Settings." = "OpenAI API key is not configured. Please set it in Settings.";
+"Failed to process image." = "Failed to process image.";
+"Invalid response from API." = "Invalid response from API.";
+"Invalid API key. Please check your API key in Settings." = "Invalid API key. Please check your API key in Settings.";
+"API rate limit exceeded. Please try again later." = "API rate limit exceeded. Please try again later.";
+"API error (status code: %d)" = "API error (status code: %d)";
+"No content returned from API." = "No content returned from API.";
+"Failed to parse API response." = "Failed to parse API response.";
+
+// Data Management
+"Data Management" = "Data Management";
+"Delete All Data" = "Delete All Data";
+"Success" = "Success";
+"All data has been successfully deleted." = "All data has been successfully deleted.";
+"Error" = "Error";
+"Failed to delete data: " = "Failed to delete data: ";
+"Deleting data..." = "Deleting data...";
+"OK" = "OK";
+
+// Empty states
+"No Food Items Registered" = "No Food Items Registered";
+"You need to register food items before you can add meals." = "You need to register food items before you can add meals.";
+"Go to Food Management" = "Go to Food Management";
+"%@ added to %@" = "%@ added to %@";
