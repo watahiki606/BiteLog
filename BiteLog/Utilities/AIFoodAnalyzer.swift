@@ -68,26 +68,36 @@ class AIFoodAnalyzer {
     
     // プロンプトを構築
     let prompt = """
-    この料理の写真を分析して、以下の情報をJSON形式で返してください。
+    Analyze this image and return nutrition information in JSON format.
     
-    必ず以下の形式で回答してください（他のテキストは含めないでください）：
+    IMPORTANT - Nutrition Label Reading:
+    If the image contains a nutrition facts label (package/product label), prioritize reading the text:
+    - Calories/Energy/カロリー/熱量
+    - Protein/たんぱく質/タンパク質
+    - Fat/脂質
+    - Sugar/Carbohydrate/糖質
+    - Dietary Fiber/食物繊維
+    - Total Carbohydrates/炭水化物
+    If a nutrition label is present, set confidence to "high".
+    
+    Return ONLY this JSON format (no other text):
     {
-      "productName": "料理名（日本語）",
-      "calories": カロリー（kcal、数値のみ）,
-      "protein": タンパク質（g、数値のみ）,
-      "fat": 脂質（g、数値のみ）,
-      "sugar": 糖質（g、数値のみ）,
-      "dietaryFiber": 食物繊維（g、数値のみ）,
-      "portion": 分量（数値のみ）,
-      "portionUnit": 分量の単位（例：g、個、人前）,
-      "confidence": 推定の信頼度（"high", "medium", "low"のいずれか）
+      "productName": "Product or dish name in Japanese",
+      "calories": number in kcal,
+      "protein": number in grams,
+      "fat": number in grams,
+      "sugar": number in grams,
+      "dietaryFiber": number in grams,
+      "portion": portion amount (number),
+      "portionUnit": "unit (e.g., g, ml, 個, 人前)",
+      "confidence": "high" or "medium" or "low"
     }
     
-    注意事項：
-    - カロリーと栄養素は一般的な1人前の量で推定してください
-    - 料理が複数ある場合は、全体の合計値を返してください
-    - 正確な値がわからない場合は、一般的な値を推定してください
-    - JSON形式のみを返し、他の説明文は含めないでください
+    Rules:
+    - If nutrition label exists, read and use those exact values
+    - For food photos without labels, estimate typical serving size
+    - For multiple items, sum the total values
+    - Return JSON only, no explanations
     """
     
     let requestBody: [String: Any] = [
@@ -110,7 +120,7 @@ class AIFoodAnalyzer {
         ]
       ],
       "max_tokens": 500,
-      "temperature": 0.3
+      "temperature": 0.4
     ]
     
     request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
