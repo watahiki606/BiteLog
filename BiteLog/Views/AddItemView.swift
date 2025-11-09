@@ -42,8 +42,9 @@ struct AddItemView: View {
   @State private var isAnalyzing = false
   @State private var analysisResult: FoodAnalysisResult?
   @State private var showingAnalysisResult = false
-  @State private var showingAPIKeyError = false
   @State private var analysisError: String?
+  @StateObject private var rewardedAdManager = RewardedAdManager.shared
+  @StateObject private var interstitialAdManager = InterstitialAdManager.shared
 
   init(preselectedMealType: MealType, selectedDate: Date, selectedTab: Binding<Int>) {
     self.mealType = preselectedMealType
@@ -69,11 +70,7 @@ struct AddItemView: View {
         // AIカメラボタン
         ToolbarItem(placement: .confirmationAction) {
           Button {
-            if AIFoodAnalyzer.shared.isAPIKeyConfigured() {
-              showingPhotoPicker = true
-            } else {
-              showingAPIKeyError = true
-            }
+            showRewardAdAndOpenCamera()
           } label: {
             Image(systemName: "camera.viewfinder")
               .font(.title3)
@@ -104,15 +101,6 @@ struct AddItemView: View {
             }
           )
         }
-      }
-      .alert(NSLocalizedString("API Key Required", comment: "Alert title"), isPresented: $showingAPIKeyError) {
-        Button(NSLocalizedString("Open Settings", comment: "Button title")) {
-          dismiss()
-          selectedTab = 2  // 設定タブに移動
-        }
-        Button(NSLocalizedString("Cancel", comment: "Button title"), role: .cancel) {}
-      } message: {
-        Text(NSLocalizedString("Please set your OpenAI API key in Settings to use AI food analysis.", comment: "Alert message"))
       }
       .alert(NSLocalizedString("Analysis Error", comment: "Alert title"), isPresented: .constant(analysisError != nil)) {
         Button(NSLocalizedString("OK", comment: "Button title"), role: .cancel) {
@@ -145,6 +133,29 @@ struct AddItemView: View {
     }
   }
   
+  // リワード広告を表示してからカメラを開く（広告が準備できていない場合はそのままカメラを開く）
+  private func showRewardAdAndOpenCamera() {
+    print("📸 AIカメラ起動要求")
+    
+    guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+          let rootViewController = windowScene.windows.first?.rootViewController else {
+      print("⚠️ rootViewControllerが取得できません - 直接カメラを開きます")
+      showingPhotoPicker = true
+      return
+    }
+    
+    // 広告が準備できている場合は表示し、準備できていない場合はそのままカメラを開く
+    rewardedAdManager.showAd(from: rootViewController) { earnedReward in
+      print("📸 リワード広告のコールバックが呼ばれました（報酬獲得: \(earnedReward)）")
+      // 報酬獲得の有無に関わらず、カメラを開く
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        print("📸 カメラを開きます（showingPhotoPicker = true）")
+        showingPhotoPicker = true
+        print("📸 showingPhotoPicker設定完了: \(showingPhotoPicker)")
+      }
+    }
+  }
+  
   // AI画像分析
   private func analyzeImage(_ image: UIImage) {
     Task {
@@ -160,6 +171,11 @@ struct AddItemView: View {
           isAnalyzing = false
           analysisResult = result
           showingAnalysisResult = true
+          
+          // AI分析成功後にインタースティシャル広告を表示（頻度制限付き）
+          DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            showInterstitialAdIfReady()
+          }
         }
       } catch {
         await MainActor.run {
@@ -168,6 +184,16 @@ struct AddItemView: View {
         }
       }
     }
+  }
+  
+  // インタースティシャル広告を表示
+  private func showInterstitialAdIfReady() {
+    guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+          let rootViewController = windowScene.windows.first?.rootViewController else {
+      return
+    }
+    
+    interstitialAdManager.showAd(from: rootViewController)
   }
   
   // メインコンテンツ部分を切り出し

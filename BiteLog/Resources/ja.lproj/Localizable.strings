@@ -194,3 +194,7 @@
 "No content returned from API." = "APIからコンテンツが返されませんでした。";
 "Failed to parse API response." = "APIレスポンスの解析に失敗しました。";
 
+// Ad-related strings
+"Ad Not Ready" = "広告の準備中";
+"Please wait a moment for the ad to load and try again." = "広告の読み込みが完了するまでお待ちください。";
+

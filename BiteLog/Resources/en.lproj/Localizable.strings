@@ -179,3 +179,7 @@
 "You need to register food items before you can add meals." = "You need to register food items before you can add meals.";
 "Go to Food Management" = "Go to Food Management";
 "%@ added to %@" = "%@ added to %@";
+
+// Ad-related strings
+"Ad Not Ready" = "Ad Not Ready";
+"Please wait a moment for the ad to load and try again." = "Please wait a moment for the ad to load and try again.";
