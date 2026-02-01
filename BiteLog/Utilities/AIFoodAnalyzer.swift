@@ -105,7 +105,7 @@ class AIFoodAnalyzer {
     """
     
     let requestBody: [String: Any] = [
-      "model": "gpt-4o-mini",
+      "model": "gpt-5-mini",
       "messages": [
         [
           "role": "user",
@@ -123,8 +123,7 @@ class AIFoodAnalyzer {
           ]
         ]
       ],
-      "max_tokens": 500,
-      "temperature": 0.4
+      "max_completion_tokens": 4096
     ]
     
     request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
