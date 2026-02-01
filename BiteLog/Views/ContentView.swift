@@ -14,10 +14,9 @@ struct ContentView: View {
   var body: some View {
     VStack(spacing: 0) {
       // メインコンテンツ
-      Group {
-        if selectedTab == 0 {
-          // ログタブ
-          NavigationStack {
+      ZStack {
+        // ログタブ
+        NavigationStack {
         VStack(spacing: 0) {
           DayContentView(
             date: selectedDate,
@@ -90,12 +89,15 @@ struct ContentView: View {
           SettingsView()
         }
       }
-        } else {
-          // フード管理タブ
-          NavigationStack {
-            FoodMasterManagementView()
-          }
-        }
+      .opacity(selectedTab == 0 ? 1 : 0)
+      .zIndex(selectedTab == 0 ? 1 : 0)
+
+      // フード管理タブ
+      NavigationStack {
+        FoodMasterManagementView()
+      }
+      .opacity(selectedTab == 1 ? 1 : 0)
+      .zIndex(selectedTab == 1 ? 1 : 0)
       }
 
       // カスタムタブバー
@@ -131,7 +133,10 @@ struct ContentView: View {
         }
       }
       .padding(.vertical, 8)
-      .background(Color(UIColor.systemBackground))
+      .background(
+        Color(UIColor.systemBackground)
+          .ignoresSafeArea(edges: .bottom)
+      )
       .overlay(
         Rectangle()
           .frame(height: 0.5)
