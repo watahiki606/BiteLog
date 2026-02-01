@@ -13,9 +13,11 @@ struct ContentView: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      TabView(selection: $selectedTab) {
-      // ログタブ
-      NavigationStack {
+      // メインコンテンツ
+      Group {
+        if selectedTab == 0 {
+          // ログタブ
+          NavigationStack {
         VStack(spacing: 0) {
           DayContentView(
             date: selectedDate,
@@ -88,22 +90,54 @@ struct ContentView: View {
           SettingsView()
         }
       }
-      .tabItem {
-        Label(NSLocalizedString("Log", comment: "Log"), systemImage: "book")
+        } else {
+          // フード管理タブ
+          NavigationStack {
+            FoodMasterManagementView()
+          }
+        }
       }
-      .tag(0)
 
-      // フード管理タブ
-      NavigationStack {
-        FoodMasterManagementView()
+      // カスタムタブバー
+      HStack {
+        // Logタブ
+        Button(action: {
+          // Logタブをタップしたら常に当日の日付にリセット
+          selectedDate = Calendar.current.startOfDay(for: Date())
+          selectedTab = 0
+        }) {
+          VStack(spacing: 4) {
+            Image(systemName: "book")
+              .font(.system(size: 24))
+            Text(NSLocalizedString("Log", comment: "Log"))
+              .font(.caption)
+          }
+          .frame(maxWidth: .infinity)
+          .foregroundColor(selectedTab == 0 ? .blue : .gray)
+        }
+
+        // Foodタブ
+        Button(action: {
+          selectedTab = 1
+        }) {
+          VStack(spacing: 4) {
+            Image(systemName: "list.bullet.clipboard")
+              .font(.system(size: 24))
+            Text(NSLocalizedString("Food", comment: "Food"))
+              .font(.caption)
+          }
+          .frame(maxWidth: .infinity)
+          .foregroundColor(selectedTab == 1 ? .blue : .gray)
+        }
       }
-      .tabItem {
-        Label(NSLocalizedString("Food", comment: "Food"), systemImage: "list.bullet.clipboard")
-      }
-      .tag(1)
-    }
-    
-    
+      .padding(.vertical, 8)
+      .background(Color(UIColor.systemBackground))
+      .overlay(
+        Rectangle()
+          .frame(height: 0.5)
+          .foregroundColor(Color.gray.opacity(0.3)),
+        alignment: .top
+      )
     }
   }
 
