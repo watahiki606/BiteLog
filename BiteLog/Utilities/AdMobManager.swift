@@ -47,12 +47,10 @@ struct AdMobConfig {
     static let applicationID = "ca-app-pub-3940256099942544~1458002511"
     static let bannerAdUnitID = "ca-app-pub-3940256099942544/2435281174"
     static let interstitialAdUnitID = "ca-app-pub-3940256099942544/4411468910"
-    static let rewardedAdUnitID = "ca-app-pub-3940256099942544/1712485313"
     #else
     // 本番用のAdMob ID
     static let applicationID = "ca-app-pub-3786393697724703~6766055998"
     static let bannerAdUnitID = "ca-app-pub-3786393697724703/9739510170"
-    static let interstitialAdUnitID = "ca-app-pub-3786393697724703/6264516863"
-    static let rewardedAdUnitID = "ca-app-pub-3786393697724703/3891179551"
+    static let interstitialAdUnitID = "YOUR_PRODUCTION_INTERSTITIAL_AD_UNIT_ID"
     #endif
 }
