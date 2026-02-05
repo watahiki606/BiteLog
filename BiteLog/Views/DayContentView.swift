@@ -101,77 +101,75 @@ struct DayContentView: View {
   @ViewBuilder
   private var dailySummaryCard: some View {
     VStack(spacing: 0) {
-            Text(NSLocalizedString("Daily Total", comment: "Daily nutrition summary"))
-              .font(.headline)
-              .padding(.bottom, 8)
-              .frame(maxWidth: .infinity, alignment: .leading)
-              .padding(.horizontal)
-              .padding(.top, 12)
+      Text(NSLocalizedString("Daily Total", comment: "Daily nutrition summary"))
+        .font(.headline)
+        .padding(.bottom, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal)
+        .padding(.top, 12)
 
-            Divider()
+      Divider()
 
-            VStack(spacing: 12) {
-              NutrientRow(
-                label: NSLocalizedString("Calories", comment: "Nutrient label"),
-                value: dailyTotals.calories,
-                unit: "kcal",
-                format: "%.1f",
-                icon: "flame.fill",
-                color: .orange
-              )
+      HStack(spacing: 16) {
+        CalorieRingView(
+          calories: dailyTotals.calories,
+          targetCalories: 2000
+        )
 
-              NutrientRow(
-                label: NSLocalizedString("Protein", comment: "Nutrient label"),
-                value: dailyTotals.protein,
-                unit: "g",
-                format: "%.3f",
-                icon: "p.circle.fill",
-                color: .blue
-              )
+        VStack(spacing: 8) {
+          MacroBarView(
+            label: NSLocalizedString("Protein", comment: "Nutrient label"),
+            value: dailyTotals.protein,
+            maxValue: 150,
+            color: .blue,
+            icon: "p.circle.fill"
+          )
 
-              NutrientRow(
-                label: NSLocalizedString("Fat", comment: "Nutrient label"),
-                value: dailyTotals.fat,
-                unit: "g",
-                format: "%.3f",
-                icon: "f.circle.fill",
-                color: .yellow
-              )
+          MacroBarView(
+            label: NSLocalizedString("Fat", comment: "Nutrient label"),
+            value: dailyTotals.fat,
+            maxValue: 80,
+            color: .yellow,
+            icon: "f.circle.fill"
+          )
 
-              NutrientRow(
-                label: NSLocalizedString("Sugar", comment: "Nutrient label"),
-                value: dailyTotals.sugar,
-                unit: "g",
-                format: "%.3f",
-                icon: "s.circle.fill",
-                color: .green
-              )
+          MacroBarView(
+            label: NSLocalizedString("Sugar", comment: "Nutrient label"),
+            value: dailyTotals.sugar,
+            maxValue: 250,
+            color: .green,
+            icon: "s.circle.fill"
+          )
 
-              NutrientRow(
-                label: NSLocalizedString("Dietary Fiber", comment: "Nutrient label"),
-                value: dailyTotals.fiber,
-                unit: "g",
-                format: "%.3f",
-                icon: "leaf.circle.fill",
-                color: .brown
-              )
+          MacroBarView(
+            label: NSLocalizedString("Dietary Fiber", comment: "Nutrient label"),
+            value: dailyTotals.fiber,
+            maxValue: 25,
+            color: .brown,
+            icon: "leaf.circle.fill"
+          )
+        }
+      }
+      .padding()
 
-              NutrientRow(
-                label: NSLocalizedString("Carbs (Sugar + Fiber)", comment: "Nutrient label"),
-                value: dailyTotals.carbs,
-                unit: "g",
-                format: "%.3f",
-                icon: "c.circle.fill",
-                color: .gray
-              )
-            }
-            .padding(.vertical, 8)
-          }
-          .background(Color(UIColor.systemBackground))
-          .cornerRadius(12)
-          .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-          .padding(.horizontal)
-          .padding(.vertical, 8)
+      Divider()
+        .padding(.horizontal)
+
+      NutrientRow(
+        label: NSLocalizedString("Carbs (Sugar + Fiber)", comment: "Nutrient label"),
+        value: dailyTotals.carbs,
+        unit: "g",
+        format: "%.3f",
+        icon: "c.circle.fill",
+        color: .gray
+      )
+      .padding(.vertical, 8)
+    }
+    .background(Color(UIColor.systemBackground))
+    .cornerRadius(12)
+    .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+    .padding(.horizontal)
+    .padding(.vertical, 8)
   }
   
   @ViewBuilder
@@ -179,6 +177,10 @@ struct DayContentView: View {
             VStack(alignment: .leading, spacing: 8) {
               // セクションヘッダー
               HStack {
+                Image(systemName: mealType.iconName)
+                  .font(.system(size: 16, weight: .medium))
+                  .foregroundColor(mealType.accentColor)
+
                 Text(mealType.localizedName)
                   .font(.headline)
                   .foregroundColor(.primary)
@@ -192,7 +194,7 @@ struct DayContentView: View {
                     NSLocalizedString("Add", comment: "Add button"), systemImage: "plus.circle.fill"
                   )
                   .font(.subheadline)
-                  .foregroundColor(.blue)
+                  .foregroundColor(mealType.accentColor)
                 }
               }
               .padding(.horizontal)
@@ -200,26 +202,28 @@ struct DayContentView: View {
               // 食事タイプごとのPFC合計を表示
               let totals = mealTypeTotals(for: mealType)
               if filteredItems.contains(where: { $0.mealType == mealType }) {
-                HStack(spacing: 12) {
-                  NutrientBadge(
-                    value: totals.calories, unit: "kcal",
-                    name: NSLocalizedString("Calories", comment: "Nutrient short name"),
-                    color: .orange,
-                    icon: "flame.fill")
-                  NutrientBadge(
-                    value: totals.protein, unit: "g",
-                    name: "P", color: .blue, icon: "p.circle.fill"
-                  )
-                  NutrientBadge(
-                    value: totals.fat, unit: "g", name: "F", color: .yellow, icon: "f.circle.fill")
-                  NutrientBadge(
-                    value: totals.sugar, unit: "g", name: "S", color: .green, icon: "s.circle.fill")
-                  NutrientBadge(
-                    value: totals.fiber, unit: "g", name: "Fiber", color: .brown,
-                    icon: "leaf.circle.fill")
+                ScrollView(.horizontal, showsIndicators: false) {
+                  HStack(spacing: 8) {
+                    NutrientBadge(
+                      value: totals.calories, unit: "kcal",
+                      name: "Cal",
+                      color: .orange,
+                      icon: "flame.fill")
+                    NutrientBadge(
+                      value: totals.protein, unit: "g",
+                      name: "P", color: .blue, icon: "p.circle.fill"
+                    )
+                    NutrientBadge(
+                      value: totals.fat, unit: "g", name: "F", color: .yellow, icon: "f.circle.fill")
+                    NutrientBadge(
+                      value: totals.sugar, unit: "g", name: "S", color: .green, icon: "s.circle.fill")
+                    NutrientBadge(
+                      value: totals.fiber, unit: "g", name: "Fb", color: .brown,
+                      icon: "leaf.circle.fill")
+                  }
+                  .padding(.horizontal)
                 }
                 .padding(.vertical, 4)
-                .padding(.horizontal)
               }
 
               Divider()
@@ -261,38 +265,58 @@ struct DayContentView: View {
                   onAddTapped(date, mealType)
                 }
               } else {
-                List(selection: editMode == .active ? $selectedItemIDs : .constant(Set<PersistentIdentifier>())) {
-                  ForEach(mealItems, id: \.persistentModelID) { item in
-                    ItemRowView(item: item)
-                      .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
-                      .listRowBackground(Color.clear)
-                      .tag(item.persistentModelID)
+                mealItemsList(mealItems: mealItems)
 
-                  }
-                  .onDelete(perform: editMode == .active ? nil : { indexSet in
-                    // 削除対象のアイテムを取得
-                    let itemsToDelete = indexSet.map { mealItems[$0] }
-                    // アイテムを削除
-                    deleteItems(itemsToDelete)
-                  })
-                  EmptyMealView(mealType: mealType) {
-                    onAddTapped(date, mealType)
-                  }
-                  .listRowBackground(Color.clear)
-                  .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+                Divider()
+                  .padding(.horizontal)
 
+                EmptyMealView(mealType: mealType) {
+                  onAddTapped(date, mealType)
                 }
-                .scrollDisabled(true)
-                .listStyle(.plain)
-                .frame(height: CGFloat(mealItems.count + 1) * 58)
-                .environment(\.editMode, $editMode)
               }
             }
             .padding(.vertical, 8)
-            .background(Color(UIColor.secondarySystemGroupedBackground))
-            .cornerRadius(12)
+            .background(
+              RoundedRectangle(cornerRadius: 12)
+                .fill(Color(UIColor.secondarySystemGroupedBackground))
+                .overlay(
+                  RoundedRectangle(cornerRadius: 12)
+                    .fill(mealType.accentColor.opacity(0.03))
+                )
+            )
+            .overlay(
+              RoundedRectangle(cornerRadius: 12)
+                .stroke(mealType.accentColor.opacity(0.1), lineWidth: 0.5)
+            )
             .shadow(color: Color.black.opacity(0.05), radius: 3, x: 0, y: 1)
             .padding(.horizontal)
+  }
+
+  @ViewBuilder
+  private func mealItemsList(mealItems: [LogItem]) -> some View {
+    let firstID = mealItems.first?.persistentModelID
+    let lastID = mealItems.last?.persistentModelID
+    List(selection: editMode == .active ? $selectedItemIDs : .constant(Set<PersistentIdentifier>())) {
+      ForEach(mealItems, id: \.persistentModelID) { item in
+        let isFirst = item.persistentModelID == firstID
+        let isLast = item.persistentModelID == lastID
+        ItemRowView(item: item)
+          .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+          .listRowBackground(Color.clear)
+          .listRowSeparator(isLast ? .hidden : .visible, edges: .bottom)
+          .listRowSeparator(isFirst ? .hidden : .visible, edges: .top)
+          .listRowSeparatorTint(Color.primary.opacity(0.15))
+          .tag(item.persistentModelID)
+      }
+      .onDelete(perform: editMode == .active ? nil : { indexSet in
+        let itemsToDelete = indexSet.map { mealItems[$0] }
+        deleteItems(itemsToDelete)
+      })
+    }
+    .scrollDisabled(true)
+    .listStyle(.plain)
+    .frame(height: CGFloat(mealItems.count) * 66)
+    .environment(\.editMode, $editMode)
   }
 
   private var filteredItems: [LogItem] {

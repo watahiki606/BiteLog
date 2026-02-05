@@ -160,17 +160,17 @@ struct ItemRowView: View {
   @State private var showingEditSheet = false
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 4) {
-      HStack {
+    VStack(alignment: .leading, spacing: 6) {
+      HStack(alignment: .firstTextBaseline) {
         if item.isMasterDeleted {
-          // 削除されたFoodMasterの場合、削除済みであることを示す
           Text("\(item.brandName) \(item.productName)")
-            .font(.headline)
+            .font(.subheadline.weight(.medium))
             .foregroundColor(.secondary)
-            .strikethrough()  // 取り消し線を追加
+            .strikethrough()
+            .lineLimit(1)
 
           Text(NSLocalizedString("(Deleted)", comment: "Deleted Food indicator"))
-            .font(.caption)
+            .font(.caption2)
             .foregroundColor(.red)
             .padding(.horizontal, 4)
             .padding(.vertical, 2)
@@ -178,32 +178,26 @@ struct ItemRowView: View {
             .cornerRadius(4)
         } else {
           Text("\(item.brandName) \(item.productName)")
-            .font(.headline)
+            .font(.subheadline.weight(.medium))
+            .foregroundColor(.primary)
+            .lineLimit(1)
         }
 
         Spacer()
 
-        Text("\(item.calories, specifier: "%.0f") kcal")
-          .font(.subheadline)
+        Text("\(item.calories, specifier: "%.0f")")
+          .font(.system(size: 15, weight: .semibold, design: .rounded))
+          .foregroundColor(.primary)
+        + Text(" kcal")
+          .font(.system(size: 12))
           .foregroundColor(.secondary)
       }
 
-      HStack {
-        Text("P: \(NutritionFormatter.formatNutrition(item.protein))g")
-          .font(.caption)
-          .foregroundColor(.blue)
-
-        Text("F: \(NutritionFormatter.formatNutrition(item.fat))g")
-          .font(.caption)
-          .foregroundColor(.yellow)
-
-        Text("S: \(NutritionFormatter.formatNutrition(item.sugar))g")
-          .font(.caption)
-          .foregroundColor(.green)
-
-        Text("F: \(NutritionFormatter.formatNutrition(item.dietaryFiber))g")
-          .font(.caption)
-          .foregroundColor(.brown)
+      HStack(spacing: 6) {
+        MacroChip(label: "P", value: item.protein, color: .blue)
+        MacroChip(label: "F", value: item.fat, color: .yellow)
+        MacroChip(label: "S", value: item.sugar, color: .green)
+        MacroChip(label: "Fb", value: item.dietaryFiber, color: .brown)
 
         Spacer()
 
@@ -274,15 +268,22 @@ struct NutrientBadge: View {
   let icon: String
 
   var body: some View {
-    HStack(spacing: 2) {
+    HStack(spacing: 3) {
+      Circle()
+        .fill(color)
+        .frame(width: 6, height: 6)
+
       Text(name)
         .font(.system(size: 12, weight: .medium))
-        .foregroundColor(color.opacity(0.8))
+        .foregroundColor(color.opacity(0.9))
 
       Text("\(value, specifier: value >= 100 ? "%.0f" : "%.1f")\(unit)")
-        .font(.system(size: 13, weight: .medium))
+        .font(.system(size: 13, weight: .semibold, design: .rounded))
     }
-    .padding(.vertical, 2)
+    .padding(.vertical, 3)
+    .padding(.horizontal, 6)
+    .background(color.opacity(0.06))
+    .cornerRadius(6)
   }
 }
 
