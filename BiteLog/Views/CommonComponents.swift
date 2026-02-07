@@ -132,20 +132,36 @@ struct CalorieRingView: View {
     self.targetCalories = targetCalories
   }
 
-  private var progress: Double {
+  private var ratio: Double {
     guard targetCalories > 0 else { return 0 }
-    return min(calories / targetCalories, 1.0)
+    return calories / targetCalories
+  }
+
+  private var progress: Double {
+    min(ratio, 1.0)
+  }
+
+  private var isOverTarget: Bool {
+    ratio > 1.0
+  }
+
+  private var overAmount: Double {
+    max(calories - targetCalories, 0)
+  }
+
+  private var ringColor: Color {
+    isOverTarget ? .red : .orange
   }
 
   var body: some View {
     ZStack {
       Circle()
-        .stroke(Color.orange.opacity(0.15), lineWidth: 10)
+        .stroke(ringColor.opacity(0.15), lineWidth: 10)
 
       Circle()
         .trim(from: 0, to: progress)
         .stroke(
-          Color.orange,
+          ringColor,
           style: StrokeStyle(lineWidth: 10, lineCap: .round)
         )
         .rotationEffect(.degrees(-90))
@@ -154,11 +170,17 @@ struct CalorieRingView: View {
       VStack(spacing: 2) {
         Text(NutritionFormatter.formatNutrition(calories))
           .font(.system(size: 20, weight: .bold, design: .rounded))
-          .foregroundColor(.primary)
+          .foregroundColor(isOverTarget ? .red : .primary)
 
         Text("kcal")
           .font(.system(size: 11, weight: .medium))
           .foregroundColor(.secondary)
+
+        if isOverTarget {
+          Text("+\(NutritionFormatter.formatNutrition(overAmount))")
+            .font(.system(size: 10, weight: .semibold, design: .rounded))
+            .foregroundColor(.red)
+        }
       }
     }
     .frame(width: 90, height: 90)
@@ -173,9 +195,40 @@ struct MacroBarView: View {
   let color: Color
   let icon: String
 
-  private var progress: Double {
+  // 超過時の最大表示倍率
+  private let maxDisplayRatio: Double = 1.5
+
+  private var ratio: Double {
     guard maxValue > 0 else { return 0 }
-    return min(value / maxValue, 1.0)
+    return value / maxValue
+  }
+
+  private var isOverTarget: Bool {
+    ratio > 1.0
+  }
+
+  private var overAmount: Double {
+    max(value - maxValue, 0)
+  }
+
+  private var barColor: Color {
+    isOverTarget ? .red : color
+  }
+
+  // バーの幅（通常時は0〜1、超過時は最大1.5まで表示し、バー全体で正規化）
+  private var barWidth: Double {
+    if isOverTarget {
+      // 超過時：全体を150%として表示
+      return min(ratio / maxDisplayRatio, 1.0)
+    } else {
+      return ratio
+    }
+  }
+
+  // 目標ラインの位置（超過時のみ）
+  private var targetLinePosition: Double {
+    // 100%の位置 = 1.0 / maxDisplayRatio
+    1.0 / maxDisplayRatio
   }
 
   var body: some View {
@@ -183,7 +236,7 @@ struct MacroBarView: View {
       HStack {
         Image(systemName: icon)
           .font(.system(size: 11, weight: .medium))
-          .foregroundColor(color)
+          .foregroundColor(barColor)
           .frame(width: 14)
 
         Text(label)
@@ -192,27 +245,43 @@ struct MacroBarView: View {
 
         Spacer()
 
+        if isOverTarget {
+          Text("+\(NutritionFormatter.formatNutrition(overAmount))g")
+            .font(.system(size: 10, weight: .semibold, design: .rounded))
+            .foregroundColor(.red)
+        }
+
         Text("\(NutritionFormatter.formatNutrition(value))g")
           .font(.system(size: 12, weight: .semibold, design: .rounded))
-          .foregroundColor(.primary)
+          .foregroundColor(isOverTarget ? .red : .primary)
       }
 
       GeometryReader { geometry in
         ZStack(alignment: .leading) {
+          // 背景バー
           RoundedRectangle(cornerRadius: 3)
-            .fill(color.opacity(0.12))
+            .fill(barColor.opacity(0.12))
             .frame(height: 5)
 
+          // 進捗バー
           RoundedRectangle(cornerRadius: 3)
-            .fill(color)
+            .fill(barColor)
             .frame(
-              width: geometry.size.width * progress,
+              width: geometry.size.width * barWidth,
               height: 5
             )
-            .animation(.easeInOut(duration: 0.5), value: progress)
+            .animation(.easeInOut(duration: 0.5), value: barWidth)
+
+          // 目標ライン（超過時のみ表示）
+          if isOverTarget {
+            Rectangle()
+              .fill(Color.primary.opacity(0.6))
+              .frame(width: 2, height: 9)
+              .offset(x: geometry.size.width * targetLinePosition - 1)
+          }
         }
       }
-      .frame(height: 5)
+      .frame(height: 9)
     }
   }
 }

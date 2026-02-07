@@ -194,3 +194,10 @@
 "No content returned from API." = "APIからコンテンツが返されませんでした。";
 "Failed to parse API response." = "APIレスポンスの解析に失敗しました。";
 
+// Nutrition Goals
+"Nutrition Goals" = "栄養目標";
+"Daily Nutrition Goals" = "1日の栄養目標";
+"Macronutrients" = "栄養素";
+"Calories are automatically calculated" = "カロリーは自動計算されます";
+"Reset to Defaults" = "デフォルトに戻す";
+

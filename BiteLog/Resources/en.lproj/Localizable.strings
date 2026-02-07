@@ -179,3 +179,10 @@
 "You need to register food items before you can add meals." = "You need to register food items before you can add meals.";
 "Go to Food Management" = "Go to Food Management";
 "%@ added to %@" = "%@ added to %@";
+
+// Nutrition Goals
+"Nutrition Goals" = "Nutrition Goals";
+"Daily Nutrition Goals" = "Daily Nutrition Goals";
+"Macronutrients" = "Macronutrients";
+"Calories are automatically calculated" = "Calories are automatically calculated";
+"Reset to Defaults" = "Reset to Defaults";

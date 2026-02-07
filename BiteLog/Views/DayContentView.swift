@@ -7,10 +7,12 @@ struct DayContentView: View {
   let selectedDate: Date
   let onAddTapped: (Date, MealType) -> Void
   let modelContext: ModelContext
-  
+
+  @EnvironmentObject private var nutritionGoalsManager: NutritionGoalsManager
+
   // 日付範囲でフィルタリングされたクエリを使用
   @Query private var dayLogItems: [LogItem]
-  
+
   // 編集モードの状態
   @State private var editMode: EditMode = .inactive
   // 選択されたアイテムのPersistentIdentifierを保持
@@ -113,14 +115,14 @@ struct DayContentView: View {
       HStack(spacing: 16) {
         CalorieRingView(
           calories: dailyTotals.calories,
-          targetCalories: 2000
+          targetCalories: nutritionGoalsManager.targetCalories
         )
 
         VStack(spacing: 8) {
           MacroBarView(
             label: NSLocalizedString("Protein", comment: "Nutrient label"),
             value: dailyTotals.protein,
-            maxValue: 150,
+            maxValue: nutritionGoalsManager.targetProtein,
             color: .blue,
             icon: "p.circle.fill"
           )
@@ -128,7 +130,7 @@ struct DayContentView: View {
           MacroBarView(
             label: NSLocalizedString("Fat", comment: "Nutrient label"),
             value: dailyTotals.fat,
-            maxValue: 80,
+            maxValue: nutritionGoalsManager.targetFat,
             color: .yellow,
             icon: "f.circle.fill"
           )
@@ -136,7 +138,7 @@ struct DayContentView: View {
           MacroBarView(
             label: NSLocalizedString("Sugar", comment: "Nutrient label"),
             value: dailyTotals.sugar,
-            maxValue: 250,
+            maxValue: nutritionGoalsManager.targetSugar,
             color: .green,
             icon: "s.circle.fill"
           )
@@ -144,7 +146,7 @@ struct DayContentView: View {
           MacroBarView(
             label: NSLocalizedString("Dietary Fiber", comment: "Nutrient label"),
             value: dailyTotals.fiber,
-            maxValue: 25,
+            maxValue: nutritionGoalsManager.targetFiber,
             color: .brown,
             icon: "leaf.circle.fill"
           )
