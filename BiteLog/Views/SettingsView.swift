@@ -37,6 +37,12 @@ struct SettingsView: View {
           }
         }
 
+        Section(header: Text(NSLocalizedString("Nutrition Goals", comment: "Nutrition goals section"))) {
+          NavigationLink(destination: NutritionGoalsEditView()) {
+            Text(NSLocalizedString("Daily Nutrition Goals", comment: "Nutrition goals link"))
+          }
+        }
+
         Section(header: Text(NSLocalizedString("Data Management", comment: "Data management section"))) {
           NavigationLink(destination: ImportCSVView()) {
             Text(NSLocalizedString("Import CSV", comment: "Import CSV"))
