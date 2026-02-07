@@ -26,43 +26,42 @@ struct FoodMasterManagementView: View {
   var body: some View {
     VStack {
       // 検索バー
-      HStack {
-        Image(systemName: "magnifyingglass")
-          .foregroundColor(.secondary)
-          .padding(.leading, 8)
+      HStack(spacing: 8) {
+        HStack(spacing: 8) {
+          Image(systemName: "magnifyingglass")
+            .foregroundColor(.secondary)
+            .font(.system(size: 15, weight: .medium))
 
-        TextField(
-          NSLocalizedString("Search food items", comment: "Search food items"), text: $searchText
-        )
-        .padding(10)
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(10)
-        .focused($searchFieldIsFocused)  // FocusStateを設定
-        .onChange(of: searchText) { oldValue, newValue in
-          // 検索テキストが変更されたら、タイマーをリセットして新しいタイマーを設定
-          searchDebounceTimer?.invalidate()
-          searchDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
-            // タイマーが発火したら検索を実行
-            resetAndSearch()
+          TextField(
+            NSLocalizedString("Search food items", comment: "Search food items"), text: $searchText
+          )
+          .focused($searchFieldIsFocused)
+          .onChange(of: searchText) { oldValue, newValue in
+            searchDebounceTimer?.invalidate()
+            searchDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+              resetAndSearch()
+            }
+          }
+
+          if !searchText.isEmpty {
+            Button(action: {
+              searchText = ""
+              resetAndSearch()
+            }) {
+              Image(systemName: "xmark.circle.fill")
+                .foregroundColor(.secondary)
+            }
           }
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color(UIColor.tertiarySystemFill))
+        .cornerRadius(12)
 
-        if !searchText.isEmpty {
-          Button(action: {
-            searchText = ""
-            resetAndSearch()
-          }) {
-            Image(systemName: "xmark.circle.fill")
-              .foregroundColor(.secondary)
-              .padding(.trailing, 8)
-          }
-        }
-
-        // 検索中の場合のみCancelボタンを表示
         if searchFieldIsFocused {
           Button(NSLocalizedString("Cancel", comment: "Cancel search")) {
             searchText = ""
-            searchFieldIsFocused = false  // キーボードを閉じる
+            searchFieldIsFocused = false
             resetAndSearch()
           }
           .transition(.move(edge: .trailing).combined(with: .opacity))
@@ -70,6 +69,7 @@ struct FoodMasterManagementView: View {
       }
       .padding(.horizontal)
       .padding(.top, 8)
+      .animation(.easeInOut(duration: 0.2), value: searchFieldIsFocused)
 
       if isInitialLoading {
         // 初回データロード中の表示
@@ -296,34 +296,27 @@ struct FoodMasterRow: View {
   let foodMaster: FoodMaster
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 4) {
-      HStack {
+    VStack(alignment: .leading, spacing: 6) {
+      HStack(alignment: .firstTextBaseline) {
         Text("\(foodMaster.brandName) \(foodMaster.productName)")
-          .font(.headline)
+          .font(.subheadline.weight(.medium))
+          .lineLimit(1)
 
         Spacer()
 
-        Text("\(foodMaster.calories, specifier: "%.0f") kcal")
-          .font(.subheadline)
+        Text("\(foodMaster.calories, specifier: "%.0f")")
+          .font(.system(size: 15, weight: .semibold, design: .rounded))
+          .foregroundColor(.primary)
+        + Text(" kcal")
+          .font(.system(size: 12))
           .foregroundColor(.secondary)
       }
 
-      HStack {
-        Text("P: \(NutritionFormatter.formatNutrition(foodMaster.protein))g")
-          .font(.caption)
-          .foregroundColor(.blue)
-
-        Text("F: \(NutritionFormatter.formatNutrition(foodMaster.fat))g")
-          .font(.caption)
-          .foregroundColor(.yellow)
-
-        Text("S: \(NutritionFormatter.formatNutrition(foodMaster.sugar))g")
-          .font(.caption)
-          .foregroundColor(.green)
-
-        Text("Fiber: \(NutritionFormatter.formatNutrition(foodMaster.dietaryFiber))g")
-          .font(.caption)
-          .foregroundColor(.brown)
+      HStack(spacing: 6) {
+        MacroChip(label: "P", value: foodMaster.protein, color: .blue)
+        MacroChip(label: "F", value: foodMaster.fat, color: .yellow)
+        MacroChip(label: "S", value: foodMaster.sugar, color: .green)
+        MacroChip(label: "Fb", value: foodMaster.dietaryFiber, color: .brown)
 
         Spacer()
 

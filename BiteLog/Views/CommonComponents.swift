@@ -121,3 +121,123 @@ struct ScaleButtonStyle: ButtonStyle {
       .animation(.easeInOut(duration: 0.2), value: configuration.isPressed)
   }
 }
+
+// カロリーリングビュー
+struct CalorieRingView: View {
+  let calories: Double
+  let targetCalories: Double
+
+  init(calories: Double, targetCalories: Double = 2000) {
+    self.calories = calories
+    self.targetCalories = targetCalories
+  }
+
+  private var progress: Double {
+    guard targetCalories > 0 else { return 0 }
+    return min(calories / targetCalories, 1.0)
+  }
+
+  var body: some View {
+    ZStack {
+      Circle()
+        .stroke(Color.orange.opacity(0.15), lineWidth: 10)
+
+      Circle()
+        .trim(from: 0, to: progress)
+        .stroke(
+          Color.orange,
+          style: StrokeStyle(lineWidth: 10, lineCap: .round)
+        )
+        .rotationEffect(.degrees(-90))
+        .animation(.easeInOut(duration: 0.6), value: progress)
+
+      VStack(spacing: 2) {
+        Text(NutritionFormatter.formatNutrition(calories))
+          .font(.system(size: 20, weight: .bold, design: .rounded))
+          .foregroundColor(.primary)
+
+        Text("kcal")
+          .font(.system(size: 11, weight: .medium))
+          .foregroundColor(.secondary)
+      }
+    }
+    .frame(width: 90, height: 90)
+  }
+}
+
+// マクロ栄養素バー
+struct MacroBarView: View {
+  let label: String
+  let value: Double
+  let maxValue: Double
+  let color: Color
+  let icon: String
+
+  private var progress: Double {
+    guard maxValue > 0 else { return 0 }
+    return min(value / maxValue, 1.0)
+  }
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 4) {
+      HStack {
+        Image(systemName: icon)
+          .font(.system(size: 11, weight: .medium))
+          .foregroundColor(color)
+          .frame(width: 14)
+
+        Text(label)
+          .font(.system(size: 12, weight: .medium))
+          .foregroundColor(.primary.opacity(0.8))
+
+        Spacer()
+
+        Text("\(NutritionFormatter.formatNutrition(value))g")
+          .font(.system(size: 12, weight: .semibold, design: .rounded))
+          .foregroundColor(.primary)
+      }
+
+      GeometryReader { geometry in
+        ZStack(alignment: .leading) {
+          RoundedRectangle(cornerRadius: 3)
+            .fill(color.opacity(0.12))
+            .frame(height: 5)
+
+          RoundedRectangle(cornerRadius: 3)
+            .fill(color)
+            .frame(
+              width: geometry.size.width * progress,
+              height: 5
+            )
+            .animation(.easeInOut(duration: 0.5), value: progress)
+        }
+      }
+      .frame(height: 5)
+    }
+  }
+}
+
+// マクロ栄養素チップ (ItemRowView/FoodMasterRow共用)
+struct MacroChip: View {
+  let label: String
+  let value: Double
+  let color: Color
+
+  var body: some View {
+    HStack(spacing: 2) {
+      Circle()
+        .fill(color)
+        .frame(width: 5, height: 5)
+
+      Text("\(label):\(NutritionFormatter.formatNutrition(value))g")
+        .font(.system(size: 11, weight: .medium))
+        .foregroundColor(.primary.opacity(0.7))
+        .lineLimit(1)
+        .fixedSize()
+    }
+    .padding(.vertical, 2)
+    .padding(.horizontal, 5)
+    .background(color.opacity(0.08))
+    .cornerRadius(4)
+  }
+}
