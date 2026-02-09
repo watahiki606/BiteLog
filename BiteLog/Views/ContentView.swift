@@ -196,7 +196,7 @@ struct ItemRowView: View {
       HStack(spacing: 6) {
         MacroChip(label: "P", value: item.protein, color: .blue)
         MacroChip(label: "F", value: item.fat, color: .yellow)
-        MacroChip(label: "S", value: item.sugar, color: .green)
+        MacroChip(label: "S", value: item.netCarbs, color: .green)
         MacroChip(label: "Fb", value: item.dietaryFiber, color: .brown)
 
         Spacer()
@@ -219,7 +219,7 @@ struct ItemRowView: View {
 
 #Preview {
   ContentView()
-    .modelContainer(for: [FoodMaster.self, LogItem.self], inMemory: true)
+    .modelContainer(for: [FoodMaster.self, LogItem.self, NutritionGoals.self], inMemory: true)
 }
 
 // 栄養素行のコンポーネント

@@ -619,6 +619,11 @@ struct PastItemCard: View {
     return item.lastNumberOfServings
   }
 
+  /// サービング数に対する栄養素値（portionSizeベースのratio計算）
+  private var nutrition: NutritionValues {
+    NutritionSnapshot.from(item).scaled(by: servings)
+  }
+
   init(item: FoodMaster) {
     self.item = item
   }
@@ -634,7 +639,7 @@ struct PastItemCard: View {
         Spacer()
 
         // カロリーを固定のサービング数に応じて計算
-        Text("\(item.calories * servings, specifier: "%.0f")")
+        Text("\(nutrition.calories, specifier: "%.0f")")
           .font(.title3.bold())
           + Text(" kcal")
           .font(.subheadline)
@@ -643,10 +648,10 @@ struct PastItemCard: View {
 
       HStack(spacing: 8) {
         // 栄養素の値も固定のサービング数に応じて計算
-        MacroNutrientBadge(label: "P", value: item.protein * servings, color: .blue)
-        MacroNutrientBadge(label: "F", value: item.fat * servings, color: .yellow)
-        MacroNutrientBadge(label: "S", value: item.sugar * servings, color: .green)
-        MacroNutrientBadge(label: "Fiber", value: item.dietaryFiber * servings, color: .brown)
+        MacroNutrientBadge(label: "P", value: nutrition.protein, color: .blue)
+        MacroNutrientBadge(label: "F", value: nutrition.fat, color: .yellow)
+        MacroNutrientBadge(label: "S", value: nutrition.netCarbs, color: .green)
+        MacroNutrientBadge(label: "Fiber", value: nutrition.dietaryFiber, color: .brown)
       }
       
       // 分量の表示を追加

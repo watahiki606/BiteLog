@@ -6,7 +6,7 @@ struct NutritionGoalsEditView: View {
 
   @State private var proteinText: String = ""
   @State private var fatText: String = ""
-  @State private var sugarText: String = ""
+  @State private var netCarbsText: String = ""
   @State private var fiberText: String = ""
 
   var body: some View {
@@ -44,7 +44,7 @@ struct NutritionGoalsEditView: View {
 
         nutrientInputRow(
           label: NSLocalizedString("Sugar", comment: "Nutrient label"),
-          text: $sugarText,
+          text: $netCarbsText,
           unit: "g"
         )
 
@@ -91,15 +91,15 @@ struct NutritionGoalsEditView: View {
   private var calculatedCalories: Double {
     let protein = Double(proteinText) ?? 0
     let fat = Double(fatText) ?? 0
-    let sugar = Double(sugarText) ?? 0
+    let netCarbs = Double(netCarbsText) ?? 0
     let fiber = Double(fiberText) ?? 0
-    return protein * 4 + fat * 9 + sugar * 4 + fiber * 2
+    return protein * 4 + fat * 9 + netCarbs * 4 + fiber * 2
   }
 
   private func loadCurrentValues() {
     proteinText = formatValue(nutritionGoalsManager.targetProtein)
     fatText = formatValue(nutritionGoalsManager.targetFat)
-    sugarText = formatValue(nutritionGoalsManager.targetSugar)
+    netCarbsText = formatValue(nutritionGoalsManager.targetNetCarbs)
     fiberText = formatValue(nutritionGoalsManager.targetFiber)
   }
 
@@ -110,8 +110,8 @@ struct NutritionGoalsEditView: View {
     if let fat = Double(fatText), fat > 0 {
       nutritionGoalsManager.targetFat = fat
     }
-    if let sugar = Double(sugarText), sugar > 0 {
-      nutritionGoalsManager.targetSugar = sugar
+    if let netCarbs = Double(netCarbsText), netCarbs > 0 {
+      nutritionGoalsManager.targetNetCarbs = netCarbs
     }
     if let fiber = Double(fiberText), fiber > 0 {
       nutritionGoalsManager.targetFiber = fiber

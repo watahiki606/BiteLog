@@ -4,98 +4,55 @@ import SwiftData
 @Model
 final class LogItem {
   var timestamp: Date
+  var logDate: String
   var mealType: MealType
   var numberOfServings: Double
-  @Relationship var foodMaster: FoodMaster?  // FoodMasterへのリレーションシップ
-  
-  // FoodMasterが削除された場合のバックアップデータ
-  var backupFoodId: UUID?
-  var backupBrandName: String?
-  var backupProductName: String?
-  var backupCalories: Double?
-  var backupSugar: Double?
-  var backupDietaryFiber: Double?
-  var backupFat: Double?
-  var backupProtein: Double?
-  var backupPortionUnit: String?
-  var backupPortion: Double?
+  @Relationship var foodMaster: FoodMaster?
+
+  // FoodMasterが削除された場合のバックアップデータ（NutritionSnapshotをJSON化して保存）
+  var nutritionSnapshotData: Data?
   var isMasterDeleted: Bool = false
 
-  var calories: Double {
-    if let foodMaster = foodMaster {
-      return foodMaster.calories * numberOfServings
-    } else if let backupCalories = backupCalories {
-      return backupCalories * numberOfServings
+  // MARK: - 計算プロパティ
+
+  /// 栄養素のスナップショットを取得（デコード）
+  var nutritionSnapshot: NutritionSnapshot? {
+    get {
+      guard let data = nutritionSnapshotData else { return nil }
+      return try? JSONDecoder().decode(NutritionSnapshot.self, from: data)
     }
-    return 0
-  }
-  
-  var protein: Double {
-    if let foodMaster = foodMaster {
-      return foodMaster.protein * numberOfServings
-    } else if let backupProtein = backupProtein {
-      return backupProtein * numberOfServings
+    set {
+      nutritionSnapshotData = try? JSONEncoder().encode(newValue)
     }
-    return 0
   }
-  
-  var fat: Double {
+
+  /// サービング数を掛けた栄養素値を取得
+  var nutritionValues: NutritionValues {
     if let foodMaster = foodMaster {
-      return foodMaster.fat * numberOfServings
-    } else if let backupFat = backupFat {
-      return backupFat * numberOfServings
+      return NutritionSnapshot.from(foodMaster).scaled(by: numberOfServings)
+    } else if let snapshot = nutritionSnapshot {
+      return snapshot.scaled(by: numberOfServings)
     }
-    return 0
+    return .zero
   }
-  
-  var sugar: Double {
-    if let foodMaster = foodMaster {
-      return foodMaster.sugar * numberOfServings
-    } else if let backupSugar = backupSugar {
-      return backupSugar * numberOfServings
-    }
-    return 0
-  }
-  
-  var dietaryFiber: Double {
-    if let foodMaster = foodMaster {
-      return foodMaster.dietaryFiber * numberOfServings
-    } else if let backupDietaryFiber = backupDietaryFiber {
-      return backupDietaryFiber * numberOfServings
-    }
-    return 0
-  }
-  
-  var carbohydrates: Double {
-    return sugar + dietaryFiber
-  }
-  
-  var portion: Double {
-    if let foodMaster = foodMaster {
-      return foodMaster.portion
-    }
-    return backupPortion ?? 0
-  }
-  
+
+  var calories: Double { nutritionValues.calories }
+  var protein: Double { nutritionValues.protein }
+  var fat: Double { nutritionValues.fat }
+  var netCarbs: Double { nutritionValues.netCarbs }
+  var dietaryFiber: Double { nutritionValues.dietaryFiber }
+  var carbohydrates: Double { nutritionValues.carbs }
+
   var brandName: String {
-    if let foodMaster = foodMaster {
-      return foodMaster.brandName
-    }
-    return backupBrandName ?? ""
+    foodMaster?.brandName ?? nutritionSnapshot?.brandName ?? ""
   }
-  
+
   var productName: String {
-    if let foodMaster = foodMaster {
-      return foodMaster.productName
-    }
-    return backupProductName ?? ""
+    foodMaster?.productName ?? nutritionSnapshot?.productName ?? ""
   }
-  
+
   var portionUnit: String {
-    if let foodMaster = foodMaster {
-      return foodMaster.portionUnit
-    }
-    return backupPortionUnit ?? ""
+    foodMaster?.portionUnit ?? nutritionSnapshot?.portionUnit ?? ""
   }
 
   init(
@@ -103,42 +60,30 @@ final class LogItem {
     foodMaster: FoodMaster? = nil
   ) {
     self.timestamp = timestamp
+    self.logDate = LogItem.formatLogDate(timestamp)
     self.mealType = mealType
     self.numberOfServings = numberOfServings
     self.foodMaster = foodMaster
-    
+
     // FoodMasterの情報をバックアップ
     if let food = foodMaster {
-      self.backupFoodId = food.id
-      self.backupBrandName = food.brandName
-      self.backupProductName = food.productName
-      self.backupCalories = food.calories
-      self.backupSugar = food.sugar
-      self.backupDietaryFiber = food.dietaryFiber
-      self.backupFat = food.fat
-      self.backupProtein = food.protein
-      self.backupPortionUnit = food.portionUnit
-      self.backupPortion = food.portion
-      
-      // FoodMasterの使用頻度とサービング数を更新
+      self.nutritionSnapshot = NutritionSnapshot.from(food)
       food.incrementUsageWithServings(numberOfServings)
     }
   }
-  
-  // FoodMasterが削除される前に呼び出すメソッド
+
+  /// FoodMasterが削除される前に呼び出すメソッド
   func backupFoodMasterData() {
     if let food = foodMaster {
-      self.backupFoodId = food.id
-      self.backupBrandName = food.brandName
-      self.backupProductName = food.productName
-      self.backupCalories = food.calories
-      self.backupSugar = food.sugar
-      self.backupDietaryFiber = food.dietaryFiber
-      self.backupFat = food.fat
-      self.backupProtein = food.protein
-      self.backupPortionUnit = food.portionUnit
-      self.backupPortion = food.portion
+      self.nutritionSnapshot = NutritionSnapshot.from(food)
       self.isMasterDeleted = true
     }
+  }
+
+  /// 日付文字列を生成（フィルタリング用）
+  static func formatLogDate(_ date: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyy-MM-dd"
+    return formatter.string(from: date)
   }
 }

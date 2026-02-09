@@ -14,109 +14,57 @@ struct EditItemView: View {
   @State private var currentOffset = 0
   @State private var hasMoreData = true
   private let pageSize = 100
-  
-  // 栄養素の値を計算プロパティとして定義
-  private var calories: String {
-    if let foodMaster = foodMaster {
-      return String(format: "%.2f", foodMaster.calories)
-    } else if item.isMasterDeleted, let backupCalories = item.backupCalories {
-      return String(format: "%.2f", backupCalories)
-    }
-    return "0.00"
+
+  // 栄養素のportionSizeあたり値を取得するヘルパー
+  private var perPortionCalories: Double {
+    foodMaster?.calories ?? item.nutritionSnapshot?.calories ?? 0
   }
-  
-  private var protein: String {
-    if let foodMaster = foodMaster {
-      return String(format: "%.2f", foodMaster.protein)
-    } else if item.isMasterDeleted, let backupProtein = item.backupProtein {
-      return String(format: "%.2f", backupProtein)
-    }
-    return "0.00"
+
+  private var perPortionProtein: Double {
+    foodMaster?.protein ?? item.nutritionSnapshot?.protein ?? 0
   }
-  
-  private var fat: String {
-    if let foodMaster = foodMaster {
-      return String(format: "%.2f", foodMaster.fat)
-    } else if item.isMasterDeleted, let backupFat = item.backupFat {
-      return String(format: "%.2f", backupFat)
-    }
-    return "0.00"
+
+  private var perPortionFat: Double {
+    foodMaster?.fat ?? item.nutritionSnapshot?.fat ?? 0
   }
-  
-  private var sugar: String {
-    if let foodMaster = foodMaster {
-      return String(format: "%.2f", foodMaster.sugar)
-    } else if item.isMasterDeleted, let backupSugar = item.backupSugar {
-      return String(format: "%.2f", backupSugar)
-    }
-    return "0.00"
+
+  private var perPortionNetCarbs: Double {
+    foodMaster?.netCarbs ?? item.nutritionSnapshot?.netCarbs ?? 0
   }
-  
-  private var dietaryFiber: String {
-    if let foodMaster = foodMaster {
-      return String(format: "%.2f", foodMaster.dietaryFiber)
-    } else if item.isMasterDeleted, let backupDietaryFiber = item.backupDietaryFiber {
-      return String(format: "%.2f", backupDietaryFiber)
-    }
-    return "0.00"
+
+  private var perPortionDietaryFiber: Double {
+    foodMaster?.dietaryFiber ?? item.nutritionSnapshot?.dietaryFiber ?? 0
   }
-  
+
+  private var portionSize: Double {
+    foodMaster?.portionSize ?? item.nutritionSnapshot?.portionSize ?? 1.0
+  }
+
   private var servingsValue: Double {
     return Double(numberOfServings) ?? 1.0
   }
-  
-  private var totalCalories: Double {
+
+  /// 入力量に対する栄養素値（ratio計算）
+  private var totalNutrition: NutritionValues {
     if let foodMaster = foodMaster {
-      return foodMaster.calories * servingsValue
-    } else if item.isMasterDeleted, let backupCalories = item.backupCalories {
-      return backupCalories * servingsValue
+      return NutritionSnapshot.from(foodMaster).scaled(by: servingsValue)
+    } else if let snapshot = item.nutritionSnapshot {
+      return snapshot.scaled(by: servingsValue)
     }
-    return 0
+    return .zero
   }
-  
-  private var totalProtein: Double {
-    if let foodMaster = foodMaster {
-      return foodMaster.protein * servingsValue
-    } else if item.isMasterDeleted, let backupProtein = item.backupProtein {
-      return backupProtein * servingsValue
-    }
-    return 0
-  }
-  
-  private var totalFat: Double {
-    if let foodMaster = foodMaster {
-      return foodMaster.fat * servingsValue
-    } else if item.isMasterDeleted, let backupFat = item.backupFat {
-      return backupFat * servingsValue
-    }
-    return 0
-  }
-  
-  private var totalSugar: Double {
-    if let foodMaster = foodMaster {
-      return foodMaster.sugar * servingsValue
-    } else if item.isMasterDeleted, let backupSugar = item.backupSugar {
-      return backupSugar * servingsValue
-    }
-    return 0
-  }
-  
-  private var totalDietaryFiber: Double {
-    if let foodMaster = foodMaster {
-      return foodMaster.dietaryFiber * servingsValue
-    } else if item.isMasterDeleted, let backupDietaryFiber = item.backupDietaryFiber {
-      return backupDietaryFiber * servingsValue
-    }
-    return 0
-  }
-  
-  private var totalCarbs: Double {
-    return totalSugar + totalDietaryFiber
-  }
+
+  private var totalCalories: Double { totalNutrition.calories }
+  private var totalProtein: Double { totalNutrition.protein }
+  private var totalFat: Double { totalNutrition.fat }
+  private var totalNetCarbs: Double { totalNutrition.netCarbs }
+  private var totalDietaryFiber: Double { totalNutrition.dietaryFiber }
+  private var totalCarbs: Double { totalNutrition.carbs }
 
   init(item: LogItem) {
     self.item = item
-    _numberOfServings = State(initialValue: NutritionFormatter.formatNutrition(item.numberOfServings))
+    _numberOfServings = State(
+      initialValue: NutritionFormatter.formatNutrition(item.numberOfServings))
     _foodMaster = State(initialValue: item.foodMaster)
   }
 
@@ -139,7 +87,7 @@ struct EditItemView: View {
                         .font(.headline)
                         .lineLimit(2)
                     }
-                    
+
                     Spacer()
                   }
                   .padding(.vertical, 8)
@@ -151,22 +99,24 @@ struct EditItemView: View {
                   HStack {
                     VStack(alignment: .leading, spacing: 4) {
                       HStack {
-                        Text("\(item.backupBrandName ?? "") \(item.backupProductName ?? "")")
+                        Text("\(item.brandName) \(item.productName)")
                           .font(.headline)
                           .lineLimit(2)
                           .foregroundColor(.secondary)
                           .strikethrough()
-                        
-                        Text(NSLocalizedString("(Deleted)", comment: "Deleted Food indicator"))
-                          .font(.caption)
-                          .foregroundColor(.red)
-                          .padding(.horizontal, 4)
-                          .padding(.vertical, 2)
-                          .background(Color.red.opacity(0.1))
-                          .cornerRadius(4)
+
+                        Text(
+                          NSLocalizedString("(Deleted)", comment: "Deleted Food indicator")
+                        )
+                        .font(.caption)
+                        .foregroundColor(.red)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .background(Color.red.opacity(0.1))
+                        .cornerRadius(4)
                       }
                     }
-                    
+
                     Spacer()
                   }
                   .padding(.vertical, 8)
@@ -189,12 +139,12 @@ struct EditItemView: View {
                     .cornerRadius(10)
                   }
                 }
-                
+
                 // サービング数入力
                 HStack {
                   Text(NSLocalizedString("Servings:", comment: "Servings label"))
                     .font(.body)
-                  
+
                   TextField("1.0", text: $numberOfServings)
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.trailing)
@@ -202,7 +152,7 @@ struct EditItemView: View {
                     .background(Color(UIColor.tertiarySystemBackground))
                     .cornerRadius(8)
                     .frame(width: 80)
-                  
+
                   if let foodMaster = foodMaster {
                     Text(foodMaster.portionUnit)
                       .font(.body)
@@ -213,11 +163,15 @@ struct EditItemView: View {
                 .padding(.horizontal, 12)
                 .background(Color(UIColor.secondarySystemBackground))
                 .cornerRadius(10)
-                
-                Text(NSLocalizedString("Adjust the serving size to calculate the intake", comment: "Servings explanation"))
-                  .font(.caption)
-                  .foregroundColor(.secondary)
-                  .padding(.bottom, 4)
+
+                Text(
+                  NSLocalizedString(
+                    "Adjust the serving size to calculate the intake",
+                    comment: "Servings explanation")
+                )
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .padding(.bottom, 4)
               }
             }
 
@@ -225,83 +179,94 @@ struct EditItemView: View {
             if foodMaster != nil || item.isMasterDeleted {
               CardView(title: NSLocalizedString("Nutrition", comment: "Form section title")) {
                 VStack(spacing: 16) {
-                  Text(NSLocalizedString("Values shown as: per serving → total based on servings", comment: "Nutrition explanation"))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.bottom, 4)
-                  
-                  // 栄養素表示を共通化
+                  Text(
+                    String(
+                      format: NSLocalizedString(
+                        "Values shown as: per %@ %@ → total",
+                        comment: "Nutrition explanation"),
+                      NutritionFormatter.formatNutrition(portionSize),
+                      foodMaster?.portionUnit ?? item.portionUnit)
+                  )
+                  .font(.caption)
+                  .foregroundColor(.secondary)
+                  .padding(.bottom, 4)
+
                   EditNutrientRow(
                     icon: "flame.fill",
                     iconColor: .orange,
                     label: NSLocalizedString("Calories", comment: "Nutrient label"),
-                    value: calories,
+                    value: String(format: "%.2f", perPortionCalories),
                     totalValue: totalCalories,
                     unit: "kcal"
                   )
-                  
+
                   EditNutrientRow(
                     icon: "p.circle.fill",
                     iconColor: .blue,
                     label: NSLocalizedString("Protein", comment: "Nutrient label"),
-                    value: protein,
+                    value: String(format: "%.2f", perPortionProtein),
                     totalValue: totalProtein,
                     unit: "g"
                   )
-                  
+
                   EditNutrientRow(
                     icon: "f.circle.fill",
                     iconColor: .yellow,
                     label: NSLocalizedString("Fat", comment: "Nutrient label"),
-                    value: fat,
+                    value: String(format: "%.2f", perPortionFat),
                     totalValue: totalFat,
                     unit: "g"
                   )
-                  
+
                   EditNutrientRow(
                     icon: "c.circle.fill",
                     iconColor: .green,
                     label: NSLocalizedString("Sugar", comment: "Nutrient label"),
-                    value: sugar,
-                    totalValue: totalSugar,
+                    value: String(format: "%.2f", perPortionNetCarbs),
+                    totalValue: totalNetCarbs,
                     unit: "g"
                   )
-                  
+
                   EditNutrientRow(
                     icon: "leaf.circle.fill",
                     iconColor: .brown,
                     label: NSLocalizedString("Dietary Fiber", comment: "Nutrient label"),
-                    value: dietaryFiber,
+                    value: String(format: "%.2f", perPortionDietaryFiber),
                     totalValue: totalDietaryFiber,
                     unit: "g"
                   )
-                  
+
                   // 炭水化物の合計を表示
                   HStack {
                     Image(systemName: "c.circle.fill")
                       .foregroundColor(.gray)
                       .frame(width: 24)
-                    
-                    Text(NSLocalizedString("Carbs (Sugar + Fiber)", comment: "Nutrient label"))
-                      .foregroundColor(.secondary)
-                    
+
+                    Text(
+                      NSLocalizedString(
+                        "Carbs (Sugar + Fiber)", comment: "Nutrient label"))
+                    .foregroundColor(.secondary)
+
                     Spacer()
-                    
-                    Text(String(format: "%.2f", Double(sugar)! + Double(dietaryFiber)!))
-                      .multilineTextAlignment(.trailing)
-                      .foregroundColor(.secondary)
-                    
+
+                    Text(
+                      String(
+                        format: "%.2f", perPortionNetCarbs + perPortionDietaryFiber)
+                    )
+                    .multilineTextAlignment(.trailing)
+                    .foregroundColor(.secondary)
+
                     Text("g")
                       .foregroundColor(.secondary)
                       .frame(width: 20, alignment: .leading)
-                    
+
                     Text("→")
                       .foregroundColor(.secondary)
                       .padding(.horizontal, 4)
-                    
+
                     Text(String(format: "%.2f", totalCarbs))
                       .foregroundColor(.secondary)
-                    
+
                     Text("g")
                       .foregroundColor(.secondary)
                   }
@@ -328,14 +293,16 @@ struct EditItemView: View {
               Text(NSLocalizedString("Save", comment: "Button title"))
                 .bold()
             }
-            .disabled((foodMaster == nil && !item.isMasterDeleted) || numberOfServings.isEmpty || Double(numberOfServings) == 0)
+            .disabled(
+              (foodMaster == nil && !item.isMasterDeleted) || numberOfServings.isEmpty
+                || Double(numberOfServings) == 0)
           }
         }
         .sheet(isPresented: $showingFoodSearch) {
           FoodSearchView(onSelect: { selectedFoodMaster in
             foodMaster = selectedFoodMaster
-            // 最後に使用したサービング数を初期値として設定
-            numberOfServings = NutritionFormatter.formatNutrition(selectedFoodMaster.lastNumberOfServings)
+            numberOfServings = NutritionFormatter.formatNutrition(
+              selectedFoodMaster.lastNumberOfServings)
           })
         }
       }
@@ -343,13 +310,10 @@ struct EditItemView: View {
   }
 
   private func saveLogItem() {
-    // サービング数のみ更新
     item.numberOfServings = servingsValue
-    
-    // FoodMasterの更新
+
     if let selectedFoodMaster = foodMaster {
       item.foodMaster = selectedFoodMaster
-      // 最後に使用したサービング数を更新
       selectedFoodMaster.lastNumberOfServings = servingsValue
     }
   }
@@ -359,15 +323,15 @@ struct EditItemView: View {
 struct FoodSearchView: View {
   @Environment(\.dismiss) var dismiss
   @Environment(\.modelContext) private var modelContext
-  
+
   var onSelect: (FoodMaster) -> Void
-  
+
   @State private var searchText = ""
   @State private var searchResults: [FoodMaster] = []
   @State private var currentOffset = 0
   @State private var hasMoreData = true
   private let pageSize = 100
-  
+
   var body: some View {
     NavigationStack {
       VStack {
@@ -376,12 +340,15 @@ struct FoodSearchView: View {
           Image(systemName: "magnifyingglass")
             .foregroundColor(.secondary)
             .padding(.leading, 8)
-          
-          TextField(NSLocalizedString("Search food items", comment: "Search placeholder"), text: $searchText)
-            .padding(10)
-            .background(Color(UIColor.secondarySystemBackground))
-            .cornerRadius(10)
-          
+
+          TextField(
+            NSLocalizedString("Search food items", comment: "Search placeholder"),
+            text: $searchText
+          )
+          .padding(10)
+          .background(Color(UIColor.secondarySystemBackground))
+          .cornerRadius(10)
+
           if !searchText.isEmpty {
             Button(action: {
               searchText = ""
@@ -394,22 +361,19 @@ struct FoodSearchView: View {
         }
         .padding(.horizontal)
         .padding(.top, 8)
-        
+
         if searchText.isEmpty {
-          // 検索を促すメッセージ
           VStack(spacing: 16) {
             Image(systemName: "magnifyingglass")
               .font(.system(size: 48))
               .foregroundColor(.secondary)
-            
+
             Text(NSLocalizedString("Search for food", comment: "Search for food"))
               .font(.headline)
               .foregroundColor(.secondary)
-            
           }
           .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-          // 検索結果一覧
           List {
             ForEach(searchResults, id: \.id) { item in
               Button {
@@ -428,22 +392,28 @@ struct FoodSearchView: View {
                 }
               }
             }
-            
+
             if searchResults.isEmpty && !searchText.isEmpty {
               VStack(spacing: 16) {
                 Image(systemName: "exclamationmark.magnifyingglass")
                   .font(.system(size: 48))
                   .foregroundColor(.secondary)
-                
-                Text(NSLocalizedString("No search results found", comment: "No search results message"))
-                  .font(.headline)
-                  .foregroundColor(.secondary)
-                
-                Text(NSLocalizedString("Register new food items in the food tab", comment: "No search results message"))
-                  .font(.subheadline)
-                  .foregroundColor(.secondary)
-                  .multilineTextAlignment(.center)
-                  .padding(.horizontal)
+
+                Text(
+                  NSLocalizedString(
+                    "No search results found", comment: "No search results message"))
+                .font(.headline)
+                .foregroundColor(.secondary)
+
+                Text(
+                  NSLocalizedString(
+                    "Register new food items in the food tab",
+                    comment: "No search results message")
+                )
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
               }
               .frame(maxWidth: .infinity)
               .padding(.vertical, 40)
@@ -466,7 +436,7 @@ struct FoodSearchView: View {
       }
     }
   }
-  
+
   private func loadMoreItems() {
     guard !searchText.isEmpty else {
       searchResults = []
@@ -474,7 +444,7 @@ struct FoodSearchView: View {
       hasMoreData = true
       return
     }
-    
+
     var descriptor = FetchDescriptor<FoodMaster>(
       predicate: #Predicate<FoodMaster> { food in
         food.brandName.localizedStandardContains(searchText)
@@ -484,7 +454,7 @@ struct FoodSearchView: View {
     )
     descriptor.fetchOffset = currentOffset
     descriptor.fetchLimit = pageSize
-    
+
     if let newItems = try? modelContext.fetch(descriptor) {
       if currentOffset == 0 {
         searchResults = newItems
@@ -505,32 +475,32 @@ struct EditNutrientRow: View {
   let value: String
   let totalValue: Double
   let unit: String
-  
+
   var body: some View {
     HStack {
       Image(systemName: icon)
         .foregroundColor(iconColor)
         .frame(width: 24)
-      
+
       Text(label)
         .foregroundColor(.primary)
-      
+
       Spacer()
-      
+
       Text(value.isEmpty ? "0" : value)
         .multilineTextAlignment(.trailing)
-      
+
       Text(unit)
         .foregroundColor(.secondary)
         .frame(width: unit == "kcal" ? 40 : 20, alignment: .leading)
-      
+
       Text("→")
         .foregroundColor(.secondary)
         .padding(.horizontal, 4)
-      
+
       Text(String(format: "%.2f", totalValue))
         .foregroundColor(.primary)
-      
+
       Text(unit)
         .foregroundColor(.secondary)
     }
