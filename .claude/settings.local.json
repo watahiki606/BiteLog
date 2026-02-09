@@ -29,7 +29,11 @@
       "Bash(gh pr create --title \"feat: Increase nutrition display precision to 3 decimal places\" --body \"$(cat <<''EOF''\n## Summary\n- Changed nutrition display precision from 1 decimal place to 3 decimal places\n- Applies to: protein, fat, sugar, dietary fiber, carbohydrates, and servings\n- Calories remain as integer display (no change)\n\n## Changes\n- **ContentView.swift**: Updated ItemRowView and MacroView nutrition formats\n- **FoodMasterManagementView.swift**: Updated FoodMasterRow and form display\n- **DayContentView.swift**: Updated daily summary nutrition display\n- **AddItemView.swift**: Updated servings display precision\n- **CommonComponents.swift**: Updated MacroNutrientBadge component\n- **EditItemView.swift**: Updated servings initial value format\n\n## Motivation\nProvides more accurate nutrition tracking for users who need precise measurements.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\nEOF\n)\" --base main)",
       "Bash(gh pr diff:*)",
       "Bash(xcbeautify:*)",
-      "Bash(gh pr create:*)"
+      "Bash(gh pr create:*)",
+      "Bash(echo:*)",
+      "Bash(xcrun simctl:*)",
+      "Bash(git stash:*)",
+      "Bash(git pull:*)"
     ],
     "deny": [],
     "env": {
