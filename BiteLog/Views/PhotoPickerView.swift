@@ -184,26 +184,26 @@ struct AIAnalysisResultView: View {
   @State private var calories: String
   @State private var protein: String
   @State private var fat: String
-  @State private var sugar: String
+  @State private var netCarbs: String
   @State private var dietaryFiber: String
-  @State private var portion: String
+  @State private var portionAmount: String
   @State private var portionUnit: String
-  
+
   init(result: FoodAnalysisResult, image: UIImage, mealType: MealType, date: Date, onSave: @escaping () -> Void) {
     self.result = result
     self.image = image
     self.mealType = mealType
     self.date = date
     self.onSave = onSave
-    
+
     // 初期値を設定
     _productName = State(initialValue: result.productName)
     _calories = State(initialValue: String(format: "%.0f", result.calories))
     _protein = State(initialValue: NutritionFormatter.formatNutrition(result.protein))
     _fat = State(initialValue: NutritionFormatter.formatNutrition(result.fat))
-    _sugar = State(initialValue: NutritionFormatter.formatNutrition(result.sugar))
+    _netCarbs = State(initialValue: NutritionFormatter.formatNutrition(result.netCarbs))
     _dietaryFiber = State(initialValue: NutritionFormatter.formatNutrition(result.dietaryFiber))
-    _portion = State(initialValue: NutritionFormatter.formatNutrition(result.portion))
+    _portionAmount = State(initialValue: NutritionFormatter.formatNutrition(result.portionAmount))
     _portionUnit = State(initialValue: result.portionUnit)
   }
   
@@ -237,7 +237,7 @@ struct AIAnalysisResultView: View {
               EditableField(icon: "flame.fill", label: NSLocalizedString("Calories", comment: "Label"), text: $calories, unit: "kcal", keyboardType: .decimalPad, color: .orange)
               
               HStack(spacing: 12) {
-                EditableField(icon: "scalemass.fill", label: NSLocalizedString("Portion", comment: "Label"), text: $portion, keyboardType: .decimalPad)
+                EditableField(icon: "scalemass.fill", label: NSLocalizedString("Portion", comment: "Label"), text: $portionAmount, keyboardType: .decimalPad)
                 EditableField(icon: "tag", label: NSLocalizedString("Unit", comment: "Label"), text: $portionUnit, keyboardType: .default)
               }
             }
@@ -252,11 +252,11 @@ struct AIAnalysisResultView: View {
               
               EditableField(icon: "circle.fill", label: NSLocalizedString("Protein", comment: "Label"), text: $protein, unit: "g", keyboardType: .decimalPad, color: .blue)
               EditableField(icon: "circle.fill", label: NSLocalizedString("Fat", comment: "Label"), text: $fat, unit: "g", keyboardType: .decimalPad, color: .yellow)
-              EditableField(icon: "circle.fill", label: NSLocalizedString("Sugar", comment: "Label"), text: $sugar, unit: "g", keyboardType: .decimalPad, color: .green)
+              EditableField(icon: "circle.fill", label: NSLocalizedString("Sugar", comment: "Label"), text: $netCarbs, unit: "g", keyboardType: .decimalPad, color: .green)
               EditableField(icon: "circle.fill", label: NSLocalizedString("Dietary Fiber", comment: "Label"), text: $dietaryFiber, unit: "g", keyboardType: .decimalPad, color: .brown)
               
               // 炭水化物は計算値として表示（編集不可）
-              let carbs = (Double(sugar) ?? 0) + (Double(dietaryFiber) ?? 0)
+              let carbs = (Double(netCarbs) ?? 0) + (Double(dietaryFiber) ?? 0)
               ResultRow(icon: "circle.fill", label: NSLocalizedString("Carbohydrates", comment: "Label"), value: "\(NutritionFormatter.formatNutrition(carbs))g", color: .purple)
             }
             .padding()
@@ -352,21 +352,21 @@ struct AIAnalysisResultView: View {
     let caloriesValue = Double(calories) ?? 0
     let proteinValue = Double(protein) ?? 0
     let fatValue = Double(fat) ?? 0
-    let sugarValue = Double(sugar) ?? 0
+    let netCarbsValue = Double(netCarbs) ?? 0
     let dietaryFiberValue = Double(dietaryFiber) ?? 0
-    let portionValue = Double(portion) ?? 1
-    
+    let portionAmountValue = Double(portionAmount) ?? 1
+
     // FoodMasterを作成
     let foodMaster = FoodMaster(
       brandName: "AI",
       productName: productName,
       calories: caloriesValue,
-      sugar: sugarValue,
+      netCarbs: netCarbsValue,
       dietaryFiber: dietaryFiberValue,
       fat: fatValue,
       protein: proteinValue,
-      portionUnit: portionUnit,
-      portion: portionValue
+      portionSize: portionAmountValue,
+      portionUnit: portionUnit
     )
     modelContext.insert(foodMaster)
     
@@ -374,7 +374,7 @@ struct AIAnalysisResultView: View {
     let logItem = LogItem(
       timestamp: date,
       mealType: mealType,
-      numberOfServings: 1.0,
+      numberOfServings: portionAmountValue,
       foodMaster: foodMaster
     )
     modelContext.insert(logItem)

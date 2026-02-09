@@ -54,19 +54,6 @@ class CSVImporter {
 
     return columns
   }
-  
-  // FoodMasterの一意性を確認するためのユニークキーを生成するヘルパーメソッド
-  private static func createUniqueKey(brandName: String, productName: String, calories: Double, sugar: Double, dietaryFiber: Double, fat: Double, protein: Double, portionUnit: String) -> String {
-    // 数値は小数点以下2桁に丸めて文字列化
-    let caloriesStr = String(format: "%.2f", calories)
-    let sugarStr = String(format: "%.2f", sugar)
-    let fiberStr = String(format: "%.2f", dietaryFiber)
-    let fatStr = String(format: "%.2f", fat)
-    let proteinStr = String(format: "%.2f", protein)
-    
-    // すべての栄養素を含めた文字列を作成
-    return "\(brandName)|\(productName)|\(caloriesStr)|\(sugarStr)|\(fiberStr)|\(fatStr)|\(proteinStr)|\(portionUnit)"
-  }
 
   static func importCSV(
     from url: URL, context: ModelContext, progressHandler: ProgressHandler? = nil
@@ -110,20 +97,20 @@ class CSVImporter {
     var successCount = 0
     var errorCount = 0
     var lastLoggedProgress: Int = 0
-    var foodMastersToInsert: [FoodMaster] = []  // FoodMaster のバッチ挿入用配列
-    var logItemsToInsert: [LogItem] = []  // LogItem のバッチ挿入用配列
-    
+    var foodMastersToInsert: [FoodMaster] = []
+    var logItemsToInsert: [LogItem] = []
+
     // 既存のFoodMasterをユニークキーでキャッシュするための辞書
     var existingFoodMasterCache: [String: FoodMaster] = [:]
-    
+
     // 既存のFoodMasterをすべて取得してキャッシュに格納
     let fetchDescriptor = FetchDescriptor<FoodMaster>()
     if let existingFoodMasters = try? context.fetch(fetchDescriptor) {
-        for foodMaster in existingFoodMasters {
-            existingFoodMasterCache[foodMaster.uniqueKey] = foodMaster
-        }
+      for foodMaster in existingFoodMasters {
+        existingFoodMasterCache[foodMaster.uniqueKey] = foodMaster
+      }
     }
-    
+
     logger.info("既存のFoodMaster \(existingFoodMasterCache.count)件をキャッシュしました")
 
     // ヘッダーのインデックスを取得
@@ -134,7 +121,7 @@ class CSVImporter {
     let productNameIndex = headers.firstIndex(of: "product_name") ?? 3
     let caloriesIndex = headers.firstIndex(of: "calories") ?? 4
     let carbsIndex = headers.firstIndex(of: "carbs") ?? 5
-    let dietaryFiberIndex = headers.firstIndex(of: "dietary_fiber") // 食物繊維のインデックス（存在しない場合はnil）
+    let dietaryFiberIndex = headers.firstIndex(of: "dietary_fiber")
     let fatIndex = headers.firstIndex(of: "fat") ?? 6
     let proteinIndex = headers.firstIndex(of: "protein") ?? 7
     let portionAmountIndex = headers.firstIndex(of: "portion_amount") ?? 8
@@ -146,7 +133,7 @@ class CSVImporter {
       if let progressHandler = progressHandler, index % 10 == 0 || index == totalRows - 1 {
         let progress = Double(index + 1) / Double(totalRows)
 
-        // 進捗ログは10%ごとに出力（頻繁すぎるログを避けるため）
+        // 進捗ログは10%ごとに出力
         let progressPercent = Int(progress * 100)
         if progressPercent / 10 > lastLoggedProgress / 10 {
           logger.info("インポート進捗: \(progressPercent)% (\(index + 1)/\(totalRows)行)")
@@ -166,12 +153,13 @@ class CSVImporter {
         }
 
         guard let date = dateFormatter.date(from: columns[dateIndex]) else {
-          throw CSVImportError.invalidData("\(index + 2)行目: 日付の形式が不正です: \(columns[dateIndex])")
+          throw CSVImportError.invalidData(
+            "\(index + 2)行目: 日付の形式が不正です: \(columns[dateIndex])")
         }
 
-        // 日本語と英語の両方の食事タイプをサポート
         guard let mealType = MealType(rawValue: columns[mealTypeIndex]) else {
-          throw CSVImportError.invalidData("\(index + 2)行目: 無効な食事タイプです: \(columns[mealTypeIndex])")
+          throw CSVImportError.invalidData(
+            "\(index + 2)行目: 無効な食事タイプです: \(columns[mealTypeIndex])")
         }
 
         // すべての数値カラムから引用符とカンマを除去
@@ -181,7 +169,7 @@ class CSVImporter {
         let cleanedCarbs = columns[carbsIndex]
           .replacingOccurrences(of: "\"", with: "")
           .replacingOccurrences(of: ",", with: "")
-        
+
         // 食物繊維の値を取得（存在しない場合は0）
         let cleanedDietaryFiber: String
         if let fiberIndex = dietaryFiberIndex, fiberIndex < columns.count {
@@ -191,7 +179,7 @@ class CSVImporter {
         } else {
           cleanedDietaryFiber = "0"
         }
-        
+
         let cleanedFat = columns[fatIndex]
           .replacingOccurrences(of: "\"", with: "")
           .replacingOccurrences(of: ",", with: "")
@@ -209,63 +197,52 @@ class CSVImporter {
         let carbs = Double(cleanedCarbs) ?? 0
         let dietaryFiber = Double(cleanedDietaryFiber) ?? 0
         // 糖質 = 炭水化物 - 食物繊維（食物繊維が炭水化物より大きい場合は0）
-        let sugar = max(0, carbs - dietaryFiber)
+        let netCarbs = max(0, carbs - dietaryFiber)
         let fat = Double(cleanedFat) ?? 0
         let protein = Double(cleanedProtein) ?? 0
-        let portionAmount = Double(cleanedPortionAmount) ?? 0  // Double型に変換
+        let portionAmount = Double(cleanedPortionAmount) ?? 0
 
-        // 1portion_unitあたりの栄養価を計算（portion_amountが1になるように正規化）
-        let caloriesPerUnit = portionAmount > 0 ? calories / portionAmount : calories
-        let sugarPerUnit = portionAmount > 0 ? sugar / portionAmount : sugar
-        let fiberPerUnit = portionAmount > 0 ? dietaryFiber / portionAmount : dietaryFiber
-        let fatPerUnit = portionAmount > 0 ? fat / portionAmount : fat
-        let proteinPerUnit = portionAmount > 0 ? protein / portionAmount : protein
-        
         // FoodMasterの検索または作成
         var foodMaster: FoodMaster
-        
-        // ユニークキーを生成
-        let uniqueKey = createUniqueKey(
-            brandName: columns[brandNameIndex],
-            productName: columns[productNameIndex],
-            calories: caloriesPerUnit,
-            sugar: sugarPerUnit,
-            dietaryFiber: fiberPerUnit,
-            fat: fatPerUnit,
-            protein: proteinPerUnit,
-            portionUnit: portionUnit
+
+        // ユニークキーを生成（栄養素値を含まない）
+        let uniqueKey = FoodMaster.createUniqueKey(
+          brandName: columns[brandNameIndex],
+          productName: columns[productNameIndex],
+          portionUnit: portionUnit
         )
-        
+
         // キャッシュから既存のFoodMasterを検索
         if let existingFoodMaster = existingFoodMasterCache[uniqueKey] {
-            foodMaster = existingFoodMaster
+          // 既存のFoodMasterをそのまま使用（栄養素は更新しない）
+          foodMaster = existingFoodMaster
         } else {
-            // 新しいFoodMasterを作成
-            foodMaster = FoodMaster(
-              brandName: columns[brandNameIndex],
-              productName: columns[productNameIndex],
-              calories: caloriesPerUnit,
-              sugar: sugarPerUnit,
-              dietaryFiber: fiberPerUnit,
-              fat: fatPerUnit,
-              protein: proteinPerUnit,
-              portionUnit: portionUnit,
-              portion: 1.0  // 1単位あたりに正規化
-            )
-            
-            // キャッシュに追加
-            existingFoodMasterCache[uniqueKey] = foodMaster
-            foodMastersToInsert.append(foodMaster)  // バッチ挿入用配列に追加
+          // 新しいFoodMasterを作成（CSVの値をそのまま保存）
+          foodMaster = FoodMaster(
+            brandName: columns[brandNameIndex],
+            productName: columns[productNameIndex],
+            calories: calories,
+            netCarbs: netCarbs,
+            dietaryFiber: dietaryFiber,
+            fat: fat,
+            protein: protein,
+            portionSize: portionAmount,
+            portionUnit: portionUnit
+          )
+
+          // キャッシュに追加
+          existingFoodMasterCache[uniqueKey] = foodMaster
+          foodMastersToInsert.append(foodMaster)
         }
 
         // LogItemの作成
         let logItem = LogItem(
           timestamp: date,
           mealType: mealType,
-          numberOfServings: portionAmount,  // CSVのportion_amountを使用
-          foodMaster: foodMaster  // FoodMasterを関連付ける
+          numberOfServings: portionAmount,
+          foodMaster: foodMaster
         )
-        logItemsToInsert.append(logItem)  // バッチ挿入用配列に追加
+        logItemsToInsert.append(logItem)
         successCount += 1
       } catch {
         errorCount += 1

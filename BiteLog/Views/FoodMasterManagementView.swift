@@ -315,12 +315,12 @@ struct FoodMasterRow: View {
       HStack(spacing: 6) {
         MacroChip(label: "P", value: foodMaster.protein, color: .blue)
         MacroChip(label: "F", value: foodMaster.fat, color: .yellow)
-        MacroChip(label: "S", value: foodMaster.sugar, color: .green)
+        MacroChip(label: "S", value: foodMaster.netCarbs, color: .green)
         MacroChip(label: "Fb", value: foodMaster.dietaryFiber, color: .brown)
 
         Spacer()
 
-        Text("1 \(foodMaster.portionUnit)")
+        Text("\(NutritionFormatter.formatNutrition(foodMaster.portionSize)) \(foodMaster.portionUnit)")
           .font(.caption)
           .foregroundColor(.secondary)
       }
@@ -345,10 +345,11 @@ struct FoodMasterFormView: View {
   @State private var brandName = ""
   @State private var productName = ""
   @State private var calories = ""
-  @State private var sugar = ""
+  @State private var netCarbs = ""
   @State private var dietaryFiber = ""
   @State private var fat = ""
   @State private var protein = ""
+  @State private var portionSize = ""
   @State private var portionUnit = ""
 
   @FocusState private var focusedField: FocusedField?
@@ -368,11 +369,12 @@ struct FoodMasterFormView: View {
   enum FocusedField {
     case brandName
     case productName
+    case portionSize
     case portionUnit
     case calories
     case protein
     case fat
-    case sugar
+    case netCarbs
     case dietaryFiber
   }
 
@@ -411,6 +413,15 @@ struct FoodMasterFormView: View {
             .focused($focusedField, equals: .brandName)
           TextField(NSLocalizedString("Product Name", comment: "Product name"), text: $productName)
             .focused($focusedField, equals: .productName)
+          HStack {
+            Text(NSLocalizedString("Portion Size", comment: "Portion size"))
+            Spacer()
+            TextField("1", text: $portionSize)
+              .keyboardType(.decimalPad)
+              .multilineTextAlignment(.trailing)
+              .focused($focusedField, equals: .portionSize)
+              .frame(width: 80)
+          }
           TextField(
             NSLocalizedString("Portion Unit (e.g. piece, g)", comment: "Portion unit"),
             text: $portionUnit)
@@ -420,7 +431,8 @@ struct FoodMasterFormView: View {
         Section(
           header: Text(
             String(
-              format: NSLocalizedString("Nutrition (per %@)", comment: "Nutrition with unit"),
+              format: NSLocalizedString("Nutrition (per %@ %@)", comment: "Nutrition with portion size and unit"),
+              portionSize.isEmpty ? "1" : portionSize,
               portionUnit.isEmpty ? NSLocalizedString("unit", comment: "Default unit") : portionUnit
             ))
         ) {
@@ -457,10 +469,10 @@ struct FoodMasterFormView: View {
           HStack {
             Text(NSLocalizedString("Sugar", comment: "Sugar"))
             Spacer()
-            TextField(NSLocalizedString("0", comment: "0"), text: $sugar)
+            TextField(NSLocalizedString("0", comment: "0"), text: $netCarbs)
               .keyboardType(.decimalPad)
               .multilineTextAlignment(.trailing)
-              .focused($focusedField, equals: .sugar)
+              .focused($focusedField, equals: .netCarbs)
             Text(NSLocalizedString("g", comment: "g"))
           }
 
@@ -478,7 +490,7 @@ struct FoodMasterFormView: View {
           HStack {
             Text(NSLocalizedString("Carbohydrates (Sugar + Fiber)", comment: "Carbohydrates"))
             Spacer()
-            Text(NutritionFormatter.formatNutrition((Double(sugar) ?? 0) + (Double(dietaryFiber) ?? 0)))
+            Text(NutritionFormatter.formatNutrition((Double(netCarbs) ?? 0) + (Double(dietaryFiber) ?? 0)))
               .foregroundColor(.secondary)
             Text(NSLocalizedString("g", comment: "g"))
               .foregroundColor(.secondary)
@@ -538,16 +550,17 @@ struct FoodMasterFormView: View {
       .onChange(of: brandName) { _, _ in saveState() }
       .onChange(of: productName) { _, _ in saveState() }
       .onChange(of: calories) { _, _ in saveState() }
-      .onChange(of: sugar) { _, _ in saveState() }
+      .onChange(of: netCarbs) { _, _ in saveState() }
       .onChange(of: dietaryFiber) { _, _ in saveState() }
       .onChange(of: fat) { _, _ in saveState() }
       .onChange(of: protein) { _, _ in saveState() }
+      .onChange(of: portionSize) { _, _ in saveState() }
       .onChange(of: portionUnit) { _, _ in saveState() }
     }
   }
   
   private func focusNextField() {
-    let allFields: [FocusedField] = [.brandName, .productName, .portionUnit, .calories, .protein, .fat, .sugar, .dietaryFiber]
+    let allFields: [FocusedField] = [.brandName, .productName, .portionSize, .portionUnit, .calories, .protein, .fat, .netCarbs, .dietaryFiber]
     
     guard let currentField = focusedField,
           let currentIndex = allFields.firstIndex(of: currentField) else {
@@ -560,7 +573,7 @@ struct FoodMasterFormView: View {
   }
   
   private func focusPreviousField() {
-    let allFields: [FocusedField] = [.brandName, .productName, .portionUnit, .calories, .protein, .fat, .sugar, .dietaryFiber]
+    let allFields: [FocusedField] = [.brandName, .productName, .portionSize, .portionUnit, .calories, .protein, .fat, .netCarbs, .dietaryFiber]
     
     guard let currentField = focusedField,
           let currentIndex = allFields.firstIndex(of: currentField) else {
@@ -575,10 +588,11 @@ struct FoodMasterFormView: View {
   private func saveFoodMaster() -> FoodMaster? {
     // 入力値を数値に変換
     let caloriesValue = Double(calories) ?? 0
-    let sugarValue = Double(sugar) ?? 0
+    let netCarbsValue = Double(netCarbs) ?? 0
     let dietaryFiberValue = Double(dietaryFiber) ?? 0
     let fatValue = Double(fat) ?? 0
     let proteinValue = Double(protein) ?? 0
+    let portionSizeValue = Double(portionSize) ?? 1.0
 
     switch mode {
     case .add, .quickAdd:
@@ -587,12 +601,12 @@ struct FoodMasterFormView: View {
         brandName: brandName.isEmpty ? NSLocalizedString("Unknown", comment: "Unknown brand") : brandName,
         productName: productName,
         calories: caloriesValue,
-        sugar: sugarValue,
+        netCarbs: netCarbsValue,
         dietaryFiber: dietaryFiberValue,
         fat: fatValue,
         protein: proteinValue,
-        portionUnit: portionUnit,
-        portion: 1.0  // 1単位あたりに正規化
+        portionSize: portionSizeValue,
+        portionUnit: portionUnit
       )
       modelContext.insert(newFoodMaster)
       return newFoodMaster
@@ -602,20 +616,16 @@ struct FoodMasterFormView: View {
       foodMaster.brandName = brandName
       foodMaster.productName = productName
       foodMaster.calories = caloriesValue
-      foodMaster.sugar = sugarValue
+      foodMaster.netCarbs = netCarbsValue
       foodMaster.dietaryFiber = dietaryFiberValue
       foodMaster.fat = fatValue
       foodMaster.protein = proteinValue
+      foodMaster.portionSize = portionSizeValue
       foodMaster.portionUnit = portionUnit
 
       // uniqueKeyも更新
-      let caloriesStr = String(format: "%.2f", caloriesValue)
-      let sugarStr = String(format: "%.2f", sugarValue)
-      let fiberStr = String(format: "%.2f", dietaryFiberValue)
-      let fatStr = String(format: "%.2f", fatValue)
-      let proteinStr = String(format: "%.2f", proteinValue)
-      foodMaster.uniqueKey =
-        "\(brandName)|\(productName)|\(caloriesStr)|\(sugarStr)|\(fiberStr)|\(fatStr)|\(proteinStr)|\(portionUnit)"
+      foodMaster.uniqueKey = FoodMaster.createUniqueKey(
+        brandName: brandName, productName: productName, portionUnit: portionUnit)
       return foodMaster
     }
   }
@@ -627,10 +637,11 @@ struct FoodMasterFormView: View {
     UserDefaults.standard.set(brandName, forKey: "\(stateKey)_brandName")
     UserDefaults.standard.set(productName, forKey: "\(stateKey)_productName")
     UserDefaults.standard.set(calories, forKey: "\(stateKey)_calories")
-    UserDefaults.standard.set(sugar, forKey: "\(stateKey)_sugar")
+    UserDefaults.standard.set(netCarbs, forKey: "\(stateKey)_sugar")
     UserDefaults.standard.set(dietaryFiber, forKey: "\(stateKey)_dietaryFiber")
     UserDefaults.standard.set(fat, forKey: "\(stateKey)_fat")
     UserDefaults.standard.set(protein, forKey: "\(stateKey)_protein")
+    UserDefaults.standard.set(portionSize, forKey: "\(stateKey)_portionSize")
     UserDefaults.standard.set(portionUnit, forKey: "\(stateKey)_portionUnit")
   }
   
@@ -641,10 +652,11 @@ struct FoodMasterFormView: View {
       brandName = foodMaster.brandName
       productName = foodMaster.productName
       calories = NutritionFormatter.formatNutrition(foodMaster.calories)
-      sugar = NutritionFormatter.formatNutrition(foodMaster.sugar)
+      netCarbs = NutritionFormatter.formatNutrition(foodMaster.netCarbs)
       dietaryFiber = NutritionFormatter.formatNutrition(foodMaster.dietaryFiber)
       fat = NutritionFormatter.formatNutrition(foodMaster.fat)
       protein = NutritionFormatter.formatNutrition(foodMaster.protein)
+      portionSize = NutritionFormatter.formatNutrition(foodMaster.portionSize)
       portionUnit = foodMaster.portionUnit
       
     case .quickAdd(let initialProductName):
@@ -656,15 +668,17 @@ struct FoodMasterFormView: View {
       let savedDietaryFiber = UserDefaults.standard.string(forKey: "\(stateKey)_dietaryFiber") ?? ""
       let savedFat = UserDefaults.standard.string(forKey: "\(stateKey)_fat") ?? ""
       let savedProtein = UserDefaults.standard.string(forKey: "\(stateKey)_protein") ?? ""
+      let savedPortionSize = UserDefaults.standard.string(forKey: "\(stateKey)_portionSize") ?? ""
       let savedPortionUnit = UserDefaults.standard.string(forKey: "\(stateKey)_portionUnit") ?? ""
 
       brandName = savedBrandName
       productName = savedProductName
       calories = savedCalories
-      sugar = savedSugar
+      netCarbs = savedSugar
       dietaryFiber = savedDietaryFiber
       fat = savedFat
       protein = savedProtein
+      portionSize = savedPortionSize
       portionUnit = savedPortionUnit
       
     case .add:
@@ -684,6 +698,7 @@ struct FoodMasterFormView: View {
     UserDefaults.standard.removeObject(forKey: "\(stateKey)_dietaryFiber")
     UserDefaults.standard.removeObject(forKey: "\(stateKey)_fat")
     UserDefaults.standard.removeObject(forKey: "\(stateKey)_protein")
+    UserDefaults.standard.removeObject(forKey: "\(stateKey)_portionSize")
     UserDefaults.standard.removeObject(forKey: "\(stateKey)_portionUnit")
   }
 }
@@ -704,5 +719,5 @@ extension FoodMasterFormView.FormMode: Identifiable {
 
 #Preview {
   FoodMasterManagementView()
-    .modelContainer(for: [FoodMaster.self, LogItem.self], inMemory: true)
+    .modelContainer(for: [FoodMaster.self, LogItem.self, NutritionGoals.self], inMemory: true)
 }

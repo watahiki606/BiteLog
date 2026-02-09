@@ -4,7 +4,6 @@ import SwiftUI
 @main
 struct BiteLogApp: App {
   @StateObject private var languageManager = LanguageManager()
-  @StateObject private var nutritionGoalsManager = NutritionGoalsManager()
 
   init() {
     // AdMob初期化（SDK v12対応済み）
@@ -16,6 +15,7 @@ struct BiteLogApp: App {
     let schema = Schema([
       FoodMaster.self,
       LogItem.self,
+      NutritionGoals.self,
     ])
     let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -32,7 +32,11 @@ struct BiteLogApp: App {
         .tint(Color.accentColor)
         .environment(\.locale, languageManager.locale)
         .environmentObject(languageManager)
-        .environmentObject(nutritionGoalsManager)
+        .environmentObject(
+          NutritionGoalsManager(
+            modelContext: sharedModelContainer.mainContext
+          )
+        )
         .id(languageManager.selectedLanguage)
         .onAppear {
           // App Tracking Transparencyのリクエスト

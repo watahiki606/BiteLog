@@ -20,9 +20,9 @@ struct FoodAnalysisResult {
   let calories: Double
   let protein: Double
   let fat: Double
-  let sugar: Double
+  let netCarbs: Double
   let dietaryFiber: Double
-  let portion: Double
+  let portionAmount: Double
   let portionUnit: String
   let confidence: String
 }
@@ -167,9 +167,9 @@ class AIFoodAnalyzer {
       calories: json["calories"] as? Double ?? 0,
       protein: json["protein"] as? Double ?? 0,
       fat: json["fat"] as? Double ?? 0,
-      sugar: json["sugar"] as? Double ?? 0,
+      netCarbs: json["sugar"] as? Double ?? 0,
       dietaryFiber: json["dietaryFiber"] as? Double ?? 0,
-      portion: json["portion"] as? Double ?? 1,
+      portionAmount: json["portion"] as? Double ?? 1,
       portionUnit: json["portionUnit"] as? String ?? "人前",
       confidence: json["confidence"] as? String ?? "medium"
     )

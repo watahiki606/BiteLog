@@ -24,14 +24,12 @@ struct DayContentView: View {
     self.onAddTapped = onAddTapped
     self.modelContext = modelContext
     
-    let calendar = Calendar.current
-    let startOfDay = calendar.startOfDay(for: date)
-    let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-    
-    // 日付範囲でフィルタリングするクエリを設定
+    let logDateString = LogItem.formatLogDate(date)
+
+    // logDate文字列でフィルタリングするクエリを設定
     _dayLogItems = Query(
       filter: #Predicate<LogItem> { logItem in
-        logItem.timestamp >= startOfDay && logItem.timestamp < endOfDay
+        logItem.logDate == logDateString
       },
       sort: [SortDescriptor(\.timestamp)]
     )
@@ -137,8 +135,8 @@ struct DayContentView: View {
 
           MacroBarView(
             label: NSLocalizedString("Sugar", comment: "Nutrient label"),
-            value: dailyTotals.sugar,
-            maxValue: nutritionGoalsManager.targetSugar,
+            value: dailyTotals.netCarbs,
+            maxValue: nutritionGoalsManager.targetNetCarbs,
             color: .green,
             icon: "s.circle.fill"
           )
@@ -218,7 +216,7 @@ struct DayContentView: View {
                     NutrientBadge(
                       value: totals.fat, unit: "g", name: "F", color: .yellow, icon: "f.circle.fill")
                     NutrientBadge(
-                      value: totals.sugar, unit: "g", name: "S", color: .green, icon: "s.circle.fill")
+                      value: totals.netCarbs, unit: "g", name: "S", color: .green, icon: "s.circle.fill")
                     NutrientBadge(
                       value: totals.fiber, unit: "g", name: "Fb", color: .brown,
                       icon: "leaf.circle.fill")
@@ -329,31 +327,21 @@ struct DayContentView: View {
   // 前日の特定の食事タイプのアイテムを取得するメソッド
   private func previousDayItems(for mealType: MealType) -> [LogItem] {
     let calendar = Calendar.current
-    
-    // 現在の日付から前日を計算
-    let currentDate = date
-    let previousDay = calendar.date(byAdding: .day, value: -1, to: currentDate)!
-    
-    // 前日の日付の開始時刻と終了時刻を計算
-    let startOfPreviousDay = calendar.startOfDay(for: previousDay)
-    let endOfPreviousDay = calendar.date(byAdding: .day, value: 1, to: startOfPreviousDay)!
-    
+    let previousDay = calendar.date(byAdding: .day, value: -1, to: date)!
+    let previousDayString = LogItem.formatLogDate(previousDay)
+
     let allPreviousDayDescriptor = FetchDescriptor<LogItem>(
       predicate: #Predicate<LogItem> { logItem in
-        logItem.timestamp >= startOfPreviousDay && logItem.timestamp < endOfPreviousDay
+        logItem.logDate == previousDayString
       },
       sortBy: [SortDescriptor(\.timestamp)]
     )
-    
+
     guard let allItems = try? modelContext.fetch(allPreviousDayDescriptor) else {
       return []
     }
-    
-    let filteredItems = allItems.filter { item in
-      return item.mealType.rawValue == mealType.rawValue
-    }
-    
-    return filteredItems
+
+    return allItems.filter { $0.mealType.rawValue == mealType.rawValue }
   }
 
   // 前日の特定の食事タイプのアイテムが存在するかチェックするメソッド
@@ -362,14 +350,14 @@ struct DayContentView: View {
   }
 
   private var dailyTotals:
-    (calories: Double, protein: Double, fat: Double, sugar: Double, fiber: Double, carbs: Double)
+    (calories: Double, protein: Double, fat: Double, netCarbs: Double, fiber: Double, carbs: Double)
   {
     filteredItems.reduce((0, 0, 0, 0, 0, 0)) { result, item in
       (
         result.0 + item.calories,
         result.1 + item.protein,
         result.2 + item.fat,
-        result.3 + item.sugar,
+        result.3 + item.netCarbs,
         result.4 + item.dietaryFiber,
         result.5 + item.carbohydrates
       )
@@ -378,7 +366,7 @@ struct DayContentView: View {
 
   // 各食事タイプごとのPFC合計を計算する関数
   private func mealTypeTotals(for mealType: MealType) -> (
-    calories: Double, protein: Double, fat: Double, sugar: Double, fiber: Double, carbs: Double
+    calories: Double, protein: Double, fat: Double, netCarbs: Double, fiber: Double, carbs: Double
   ) {
     let mealItems = filteredItems.filter { $0.mealType == mealType }
     return mealItems.reduce((0, 0, 0, 0, 0, 0)) { result, item in
@@ -386,7 +374,7 @@ struct DayContentView: View {
         result.0 + item.calories,
         result.1 + item.protein,
         result.2 + item.fat,
-        result.3 + item.sugar,
+        result.3 + item.netCarbs,
         result.4 + item.dietaryFiber,
         result.5 + item.carbohydrates
       )
