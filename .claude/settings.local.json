@@ -33,7 +33,16 @@
       "Bash(echo:*)",
       "Bash(xcrun simctl:*)",
       "Bash(git stash:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "WebSearch",
+      "Bash(head:*)",
+      "Bash(wrangler --version)",
+      "Bash(npm --version)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(npx wrangler *)",
+      "Bash(curl *)",
+      "Bash(npm run *)"
     ],
     "deny": [],
     "env": {
