@@ -1,6 +1,8 @@
 export type Bindings = {
   DB: D1Database;
   WORKER_JWT_SECRET: string;
+  ADMIN_API_KEY: string;
+  ADMIN_USER_ID: string;
 };
 
 export type Variables = {

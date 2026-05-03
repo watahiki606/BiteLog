@@ -101,14 +101,10 @@
 <div id="setup-overlay">
   <div id="setup-modal">
     <h2>BiteLog Admin</h2>
-    <p>Workers APIのURLとセッショントークンを入力してください。</p>
+    <p>管理パスワードを入力してください。</p>
     <div class="form-row">
-      <label>Workers API URL</label>
-      <input type="text" id="setup-url" placeholder="https://bitelog-workers.xxx.workers.dev" style="width:100%">
-    </div>
-    <div class="form-row">
-      <label>セッショントークン (Bearer)</label>
-      <input type="text" id="setup-token" placeholder="eyJ..." style="width:100%">
+      <label>管理パスワード</label>
+      <input type="password" id="setup-token" placeholder="管理パスワード" style="width:100%">
     </div>
     <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
       <button class="btn btn-primary" onclick="saveSetup()">保存して開始</button>
@@ -211,36 +207,30 @@
 <div id="toast"></div>
 
 <script>
-let API_URL = '';
+// 既存のlocalStorageからURLを引き継ぎ（未設定の場合はデフォルト）
+const API_URL = (localStorage.getItem('bl_api_url') || 'https://bitelog-workers.v10acdict.workers.dev').replace(/\/$/, '');
 let API_TOKEN = '';
 let currentTab = 'food';
 
 // --- 設定 ---
 function loadSetup() {
-  API_URL = localStorage.getItem('bl_api_url') || '';
   API_TOKEN = localStorage.getItem('bl_api_token') || '';
-  if (API_URL && API_TOKEN) {
+  if (API_TOKEN) {
     document.getElementById('setup-overlay').style.display = 'none';
     showTab('food');
-  } else {
-    document.getElementById('setup-url').value = API_URL;
-    document.getElementById('setup-token').value = API_TOKEN;
   }
 }
 
 function saveSetup() {
-  API_URL = document.getElementById('setup-url').value.trim().replace(/\/$/, '');
   API_TOKEN = document.getElementById('setup-token').value.trim();
-  if (!API_URL || !API_TOKEN) { toast('URLとトークンを入力してください'); return; }
-  localStorage.setItem('bl_api_url', API_URL);
+  if (!API_TOKEN) { toast('パスワードを入力してください'); return; }
   localStorage.setItem('bl_api_token', API_TOKEN);
   document.getElementById('setup-overlay').style.display = 'none';
   showTab('food');
 }
 
 function openSetup() {
-  document.getElementById('setup-url').value = API_URL;
-  document.getElementById('setup-token').value = API_TOKEN;
+  document.getElementById('setup-token').value = '';
   document.getElementById('setup-overlay').style.display = 'flex';
 }
 
