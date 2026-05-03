@@ -6,10 +6,7 @@ struct BiteLogApp: App {
   @StateObject private var languageManager = LanguageManager()
   @StateObject private var nutritionGoalsManager = NutritionGoalsManager()
   @StateObject private var authManager = AuthManager.shared
-
-  init() {
-    AdMobManager.shared.initialize()
-  }
+  @StateObject private var adMobManager = AdMobManager.shared
 
   var body: some Scene {
     WindowGroup {
@@ -20,6 +17,7 @@ struct BiteLogApp: App {
             .environmentObject(nutritionGoalsManager)
             .onAppear {
               Task { await nutritionGoalsManager.fetch() }
+              adMobManager.prepareAfterLaunch()
             }
         } else {
           LoginView()
@@ -29,11 +27,6 @@ struct BiteLogApp: App {
       .tint(Color.accentColor)
       .environment(\.locale, languageManager.locale)
       .id(languageManager.selectedLanguage)
-      .onAppear {
-        AdMobManager.shared.requestTrackingAuthorization { authorized in
-          print("Tracking authorization status: \(authorized)")
-        }
-      }
       .onOpenURL { url in
         _ = AuthManager.handleGoogleSignInCallback(url)
       }

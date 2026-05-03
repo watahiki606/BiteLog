@@ -72,17 +72,23 @@ struct BannerAdView: UIViewRepresentable {
 }
 
 struct AdaptiveBannerView: View {
+    @ObservedObject private var adMobManager = AdMobManager.shared
     @State private var adHeight: CGFloat = 50
     
     var body: some View {
-        GeometryReader { geometry in
-            BannerAdView(
-                adSize: currentOrientationAnchoredAdaptiveBanner(width: geometry.size.width),
-                onAdSizeChanged: { newHeight in
-                    adHeight = newHeight
-                }
-            )
+        if adMobManager.isInitialized {
+            GeometryReader { geometry in
+                BannerAdView(
+                    adSize: currentOrientationAnchoredAdaptiveBanner(width: geometry.size.width),
+                    onAdSizeChanged: { newHeight in
+                        adHeight = newHeight
+                    }
+                )
+            }
+            .frame(height: adHeight)
+        } else {
+            Color.clear
+                .frame(height: 0)
         }
-        .frame(height: adHeight)
     }
 }
