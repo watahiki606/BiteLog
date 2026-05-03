@@ -38,6 +38,8 @@
     <true/>
     <key>NSAccentColorName</key>
     <string>AccentColor</string>
+    <key>CLOUDFLARE_WORKER_URL</key>
+    <string>https://bitelog-workers.v10acdict.workers.dev</string>
     <key>UILaunchScreen</key>
     <dict/>
     <key>UISupportedInterfaceOrientations</key>
