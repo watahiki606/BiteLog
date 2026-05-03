@@ -1,0 +1,15 @@
+name = "bitelog-workers"
+main = "src/index.ts"
+compatibility_date = "2024-12-05"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bitelog"
+database_id = "cf39b710-956c-4f27-ae1a-6dbf7a6a0fef"
+
+[vars]
+# 環境変数は wrangler secret put WORKER_JWT_SECRET で設定
+
+[dev]
+port = 8787
