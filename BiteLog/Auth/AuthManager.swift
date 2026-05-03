@@ -37,6 +37,7 @@ final class AuthManager: NSObject, ObservableObject {
   }
 
   func signOut() {
+    GIDSignIn.sharedInstance.signOut()
     deleteTokenFromKeychain()
     self.isSignedIn = false
     self.userId = nil

@@ -9,6 +9,7 @@ struct SettingsView: View {
   @State private var isDeleting = false
   @State private var showDeleteSuccessAlert = false
   @State private var showDeleteErrorAlert = false
+  @State private var showingSignOutConfirmation = false
   @State private var deleteErrorMessage = ""
 
   var body: some View {
@@ -49,6 +50,12 @@ struct SettingsView: View {
           }
           Button(role: .destructive, action: { showingDeleteConfirmation = true }) {
             Text(NSLocalizedString("Delete All Data", comment: "Delete all data"))
+          }
+        }
+
+        Section(header: Text(NSLocalizedString("Account", comment: "Account settings section"))) {
+          Button(role: .destructive, action: { showingSignOutConfirmation = true }) {
+            Text(NSLocalizedString("Sign Out", comment: "Sign out button"))
           }
         }
       }
@@ -101,6 +108,20 @@ struct SettingsView: View {
         Button(NSLocalizedString("OK", comment: "Button title"), role: .cancel) {}
       } message: {
         Text(deleteErrorMessage)
+      }
+      .alert(
+        NSLocalizedString("Sign Out?", comment: "Sign out confirmation title"),
+        isPresented: $showingSignOutConfirmation
+      ) {
+        Button(NSLocalizedString("Sign Out", comment: "Sign out button"), role: .destructive) {
+          AuthManager.shared.signOut()
+          dismiss()
+        }
+        Button(NSLocalizedString("Cancel", comment: "Cancel button"), role: .cancel) {}
+      } message: {
+        Text(NSLocalizedString(
+          "You will return to the sign-in screen.",
+          comment: "Sign out confirmation message"))
       }
       .overlay {
         if isDeleting {
