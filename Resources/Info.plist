@@ -20,6 +20,17 @@
     <string>BiteLog</string>
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>Google Sign-In</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>com.googleusercontent.apps.1082741388615-uhckqjq6dkcof9mnb58g1kulpmru6aur</string>
+            </array>
+        </dict>
+    </array>
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>UIDeviceFamily</key>
@@ -28,6 +39,10 @@
     </array>
     <key>GADApplicationIdentifier</key>
     <string>ca-app-pub-3786393697724703~6766055998</string>
+    <key>GIDClientID</key>
+    <string>1082741388615-uhckqjq6dkcof9mnb58g1kulpmru6aur.apps.googleusercontent.com</string>
+    <key>GIDServerClientID</key>
+    <string>1082741388615-h24vptjimc4nst0g9bp8lbv3cf9sgbug.apps.googleusercontent.com</string>
     <key>NSUserTrackingUsageDescription</key>
     <string>このアプリは、より関連性の高い広告を表示するために、あなたのアクティビティを追跡することがあります。</string>
     <key>NSCameraUsageDescription</key>

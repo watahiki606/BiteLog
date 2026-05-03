@@ -1,3 +1,4 @@
+import GoogleSignIn
 import SwiftUI
 
 @main
@@ -32,6 +33,9 @@ struct BiteLogApp: App {
         AdMobManager.shared.requestTrackingAuthorization { authorized in
           print("Tracking authorization status: \(authorized)")
         }
+      }
+      .onOpenURL { url in
+        _ = AuthManager.handleGoogleSignInCallback(url)
       }
     }
   }

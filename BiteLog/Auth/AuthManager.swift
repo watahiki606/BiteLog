@@ -1,5 +1,6 @@
 import AuthenticationServices
 import Foundation
+import GoogleSignIn
 import Security
 import UIKit
 
@@ -70,6 +71,53 @@ final class AuthManager: NSObject, ObservableObject {
     storeToken(authResponse.token)
   }
 
+  // MARK: - Google Sign In
+
+  func signInWithGoogle() async throws {
+    guard
+      let clientID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String,
+      !clientID.isEmpty,
+      !clientID.hasPrefix("YOUR_")
+    else {
+      throw AuthError.missingGoogleClientID
+    }
+
+    if let expectedScheme = Self.googleRedirectScheme(for: clientID),
+      !Self.bundleURLSchemes.contains(expectedScheme)
+    {
+      throw AuthError.missingGoogleURLScheme(expectedScheme)
+    }
+
+    let serverClientID = Bundle.main.object(forInfoDictionaryKey: "GIDServerClientID") as? String
+    let normalizedServerClientID =
+      serverClientID?.isEmpty == false && serverClientID?.hasPrefix("YOUR_") == false
+      ? serverClientID
+      : nil
+
+    let configuration = GIDConfiguration(
+      clientID: clientID,
+      serverClientID: normalizedServerClientID
+    )
+    GIDSignIn.sharedInstance.configuration = configuration
+
+    guard let presentingViewController = Self.presentingViewController else {
+      throw AuthError.presentationAnchorUnavailable
+    }
+
+    let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: presentingViewController)
+
+    guard let identityToken = result.user.idToken?.tokenString else {
+      throw APIError.unauthorized
+    }
+
+    let authResponse = try await APIClient.shared.signIn(provider: "google", identityToken: identityToken)
+    storeToken(authResponse.token)
+  }
+
+  static func handleGoogleSignInCallback(_ url: URL) -> Bool {
+    GIDSignIn.sharedInstance.handle(url)
+  }
+
   // MARK: - Keychain
 
   private func saveTokenToKeychain(_ token: String) {
@@ -119,6 +167,51 @@ final class AuthManager: NSObject, ObservableObject {
     else { return nil }
     return sub
   }
+
+  private static var presentingViewController: UIViewController? {
+    let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+    let keyWindow = scenes.flatMap(\.windows).first { $0.isKeyWindow }
+    var controller = keyWindow?.rootViewController
+    while let presented = controller?.presentedViewController {
+      controller = presented
+    }
+    return controller
+  }
+
+  private static var bundleURLSchemes: Set<String> {
+    guard
+      let urlTypes = Bundle.main.object(forInfoDictionaryKey: "CFBundleURLTypes")
+        as? [[String: Any]]
+    else { return [] }
+
+    return Set(urlTypes.flatMap { urlType in
+      urlType["CFBundleURLSchemes"] as? [String] ?? []
+    })
+  }
+
+  private static func googleRedirectScheme(for clientID: String) -> String? {
+    let suffix = ".apps.googleusercontent.com"
+    guard clientID.hasSuffix(suffix) else { return nil }
+    let appID = clientID.dropLast(suffix.count)
+    return "com.googleusercontent.apps.\(appID)"
+  }
+}
+
+enum AuthError: LocalizedError {
+  case missingGoogleClientID
+  case missingGoogleURLScheme(String)
+  case presentationAnchorUnavailable
+
+  var errorDescription: String? {
+    switch self {
+    case .missingGoogleClientID:
+      return "Google Sign-In の GIDClientID が Info.plist に設定されていません。"
+    case .missingGoogleURLScheme(let scheme):
+      return "Google Sign-In の URL Scheme が Info.plist に設定されていません: \(scheme)"
+    case .presentationAnchorUnavailable:
+      return "サインイン画面を表示できませんでした。"
+    }
+  }
 }
 
 // MARK: - Apple Sign In Delegate
@@ -155,4 +248,3 @@ private final class AppleSignInDelegate: NSObject, ASAuthorizationControllerDele
       .first?.windows.first { $0.isKeyWindow } ?? UIWindow()
   }
 }
-

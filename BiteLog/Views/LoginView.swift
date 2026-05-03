@@ -1,4 +1,5 @@
 import AuthenticationServices
+import GoogleSignInSwift
 import SwiftUI
 
 struct LoginView: View {
@@ -40,6 +41,11 @@ struct LoginView: View {
           .frame(height: 50)
           .cornerRadius(10)
 
+          GoogleSignInButton {
+            handleGoogleSignIn()
+          }
+          .frame(height: 50)
+
           #if DEBUG
           Button("Debug: Skip Sign In") {
             // Workers に認証なしでアクセスするためのデバッグ用ダミートークン
@@ -80,6 +86,20 @@ struct LoginView: View {
     }
   }
   #endif
+
+  private func handleGoogleSignIn() {
+    isSigningIn = true
+    errorMessage = nil
+
+    Task {
+      do {
+        try await authManager.signInWithGoogle()
+      } catch {
+        errorMessage = error.localizedDescription
+      }
+      isSigningIn = false
+    }
+  }
 
   private func handleAppleSignIn(_ result: Result<ASAuthorization, Error>) {
     switch result {
