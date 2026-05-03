@@ -1,6 +1,5 @@
 import Foundation
 import OSLog
-import SwiftData
 
 enum CSVImportError: Error {
   case invalidFormat
@@ -21,13 +20,10 @@ enum CSVImportError: Error {
 }
 
 class CSVImporter {
-  // ロガーの設定
   private static let logger = Logger(
     subsystem: Bundle.main.bundleIdentifier ?? "com.bitelog", category: "CSVImporter")
-  // 進捗状況を報告するためのコールバック
-  typealias ProgressHandler = (Double, Int, Int) -> Bool  // 進捗率, 現在の行, 全行数, キャンセルならtrue
+  typealias ProgressHandler = (Double, Int, Int) -> Bool
 
-  // CSVライン解析用のヘルパーメソッド
   private static func parseCSVLine(_ line: String) -> [String] {
     var columns: [String] = []
     var currentColumn = ""
@@ -48,27 +44,19 @@ class CSVImporter {
         currentColumn.append(char)
       }
     }
-
-    // 最後のカラムを追加
     columns.append(currentColumn.trimmingCharacters(in: .whitespaces))
-
     return columns
   }
 
   static func importCSV(
-    from url: URL, context: ModelContext, progressHandler: ProgressHandler? = nil
-  ) throws -> Int {
+    from url: URL, progressHandler: ProgressHandler? = nil
+  ) async throws -> Int {
     let startTime = Date()
     logger.info("CSVインポート開始: \(url.lastPathComponent)")
 
     let csvString: String
     do {
-      logger.debug("CSVファイルの読み込み: \(url.path)")
       csvString = try String(contentsOf: url, encoding: .utf8)
-      let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
-      logger.info(
-        "ファイル読み込み完了: サイズ \(ByteCountFormatter.string(fromByteCount: Int64(fileSize), countStyle: .file))"
-      )
     } catch {
       logger.error("ファイル読み込みエラー: \(error.localizedDescription)")
       throw CSVImportError.invalidData("ファイルの読み込みに失敗しました: \(error.localizedDescription)")
@@ -76,44 +64,20 @@ class CSVImporter {
 
     let rows = csvString.components(separatedBy: .newlines)
     guard !rows.isEmpty else {
-      logger.error("CSVファイルが空です")
       throw CSVImportError.invalidData("CSVファイルが空です")
     }
 
-    let totalRows = rows.count - 1  // ヘッダー行を除く
+    let totalRows = rows.count - 1
     logger.info("CSVインポート: 全\(totalRows)行のデータを処理します")
 
-    // 進捗状況の初期報告
-    if let progressHandler = progressHandler {
-      if progressHandler(0.0, 0, totalRows) {
-        logger.notice("ユーザーによりインポートがキャンセルされました")
-        throw CSVImportError.cancelled
-      }
+    if let progressHandler, progressHandler(0.0, 0, totalRows) {
+      throw CSVImportError.cancelled
     }
 
     let dateFormatter = DateFormatter()
     dateFormatter.dateFormat = "yyyy-MM-dd"
+    let iso8601 = ISO8601DateFormatter()
 
-    var successCount = 0
-    var errorCount = 0
-    var lastLoggedProgress: Int = 0
-    var foodMastersToInsert: [FoodMaster] = []
-    var logItemsToInsert: [LogItem] = []
-
-    // 既存のFoodMasterをユニークキーでキャッシュするための辞書
-    var existingFoodMasterCache: [String: FoodMaster] = [:]
-
-    // 既存のFoodMasterをすべて取得してキャッシュに格納
-    let fetchDescriptor = FetchDescriptor<FoodMaster>()
-    if let existingFoodMasters = try? context.fetch(fetchDescriptor) {
-      for foodMaster in existingFoodMasters {
-        existingFoodMasterCache[foodMaster.uniqueKey] = foodMaster
-      }
-    }
-
-    logger.info("既存のFoodMaster \(existingFoodMasterCache.count)件をキャッシュしました")
-
-    // ヘッダーのインデックスを取得
     let headers = parseCSVLine(rows[0]).map { $0.lowercased() }
     let dateIndex = headers.firstIndex(of: "date") ?? 0
     let mealTypeIndex = headers.firstIndex(of: "meal_type") ?? 1
@@ -127,147 +91,126 @@ class CSVImporter {
     let portionAmountIndex = headers.firstIndex(of: "portion_amount") ?? 8
     let portionUnitIndex = headers.firstIndex(of: "portion_unit") ?? 9
 
-    // 2行目以降のデータを処理
+    // 1. 行を解析してユニーク FoodMaster を収集
+    struct ParsedRow {
+      var date: Date
+      var mealType: MealType
+      var brandName: String
+      var productName: String
+      var calories: Double
+      var netCarbs: Double
+      var dietaryFiber: Double
+      var fat: Double
+      var protein: Double
+      var portionAmount: Double
+      var portionUnit: String
+      var uniqueKey: String
+    }
+
+    var parsedRows: [ParsedRow] = []
+    var uniqueFoodMasters: [String: (brandName: String, productName: String, calories: Double,
+                                     netCarbs: Double, dietaryFiber: Double, fat: Double,
+                                     protein: Double, portionSize: Double, portionUnit: String)] = [:]
+
     for (index, row) in rows.dropFirst().enumerated() where !row.isEmpty {
-      // 進捗状況の報告（10行ごと）
-      if let progressHandler = progressHandler, index % 10 == 0 || index == totalRows - 1 {
+      if let progressHandler, index % 10 == 0 {
         let progress = Double(index + 1) / Double(totalRows)
-
-        // 進捗ログは10%ごとに出力
-        let progressPercent = Int(progress * 100)
-        if progressPercent / 10 > lastLoggedProgress / 10 {
-          logger.info("インポート進捗: \(progressPercent)% (\(index + 1)/\(totalRows)行)")
-          lastLoggedProgress = progressPercent
-        }
-
-        if progressHandler(progress, index + 1, totalRows) {
-          logger.notice("ユーザーによりインポート処理がキャンセルされました (\(index + 1)/\(totalRows)行の処理後)")
+        if progressHandler(progress * 0.5, index + 1, totalRows) {
           throw CSVImportError.cancelled
         }
       }
 
+      let columns = parseCSVLine(row)
+      guard columns.count >= 9 else { continue }
+      guard let date = dateFormatter.date(from: columns[dateIndex]) else { continue }
+      guard let mealType = MealType(rawValue: columns[mealTypeIndex]) else { continue }
+
+      func clean(_ s: String) -> String {
+        s.replacingOccurrences(of: "\"", with: "").replacingOccurrences(of: ",", with: "")
+      }
+
+      let calories = Double(clean(columns[caloriesIndex])) ?? 0
+      let carbs = Double(clean(columns[carbsIndex])) ?? 0
+      let fiber: Double = {
+        if let fi = dietaryFiberIndex, fi < columns.count { return Double(clean(columns[fi])) ?? 0 }
+        return 0
+      }()
+      let netCarbs = max(0, carbs - fiber)
+      let fat = Double(clean(columns[fatIndex])) ?? 0
+      let protein = Double(clean(columns[proteinIndex])) ?? 0
+      let portionAmount = Double(clean(columns[portionAmountIndex])) ?? 1.0
+      let portionUnit = columns[portionUnitIndex]
+      let brandName = columns[brandNameIndex]
+      let productName = columns[productNameIndex]
+      let uniqueKey = FoodMasterDTO.createUniqueKey(
+        brandName: brandName, productName: productName, portionUnit: portionUnit)
+
+      if uniqueFoodMasters[uniqueKey] == nil {
+        uniqueFoodMasters[uniqueKey] = (brandName, productName, calories, netCarbs, fiber,
+                                        fat, protein, portionAmount, portionUnit)
+      }
+      parsedRows.append(ParsedRow(
+        date: date, mealType: mealType, brandName: brandName, productName: productName,
+        calories: calories, netCarbs: netCarbs, dietaryFiber: fiber, fat: fat, protein: protein,
+        portionAmount: portionAmount, portionUnit: portionUnit, uniqueKey: uniqueKey))
+    }
+
+    // 2. FoodMaster を作成（または既存を取得）
+    var foodMasterMap: [String: FoodMasterDTO] = [:]
+    for (uniqueKey, fm) in uniqueFoodMasters {
+      let dto = FoodMasterCreateDTO(
+        id: UUID().uuidString,
+        brandName: fm.brandName,
+        productName: fm.productName,
+        calories: fm.calories,
+        dietaryFiber: fm.dietaryFiber,
+        netCarbs: fm.netCarbs,
+        fat: fm.fat,
+        protein: fm.protein,
+        portionSize: fm.portionSize,
+        portionUnit: fm.portionUnit,
+        uniqueKey: uniqueKey
+      )
       do {
-        let columns = parseCSVLine(row)
-        guard columns.count >= 9 else {
-          throw CSVImportError.invalidData("\(index + 2)行目: カラム数が不正です (\(columns.count)列)")
-        }
-
-        guard let date = dateFormatter.date(from: columns[dateIndex]) else {
-          throw CSVImportError.invalidData(
-            "\(index + 2)行目: 日付の形式が不正です: \(columns[dateIndex])")
-        }
-
-        guard let mealType = MealType(rawValue: columns[mealTypeIndex]) else {
-          throw CSVImportError.invalidData(
-            "\(index + 2)行目: 無効な食事タイプです: \(columns[mealTypeIndex])")
-        }
-
-        // すべての数値カラムから引用符とカンマを除去
-        let cleanedCalories = columns[caloriesIndex]
-          .replacingOccurrences(of: "\"", with: "")
-          .replacingOccurrences(of: ",", with: "")
-        let cleanedCarbs = columns[carbsIndex]
-          .replacingOccurrences(of: "\"", with: "")
-          .replacingOccurrences(of: ",", with: "")
-
-        // 食物繊維の値を取得（存在しない場合は0）
-        let cleanedDietaryFiber: String
-        if let fiberIndex = dietaryFiberIndex, fiberIndex < columns.count {
-          cleanedDietaryFiber = columns[fiberIndex]
-            .replacingOccurrences(of: "\"", with: "")
-            .replacingOccurrences(of: ",", with: "")
-        } else {
-          cleanedDietaryFiber = "0"
-        }
-
-        let cleanedFat = columns[fatIndex]
-          .replacingOccurrences(of: "\"", with: "")
-          .replacingOccurrences(of: ",", with: "")
-        let cleanedProtein = columns[proteinIndex]
-          .replacingOccurrences(of: "\"", with: "")
-          .replacingOccurrences(of: ",", with: "")
-        let cleanedPortionAmount = columns[portionAmountIndex]
-          .replacingOccurrences(of: "\"", with: "")
-          .replacingOccurrences(of: ",", with: "")
-
-        let portionUnit = columns[portionUnitIndex]
-
-        // 数値に変換
-        let calories = Double(cleanedCalories) ?? 0
-        let carbs = Double(cleanedCarbs) ?? 0
-        let dietaryFiber = Double(cleanedDietaryFiber) ?? 0
-        // 糖質 = 炭水化物 - 食物繊維（食物繊維が炭水化物より大きい場合は0）
-        let netCarbs = max(0, carbs - dietaryFiber)
-        let fat = Double(cleanedFat) ?? 0
-        let protein = Double(cleanedProtein) ?? 0
-        let portionAmount = Double(cleanedPortionAmount) ?? 0
-
-        // FoodMasterの検索または作成
-        var foodMaster: FoodMaster
-
-        // ユニークキーを生成（栄養素値を含まない）
-        let uniqueKey = FoodMaster.createUniqueKey(
-          brandName: columns[brandNameIndex],
-          productName: columns[productNameIndex],
-          portionUnit: portionUnit
-        )
-
-        // キャッシュから既存のFoodMasterを検索
-        if let existingFoodMaster = existingFoodMasterCache[uniqueKey] {
-          // 既存のFoodMasterをそのまま使用（栄養素は更新しない）
-          foodMaster = existingFoodMaster
-        } else {
-          // 新しいFoodMasterを作成（CSVの値をそのまま保存）
-          foodMaster = FoodMaster(
-            brandName: columns[brandNameIndex],
-            productName: columns[productNameIndex],
-            calories: calories,
-            netCarbs: netCarbs,
-            dietaryFiber: dietaryFiber,
-            fat: fat,
-            protein: protein,
-            portionSize: portionAmount,
-            portionUnit: portionUnit
-          )
-
-          // キャッシュに追加
-          existingFoodMasterCache[uniqueKey] = foodMaster
-          foodMastersToInsert.append(foodMaster)
-        }
-
-        // LogItemの作成
-        let logItem = LogItem(
-          timestamp: date,
-          mealType: mealType,
-          numberOfServings: portionAmount,
-          foodMaster: foodMaster
-        )
-        logItemsToInsert.append(logItem)
-        successCount += 1
+        let created = try await APIClient.shared.createFoodMaster(dto)
+        foodMasterMap[uniqueKey] = created
       } catch {
-        errorCount += 1
-        logger.error("行\(index + 2)の処理中にエラー: \(error.localizedDescription)")
+        logger.error("FoodMaster作成エラー \(uniqueKey): \(error.localizedDescription)")
       }
     }
 
-    // バッチ挿入を実行
-    if !foodMastersToInsert.isEmpty {
-      for foodMaster in foodMastersToInsert {
-        context.insert(foodMaster)
-      }
+    // 3. LogItem をバッチ作成
+    let chunkSize = 50
+    var allLogItemDTOs: [LogItemCreateDTO] = []
+    for pr in parsedRows {
+      guard let fm = foodMasterMap[pr.uniqueKey] else { continue }
+      let logDate = dateFormatter.string(from: pr.date)
+      let dto = LogItemCreateDTO(
+        id: UUID().uuidString,
+        timestamp: iso8601.string(from: pr.date),
+        logDate: logDate,
+        mealType: pr.mealType.rawValue,
+        numberOfServings: pr.portionAmount,
+        foodMasterId: fm.id.uuidString,
+        nutritionSnapshot: NutritionSnapshot.from(fm)
+      )
+      allLogItemDTOs.append(dto)
     }
-    if !logItemsToInsert.isEmpty {
-      for logItem in logItemsToInsert {
-        context.insert(logItem)
+
+    var successCount = 0
+    for chunk in stride(from: 0, to: allLogItemDTOs.count, by: chunkSize).map({
+      Array(allLogItemDTOs[$0..<min($0 + chunkSize, allLogItemDTOs.count)])
+    }) {
+      do {
+        let result = try await APIClient.shared.batchCreateLogItems(chunk)
+        successCount += result.created
+      } catch {
+        logger.error("バッチ作成エラー: \(error.localizedDescription)")
       }
     }
 
-    let elapsedTime = Date().timeIntervalSince(startTime)
-    logger.info(
-      "CSVインポート完了: 成功=\(successCount)行, 失敗=\(errorCount)行, 処理時間=\(String(format: "%.2f", elapsedTime))秒"
-    )
-
-    // インポートされた行数を返す
+    let elapsed = Date().timeIntervalSince(startTime)
+    logger.info("CSVインポート完了: 成功=\(successCount)行, 処理時間=\(String(format: "%.2f", elapsed))秒")
     return successCount
   }
 }
