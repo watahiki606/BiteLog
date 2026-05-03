@@ -148,9 +148,8 @@ logItems.post('/batch', async (c) => {
     nutritionSnapshot?: object;
   }> }>();
 
-  let created = 0;
-  for (const item of body.items) {
-    await c.env.DB.prepare(
+  const statements = body.items.map(item =>
+    c.env.DB.prepare(
       `INSERT OR IGNORE INTO log_items
         (id, user_id, timestamp, log_date, meal_type, number_of_servings,
          food_master_id, nutrition_snapshot_json, is_master_deleted)
@@ -159,11 +158,13 @@ logItems.post('/batch', async (c) => {
       item.id, userId, item.timestamp, item.logDate, item.mealType,
       item.numberOfServings, item.foodMasterId ?? null,
       item.nutritionSnapshot ? JSON.stringify(item.nutritionSnapshot) : null
-    ).run();
-    created++;
-  }
+    )
+  );
 
-  return c.json({ created, skipped: 0, errors: 0 });
+  const results = await c.env.DB.batch(statements);
+  const created = results.filter(r => r.meta.changes > 0).length;
+
+  return c.json({ created, skipped: body.items.length - created, errors: 0 });
 });
 
 // PUT /api/log-items/:id

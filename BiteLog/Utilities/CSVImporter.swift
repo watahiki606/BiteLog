@@ -155,10 +155,10 @@ class CSVImporter {
         portionAmount: portionAmount, portionUnit: portionUnit, uniqueKey: uniqueKey))
     }
 
-    // 2. FoodMaster を作成（または既存を取得）
+    // 2. FoodMaster をバッチ作成
     var foodMasterMap: [String: FoodMasterDTO] = [:]
-    for (uniqueKey, fm) in uniqueFoodMasters {
-      let dto = FoodMasterCreateDTO(
+    let foodMasterDTOs = uniqueFoodMasters.map { uniqueKey, fm in
+      FoodMasterCreateDTO(
         id: UUID().uuidString,
         brandName: fm.brandName,
         productName: fm.productName,
@@ -171,12 +171,27 @@ class CSVImporter {
         portionUnit: fm.portionUnit,
         uniqueKey: uniqueKey
       )
+    }
+    let chunkSizeFM = 100
+    for chunk in stride(from: 0, to: foodMasterDTOs.count, by: chunkSizeFM).map({
+      Array(foodMasterDTOs[$0..<min($0 + chunkSizeFM, foodMasterDTOs.count)])
+    }) {
       do {
-        let created = try await APIClient.shared.createFoodMaster(dto)
-        foodMasterMap[uniqueKey] = created
+        let created = try await APIClient.shared.batchCreateFoodMasters(chunk)
+        _ = created
       } catch {
-        logger.error("FoodMaster作成エラー \(uniqueKey): \(error.localizedDescription)")
+        logger.error("FoodMasterバッチ作成エラー: \(error.localizedDescription)")
       }
+    }
+    // 作成後にサーバーから一覧取得してIDマップを構築
+    var offset = 0
+    while true {
+      let response = try await APIClient.shared.fetchFoodMasters(query: "", limit: 500, offset: offset)
+      for fm in response.items {
+        foodMasterMap[fm.uniqueKey] = fm
+      }
+      if !response.hasMore { break }
+      offset += 500
     }
 
     // 3. LogItem をバッチ作成

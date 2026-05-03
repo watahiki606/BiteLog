@@ -113,11 +113,8 @@ foodMasters.post('/batch', async (c) => {
     uniqueKey: string;
   }> }>();
 
-  let created = 0;
-  let skipped = 0;
-
-  for (const item of body.items) {
-    const result = await c.env.DB.prepare(
+  const statements = body.items.map(item =>
+    c.env.DB.prepare(
       `INSERT INTO food_masters
         (id, brand_name, product_name, calories, dietary_fiber, net_carbs, fat, protein,
          portion_size, portion_unit, unique_key)
@@ -127,11 +124,12 @@ foodMasters.post('/batch', async (c) => {
       item.id, item.brandName, item.productName, item.calories,
       item.dietaryFiber, item.netCarbs, item.fat, item.protein,
       item.portionSize, item.portionUnit, item.uniqueKey
-    ).run();
+    )
+  );
 
-    if (result.meta.changes > 0) created++;
-    else skipped++;
-  }
+  const results = await c.env.DB.batch(statements);
+  const created = results.filter(r => r.meta.changes > 0).length;
+  const skipped = results.length - created;
 
   return c.json({ created, skipped, errors: 0 });
 });
