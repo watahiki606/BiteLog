@@ -4,6 +4,7 @@ struct DayContentView: View {
   let date: Date
   let selectedDate: Date
   let onAddTapped: (Date, MealType) -> Void
+  var refreshTrigger: Int = 0
 
   @EnvironmentObject private var nutritionGoalsManager: NutritionGoalsManager
 
@@ -13,6 +14,7 @@ struct DayContentView: View {
   @State private var selectedItemIDs: Set<UUID> = []
 
   private var logDateString: String { LogItemDTO.formatLogDate(date) }
+  private var taskID: String { "\(logDateString)-\(refreshTrigger)" }
 
   var body: some View {
     contentView
@@ -40,7 +42,7 @@ struct DayContentView: View {
       .onChange(of: editMode) { _, newValue in
         if newValue == .inactive { selectedItemIDs.removeAll() }
       }
-      .task(id: logDateString) {
+      .task(id: taskID) {
         await loadLogItems()
       }
   }

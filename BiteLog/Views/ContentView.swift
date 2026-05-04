@@ -8,6 +8,7 @@ struct ContentView: View {
   @State private var showingSettings = false
   @State private var showingDatePicker = false
   @State private var selectedTab = 0
+  @State private var logRefreshTrigger = 0
 
   var body: some View {
     VStack(spacing: 0) {
@@ -21,7 +22,8 @@ struct ContentView: View {
             selectedDate: selectedDate,
             onAddTapped: { date, mealType in
               showingAddItemFor = (date, mealType)
-            }
+            },
+            refreshTrigger: logRefreshTrigger
           )
           .navigationBarTitleDisplayMode(.inline)
           .toolbar {
@@ -68,7 +70,8 @@ struct ContentView: View {
           isPresented: Binding(
             get: { showingAddItemFor != nil },
             set: { if !$0 { showingAddItemFor = nil } }
-          )
+          ),
+          onDismiss: { logRefreshTrigger += 1 }
         ) {
           if let itemInfo = showingAddItemFor {
             AddItemView(
