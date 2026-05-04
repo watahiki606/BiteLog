@@ -18,9 +18,9 @@ type LogItemJoinRow = LogItemRow & {
   portion_size: number | null;
   portion_unit: string | null;
   unique_key: string | null;
-  usage_count: number | null;
-  last_used_date: string | null;
-  last_number_of_servings: number | null;
+  ufs_usage_count: number | null;
+  ufs_last_used_date: string | null;
+  ufs_last_number_of_servings: number | null;
 };
 
 function rowToFm(row: LogItemJoinRow): FoodMasterRow | null {
@@ -37,18 +37,21 @@ function rowToFm(row: LogItemJoinRow): FoodMasterRow | null {
     portion_size: row.portion_size!,
     portion_unit: row.portion_unit!,
     unique_key: row.unique_key!,
-    usage_count: row.usage_count!,
-    last_used_date: row.last_used_date,
-    last_number_of_servings: row.last_number_of_servings!,
+    usage_count: row.ufs_usage_count ?? 0,
+    last_used_date: row.ufs_last_used_date ?? null,
+    last_number_of_servings: row.ufs_last_number_of_servings ?? 1.0,
   };
 }
 
 const JOIN_SELECT = `SELECT li.*, fm.id as fm_id, fm.brand_name, fm.product_name, fm.calories,
         fm.dietary_fiber, fm.net_carbs, fm.fat, fm.protein,
         fm.portion_size, fm.portion_unit, fm.unique_key,
-        fm.usage_count, fm.last_used_date, fm.last_number_of_servings
+        ufs.usage_count as ufs_usage_count,
+        ufs.last_used_date as ufs_last_used_date,
+        ufs.last_number_of_servings as ufs_last_number_of_servings
  FROM log_items li
- LEFT JOIN food_masters fm ON fm.id = li.food_master_id`;
+ LEFT JOIN food_masters fm ON fm.id = li.food_master_id
+ LEFT JOIN user_food_stats ufs ON ufs.food_master_id = li.food_master_id AND ufs.user_id = li.user_id`;
 
 // GET /api/log-items?logDate=yyyy-MM-dd  OR  ?limit=N&offset=N (export all)
 logItems.get('/', async (c) => {
@@ -101,38 +104,24 @@ logItems.post('/', async (c) => {
     body.nutritionSnapshot ? JSON.stringify(body.nutritionSnapshot) : null
   ).run();
 
-  // usageCountをインクリメント
+  // ユーザーごとの使用統計をUPSERT
   if (body.foodMasterId) {
     await c.env.DB.prepare(
-      `UPDATE food_masters SET
-        usage_count = usage_count + 1,
-        last_used_date = datetime('now'),
-        last_number_of_servings = ?
-       WHERE id = ?`
-    ).bind(body.numberOfServings, body.foodMasterId).run();
+      `INSERT INTO user_food_stats (user_id, food_master_id, usage_count, last_used_date, last_number_of_servings)
+       VALUES (?, ?, 1, datetime('now'), ?)
+       ON CONFLICT(user_id, food_master_id) DO UPDATE SET
+         usage_count = usage_count + 1,
+         last_used_date = datetime('now'),
+         last_number_of_servings = excluded.last_number_of_servings`
+    ).bind(userId, body.foodMasterId, body.numberOfServings).run();
   }
 
   // 作成したLogItemをJOINして返す
   const row = await c.env.DB.prepare(
-    `SELECT li.*, fm.id as fm_id, fm.brand_name, fm.product_name, fm.calories,
-            fm.dietary_fiber, fm.net_carbs, fm.fat, fm.protein,
-            fm.portion_size, fm.portion_unit, fm.unique_key,
-            fm.usage_count, fm.last_used_date, fm.last_number_of_servings
-     FROM log_items li
-     LEFT JOIN food_masters fm ON fm.id = li.food_master_id
-     WHERE li.id = ?`
-  ).bind(body.id).first<any>();
+    `${JOIN_SELECT} WHERE li.id = ?`
+  ).bind(body.id).first<LogItemJoinRow>();
 
-  const fm: FoodMasterRow | null = row?.fm_id ? {
-    id: row.fm_id, brand_name: row.brand_name, product_name: row.product_name,
-    calories: row.calories, dietary_fiber: row.dietary_fiber, net_carbs: row.net_carbs,
-    fat: row.fat, protein: row.protein, portion_size: row.portion_size,
-    portion_unit: row.portion_unit, unique_key: row.unique_key,
-    usage_count: row.usage_count, last_used_date: row.last_used_date,
-    last_number_of_servings: row.last_number_of_servings,
-  } : null;
-
-  return c.json(logItemToResponse(row, fm), 201);
+  return c.json(logItemToResponse(row!, rowToFm(row!)), 201);
 });
 
 // POST /api/log-items/batch（CSV用）
@@ -164,13 +153,34 @@ logItems.post('/batch', async (c) => {
   const results = await c.env.DB.batch(statements);
   const created = results.filter(r => r.meta.changes > 0).length;
 
+  // CSV一括インポート後、food_masterごとにuser_food_statsを集計してUPSERT
+  const foodMasterIds = [...new Set(body.items.map(i => i.foodMasterId).filter((id): id is string => !!id))];
+  for (const fmId of foodMasterIds) {
+    await c.env.DB.prepare(
+      `INSERT INTO user_food_stats (user_id, food_master_id, usage_count, last_used_date, last_number_of_servings)
+       SELECT ?, ?, COUNT(*), MAX(timestamp),
+         (SELECT number_of_servings FROM log_items
+          WHERE user_id = ? AND food_master_id = ?
+          ORDER BY timestamp DESC LIMIT 1)
+       FROM log_items
+       WHERE user_id = ? AND food_master_id = ?
+       ON CONFLICT(user_id, food_master_id) DO UPDATE SET
+         usage_count = excluded.usage_count,
+         last_used_date = excluded.last_used_date,
+         last_number_of_servings = excluded.last_number_of_servings`
+    ).bind(userId, fmId, userId, fmId, userId, fmId).run();
+  }
+
   return c.json({ created, skipped: body.items.length - created, errors: 0 });
 });
 
 // DELETE /api/log-items/all（ユーザーの全ログ削除）
 logItems.delete('/all', async (c) => {
   const userId = c.get('userId');
-  await c.env.DB.prepare(`DELETE FROM log_items WHERE user_id = ?`).bind(userId).run();
+  await c.env.DB.batch([
+    c.env.DB.prepare(`DELETE FROM log_items WHERE user_id = ?`).bind(userId),
+    c.env.DB.prepare(`DELETE FROM user_food_stats WHERE user_id = ?`).bind(userId),
+  ]);
   return c.json({ ok: true });
 });
 
@@ -197,25 +207,10 @@ logItems.put('/:id', async (c) => {
   if (result.meta.changes === 0) return c.json({ error: 'Not found' }, 404);
 
   const row = await c.env.DB.prepare(
-    `SELECT li.*, fm.id as fm_id, fm.brand_name, fm.product_name, fm.calories,
-            fm.dietary_fiber, fm.net_carbs, fm.fat, fm.protein,
-            fm.portion_size, fm.portion_unit, fm.unique_key,
-            fm.usage_count, fm.last_used_date, fm.last_number_of_servings
-     FROM log_items li
-     LEFT JOIN food_masters fm ON fm.id = li.food_master_id
-     WHERE li.id = ?`
-  ).bind(c.req.param('id')).first<any>();
+    `${JOIN_SELECT} WHERE li.id = ?`
+  ).bind(c.req.param('id')).first<LogItemJoinRow>();
 
-  const fm: FoodMasterRow | null = row?.fm_id ? {
-    id: row.fm_id, brand_name: row.brand_name, product_name: row.product_name,
-    calories: row.calories, dietary_fiber: row.dietary_fiber, net_carbs: row.net_carbs,
-    fat: row.fat, protein: row.protein, portion_size: row.portion_size,
-    portion_unit: row.portion_unit, unique_key: row.unique_key,
-    usage_count: row.usage_count, last_used_date: row.last_used_date,
-    last_number_of_servings: row.last_number_of_servings,
-  } : null;
-
-  return c.json(logItemToResponse(row, fm));
+  return c.json(logItemToResponse(row!, rowToFm(row!)));
 });
 
 // DELETE /api/log-items/:id
@@ -230,11 +225,13 @@ logItems.delete('/:id', async (c) => {
 
   if (!existing) return c.json({ error: 'Not found' }, 404);
 
-  // usageCountをデクリメント（マスター未削除の場合のみ）
+  // ユーザーごとの使用統計をデクリメント（マスター未削除の場合のみ）
   if (existing.food_master_id && existing.is_master_deleted === 0) {
     await c.env.DB.prepare(
-      `UPDATE food_masters SET usage_count = MAX(0, usage_count - 1) WHERE id = ?`
-    ).bind(existing.food_master_id).run();
+      `UPDATE user_food_stats
+       SET usage_count = MAX(0, usage_count - 1)
+       WHERE user_id = ? AND food_master_id = ?`
+    ).bind(userId, existing.food_master_id).run();
   }
 
   await c.env.DB.prepare(`DELETE FROM log_items WHERE id = ? AND user_id = ?`)

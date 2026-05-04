@@ -6,8 +6,19 @@ import { authMiddleware } from '../middleware/auth';
 const foodMasters = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 foodMasters.use('*', authMiddleware);
 
+const FM_SELECT = `
+  fm.id, fm.brand_name, fm.product_name, fm.calories, fm.dietary_fiber,
+  fm.net_carbs, fm.fat, fm.protein, fm.portion_size, fm.portion_unit, fm.unique_key,
+  COALESCE(ufs.usage_count, 0) as usage_count,
+  ufs.last_used_date,
+  COALESCE(ufs.last_number_of_servings, 1.0) as last_number_of_servings`;
+
+const FM_JOIN = `FROM food_masters fm
+  LEFT JOIN user_food_stats ufs ON ufs.food_master_id = fm.id AND ufs.user_id = ?`;
+
 // GET /api/food-masters?q=&limit=20&offset=0
 foodMasters.get('/', async (c) => {
+  const userId = c.get('userId');
   const q = c.req.query('q') ?? '';
   const limit = Math.min(parseInt(c.req.query('limit') ?? '20'), 500);
   const offset = parseInt(c.req.query('offset') ?? '0');
@@ -19,25 +30,25 @@ foodMasters.get('/', async (c) => {
     const pattern = `%${q}%`;
     const [dataResult, countResult] = await Promise.all([
       c.env.DB.prepare(
-        `SELECT * FROM food_masters
-         WHERE brand_name LIKE ?1 OR product_name LIKE ?1
-         ORDER BY usage_count DESC, last_used_date DESC
-         LIMIT ?2 OFFSET ?3`
-      ).bind(pattern, limit, offset).all<FoodMasterRow>(),
+        `SELECT ${FM_SELECT} ${FM_JOIN}
+         WHERE (fm.brand_name LIKE ? OR fm.product_name LIKE ?)
+         ORDER BY usage_count DESC, ufs.last_used_date DESC
+         LIMIT ? OFFSET ?`
+      ).bind(userId, pattern, pattern, limit, offset).all<FoodMasterRow>(),
       c.env.DB.prepare(
         `SELECT COUNT(*) as count FROM food_masters
-         WHERE brand_name LIKE ?1 OR product_name LIKE ?1`
-      ).bind(pattern).first<{ count: number }>(),
+         WHERE brand_name LIKE ? OR product_name LIKE ?`
+      ).bind(pattern, pattern).first<{ count: number }>(),
     ]);
     rows = dataResult.results;
     total = countResult?.count ?? 0;
   } else {
     const [dataResult, countResult] = await Promise.all([
       c.env.DB.prepare(
-        `SELECT * FROM food_masters
-         ORDER BY usage_count DESC, last_used_date DESC
+        `SELECT ${FM_SELECT} ${FM_JOIN}
+         ORDER BY usage_count DESC, ufs.last_used_date DESC
          LIMIT ? OFFSET ?`
-      ).bind(limit, offset).all<FoodMasterRow>(),
+      ).bind(userId, limit, offset).all<FoodMasterRow>(),
       c.env.DB.prepare(`SELECT COUNT(*) as count FROM food_masters`)
         .first<{ count: number }>(),
     ]);
@@ -54,9 +65,10 @@ foodMasters.get('/', async (c) => {
 
 // GET /api/food-masters/:id
 foodMasters.get('/:id', async (c) => {
+  const userId = c.get('userId');
   const row = await c.env.DB.prepare(
-    `SELECT * FROM food_masters WHERE id = ?`
-  ).bind(c.req.param('id')).first<FoodMasterRow>();
+    `SELECT ${FM_SELECT} ${FM_JOIN} WHERE fm.id = ?`
+  ).bind(userId, c.req.param('id')).first<FoodMasterRow>();
 
   if (!row) return c.json({ error: 'Not found' }, 404);
   return c.json(foodMasterToResponse(row));
@@ -173,19 +185,6 @@ foodMasters.put('/:id', async (c) => {
 
   if (!row) return c.json({ error: 'Not found' }, 404);
   return c.json(foodMasterToResponse(row));
-});
-
-// PUT /api/food-masters/:id/usage（usageCount更新）
-foodMasters.put('/:id/usage', async (c) => {
-  const { servings } = await c.req.json<{ servings: number }>();
-  await c.env.DB.prepare(
-    `UPDATE food_masters SET
-      usage_count = usage_count + 1,
-      last_used_date = datetime('now'),
-      last_number_of_servings = ?
-     WHERE id = ?`
-  ).bind(servings, c.req.param('id')).run();
-  return c.json({ ok: true });
 });
 
 // DELETE /api/food-masters/all（全件削除: 管理者のみ）
