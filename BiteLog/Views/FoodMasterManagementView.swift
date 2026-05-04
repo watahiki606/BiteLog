@@ -129,6 +129,10 @@ struct FoodMasterManagementView: View {
     .onAppear {
       if !isDataLoaded { Task { await loadFoodMasters() } }
     }
+    .onReceive(NotificationCenter.default.publisher(for: .allDataDeleted)) { _ in
+      foodMasters = []
+      isDataLoaded = false
+    }
   }
 
   private func resetAndSearch() async {

@@ -1,5 +1,9 @@
 import SwiftUI
 
+extension Notification.Name {
+  static let allDataDeleted = Notification.Name("allDataDeleted")
+}
+
 struct SettingsView: View {
   @Environment(\.dismiss) private var dismiss
   @EnvironmentObject private var languageManager: LanguageManager
@@ -146,9 +150,11 @@ struct SettingsView: View {
     try? await Task.sleep(nanoseconds: 500_000_000)
     do {
       try await APIClient.shared.deleteAllLogItems()
+      try await APIClient.shared.deleteAllFoodMasters()
       await MainActor.run {
         isDeleting = false
         showDeleteSuccessAlert = true
+        NotificationCenter.default.post(name: .allDataDeleted, object: nil)
       }
     } catch {
       await MainActor.run {

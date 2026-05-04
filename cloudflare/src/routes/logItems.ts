@@ -167,6 +167,13 @@ logItems.post('/batch', async (c) => {
   return c.json({ created, skipped: body.items.length - created, errors: 0 });
 });
 
+// DELETE /api/log-items/all（ユーザーの全ログ削除）
+logItems.delete('/all', async (c) => {
+  const userId = c.get('userId');
+  await c.env.DB.prepare(`DELETE FROM log_items WHERE user_id = ?`).bind(userId).run();
+  return c.json({ ok: true });
+});
+
 // PUT /api/log-items/:id
 logItems.put('/:id', async (c) => {
   const userId = c.get('userId');
@@ -233,13 +240,6 @@ logItems.delete('/:id', async (c) => {
   await c.env.DB.prepare(`DELETE FROM log_items WHERE id = ? AND user_id = ?`)
     .bind(id, userId).run();
 
-  return c.json({ ok: true });
-});
-
-// DELETE /api/log-items/all（ユーザーの全ログ削除）
-logItems.delete('/all', async (c) => {
-  const userId = c.get('userId');
-  await c.env.DB.prepare(`DELETE FROM log_items WHERE user_id = ?`).bind(userId).run();
   return c.json({ ok: true });
 });
 

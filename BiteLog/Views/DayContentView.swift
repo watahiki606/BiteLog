@@ -13,8 +13,10 @@ struct DayContentView: View {
   @State private var editMode: EditMode = .inactive
   @State private var selectedItemIDs: Set<UUID> = []
 
+  @State private var deleteAllTrigger = 0
+
   private var logDateString: String { LogItemDTO.formatLogDate(date) }
-  private var taskID: String { "\(logDateString)-\(refreshTrigger)" }
+  private var taskID: String { "\(logDateString)-\(refreshTrigger)-\(deleteAllTrigger)" }
 
   var body: some View {
     contentView
@@ -44,6 +46,10 @@ struct DayContentView: View {
       }
       .task(id: taskID) {
         await loadLogItems()
+      }
+      .onReceive(NotificationCenter.default.publisher(for: .allDataDeleted)) { _ in
+        dayLogItems = []
+        deleteAllTrigger += 1
       }
   }
 

@@ -170,6 +170,10 @@ final class APIClient {
     try await requestVoid(path: "/api/log-items/all", method: "DELETE")
   }
 
+  func deleteAllFoodMasters() async throws {
+    try await requestVoid(path: "/api/food-masters/all", method: "DELETE")
+  }
+
   // MARK: - NutritionGoals
 
   func fetchNutritionGoals() async throws -> NutritionGoalsDTO {

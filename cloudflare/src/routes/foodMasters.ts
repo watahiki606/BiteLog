@@ -188,6 +188,12 @@ foodMasters.put('/:id/usage', async (c) => {
   return c.json({ ok: true });
 });
 
+// DELETE /api/food-masters/all（全件削除）
+foodMasters.delete('/all', async (c) => {
+  await c.env.DB.prepare(`DELETE FROM food_masters`).run();
+  return c.json({ ok: true });
+});
+
 // DELETE /api/food-masters/:id（安全削除: 関連LogItemをスナップショット化）
 foodMasters.delete('/:id', async (c) => {
   const id = c.req.param('id');
