@@ -104,9 +104,9 @@ struct ContentView: View {
       HStack {
         // Logタブ
         Button(action: {
-          // Logタブをタップしたら常に当日の日付にリセット
           selectedDate = Calendar.current.startOfDay(for: Date())
           selectedTab = 0
+          logRefreshTrigger += 1
         }) {
           VStack(spacing: 4) {
             Image(systemName: "book")
