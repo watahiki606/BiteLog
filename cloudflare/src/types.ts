@@ -3,10 +3,12 @@ export type Bindings = {
   WORKER_JWT_SECRET: string;
   ADMIN_API_KEY: string;
   ADMIN_USER_ID: string;
+  GOOGLE_CLIENT_ID: string;
 };
 
 export type Variables = {
   userId: string;
+  isAdmin: boolean;
 };
 
 export type FoodMasterRow = {

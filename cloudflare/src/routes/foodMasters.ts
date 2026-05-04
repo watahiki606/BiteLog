@@ -188,8 +188,11 @@ foodMasters.put('/:id/usage', async (c) => {
   return c.json({ ok: true });
 });
 
-// DELETE /api/food-masters/all（全件削除）
+// DELETE /api/food-masters/all（全件削除: 管理者のみ）
 foodMasters.delete('/all', async (c) => {
+  if (!c.get('isAdmin')) {
+    return c.json({ error: 'Forbidden' }, 403);
+  }
   await c.env.DB.prepare(`DELETE FROM food_masters`).run();
   return c.json({ ok: true });
 });

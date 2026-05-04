@@ -21,13 +21,10 @@ auth.post('/signin', async (c) => {
 
   let userId: string;
   try {
-    // DEBUGバイパス（開発用のみ）
-    if (provider === 'debug' && identityToken === 'debug-bypass-token') {
-      userId = 'debug-user-001';
-    } else if (provider === 'apple') {
+    if (provider === 'apple') {
       userId = await verifyAppleToken(identityToken);
     } else if (provider === 'google') {
-      userId = await verifyGoogleToken(identityToken);
+      userId = await verifyGoogleToken(identityToken, c.env.GOOGLE_CLIENT_ID);
     } else {
       return c.json({ error: 'Unsupported provider' }, 400);
     }

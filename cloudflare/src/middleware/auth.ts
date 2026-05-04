@@ -52,12 +52,16 @@ export async function verifyAppleToken(identityToken: string): Promise<string> {
   if (!valid) throw new Error('Invalid Apple token signature');
 
   const payload = JSON.parse(atob(payloadB64));
+  const now = Math.floor(Date.now() / 1000);
+  if (!payload.exp || payload.exp < now) throw new Error('Apple token expired');
+  if (payload.iss !== 'https://appleid.apple.com') throw new Error('Invalid Apple token issuer');
+  if (payload.aud !== 'com.watahiki.BiteLog') throw new Error('Invalid Apple token audience');
   if (!payload.sub) throw new Error('No sub in Apple token');
   return `apple:${payload.sub}`;
 }
 
 // Google identityToken検証
-export async function verifyGoogleToken(identityToken: string): Promise<string> {
+export async function verifyGoogleToken(identityToken: string, googleClientId: string): Promise<string> {
   const res = await fetch(GOOGLE_KEYS_URL);
   const { keys } = (await res.json()) as { keys: JsonWebKey[] };
 
@@ -81,6 +85,10 @@ export async function verifyGoogleToken(identityToken: string): Promise<string> 
   if (!valid) throw new Error('Invalid Google token signature');
 
   const payload = JSON.parse(atob(payloadB64));
+  const now = Math.floor(Date.now() / 1000);
+  if (!payload.exp || payload.exp < now) throw new Error('Google token expired');
+  if (payload.iss !== 'https://accounts.google.com') throw new Error('Invalid Google token issuer');
+  if (payload.aud !== googleClientId) throw new Error('Invalid Google token audience');
   if (!payload.sub) throw new Error('No sub in Google token');
   return `google:${payload.sub}`;
 }
@@ -115,6 +123,7 @@ export const authMiddleware = createMiddleware<{ Bindings: Bindings; Variables: 
     // 管理画面用パスワード認証（期限なし）
     if (c.env.ADMIN_API_KEY && await constantTimeEqual(token, c.env.ADMIN_API_KEY)) {
       c.set('userId', c.env.ADMIN_USER_ID || 'admin');
+      c.set('isAdmin', true);
       await next();
       return;
     }
@@ -122,6 +131,7 @@ export const authMiddleware = createMiddleware<{ Bindings: Bindings; Variables: 
     try {
       const userId = await verifySessionJwt(token, c.env.WORKER_JWT_SECRET);
       c.set('userId', userId);
+      c.set('isAdmin', false);
       await next();
     } catch {
       return c.json({ error: 'Unauthorized' }, 401);
