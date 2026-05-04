@@ -191,14 +191,19 @@ class CSVImporter {
         foodMasterMap[fm.uniqueKey] = fm
       }
       if !response.hasMore { break }
-      offset += 500
+      offset += response.items.count
     }
+    logger.info("FoodMasterマップ構築完了: \(foodMasterMap.count)件 (ユニークキー数: \(uniqueFoodMasters.count)件)")
 
     // 3. LogItem をバッチ作成
     let chunkSize = 50
     var allLogItemDTOs: [LogItemCreateDTO] = []
+    var skippedCount = 0
     for pr in parsedRows {
-      guard let fm = foodMasterMap[pr.uniqueKey] else { continue }
+      guard let fm = foodMasterMap[pr.uniqueKey] else {
+        skippedCount += 1
+        continue
+      }
       let logDate = dateFormatter.string(from: pr.date)
       let dto = LogItemCreateDTO(
         id: UUID().uuidString,
@@ -225,7 +230,7 @@ class CSVImporter {
     }
 
     let elapsed = Date().timeIntervalSince(startTime)
-    logger.info("CSVインポート完了: 成功=\(successCount)行, 処理時間=\(String(format: "%.2f", elapsed))秒")
+    logger.info("CSVインポート完了: 成功=\(successCount)行, FoodMaster未照合スキップ=\(skippedCount)行, 処理時間=\(String(format: "%.2f", elapsed))秒")
     return successCount
   }
 }

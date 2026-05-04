@@ -9,7 +9,7 @@ foodMasters.use('*', authMiddleware);
 // GET /api/food-masters?q=&limit=20&offset=0
 foodMasters.get('/', async (c) => {
   const q = c.req.query('q') ?? '';
-  const limit = Math.min(parseInt(c.req.query('limit') ?? '20'), 100);
+  const limit = Math.min(parseInt(c.req.query('limit') ?? '20'), 500);
   const offset = parseInt(c.req.query('offset') ?? '0');
 
   let rows: FoodMasterRow[];
