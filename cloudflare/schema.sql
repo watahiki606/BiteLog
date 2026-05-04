@@ -10,13 +10,9 @@ CREATE TABLE IF NOT EXISTS food_masters (
   protein REAL NOT NULL DEFAULT 0,
   portion_size REAL NOT NULL DEFAULT 1.0,
   portion_unit TEXT NOT NULL DEFAULT 'g',
-  unique_key TEXT NOT NULL UNIQUE,
-  usage_count INTEGER NOT NULL DEFAULT 0,
-  last_used_date TEXT,
-  last_number_of_servings REAL NOT NULL DEFAULT 1.0
+  unique_key TEXT NOT NULL UNIQUE
 );
 
-CREATE INDEX IF NOT EXISTS idx_food_masters_usage ON food_masters(usage_count DESC, last_used_date DESC);
 CREATE INDEX IF NOT EXISTS idx_food_masters_product_name ON food_masters(product_name);
 
 -- log_items: ユーザーごとの食事ログ（user_idで分離）
