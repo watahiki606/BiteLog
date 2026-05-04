@@ -134,6 +134,7 @@ struct AuthRequest: Codable {
 struct AuthResponse: Codable {
   var token: String
   var userId: String
+  var isAdmin: Bool
 }
 
 // MARK: - Batch Result

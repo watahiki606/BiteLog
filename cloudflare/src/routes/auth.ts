@@ -34,7 +34,8 @@ auth.post('/signin', async (c) => {
   }
 
   const sessionJwt = await issueSessionJwt(userId, c.env.WORKER_JWT_SECRET);
-  return c.json({ token: sessionJwt, userId });
+  const isAdmin = !!c.env.ADMIN_USER_ID && userId === c.env.ADMIN_USER_ID;
+  return c.json({ token: sessionJwt, userId, isAdmin });
 });
 
 export default auth;

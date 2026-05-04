@@ -5,6 +5,7 @@ import auth from './routes/auth';
 import foodMasters from './routes/foodMasters';
 import logItems from './routes/logItems';
 import nutritionGoals from './routes/nutritionGoals';
+import userData from './routes/userData';
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -27,6 +28,7 @@ app.route('/api/auth', auth);
 app.route('/api/food-masters', foodMasters);
 app.route('/api/log-items', logItems);
 app.route('/api/nutrition-goals', nutritionGoals);
+app.route('/api/user-data', userData);
 
 // ヘルスチェック
 app.get('/health', (c) => c.json({ ok: true }));

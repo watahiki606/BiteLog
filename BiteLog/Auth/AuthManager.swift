@@ -11,16 +11,18 @@ final class AuthManager: NSObject, ObservableObject {
 
   @Published private(set) var isSignedIn: Bool = false
   @Published private(set) var userId: String?
+  @Published private(set) var isAdmin: Bool = false
 
   private let keychainKey = "com.watahiki.BiteLog.sessionToken"
+  private let isAdminKey = "com.watahiki.BiteLog.isAdmin"
 
   override init() {
     super.init()
     // 起動時にKeychainからトークンを復元
     if let token = loadTokenFromKeychain() {
       self.isSignedIn = true
-      // JWTのペイロードからuserIdを取得
       self.userId = extractUserId(from: token)
+      self.isAdmin = UserDefaults.standard.bool(forKey: isAdminKey)
     }
   }
 
@@ -30,10 +32,12 @@ final class AuthManager: NSObject, ObservableObject {
     loadTokenFromKeychain()
   }
 
-  func storeToken(_ token: String) {
+  func storeToken(_ token: String, isAdmin: Bool = false) {
     saveTokenToKeychain(token)
     self.userId = extractUserId(from: token)
+    self.isAdmin = isAdmin
     self.isSignedIn = true
+    UserDefaults.standard.set(isAdmin, forKey: isAdminKey)
   }
 
   func signOut() {
@@ -41,6 +45,8 @@ final class AuthManager: NSObject, ObservableObject {
     deleteTokenFromKeychain()
     self.isSignedIn = false
     self.userId = nil
+    self.isAdmin = false
+    UserDefaults.standard.removeObject(forKey: isAdminKey)
   }
 
   // MARK: - Apple Sign In
@@ -69,7 +75,7 @@ final class AuthManager: NSObject, ObservableObject {
     }
 
     let authResponse = try await APIClient.shared.signIn(provider: "apple", identityToken: identityToken)
-    storeToken(authResponse.token)
+    storeToken(authResponse.token, isAdmin: authResponse.isAdmin)
   }
 
   // MARK: - Google Sign In
@@ -112,7 +118,7 @@ final class AuthManager: NSObject, ObservableObject {
     }
 
     let authResponse = try await APIClient.shared.signIn(provider: "google", identityToken: identityToken)
-    storeToken(authResponse.token)
+    storeToken(authResponse.token, isAdmin: authResponse.isAdmin)
   }
 
   static func handleGoogleSignInCallback(_ url: URL) -> Bool {

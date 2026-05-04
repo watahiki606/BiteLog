@@ -149,8 +149,11 @@ struct SettingsView: View {
     await MainActor.run { isDeleting = true }
     try? await Task.sleep(nanoseconds: 500_000_000)
     do {
-      try await APIClient.shared.deleteAllLogItems()
-      try await APIClient.shared.deleteAllFoodMasters()
+      if AuthManager.shared.isAdmin {
+        try await APIClient.shared.deleteAllDataAsAdmin()
+      } else {
+        try await APIClient.shared.deleteAllUserData()
+      }
       await MainActor.run {
         isDeleting = false
         showDeleteSuccessAlert = true

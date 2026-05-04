@@ -137,11 +137,6 @@ final class APIClient {
     return try await request(path: "/api/food-masters/batch", method: "POST", body: Body(items: items))
   }
 
-  func updateFoodMasterUsage(id: UUID, servings: Double) async throws {
-    struct Body: Encodable { let servings: Double }
-    try await requestVoid(path: "/api/food-masters/\(id)/usage", method: "PUT", body: Body(servings: servings))
-  }
-
   // MARK: - LogItem
 
   func fetchLogItems(logDate: String) async throws -> [LogItemDTO] {
@@ -166,12 +161,12 @@ final class APIClient {
     return try await request(path: "/api/log-items/batch", method: "POST", body: Body(items: items))
   }
 
-  func deleteAllLogItems() async throws {
-    try await requestVoid(path: "/api/log-items/all", method: "DELETE")
+  func deleteAllUserData() async throws {
+    try await requestVoid(path: "/api/user-data", method: "DELETE")
   }
 
-  func deleteAllFoodMasters() async throws {
-    try await requestVoid(path: "/api/food-masters/all", method: "DELETE")
+  func deleteAllDataAsAdmin() async throws {
+    try await requestVoid(path: "/api/user-data/all", method: "DELETE")
   }
 
   // MARK: - NutritionGoals

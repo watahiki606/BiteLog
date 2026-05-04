@@ -131,7 +131,7 @@ export const authMiddleware = createMiddleware<{ Bindings: Bindings; Variables: 
     try {
       const userId = await verifySessionJwt(token, c.env.WORKER_JWT_SECRET);
       c.set('userId', userId);
-      c.set('isAdmin', false);
+      c.set('isAdmin', !!c.env.ADMIN_USER_ID && userId === c.env.ADMIN_USER_ID);
       await next();
     } catch {
       return c.json({ error: 'Unauthorized' }, 401);
