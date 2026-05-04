@@ -81,6 +81,9 @@ struct DayContentView: View {
       }
       .padding(.vertical)
     }
+    .refreshable {
+      await loadLogItems()
+    }
     .overlay {
       if isLoading && dayLogItems.isEmpty {
         ProgressView()

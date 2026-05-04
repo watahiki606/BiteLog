@@ -99,6 +99,11 @@ struct FoodMasterManagementView: View {
           }
         }
         .listStyle(.insetGrouped)
+        .refreshable {
+          currentPage = 0
+          hasMoreData = true
+          await loadFoodMasters()
+        }
       }
     }
     .navigationTitle(NSLocalizedString("Manage food", comment: "Manage food"))
