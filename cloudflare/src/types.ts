@@ -62,7 +62,6 @@ export function foodMasterToResponse(row: FoodMasterRow) {
     portionSize: row.portion_size,
     portionUnit: row.portion_unit,
     uniqueKey: row.unique_key,
-    createdBy: row.created_by ?? null,
     usageCount: row.usage_count,
     lastUsedDate: row.last_used_date ? row.last_used_date.replace(' ', 'T') + 'Z' : null,
     lastNumberOfServings: row.last_number_of_servings,

@@ -56,8 +56,12 @@ foodMasters.get('/', async (c) => {
     total = countResult?.count ?? 0;
   }
 
+  const isAdmin = c.get('isAdmin');
   return c.json({
-    items: rows.map(foodMasterToResponse),
+    items: rows.map(r => ({
+      ...foodMasterToResponse(r),
+      ...(isAdmin ? { createdBy: r.created_by } : {}),
+    })),
     total,
     hasMore: offset + rows.length < total,
   });
