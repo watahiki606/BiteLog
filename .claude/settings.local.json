@@ -47,7 +47,8 @@
       "Bash(cat)",
       "Read(//tmp/**)",
       "Bash(python3 *)",
-      "Bash(gh pr *)"
+      "Bash(gh pr *)",
+      "Bash(git rm *)"
     ],
     "deny": [],
     "env": {
