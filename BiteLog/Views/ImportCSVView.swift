@@ -1,10 +1,8 @@
-import SwiftData
 import SwiftUI
 import UniformTypeIdentifiers
 
 struct ImportCSVView: View {
   @Environment(\.dismiss) var dismiss
-  @Environment(\.modelContext) private var modelContext
   @State private var showingFilePicker = false
   @State private var importError: Error?
   @State private var showingError = false
@@ -18,10 +16,8 @@ struct ImportCSVView: View {
     NavigationStack {
       VStack(spacing: 20) {
         if isImporting {
-          // インポート進捗表示
           VStack(spacing: 16) {
             if importCompleted {
-              // インポート完了表示
               VStack(spacing: 12) {
                 Image(systemName: "checkmark.circle.fill")
                   .font(.system(size: 50))
@@ -56,7 +52,6 @@ struct ImportCSVView: View {
                 .padding(.top, 8)
               }
             } else {
-              // インポート中表示（進捗バーなし）
               Text(NSLocalizedString("Importing CSV file", comment: "CSV import status"))
                 .font(.headline)
                 .padding()
@@ -90,9 +85,7 @@ struct ImportCSVView: View {
           .background(Color.gray.opacity(0.1))
           .cornerRadius(8)
 
-          Button(action: {
-            showingFilePicker = true
-          }) {
+          Button(action: { showingFilePicker = true }) {
             Label(
               NSLocalizedString("Select CSV File", comment: "Button title"),
               systemImage: "doc.badge.plus"
@@ -113,9 +106,7 @@ struct ImportCSVView: View {
       .navigationTitle(NSLocalizedString("Import CSV", comment: "Navigation title"))
       .toolbar {
         Button(NSLocalizedString("Close", comment: "Button title")) {
-          if isImporting && !importCompleted {
-            importTask?.cancel()
-          }
+          if isImporting && !importCompleted { importTask?.cancel() }
           dismiss()
         }
       }
@@ -125,34 +116,26 @@ struct ImportCSVView: View {
       ) { result in
         switch result {
         case .success(let url):
-          // インポート開始
           isImporting = true
           importCompleted = false
           importedRowCount = 0
 
           importTask = Task {
             do {
-              // ファイルのセキュリティスコープドアクセスを開始
               guard url.startAccessingSecurityScopedResource() else {
                 throw CSVImportError.invalidData(
                   NSLocalizedString("No permission to access file", comment: "Error message"))
               }
-              defer {
-                // 関数を抜ける前に必ずアクセスを停止
-                url.stopAccessingSecurityScopedResource()
-              }
+              defer { url.stopAccessingSecurityScopedResource() }
 
-              // インポート実行
               let startTime = Date()
-              let importResult = try CSVImporter.importCSV(from: url, context: modelContext)
+              let importResult = try await CSVImporter.importCSV(from: url)
               let endTime = Date()
-              importDuration = endTime.timeIntervalSince(startTime)
 
-              // インポート完了
               await MainActor.run {
-                // インポート結果を設定
-                self.importedRowCount = importResult
-                self.importCompleted = true
+                importDuration = endTime.timeIntervalSince(startTime)
+                importedRowCount = importResult
+                importCompleted = true
               }
             } catch let error as CSVImportError {
               await handleImportError(error)
@@ -160,13 +143,13 @@ struct ImportCSVView: View {
               await handleImportError(error)
             }
           }
+
         case .failure(let error):
           importError = error
           showingError = true
         }
       }
-      .alert(NSLocalizedString("Import Error", comment: "Alert title"), isPresented: $showingError)
-      {
+      .alert(NSLocalizedString("Import Error", comment: "Alert title"), isPresented: $showingError) {
         Button("OK") {}
       } message: {
         if let csvError = importError as? CSVImportError {

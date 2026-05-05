@@ -92,3 +92,9 @@ iOSInjectionProject/
 # API Keys and Secrets (IMPORTANT!)
 BiteLog/Config/APIKeys.swift
 
+# Node / Cloudflare local artifacts
+node_modules/
+cloudflare/node_modules/
+.wrangler/
+cloudflare/.dev.vars
+cloudflare/.env*

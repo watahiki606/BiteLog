@@ -6,6 +6,7 @@ enum MealType: String, CaseIterable, Identifiable, Codable {
   case lunch = "Lunch"
   case dinner = "Dinner"
   case snack = "Snack"
+  case other = "Other"
 
   var id: String { self.rawValue }
 
@@ -19,6 +20,8 @@ enum MealType: String, CaseIterable, Identifiable, Codable {
       return NSLocalizedString("Dinner", comment: "Meal type")
     case .snack:
       return NSLocalizedString("Snack", comment: "Meal type")
+    case .other:
+      return NSLocalizedString("Other", comment: "Meal type")
     }
   }
 
@@ -28,6 +31,7 @@ enum MealType: String, CaseIterable, Identifiable, Codable {
     case .lunch: return .green
     case .dinner: return .indigo
     case .snack: return .pink
+    case .other: return .gray
     }
   }
 
@@ -37,6 +41,7 @@ enum MealType: String, CaseIterable, Identifiable, Codable {
     case .lunch: return "sun.max.fill"
     case .dinner: return "moon.stars.fill"
     case .snack: return "cup.and.saucer.fill"
+    case .other: return "fork.knife"
     }
   }
 }

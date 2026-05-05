@@ -1,8 +1,6 @@
-import SwiftData
 import SwiftUI
 
 struct ContentView: View {
-  @Environment(\.modelContext) private var modelContext
   @EnvironmentObject private var languageManager: LanguageManager
 
   @State private var selectedDate = Date()
@@ -10,6 +8,7 @@ struct ContentView: View {
   @State private var showingSettings = false
   @State private var showingDatePicker = false
   @State private var selectedTab = 0
+  @State private var logRefreshTrigger = 0
 
   var body: some View {
     VStack(spacing: 0) {
@@ -24,7 +23,7 @@ struct ContentView: View {
             onAddTapped: { date, mealType in
               showingAddItemFor = (date, mealType)
             },
-            modelContext: modelContext
+            refreshTrigger: logRefreshTrigger
           )
           .navigationBarTitleDisplayMode(.inline)
           .toolbar {
@@ -71,7 +70,8 @@ struct ContentView: View {
           isPresented: Binding(
             get: { showingAddItemFor != nil },
             set: { if !$0 { showingAddItemFor = nil } }
-          )
+          ),
+          onDismiss: { logRefreshTrigger += 1 }
         ) {
           if let itemInfo = showingAddItemFor {
             AddItemView(
@@ -104,9 +104,9 @@ struct ContentView: View {
       HStack {
         // Logタブ
         Button(action: {
-          // Logタブをタップしたら常に当日の日付にリセット
           selectedDate = Calendar.current.startOfDay(for: Date())
           selectedTab = 0
+          logRefreshTrigger += 1
         }) {
           VStack(spacing: 4) {
             Image(systemName: "book")
@@ -156,7 +156,8 @@ struct ContentView: View {
 
 // 新しいアイテム行ビュー
 struct ItemRowView: View {
-  let item: LogItem
+  let item: LogItemDTO
+  var onUpdate: ((LogItemDTO) -> Void)?
   @State private var showingEditSheet = false
 
   var body: some View {
@@ -168,7 +169,6 @@ struct ItemRowView: View {
             .foregroundColor(.secondary)
             .strikethrough()
             .lineLimit(1)
-
           Text(NSLocalizedString("(Deleted)", comment: "Deleted Food indicator"))
             .font(.caption2)
             .foregroundColor(.red)
@@ -182,25 +182,19 @@ struct ItemRowView: View {
             .foregroundColor(.primary)
             .lineLimit(1)
         }
-
         Spacer()
-
         Text("\(item.calories, specifier: "%.0f")")
           .font(.system(size: 15, weight: .semibold, design: .rounded))
-          .foregroundColor(.primary)
         + Text(" kcal")
           .font(.system(size: 12))
           .foregroundColor(.secondary)
       }
-
       HStack(spacing: 6) {
         MacroChip(label: "P", value: item.protein, color: .blue)
         MacroChip(label: "F", value: item.fat, color: .yellow)
         MacroChip(label: "S", value: item.netCarbs, color: .green)
         MacroChip(label: "Fb", value: item.dietaryFiber, color: .brown)
-
         Spacer()
-
         Text("\(NutritionFormatter.formatNutrition(item.numberOfServings)) \(item.portionUnit)")
           .font(.caption)
           .foregroundColor(.secondary)
@@ -208,18 +202,15 @@ struct ItemRowView: View {
     }
     .padding(.vertical, 4)
     .contentShape(Rectangle())
-    .onTapGesture {
-      showingEditSheet = true
-    }
+    .onTapGesture { showingEditSheet = true }
     .sheet(isPresented: $showingEditSheet) {
-      EditItemView(item: item)
+      EditItemView(item: item, onSaved: onUpdate)
     }
   }
 }
 
 #Preview {
   ContentView()
-    .modelContainer(for: [FoodMaster.self, LogItem.self, NutritionGoals.self], inMemory: true)
 }
 
 // 栄養素行のコンポーネント

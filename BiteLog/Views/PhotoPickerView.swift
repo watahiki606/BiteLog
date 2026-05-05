@@ -169,8 +169,7 @@ struct ImagePicker: UIViewControllerRepresentable {
 // AI分析結果表示画面
 struct AIAnalysisResultView: View {
   @Environment(\.dismiss) var dismiss
-  @Environment(\.modelContext) private var modelContext
-  
+
   let result: FoodAnalysisResult
   let image: UIImage
   let mealType: MealType
@@ -348,7 +347,6 @@ struct AIAnalysisResultView: View {
   }
   
   private func saveFoodItem() {
-    // 編集された値をDoubleに変換
     let caloriesValue = Double(calories) ?? 0
     let proteinValue = Double(protein) ?? 0
     let fatValue = Double(fat) ?? 0
@@ -356,33 +354,42 @@ struct AIAnalysisResultView: View {
     let dietaryFiberValue = Double(dietaryFiber) ?? 0
     let portionAmountValue = Double(portionAmount) ?? 1
 
-    // FoodMasterを作成
-    let foodMaster = FoodMaster(
-      brandName: "AI",
-      productName: productName,
-      calories: caloriesValue,
-      netCarbs: netCarbsValue,
-      dietaryFiber: dietaryFiberValue,
-      fat: fatValue,
-      protein: proteinValue,
-      portionSize: portionAmountValue,
-      portionUnit: portionUnit
-    )
-    modelContext.insert(foodMaster)
-    
-    // LogItemを作成
-    let logItem = LogItem(
-      timestamp: date,
-      mealType: mealType,
-      numberOfServings: portionAmountValue,
-      foodMaster: foodMaster
-    )
-    modelContext.insert(logItem)
-    
-    try? modelContext.save()
-    
-    onSave()
-    dismiss()
+    Task {
+      do {
+        let fmDTO = FoodMasterCreateDTO(
+          id: UUID().uuidString,
+          brandName: "AI",
+          productName: productName,
+          calories: caloriesValue,
+          dietaryFiber: dietaryFiberValue,
+          netCarbs: netCarbsValue,
+          fat: fatValue,
+          protein: proteinValue,
+          portionSize: portionAmountValue,
+          portionUnit: portionUnit,
+          uniqueKey: FoodMasterDTO.createUniqueKey(
+            brandName: "AI", productName: productName, portionUnit: portionUnit)
+        )
+        let fm = try await APIClient.shared.createFoodMaster(fmDTO)
+
+        let logDTO = LogItemCreateDTO(
+          id: UUID().uuidString,
+          timestamp: ISO8601DateFormatter().string(from: date),
+          logDate: LogItemDTO.formatLogDate(date),
+          mealType: mealType.rawValue,
+          numberOfServings: portionAmountValue,
+          foodMasterId: fm.id.uuidString,
+          nutritionSnapshot: NutritionSnapshot.from(fm)
+        )
+        _ = try await APIClient.shared.createLogItem(logDTO)
+      } catch {
+        print("AIAnalysisResultView saveFoodItem error: \(error)")
+      }
+      await MainActor.run {
+        onSave()
+        dismiss()
+      }
+    }
   }
 }
 

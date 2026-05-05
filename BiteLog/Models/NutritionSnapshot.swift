@@ -29,20 +29,7 @@ struct NutritionSnapshot: Codable, Equatable {
     )
   }
 
-  /// FoodMasterからスナップショットを作成
-  static func from(_ foodMaster: FoodMaster) -> NutritionSnapshot {
-    NutritionSnapshot(
-      brandName: foodMaster.brandName,
-      productName: foodMaster.productName,
-      calories: foodMaster.calories,
-      netCarbs: foodMaster.netCarbs,
-      dietaryFiber: foodMaster.dietaryFiber,
-      fat: foodMaster.fat,
-      protein: foodMaster.protein,
-      portionSize: foodMaster.portionSize,
-      portionUnit: foodMaster.portionUnit
-    )
-  }
+  // FoodMasterからのスナップショット作成はDTOs.swiftのextensionに移動
 }
 
 /// 計算済みの栄養素値（実際の摂取量に対する値）

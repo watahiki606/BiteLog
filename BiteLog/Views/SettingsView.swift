@@ -1,9 +1,11 @@
-import SwiftData
 import SwiftUI
+
+extension Notification.Name {
+  static let allDataDeleted = Notification.Name("allDataDeleted")
+}
 
 struct SettingsView: View {
   @Environment(\.dismiss) private var dismiss
-  @Environment(\.modelContext) private var modelContext
   @EnvironmentObject private var languageManager: LanguageManager
   @State private var showingRestartAlert = false
   @State private var selectedNewLanguage: AppLanguage?
@@ -11,6 +13,7 @@ struct SettingsView: View {
   @State private var isDeleting = false
   @State private var showDeleteSuccessAlert = false
   @State private var showDeleteErrorAlert = false
+  @State private var showingSignOutConfirmation = false
   @State private var deleteErrorMessage = ""
 
   var body: some View {
@@ -28,8 +31,7 @@ struct SettingsView: View {
                 Text(language.displayName)
                 Spacer()
                 if languageManager.selectedLanguage == language {
-                  Image(systemName: "checkmark")
-                    .foregroundColor(.blue)
+                  Image(systemName: "checkmark").foregroundColor(.blue)
                 }
               }
             }
@@ -47,27 +49,24 @@ struct SettingsView: View {
           NavigationLink(destination: ImportCSVView()) {
             Text(NSLocalizedString("Import CSV", comment: "Import CSV"))
           }
-          
           NavigationLink(destination: ExportCSVView()) {
             Text(NSLocalizedString("Export CSV", comment: "Export CSV"))
           }
-          
-          Button(
-            role: .destructive,
-            action: {
-              showingDeleteConfirmation = true
-            }
-          ) {
+          Button(role: .destructive, action: { showingDeleteConfirmation = true }) {
             Text(NSLocalizedString("Delete All Data", comment: "Delete all data"))
+          }
+        }
+
+        Section(header: Text(NSLocalizedString("Account", comment: "Account settings section"))) {
+          Button(role: .destructive, action: { showingSignOutConfirmation = true }) {
+            Text(NSLocalizedString("Sign Out", comment: "Sign out button"))
           }
         }
       }
       .navigationTitle(NSLocalizedString("Settings", comment: "Navigation title"))
       .toolbar {
         ToolbarItem(placement: .navigationBarTrailing) {
-          Button(NSLocalizedString("Done", comment: "Button title")) {
-            dismiss()
-          }
+          Button(NSLocalizedString("Done", comment: "Button title")) { dismiss() }
         }
       }
       .alert(
@@ -75,29 +74,25 @@ struct SettingsView: View {
         isPresented: $showingRestartAlert
       ) {
         Button(NSLocalizedString("Apply", comment: "Button title")) {
-          if let language = selectedNewLanguage {
-            languageManager.selectedLanguage = language
-          }
-          // アプリの再起動をシミュレート
+          if let language = selectedNewLanguage { languageManager.selectedLanguage = language }
           exit(0)
         }
         Button(NSLocalizedString("Cancel", comment: "Button title"), role: .cancel) {
           selectedNewLanguage = nil
         }
       } message: {
-        Text(
-          NSLocalizedString(
-            "The app needs to restart to apply the language change. Restart now?",
-            comment: "Alert message"))
+        Text(NSLocalizedString(
+          "The app needs to restart to apply the language change. Restart now?",
+          comment: "Alert message"))
       }
       .alert(isPresented: $showingDeleteConfirmation) {
         Alert(
           title: Text(NSLocalizedString("Delete All Data?", comment: "Delete confirmation title")),
-          message: Text(NSLocalizedString("Are you sure you want to delete all data? This action cannot be undone.", comment: "Delete confirmation message")),
+          message: Text(NSLocalizedString(
+            "Are you sure you want to delete all data? This action cannot be undone.",
+            comment: "Delete confirmation message")),
           primaryButton: .destructive(Text(NSLocalizedString("Delete", comment: "Delete button"))) {
-            Task {
-              await deleteAllData()
-            }
+            Task { await deleteAllData() }
           },
           secondaryButton: .cancel(Text(NSLocalizedString("Cancel", comment: "Cancel button")))
         )
@@ -118,18 +113,28 @@ struct SettingsView: View {
       } message: {
         Text(deleteErrorMessage)
       }
+      .alert(
+        NSLocalizedString("Sign Out?", comment: "Sign out confirmation title"),
+        isPresented: $showingSignOutConfirmation
+      ) {
+        Button(NSLocalizedString("Sign Out", comment: "Sign out button"), role: .destructive) {
+          AuthManager.shared.signOut()
+          dismiss()
+        }
+        Button(NSLocalizedString("Cancel", comment: "Cancel button"), role: .cancel) {}
+      } message: {
+        Text(NSLocalizedString(
+          "You will return to the sign-in screen.",
+          comment: "Sign out confirmation message"))
+      }
       .overlay {
         if isDeleting {
           ZStack {
-            Color.black.opacity(0.4)
-              .ignoresSafeArea()
+            Color.black.opacity(0.4).ignoresSafeArea()
             VStack {
-              ProgressView()
-                .scaleEffect(1.5)
-                .padding()
+              ProgressView().scaleEffect(1.5).padding()
               Text(NSLocalizedString("Deleting data...", comment: "Loading message"))
-                .foregroundColor(.white)
-                .padding()
+                .foregroundColor(.white).padding()
             }
             .background(RoundedRectangle(cornerRadius: 10).fill(Color(.systemBackground)))
             .shadow(radius: 10)
@@ -141,33 +146,24 @@ struct SettingsView: View {
   }
 
   private func deleteAllData() async {
-    // メインスレッドでUIの更新
-    await MainActor.run {
-      isDeleting = true
-      print("Starting data deletion...")
-    }
-    
-    // 少し遅延を入れて、ローディング表示が見えるようにする
-    try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒
-    
-    let context: ModelContext = modelContext
+    await MainActor.run { isDeleting = true }
+    try? await Task.sleep(nanoseconds: 500_000_000)
     do {
-      try context.delete(model: LogItem.self)
-      try context.delete(model: FoodMaster.self)
-      print("All data deleted successfully.")
-      
-      // メインスレッドでUIの更新
+      if AuthManager.shared.isAdmin {
+        try await APIClient.shared.deleteAllDataAsAdmin()
+      } else {
+        try await APIClient.shared.deleteAllUserData()
+      }
       await MainActor.run {
         isDeleting = false
         showDeleteSuccessAlert = true
+        NotificationCenter.default.post(name: .allDataDeleted, object: nil)
       }
     } catch {
-      print("Failed to delete data: \(error)")
-      
-      // メインスレッドでUIの更新
       await MainActor.run {
         isDeleting = false
-        deleteErrorMessage = NSLocalizedString("Failed to delete data: ", comment: "Error message") + error.localizedDescription
+        deleteErrorMessage = NSLocalizedString("Failed to delete data: ", comment: "Error message")
+          + error.localizedDescription
         showDeleteErrorAlert = true
       }
     }

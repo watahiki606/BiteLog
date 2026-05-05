@@ -1,39 +1,22 @@
-import SwiftData
 import SwiftUI
 
-// 日付ごとのコンテンツを表示するビュー
 struct DayContentView: View {
   let date: Date
   let selectedDate: Date
   let onAddTapped: (Date, MealType) -> Void
-  let modelContext: ModelContext
+  var refreshTrigger: Int = 0
 
   @EnvironmentObject private var nutritionGoalsManager: NutritionGoalsManager
 
-  // 日付範囲でフィルタリングされたクエリを使用
-  @Query private var dayLogItems: [LogItem]
-
-  // 編集モードの状態
+  @State private var dayLogItems: [LogItemDTO] = []
+  @State private var isLoading = false
   @State private var editMode: EditMode = .inactive
-  // 選択されたアイテムのPersistentIdentifierを保持
-  @State private var selectedItemIDs: Set<PersistentIdentifier> = []
-  
-  init(date: Date, selectedDate: Date, onAddTapped: @escaping (Date, MealType) -> Void, modelContext: ModelContext) {
-    self.date = date
-    self.selectedDate = selectedDate
-    self.onAddTapped = onAddTapped
-    self.modelContext = modelContext
-    
-    let logDateString = LogItem.formatLogDate(date)
+  @State private var selectedItemIDs: Set<UUID> = []
 
-    // logDate文字列でフィルタリングするクエリを設定
-    _dayLogItems = Query(
-      filter: #Predicate<LogItem> { logItem in
-        logItem.logDate == logDateString
-      },
-      sort: [SortDescriptor(\.timestamp)]
-    )
-  }
+  @State private var deleteAllTrigger = 0
+
+  private var logDateString: String { LogItemDTO.formatLogDate(date) }
+  private var taskID: String { "\(logDateString)-\(refreshTrigger)-\(deleteAllTrigger)" }
 
   var body: some View {
     contentView
@@ -44,14 +27,13 @@ struct DayContentView: View {
               .environment(\.editMode, $editMode)
           }
         }
-        
         ToolbarItem(placement: .navigationBarLeading) {
           if editMode == .active && !selectedItemIDs.isEmpty {
-            Button(action: {
-              deleteSelectedItems()
-            }) {
+            Button(action: deleteSelectedItems) {
               Label(
-                String(format: NSLocalizedString("Delete %d items", comment: "Delete multiple items"), selectedItemIDs.count),
+                String(
+                  format: NSLocalizedString("Delete %d items", comment: "Delete multiple items"),
+                  selectedItemIDs.count),
                 systemImage: "trash"
               )
               .foregroundColor(.red)
@@ -59,13 +41,18 @@ struct DayContentView: View {
           }
         }
       }
-      .onChange(of: editMode) { oldValue, newValue in
-        if newValue == .inactive {
-          selectedItemIDs.removeAll()
-        }
+      .onChange(of: editMode) { _, newValue in
+        if newValue == .inactive { selectedItemIDs.removeAll() }
+      }
+      .task(id: taskID) {
+        await loadLogItems()
+      }
+      .onReceive(NotificationCenter.default.publisher(for: .allDataDeleted)) { _ in
+        dayLogItems = []
+        deleteAllTrigger += 1
       }
   }
-  
+
   @ViewBuilder
   private var contentView: some View {
     VStack(spacing: 0) {
@@ -73,31 +60,37 @@ struct DayContentView: View {
     }
     .background(Color(UIColor.systemGroupedBackground))
   }
-  
+
   @ViewBuilder
   private var scrollContent: some View {
     ScrollView {
       VStack(spacing: 16) {
-        Color.clear.frame(height: 1)
-          .padding(.top, 8)
-        
-        // バナー広告
+        Color.clear.frame(height: 1).padding(.top, 8)
+
         AdaptiveBannerView()
           .frame(height: 50)
           .padding(.horizontal)
           .padding(.bottom, -30)
           .padding(.top, -30)
-        
+
         dailySummaryCard
-        
+
         ForEach(MealType.allCases, id: \.self) { mealType in
           mealSection(for: mealType)
         }
       }
       .padding(.vertical)
     }
+    .refreshable {
+      await loadLogItems()
+    }
+    .overlay {
+      if isLoading && dayLogItems.isEmpty {
+        ProgressView()
+      }
+    }
   }
-  
+
   @ViewBuilder
   private var dailySummaryCard: some View {
     VStack(spacing: 0) {
@@ -115,53 +108,41 @@ struct DayContentView: View {
           calories: dailyTotals.calories,
           targetCalories: nutritionGoalsManager.targetCalories
         )
-
         VStack(spacing: 8) {
           MacroBarView(
             label: NSLocalizedString("Protein", comment: "Nutrient label"),
             value: dailyTotals.protein,
             maxValue: nutritionGoalsManager.targetProtein,
-            color: .blue,
-            icon: "p.circle.fill"
+            color: .blue, icon: "p.circle.fill"
           )
-
           MacroBarView(
             label: NSLocalizedString("Fat", comment: "Nutrient label"),
             value: dailyTotals.fat,
             maxValue: nutritionGoalsManager.targetFat,
-            color: .yellow,
-            icon: "f.circle.fill"
+            color: .yellow, icon: "f.circle.fill"
           )
-
           MacroBarView(
             label: NSLocalizedString("Sugar", comment: "Nutrient label"),
             value: dailyTotals.netCarbs,
             maxValue: nutritionGoalsManager.targetNetCarbs,
-            color: .green,
-            icon: "s.circle.fill"
+            color: .green, icon: "s.circle.fill"
           )
-
           MacroBarView(
             label: NSLocalizedString("Dietary Fiber", comment: "Nutrient label"),
             value: dailyTotals.fiber,
             maxValue: nutritionGoalsManager.targetFiber,
-            color: .brown,
-            icon: "leaf.circle.fill"
+            color: .brown, icon: "leaf.circle.fill"
           )
         }
       }
       .padding()
 
-      Divider()
-        .padding(.horizontal)
+      Divider().padding(.horizontal)
 
       NutrientRow(
         label: NSLocalizedString("Carbs (Sugar + Fiber)", comment: "Nutrient label"),
-        value: dailyTotals.carbs,
-        unit: "g",
-        format: "%.3f",
-        icon: "c.circle.fill",
-        color: .gray
+        value: dailyTotals.carbs, unit: "g", format: "%.3f",
+        icon: "c.circle.fill", color: .gray
       )
       .padding(.vertical, 8)
     }
@@ -171,146 +152,103 @@ struct DayContentView: View {
     .padding(.horizontal)
     .padding(.vertical, 8)
   }
-  
+
   @ViewBuilder
   private func mealSection(for mealType: MealType) -> some View {
-            VStack(alignment: .leading, spacing: 8) {
-              // セクションヘッダー
-              HStack {
-                Image(systemName: mealType.iconName)
-                  .font(.system(size: 16, weight: .medium))
-                  .foregroundColor(mealType.accentColor)
+    VStack(alignment: .leading, spacing: 8) {
+      HStack {
+        Image(systemName: mealType.iconName)
+          .font(.system(size: 16, weight: .medium))
+          .foregroundColor(mealType.accentColor)
+        Text(mealType.localizedName)
+          .font(.headline)
+        Spacer()
+        Button(action: { onAddTapped(date, mealType) }) {
+          Label(NSLocalizedString("Add", comment: "Add button"), systemImage: "plus.circle.fill")
+            .font(.subheadline)
+            .foregroundColor(mealType.accentColor)
+        }
+      }
+      .padding(.horizontal)
 
-                Text(mealType.localizedName)
-                  .font(.headline)
-                  .foregroundColor(.primary)
+      let totals = mealTypeTotals(for: mealType)
+      if filteredItems.contains(where: { $0.mealType == mealType }) {
+        ScrollView(.horizontal, showsIndicators: false) {
+          HStack(spacing: 8) {
+            NutrientBadge(value: totals.calories, unit: "kcal", name: "Cal", color: .orange, icon: "flame.fill")
+            NutrientBadge(value: totals.protein, unit: "g", name: "P", color: .blue, icon: "p.circle.fill")
+            NutrientBadge(value: totals.fat, unit: "g", name: "F", color: .yellow, icon: "f.circle.fill")
+            NutrientBadge(value: totals.netCarbs, unit: "g", name: "S", color: .green, icon: "s.circle.fill")
+            NutrientBadge(value: totals.fiber, unit: "g", name: "Fb", color: .brown, icon: "leaf.circle.fill")
+          }
+          .padding(.horizontal)
+        }
+        .padding(.vertical, 4)
+      }
 
-                Spacer()
+      Divider()
 
-                Button(action: {
-                  onAddTapped(date, mealType)
-                }) {
-                  Label(
-                    NSLocalizedString("Add", comment: "Add button"), systemImage: "plus.circle.fill"
-                  )
-                  .font(.subheadline)
-                  .foregroundColor(mealType.accentColor)
-                }
-              }
-              .padding(.horizontal)
-
-              // 食事タイプごとのPFC合計を表示
-              let totals = mealTypeTotals(for: mealType)
-              if filteredItems.contains(where: { $0.mealType == mealType }) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                  HStack(spacing: 8) {
-                    NutrientBadge(
-                      value: totals.calories, unit: "kcal",
-                      name: "Cal",
-                      color: .orange,
-                      icon: "flame.fill")
-                    NutrientBadge(
-                      value: totals.protein, unit: "g",
-                      name: "P", color: .blue, icon: "p.circle.fill"
-                    )
-                    NutrientBadge(
-                      value: totals.fat, unit: "g", name: "F", color: .yellow, icon: "f.circle.fill")
-                    NutrientBadge(
-                      value: totals.netCarbs, unit: "g", name: "S", color: .green, icon: "s.circle.fill")
-                    NutrientBadge(
-                      value: totals.fiber, unit: "g", name: "Fb", color: .brown,
-                      icon: "leaf.circle.fill")
-                  }
-                  .padding(.horizontal)
-                }
-                .padding(.vertical, 4)
-              }
-
-              Divider()
-
-              // 食事アイテム
-              let mealItems = filteredItems.filter { $0.mealType == mealType }
-              if mealItems.isEmpty {
-                // 前日のミールがある場合、前日のミールを追加するボタンを表示
-                if hasPreviousDayItems(for: mealType) {
-                  Button(action: {
-                    // 前日のミールを今日に複製
-                    copyPreviousDayMeals(for: mealType)
-                  }) {
-                    HStack {
-                      Image(systemName: "arrow.counterclockwise")
-                        .font(.body)
-                        .foregroundColor(.blue)
-
-                      Text(
-                        String(
-                          format: NSLocalizedString(
-                            "Copy yesterday's %@", comment: "Copy previous day meal"),
-                          mealType.localizedName
-                        )
-                      )
-                      .font(.subheadline)
-                      .foregroundColor(.primary.opacity(0.8))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color(UIColor.systemBackground))
-                    .cornerRadius(6)
-                  }
-                  .buttonStyle(PlainButtonStyle())
-                  .padding(.horizontal)
-                }
-
-                EmptyMealView(mealType: mealType) {
-                  onAddTapped(date, mealType)
-                }
-              } else {
-                mealItemsList(mealItems: mealItems)
-
-                Divider()
-                  .padding(.horizontal)
-
-                EmptyMealView(mealType: mealType) {
-                  onAddTapped(date, mealType)
-                }
-              }
-            }
-            .padding(.vertical, 8)
-            .background(
-              RoundedRectangle(cornerRadius: 12)
-                .fill(Color(UIColor.secondarySystemGroupedBackground))
-                .overlay(
-                  RoundedRectangle(cornerRadius: 12)
-                    .fill(mealType.accentColor.opacity(0.03))
-                )
+      let mealItems = filteredItems.filter { $0.mealType == mealType }
+      if mealItems.isEmpty {
+        Button(action: { Task { await copyPreviousDayMeals(for: mealType) } }) {
+          HStack {
+            Image(systemName: "arrow.counterclockwise").font(.body).foregroundColor(.blue)
+            Text(
+              String(
+                format: NSLocalizedString("Copy yesterday's %@", comment: "Copy previous day meal"),
+                mealType.localizedName)
             )
-            .overlay(
-              RoundedRectangle(cornerRadius: 12)
-                .stroke(mealType.accentColor.opacity(0.1), lineWidth: 0.5)
-            )
-            .shadow(color: Color.black.opacity(0.05), radius: 3, x: 0, y: 1)
-            .padding(.horizontal)
+            .font(.subheadline)
+          }
+          .frame(maxWidth: .infinity)
+          .padding()
+          .background(Color(UIColor.systemBackground))
+          .cornerRadius(6)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .padding(.horizontal)
+
+        EmptyMealView(mealType: mealType) { onAddTapped(date, mealType) }
+      } else {
+        mealItemsList(mealItems: mealItems)
+        Divider().padding(.horizontal)
+        EmptyMealView(mealType: mealType) { onAddTapped(date, mealType) }
+      }
+    }
+    .padding(.vertical, 8)
+    .background(
+      RoundedRectangle(cornerRadius: 12)
+        .fill(Color(UIColor.secondarySystemGroupedBackground))
+        .overlay(RoundedRectangle(cornerRadius: 12).fill(mealType.accentColor.opacity(0.03)))
+    )
+    .overlay(RoundedRectangle(cornerRadius: 12).stroke(mealType.accentColor.opacity(0.1), lineWidth: 0.5))
+    .shadow(color: Color.black.opacity(0.05), radius: 3, x: 0, y: 1)
+    .padding(.horizontal)
   }
 
   @ViewBuilder
-  private func mealItemsList(mealItems: [LogItem]) -> some View {
-    let firstID = mealItems.first?.persistentModelID
-    let lastID = mealItems.last?.persistentModelID
-    List(selection: editMode == .active ? $selectedItemIDs : .constant(Set<PersistentIdentifier>())) {
-      ForEach(mealItems, id: \.persistentModelID) { item in
-        let isFirst = item.persistentModelID == firstID
-        let isLast = item.persistentModelID == lastID
-        ItemRowView(item: item)
-          .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
-          .listRowBackground(Color.clear)
-          .listRowSeparator(isLast ? .hidden : .visible, edges: .bottom)
-          .listRowSeparator(isFirst ? .hidden : .visible, edges: .top)
-          .listRowSeparatorTint(Color.primary.opacity(0.15))
-          .tag(item.persistentModelID)
+  private func mealItemsList(mealItems: [LogItemDTO]) -> some View {
+    let firstID = mealItems.first?.id
+    let lastID = mealItems.last?.id
+    List(selection: editMode == .active ? $selectedItemIDs : .constant(Set<UUID>())) {
+      ForEach(mealItems, id: \.id) { item in
+        let isFirst = item.id == firstID
+        let isLast = item.id == lastID
+        ItemRowView(item: item, onUpdate: { updated in
+          if let idx = dayLogItems.firstIndex(where: { $0.id == updated.id }) {
+            dayLogItems[idx] = updated
+          }
+        })
+        .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+        .listRowBackground(Color.clear)
+        .listRowSeparator(isLast ? .hidden : .visible, edges: .bottom)
+        .listRowSeparator(isFirst ? .hidden : .visible, edges: .top)
+        .listRowSeparatorTint(Color.primary.opacity(0.15))
+        .tag(item.id)
       }
       .onDelete(perform: editMode == .active ? nil : { indexSet in
         let itemsToDelete = indexSet.map { mealItems[$0] }
-        deleteItems(itemsToDelete)
+        Task { await deleteItems(itemsToDelete) }
       })
     }
     .scrollDisabled(true)
@@ -319,131 +257,89 @@ struct DayContentView: View {
     .environment(\.editMode, $editMode)
   }
 
-  private var filteredItems: [LogItem] {
-    // @Queryで既にフィルタリングされているデータを返す
-    return dayLogItems
+  private var filteredItems: [LogItemDTO] { dayLogItems }
+
+  private var dailyTotals: (calories: Double, protein: Double, fat: Double, netCarbs: Double, fiber: Double, carbs: Double) {
+    filteredItems.reduce((0, 0, 0, 0, 0, 0)) { r, item in
+      (r.0 + item.calories, r.1 + item.protein, r.2 + item.fat,
+       r.3 + item.netCarbs, r.4 + item.dietaryFiber, r.5 + item.carbohydrates)
+    }
   }
 
-  // 前日の特定の食事タイプのアイテムを取得するメソッド
-  private func previousDayItems(for mealType: MealType) -> [LogItem] {
+  private func mealTypeTotals(for mealType: MealType) -> (calories: Double, protein: Double, fat: Double, netCarbs: Double, fiber: Double, carbs: Double) {
+    filteredItems.filter { $0.mealType == mealType }.reduce((0, 0, 0, 0, 0, 0)) { r, item in
+      (r.0 + item.calories, r.1 + item.protein, r.2 + item.fat,
+       r.3 + item.netCarbs, r.4 + item.dietaryFiber, r.5 + item.carbohydrates)
+    }
+  }
+
+  // MARK: - API操作
+
+  private func loadLogItems() async {
+    isLoading = true
+    defer { isLoading = false }
+    do {
+      dayLogItems = try await APIClient.shared.fetchLogItems(logDate: logDateString)
+    } catch {
+      print("DayContentView loadLogItems error: \(error)")
+    }
+  }
+
+  private func copyPreviousDayMeals(for mealType: MealType) async {
     let calendar = Calendar.current
     let previousDay = calendar.date(byAdding: .day, value: -1, to: date)!
-    let previousDayString = LogItem.formatLogDate(previousDay)
+    let previousDayString = LogItemDTO.formatLogDate(previousDay)
 
-    let allPreviousDayDescriptor = FetchDescriptor<LogItem>(
-      predicate: #Predicate<LogItem> { logItem in
-        logItem.logDate == previousDayString
-      },
-      sortBy: [SortDescriptor(\.timestamp)]
-    )
+    do {
+      let previousItems = try await APIClient.shared.fetchLogItems(logDate: previousDayString)
+      let filtered = previousItems.filter { $0.mealType == mealType }
+      guard !filtered.isEmpty else { return }
 
-    guard let allItems = try? modelContext.fetch(allPreviousDayDescriptor) else {
-      return []
-    }
-
-    return allItems.filter { $0.mealType.rawValue == mealType.rawValue }
-  }
-
-  // 前日の特定の食事タイプのアイテムが存在するかチェックするメソッド
-  private func hasPreviousDayItems(for mealType: MealType) -> Bool {
-    return !previousDayItems(for: mealType).isEmpty
-  }
-
-  private var dailyTotals:
-    (calories: Double, protein: Double, fat: Double, netCarbs: Double, fiber: Double, carbs: Double)
-  {
-    filteredItems.reduce((0, 0, 0, 0, 0, 0)) { result, item in
-      (
-        result.0 + item.calories,
-        result.1 + item.protein,
-        result.2 + item.fat,
-        result.3 + item.netCarbs,
-        result.4 + item.dietaryFiber,
-        result.5 + item.carbohydrates
-      )
+      let now = Date()
+      let dtos = filtered.map { prev in
+        LogItemCreateDTO(
+          id: UUID().uuidString,
+          timestamp: ISO8601DateFormatter().string(from: now),
+          logDate: logDateString,
+          mealType: mealType.rawValue,
+          numberOfServings: prev.numberOfServings,
+          foodMasterId: prev.foodMaster?.id.uuidString,
+          nutritionSnapshot: prev.nutritionSnapshot
+        )
+      }
+      let result = try await APIClient.shared.batchCreateLogItems(dtos)
+      print("Copied \(result.created) meals from previous day")
+      await loadLogItems()
+    } catch {
+      print("copyPreviousDayMeals error: \(error)")
     }
   }
 
-  // 各食事タイプごとのPFC合計を計算する関数
-  private func mealTypeTotals(for mealType: MealType) -> (
-    calories: Double, protein: Double, fat: Double, netCarbs: Double, fiber: Double, carbs: Double
-  ) {
-    let mealItems = filteredItems.filter { $0.mealType == mealType }
-    return mealItems.reduce((0, 0, 0, 0, 0, 0)) { result, item in
-      (
-        result.0 + item.calories,
-        result.1 + item.protein,
-        result.2 + item.fat,
-        result.3 + item.netCarbs,
-        result.4 + item.dietaryFiber,
-        result.5 + item.carbohydrates
-      )
-    }
-  }
-
-  // 前日のミールを今日に複製するメソッド
-  private func copyPreviousDayMeals(for mealType: MealType) {
-    let prevItems = previousDayItems(for: mealType)
-
-    for prevItem in prevItems {
-      // 新しいLogItemを作成して今日の日付で保存
-      let newItem = LogItem(
-        timestamp: date,
-        mealType: mealType,
-        numberOfServings: prevItem.numberOfServings,
-        foodMaster: prevItem.foodMaster
-      )
-
-      modelContext.insert(newItem)
-
-      // FoodMasterの使用頻度を更新
-      if let foodMaster = prevItem.foodMaster {
-        foodMaster.usageCount += 1
-        foodMaster.lastUsedDate = Date()
-        foodMaster.lastNumberOfServings = prevItem.numberOfServings
+  private func deleteItems(_ items: [LogItemDTO]) async {
+    for item in items {
+      do {
+        try await APIClient.shared.deleteLogItem(id: item.id)
+        dayLogItems.removeAll { $0.id == item.id }
+      } catch {
+        print("deleteItems error: \(error)")
       }
     }
+  }
 
-    // 変更を保存
-    do {
-      try modelContext.save()
-    } catch {
-      print("Error saving after copying meals: \(error)")
-    }
-  }
-  
-  // 複数のアイテムを削除する
-  private func deleteItems(_ items: [LogItem]) {
-    for item in items {
-      // FoodMasterの使用頻度をデクリメント
-      FoodMasterManager.decrementUsageCountForLogItemDeletion(
-        logItem: item, modelContext: modelContext)
-      modelContext.delete(item)
-    }
-    
-    // 変更を保存
-    do {
-      try modelContext.save()
-    } catch {
-      print("Error saving after deletion: \(error)")
-    }
-  }
-  
-  // 選択されたアイテムを削除する
   private func deleteSelectedItems() {
-    // 選択されたIDに対応するアイテムを取得
-    let itemsToDelete = dayLogItems.filter { item in
-      selectedItemIDs.contains(item.persistentModelID)
-    }
-    
-    if itemsToDelete.isEmpty {
-      return
-    }
-    
-    // deleteItems関数を再利用
-    deleteItems(itemsToDelete)
-    
+    let toDelete = dayLogItems.filter { selectedItemIDs.contains($0.id) }
     selectedItemIDs.removeAll()
     editMode = .inactive
+    Task { await deleteItems(toDelete) }
+  }
+}
+
+// MARK: - LogItemDTO extension
+
+extension LogItemDTO {
+  static func formatLogDate(_ date: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyy-MM-dd"
+    return formatter.string(from: date)
   }
 }

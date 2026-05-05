@@ -1,0 +1,41 @@
+import { Hono } from 'hono';
+import { issueSessionJwt, verifyAppleToken, verifyGoogleToken } from '../middleware/auth';
+import type { Bindings } from '../types';
+
+const auth = new Hono<{ Bindings: Bindings }>();
+
+// POST /api/auth/signin
+// Body: { provider: "apple" | "google", identityToken: string }
+auth.post('/signin', async (c) => {
+  let body: { provider: string; identityToken: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid JSON' }, 400);
+  }
+
+  const { provider, identityToken } = body;
+  if (!provider || !identityToken) {
+    return c.json({ error: 'provider and identityToken are required' }, 400);
+  }
+
+  let userId: string;
+  try {
+    if (provider === 'apple') {
+      userId = await verifyAppleToken(identityToken);
+    } else if (provider === 'google') {
+      userId = await verifyGoogleToken(identityToken, c.env.GOOGLE_CLIENT_ID);
+    } else {
+      return c.json({ error: 'Unsupported provider' }, 400);
+    }
+  } catch (err) {
+    console.error('Token verification failed:', err);
+    return c.json({ error: 'Invalid identity token' }, 401);
+  }
+
+  const sessionJwt = await issueSessionJwt(userId, c.env.WORKER_JWT_SECRET);
+  const isAdmin = !!c.env.ADMIN_USER_ID && userId === c.env.ADMIN_USER_ID;
+  return c.json({ token: sessionJwt, userId, isAdmin });
+});
+
+export default auth;

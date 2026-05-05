@@ -1,31 +1,24 @@
-import SwiftData
 import SwiftUI
 
 struct FoodMasterManagementView: View {
-  @Environment(\.modelContext) private var modelContext
-  @State private var foodMasters: [FoodMaster] = []
+  @State private var foodMasters: [FoodMasterDTO] = []
   @State private var isDataLoaded = false
-  @State private var isInitialLoading = true  // 初回ロード用のフラグを追加
+  @State private var isInitialLoading = true
 
   @State private var searchText = ""
   @State private var showingAddForm = false
-  @State private var selectedFoodMaster: FoodMaster?
+  @State private var selectedFoodMaster: FoodMasterDTO?
 
-  // ページネーション用
   @State private var currentPage = 0
   private let pageSize = 20
   @State private var isLoading = false
   @State private var hasMoreData = true
 
-  // キーボードを閉じるためのFocusStateを追加
   @FocusState private var searchFieldIsFocused: Bool
-
-  // 検索テキストが変更されたときのタイマー
   @State private var searchDebounceTimer: Timer?
 
   var body: some View {
     VStack {
-      // 検索バー
       HStack(spacing: 8) {
         HStack(spacing: 8) {
           Image(systemName: "magnifyingglass")
@@ -36,17 +29,17 @@ struct FoodMasterManagementView: View {
             NSLocalizedString("Search food items", comment: "Search food items"), text: $searchText
           )
           .focused($searchFieldIsFocused)
-          .onChange(of: searchText) { oldValue, newValue in
+          .onChange(of: searchText) { _, _ in
             searchDebounceTimer?.invalidate()
             searchDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
-              resetAndSearch()
+              Task { await resetAndSearch() }
             }
           }
 
           if !searchText.isEmpty {
             Button(action: {
               searchText = ""
-              resetAndSearch()
+              Task { await resetAndSearch() }
             }) {
               Image(systemName: "xmark.circle.fill")
                 .foregroundColor(.secondary)
@@ -62,7 +55,7 @@ struct FoodMasterManagementView: View {
           Button(NSLocalizedString("Cancel", comment: "Cancel search")) {
             searchText = ""
             searchFieldIsFocused = false
-            resetAndSearch()
+            Task { await resetAndSearch() }
           }
           .transition(.move(edge: .trailing).combined(with: .opacity))
         }
@@ -72,49 +65,55 @@ struct FoodMasterManagementView: View {
       .animation(.easeInOut(duration: 0.2), value: searchFieldIsFocused)
 
       if isInitialLoading {
-        // 初回データロード中の表示
         ProgressView()
           .padding()
       } else if foodMasters.isEmpty {
-        // フードが0件の場合に表示する登録促進ビュー
         EmptyFoodMasterView(showAddForm: $showingAddForm)
-
       } else {
-        // フード一覧
         List {
-          ForEach(foodMasters, id: \.self) { foodMaster in
+          ForEach(foodMasters, id: \.id) { foodMaster in
             FoodMasterRow(foodMaster: foodMaster)
               .contentShape(Rectangle())
               .onTapGesture {
-                selectedFoodMaster = foodMaster
-                // リスト項目をタップしたらキーボードを閉じる
-                searchFieldIsFocused = false
+                if canEdit(foodMaster) {
+                  selectedFoodMaster = foodMaster
+                  searchFieldIsFocused = false
+                }
               }
               .onAppear {
-                // リストの最後のアイテムが表示されたら次のページを読み込む
-                if foodMaster == foodMasters.last && hasMoreData && !isLoading {
-                  loadMoreContent()
+                if foodMaster.id == foodMasters.last?.id && hasMoreData && !isLoading {
+                  Task { await loadMoreContent() }
+                }
+              }
+              .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                if canEdit(foodMaster) {
+                  Button(role: .destructive) {
+                    deleteFoodMaster(foodMaster)
+                  } label: {
+                    Label("Delete", systemImage: "trash")
+                  }
                 }
               }
           }
-          .onDelete(perform: deleteFoodMasters)
 
-          // ローディングインジケーター（別のセクションとして追加）
           if hasMoreData {
             Section {
               HStack {
                 Spacer()
-                if isLoading {
-                  ProgressView()
-                }
+                if isLoading { ProgressView() }
                 Spacer()
               }
               .padding(.vertical, 8)
-              .id("loadingIndicator")  // IDを固定して不要な再描画を防止
+              .id("loadingIndicator")
             }
           }
         }
         .listStyle(.insetGrouped)
+        .refreshable {
+          currentPage = 0
+          hasMoreData = true
+          await loadFoodMasters()
+        }
       }
     }
     .navigationTitle(NSLocalizedString("Manage food", comment: "Manage food"))
@@ -129,10 +128,7 @@ struct FoodMasterManagementView: View {
     }
     .sheet(
       isPresented: $showingAddForm,
-      onDismiss: {
-        // フォームが閉じられたら再度データをロード
-        resetAndSearch()
-      }
+      onDismiss: { Task { await resetAndSearch() } }
     ) {
       FoodMasterFormView(mode: .add)
     }
@@ -140,109 +136,73 @@ struct FoodMasterManagementView: View {
       item: $selectedFoodMaster,
       onDismiss: {
         selectedFoodMaster = nil
-        // 編集フォームが閉じられたら再度データをロード
-        resetAndSearch()
+        Task { await resetAndSearch() }
       }
     ) { foodMaster in
       FoodMasterFormView(mode: .edit(foodMaster))
     }
     .onAppear {
-      // 画面が表示されたときにデータをロード
-      if !isDataLoaded {
-        loadFoodMasters()
-      }
+      if !isDataLoaded { Task { await loadFoodMasters() } }
+    }
+    .onReceive(NotificationCenter.default.publisher(for: .allDataDeleted)) { _ in
+      foodMasters = []
+      isDataLoaded = false
     }
   }
 
-  private func resetAndSearch() {
-    // 検索条件が変更されたら、ページをリセットして最初から検索
+  private func resetAndSearch() async {
     currentPage = 0
     hasMoreData = true
-    loadFoodMasters()
+    await loadFoodMasters()
   }
 
-  private func loadFoodMasters() {
+  private func loadFoodMasters() async {
     guard !isLoading else { return }
     isLoading = true
-
-    // FetchDescriptorを使用してデータをロード
-    let sortDescriptors = [
-      SortDescriptor(\FoodMaster.usageCount, order: .reverse),
-      SortDescriptor(\FoodMaster.lastUsedDate, order: .reverse),
-      SortDescriptor(\FoodMaster.productName, order: .forward),
-    ]
-
-    var descriptor = FetchDescriptor<FoodMaster>(sortBy: sortDescriptors)
-
-    // 検索条件がある場合は絞り込み
-    if !searchText.isEmpty {
-      descriptor.predicate = #Predicate<FoodMaster> { foodMaster in
-        foodMaster.brandName.localizedStandardContains(searchText)
-          || foodMaster.productName.localizedStandardContains(searchText)
+    defer { isLoading = false }
+    do {
+      let resp = try await APIClient.shared.fetchFoodMasters(
+        query: searchText,
+        limit: pageSize,
+        offset: currentPage * pageSize
+      )
+      await MainActor.run {
+        if currentPage == 0 {
+          withAnimation(.easeInOut(duration: 0.3)) { foodMasters = resp.items }
+        } else {
+          foodMasters.append(contentsOf: resp.items)
+        }
+        hasMoreData = resp.hasMore
+        isDataLoaded = true
+        isInitialLoading = false
       }
+    } catch {
+      await MainActor.run {
+        isDataLoaded = true
+        isInitialLoading = false
+      }
+      print("FoodMasterManagementView loadFoodMasters error: \(error)")
     }
+  }
 
-    // ページネーション設定
-    descriptor.fetchLimit = pageSize
-    descriptor.fetchOffset = currentPage * pageSize
+  private func loadMoreContent() async {
+    guard !isLoading && hasMoreData else { return }
+    currentPage += 1
+    await loadFoodMasters()
+  }
 
+  private func canEdit(_ foodMaster: FoodMasterDTO) -> Bool {
+    AuthManager.shared.isAdmin || foodMaster.createdBy == AuthManager.shared.userId
+  }
+
+  private func deleteFoodMaster(_ foodMaster: FoodMasterDTO) {
+    foodMasters.removeAll { $0.id == foodMaster.id }
     Task {
       do {
-        // バックグラウンドスレッドでデータをフェッチ
-        let newItems = try modelContext.fetch(descriptor)
-
-        // メインスレッドでUIを更新
-        await MainActor.run {
-          // 新しいアイテムを追加
-          if currentPage == 0 {
-            // 最初のページの場合は置き換え
-            withAnimation(.easeInOut(duration: 0.3)) {
-              foodMasters = newItems
-            }
-          } else {
-            // 追加ページの場合は追加
-            foodMasters.append(contentsOf: newItems)
-          }
-
-          // 次のページがあるかどうかを判定
-          hasMoreData = newItems.count == pageSize
-
-          isDataLoaded = true
-          isInitialLoading = false
-          isLoading = false
-
-        }
+        try await APIClient.shared.deleteFoodMaster(id: foodMaster.id)
       } catch {
-        await MainActor.run {
-          isLoading = false
-          isDataLoaded = true
-          isInitialLoading = false
-        }
+        print("deleteFoodMaster error: \(error)")
       }
-    }
-  }
-
-  private func loadMoreContent() {
-    guard !isLoading && hasMoreData else { return }
-
-    currentPage += 1
-    loadFoodMasters()
-  }
-
-  private func deleteFoodMasters(offsets: IndexSet) {
-    for index in offsets {
-      let foodMaster = foodMasters[index]
-      deleteFoodMasterItem(foodMaster)
-    }
-  }
-
-  private func deleteFoodMasterItem(_ foodMaster: FoodMaster) {
-    // FoodMasterManagerを使用して安全に削除
-    FoodMasterManager.safeDeleteFoodMaster(foodMaster: foodMaster, modelContext: modelContext)
-
-    // 削除後にリストを更新
-    if let index = foodMasters.firstIndex(where: { $0.id == foodMaster.id }) {
-      foodMasters.remove(at: index)
     }
   }
 }
@@ -293,7 +253,7 @@ struct EmptyFoodMasterView: View {
 
 // フード行表示用コンポーネント
 struct FoodMasterRow: View {
-  let foodMaster: FoodMaster
+  let foodMaster: FoodMasterDTO
 
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
@@ -333,14 +293,13 @@ struct FoodMasterRow: View {
 struct FoodMasterFormView: View {
   enum FormMode: Equatable {
     case add
-    case edit(FoodMaster)
+    case edit(FoodMasterDTO)
     case quickAdd(initialProductName: String)
   }
 
   let mode: FormMode
-  let onSaved: ((FoodMaster) -> Void)?
+  let onSaved: ((FoodMasterDTO) -> Void)?
   @Environment(\.dismiss) var dismiss
-  @Environment(\.modelContext) private var modelContext
 
   @State private var brandName = ""
   @State private var productName = ""
@@ -351,10 +310,10 @@ struct FoodMasterFormView: View {
   @State private var protein = ""
   @State private var portionSize = ""
   @State private var portionUnit = ""
+  @State private var isSaving = false
 
   @FocusState private var focusedField: FocusedField?
-  
-  // 状態保存用のキー
+
   private var stateKey: String {
     switch mode {
     case .quickAdd(let productName):
@@ -365,17 +324,10 @@ struct FoodMasterFormView: View {
       return "edit_\(foodMaster.id.uuidString)"
     }
   }
-  
+
   enum FocusedField {
-    case brandName
-    case productName
-    case portionSize
-    case portionUnit
-    case calories
-    case protein
-    case fat
-    case netCarbs
-    case dietaryFiber
+    case brandName, productName, portionSize, portionUnit
+    case calories, protein, fat, netCarbs, dietaryFiber
   }
 
   var title: String {
@@ -388,12 +340,11 @@ struct FoodMasterFormView: View {
       return NSLocalizedString("Quick Add Food", comment: "Quick add food")
     }
   }
-  
-  init(mode: FormMode, onSaved: ((FoodMaster) -> Void)? = nil) {
+
+  init(mode: FormMode, onSaved: ((FoodMasterDTO) -> Void)? = nil) {
     self.mode = mode
     self.onSaved = onSaved
-    
-    // 初期値を設定（アプリ切り替え時の状態復元に対応）
+
     switch mode {
     case .quickAdd(let initialProductName):
       _productName = State(initialValue: initialProductName)
@@ -440,60 +391,48 @@ struct FoodMasterFormView: View {
             Text(NSLocalizedString("Calories", comment: "Calories"))
             Spacer()
             TextField(NSLocalizedString("0", comment: "0"), text: $calories)
-              .keyboardType(.decimalPad)
-              .multilineTextAlignment(.trailing)
+              .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
               .focused($focusedField, equals: .calories)
             Text(NSLocalizedString("kcal", comment: "kcal"))
           }
-
           HStack {
             Text(NSLocalizedString("Protein", comment: "Protein"))
             Spacer()
             TextField(NSLocalizedString("0", comment: "0"), text: $protein)
-              .keyboardType(.decimalPad)
-              .multilineTextAlignment(.trailing)
+              .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
               .focused($focusedField, equals: .protein)
             Text(NSLocalizedString("g", comment: "g"))
           }
-
           HStack {
             Text(NSLocalizedString("Fat", comment: "Fat"))
             Spacer()
             TextField(NSLocalizedString("0", comment: "0"), text: $fat)
-              .keyboardType(.decimalPad)
-              .multilineTextAlignment(.trailing)
+              .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
               .focused($focusedField, equals: .fat)
             Text(NSLocalizedString("g", comment: "g"))
           }
-
           HStack {
             Text(NSLocalizedString("Sugar", comment: "Sugar"))
             Spacer()
             TextField(NSLocalizedString("0", comment: "0"), text: $netCarbs)
-              .keyboardType(.decimalPad)
-              .multilineTextAlignment(.trailing)
+              .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
               .focused($focusedField, equals: .netCarbs)
             Text(NSLocalizedString("g", comment: "g"))
           }
-
           HStack {
             Text(NSLocalizedString("Dietary Fiber", comment: "Dietary Fiber"))
             Spacer()
             TextField(NSLocalizedString("0", comment: "0"), text: $dietaryFiber)
-              .keyboardType(.decimalPad)
-              .multilineTextAlignment(.trailing)
+              .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
               .focused($focusedField, equals: .dietaryFiber)
             Text(NSLocalizedString("g", comment: "g"))
           }
-
-          // 炭水化物の合計を表示（編集不可）
           HStack {
             Text(NSLocalizedString("Carbohydrates (Sugar + Fiber)", comment: "Carbohydrates"))
             Spacer()
             Text(NutritionFormatter.formatNutrition((Double(netCarbs) ?? 0) + (Double(dietaryFiber) ?? 0)))
               .foregroundColor(.secondary)
-            Text(NSLocalizedString("g", comment: "g"))
-              .foregroundColor(.secondary)
+            Text(NSLocalizedString("g", comment: "g")).foregroundColor(.secondary)
           }
         }
         .headerProminence(.increased)
@@ -503,50 +442,29 @@ struct FoodMasterFormView: View {
       .navigationTitle(title)
       .toolbar {
         ToolbarItemGroup(placement: .keyboard) {
-          Button(action: {
-            focusPreviousField()
-          }) {
+          Button(action: { focusPreviousField() }) {
             Image(systemName: "chevron.up")
           }
-          
-          Button(action: {
-            focusNextField()
-          }) {
+          Button(action: { focusNextField() }) {
             Image(systemName: "chevron.down")
           }
-          
           Spacer()
-          
-          Button(NSLocalizedString("Done", comment: "Done")) {
-            focusedField = nil
-          }
+          Button(NSLocalizedString("Done", comment: "Done")) { focusedField = nil }
         }
       }
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
-          Button(NSLocalizedString("Cancel", comment: "Cancel")) {
-            dismiss()
-          }
+          Button(NSLocalizedString("Cancel", comment: "Cancel")) { dismiss() }
         }
-
         ToolbarItem(placement: .confirmationAction) {
           Button(NSLocalizedString("Save", comment: "Save")) {
-            let savedFoodMaster = saveFoodMaster()
-            if let savedFood = savedFoodMaster {
-              clearSavedState() // 保存成功時に状態をクリア
-              onSaved?(savedFood)
-            }
-            dismiss()
+            Task { await saveAndDismiss() }
           }
-          .disabled(brandName.isEmpty || productName.isEmpty || portionUnit.isEmpty)
+          .disabled(brandName.isEmpty || productName.isEmpty || portionUnit.isEmpty || isSaving)
         }
       }
-      .onAppear {
-        loadState()
-      }
-      .onDisappear {
-        saveState()
-      }
+      .onAppear { loadState() }
+      .onDisappear { saveState() }
       .onChange(of: brandName) { _, _ in saveState() }
       .onChange(of: productName) { _, _ in saveState() }
       .onChange(of: calories) { _, _ in saveState() }
@@ -558,82 +476,80 @@ struct FoodMasterFormView: View {
       .onChange(of: portionUnit) { _, _ in saveState() }
     }
   }
-  
+
   private func focusNextField() {
     let allFields: [FocusedField] = [.brandName, .productName, .portionSize, .portionUnit, .calories, .protein, .fat, .netCarbs, .dietaryFiber]
-    
-    guard let currentField = focusedField,
-          let currentIndex = allFields.firstIndex(of: currentField) else {
-      focusedField = allFields.first
-      return
+    guard let current = focusedField, let idx = allFields.firstIndex(of: current) else {
+      focusedField = allFields.first; return
     }
-    
-    let nextIndex = (currentIndex + 1) % allFields.count
-    focusedField = allFields[nextIndex]
-  }
-  
-  private func focusPreviousField() {
-    let allFields: [FocusedField] = [.brandName, .productName, .portionSize, .portionUnit, .calories, .protein, .fat, .netCarbs, .dietaryFiber]
-    
-    guard let currentField = focusedField,
-          let currentIndex = allFields.firstIndex(of: currentField) else {
-      focusedField = allFields.last
-      return
-    }
-    
-    let previousIndex = currentIndex == 0 ? allFields.count - 1 : currentIndex - 1
-    focusedField = allFields[previousIndex]
+    focusedField = allFields[(idx + 1) % allFields.count]
   }
 
-  private func saveFoodMaster() -> FoodMaster? {
-    // 入力値を数値に変換
+  private func focusPreviousField() {
+    let allFields: [FocusedField] = [.brandName, .productName, .portionSize, .portionUnit, .calories, .protein, .fat, .netCarbs, .dietaryFiber]
+    guard let current = focusedField, let idx = allFields.firstIndex(of: current) else {
+      focusedField = allFields.last; return
+    }
+    focusedField = allFields[idx == 0 ? allFields.count - 1 : idx - 1]
+  }
+
+  private func saveAndDismiss() async {
+    isSaving = true
+    defer { isSaving = false }
+
     let caloriesValue = Double(calories) ?? 0
     let netCarbsValue = Double(netCarbs) ?? 0
     let dietaryFiberValue = Double(dietaryFiber) ?? 0
     let fatValue = Double(fat) ?? 0
     let proteinValue = Double(protein) ?? 0
     let portionSizeValue = Double(portionSize) ?? 1.0
+    let resolvedBrandName = brandName.isEmpty ? NSLocalizedString("Unknown", comment: "Unknown brand") : brandName
 
-    switch mode {
-    case .add, .quickAdd:
-      // 新規追加
-      let newFoodMaster = FoodMaster(
-        brandName: brandName.isEmpty ? NSLocalizedString("Unknown", comment: "Unknown brand") : brandName,
-        productName: productName,
-        calories: caloriesValue,
-        netCarbs: netCarbsValue,
-        dietaryFiber: dietaryFiberValue,
-        fat: fatValue,
-        protein: proteinValue,
-        portionSize: portionSizeValue,
-        portionUnit: portionUnit
-      )
-      modelContext.insert(newFoodMaster)
-      return newFoodMaster
-
-    case .edit(let foodMaster):
-      // 既存データの更新
-      foodMaster.brandName = brandName
-      foodMaster.productName = productName
-      foodMaster.calories = caloriesValue
-      foodMaster.netCarbs = netCarbsValue
-      foodMaster.dietaryFiber = dietaryFiberValue
-      foodMaster.fat = fatValue
-      foodMaster.protein = proteinValue
-      foodMaster.portionSize = portionSizeValue
-      foodMaster.portionUnit = portionUnit
-
-      // uniqueKeyも更新
-      foodMaster.uniqueKey = FoodMaster.createUniqueKey(
-        brandName: brandName, productName: productName, portionUnit: portionUnit)
-      return foodMaster
+    do {
+      let saved: FoodMasterDTO
+      switch mode {
+      case .add, .quickAdd:
+        let uniqueKey = FoodMasterDTO.createUniqueKey(
+          brandName: resolvedBrandName, productName: productName, portionUnit: portionUnit)
+        let dto = FoodMasterCreateDTO(
+          id: UUID().uuidString,
+          brandName: resolvedBrandName,
+          productName: productName,
+          calories: caloriesValue,
+          dietaryFiber: dietaryFiberValue,
+          netCarbs: netCarbsValue,
+          fat: fatValue,
+          protein: proteinValue,
+          portionSize: portionSizeValue,
+          portionUnit: portionUnit,
+          uniqueKey: uniqueKey
+        )
+        saved = try await APIClient.shared.createFoodMaster(dto)
+        clearSavedState()
+      case .edit(let foodMaster):
+        let dto = FoodMasterUpdateDTO(
+          brandName: resolvedBrandName,
+          productName: productName,
+          calories: caloriesValue,
+          dietaryFiber: dietaryFiberValue,
+          netCarbs: netCarbsValue,
+          fat: fatValue,
+          protein: proteinValue,
+          portionSize: portionSizeValue,
+          portionUnit: portionUnit
+        )
+        saved = try await APIClient.shared.updateFoodMaster(id: foodMaster.id, dto)
+      }
+      onSaved?(saved)
+      dismiss()
+    } catch {
+      print("FoodMasterFormView saveAndDismiss error: \(error)")
+      dismiss()
     }
   }
-  
+
   private func saveState() {
-    // クイック追加モードの場合のみ状態を保存
     guard case .quickAdd = mode else { return }
-    
     UserDefaults.standard.set(brandName, forKey: "\(stateKey)_brandName")
     UserDefaults.standard.set(productName, forKey: "\(stateKey)_productName")
     UserDefaults.standard.set(calories, forKey: "\(stateKey)_calories")
@@ -644,11 +560,10 @@ struct FoodMasterFormView: View {
     UserDefaults.standard.set(portionSize, forKey: "\(stateKey)_portionSize")
     UserDefaults.standard.set(portionUnit, forKey: "\(stateKey)_portionUnit")
   }
-  
+
   private func loadState() {
     switch mode {
     case .edit(let foodMaster):
-      // 編集モードの場合、既存の値をフォームにセット
       brandName = foodMaster.brandName
       productName = foodMaster.productName
       calories = NutritionFormatter.formatNutrition(foodMaster.calories)
@@ -658,66 +573,39 @@ struct FoodMasterFormView: View {
       protein = NutritionFormatter.formatNutrition(foodMaster.protein)
       portionSize = NutritionFormatter.formatNutrition(foodMaster.portionSize)
       portionUnit = foodMaster.portionUnit
-      
     case .quickAdd(let initialProductName):
-      // 保存された状態があるかチェック
-      let savedBrandName = UserDefaults.standard.string(forKey: "\(stateKey)_brandName") ?? ""
-      let savedProductName = UserDefaults.standard.string(forKey: "\(stateKey)_productName") ?? initialProductName
-      let savedCalories = UserDefaults.standard.string(forKey: "\(stateKey)_calories") ?? ""
-      let savedSugar = UserDefaults.standard.string(forKey: "\(stateKey)_sugar") ?? ""
-      let savedDietaryFiber = UserDefaults.standard.string(forKey: "\(stateKey)_dietaryFiber") ?? ""
-      let savedFat = UserDefaults.standard.string(forKey: "\(stateKey)_fat") ?? ""
-      let savedProtein = UserDefaults.standard.string(forKey: "\(stateKey)_protein") ?? ""
-      let savedPortionSize = UserDefaults.standard.string(forKey: "\(stateKey)_portionSize") ?? ""
-      let savedPortionUnit = UserDefaults.standard.string(forKey: "\(stateKey)_portionUnit") ?? ""
-
-      brandName = savedBrandName
-      productName = savedProductName
-      calories = savedCalories
-      netCarbs = savedSugar
-      dietaryFiber = savedDietaryFiber
-      fat = savedFat
-      protein = savedProtein
-      portionSize = savedPortionSize
-      portionUnit = savedPortionUnit
-      
+      brandName = UserDefaults.standard.string(forKey: "\(stateKey)_brandName") ?? ""
+      productName = UserDefaults.standard.string(forKey: "\(stateKey)_productName") ?? initialProductName
+      calories = UserDefaults.standard.string(forKey: "\(stateKey)_calories") ?? ""
+      netCarbs = UserDefaults.standard.string(forKey: "\(stateKey)_sugar") ?? ""
+      dietaryFiber = UserDefaults.standard.string(forKey: "\(stateKey)_dietaryFiber") ?? ""
+      fat = UserDefaults.standard.string(forKey: "\(stateKey)_fat") ?? ""
+      protein = UserDefaults.standard.string(forKey: "\(stateKey)_protein") ?? ""
+      portionSize = UserDefaults.standard.string(forKey: "\(stateKey)_portionSize") ?? ""
+      portionUnit = UserDefaults.standard.string(forKey: "\(stateKey)_portionUnit") ?? ""
     case .add:
-      // 通常の追加モードの場合、特に何もしない
       break
     }
   }
-  
+
   private func clearSavedState() {
-    // クイック追加モードの場合のみ保存された状態をクリア
     guard case .quickAdd = mode else { return }
-    
-    UserDefaults.standard.removeObject(forKey: "\(stateKey)_brandName")
-    UserDefaults.standard.removeObject(forKey: "\(stateKey)_productName")
-    UserDefaults.standard.removeObject(forKey: "\(stateKey)_calories")
-    UserDefaults.standard.removeObject(forKey: "\(stateKey)_sugar")
-    UserDefaults.standard.removeObject(forKey: "\(stateKey)_dietaryFiber")
-    UserDefaults.standard.removeObject(forKey: "\(stateKey)_fat")
-    UserDefaults.standard.removeObject(forKey: "\(stateKey)_protein")
-    UserDefaults.standard.removeObject(forKey: "\(stateKey)_portionSize")
-    UserDefaults.standard.removeObject(forKey: "\(stateKey)_portionUnit")
+    ["_brandName", "_productName", "_calories", "_sugar", "_dietaryFiber", "_fat", "_protein", "_portionSize", "_portionUnit"].forEach {
+      UserDefaults.standard.removeObject(forKey: "\(stateKey)\($0)")
+    }
   }
 }
 
-// Identifiableプロトコル準拠のための拡張
 extension FoodMasterFormView.FormMode: Identifiable {
   var id: String {
     switch self {
-    case .add:
-      return "add"
-    case .edit(let foodMaster):
-      return "edit_\(foodMaster.id.uuidString)"
-    case .quickAdd(let productName):
-      return "quickAdd_\(productName.hashValue)"
+    case .add: return "add"
+    case .edit(let fm): return "edit_\(fm.id.uuidString)"
+    case .quickAdd(let name): return "quickAdd_\(name.hashValue)"
     }
   }
 }
 
 #Preview {
   FoodMasterManagementView()
-    .modelContainer(for: [FoodMaster.self, LogItem.self, NutritionGoals.self], inMemory: true)
 }

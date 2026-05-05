@@ -2,14 +2,42 @@ import SwiftUI
 import AppTrackingTransparency
 import GoogleMobileAds
 
-class AdMobManager: NSObject {
+@MainActor
+class AdMobManager: NSObject, ObservableObject {
     static let shared = AdMobManager()
+
+    @Published private(set) var isInitialized = false
+
+    private var isInitializing = false
+    private var isPreparing = false
+    private var hasRequestedTrackingAuthorization = false
     
     private override init() {
         super.init()
     }
     
-    func initialize() {
+    func prepareAfterLaunch() {
+        guard !isPreparing, !isInitialized else { return }
+        isPreparing = true
+
+        Task {
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+
+            if !hasRequestedTrackingAuthorization {
+                hasRequestedTrackingAuthorization = true
+                requestTrackingAuthorization { authorized in
+                    print("Tracking authorization status: \(authorized)")
+                }
+            }
+
+            initializeIfNeeded()
+        }
+    }
+
+    func initializeIfNeeded() {
+        guard !isInitialized, !isInitializing else { return }
+        isInitializing = true
+
         // Info.plistのGADApplicationIdentifierを確認
         if let appID = Bundle.main.object(forInfoDictionaryKey: "GADApplicationIdentifier") as? String {
             print("AdMob初期化開始 - Info.plistから読み込み: \(appID)")
@@ -18,12 +46,16 @@ class AdMobManager: NSObject {
         }
         
         MobileAds.shared.start { status in
-            print("AdMob SDK初期化完了")
-            
-            // アダプター毎の初期化状態を確認
-            let adapterStatuses = status.adapterStatusesByClassName
-            for (adapterClass, adapterStatus) in adapterStatuses {
-                print("アダプター \(adapterClass): 状態=\(adapterStatus.state.rawValue), 説明=\(adapterStatus.description)")
+            Task { @MainActor in
+                self.isInitializing = false
+                self.isInitialized = true
+                print("AdMob SDK初期化完了")
+
+                // アダプター毎の初期化状態を確認
+                let adapterStatuses = status.adapterStatusesByClassName
+                for (adapterClass, adapterStatus) in adapterStatuses {
+                    print("アダプター \(adapterClass): 状態=\(adapterStatus.state.rawValue), 説明=\(adapterStatus.description)")
+                }
             }
         }
     }
