@@ -171,3 +171,21 @@ extension NutritionSnapshot {
     )
   }
 }
+
+// MARK: - AI Analyze DTO
+
+struct AIAnalyzeRequest: Codable {
+  var imageBase64: String
+}
+
+struct AIAnalyzeResponse: Codable {
+  var calories: Double
+  var protein: Double
+  var fat: Double
+  var netCarbs: Double
+  var dietaryFiber: Double
+  var portionAmount: Double
+  var portionUnit: String
+  var confidence: String
+  var productName: String
+}

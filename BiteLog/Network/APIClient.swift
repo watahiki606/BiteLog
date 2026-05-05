@@ -204,6 +204,12 @@ final class APIClient {
     return try await request(path: "/api/nutrition-goals", method: "PUT", body: dto)
   }
 
+  // MARK: - AI
+
+  func analyzeFoodImage(imageBase64: String) async throws -> AIAnalyzeResponse {
+    return try await request(path: "/api/ai/analyze-food", method: "POST", body: AIAnalyzeRequest(imageBase64: imageBase64))
+  }
+
   // MARK: - Auth
 
   func signIn(provider: String, identityToken: String) async throws -> AuthResponse {
