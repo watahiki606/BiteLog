@@ -56,7 +56,7 @@ struct AddItemView: View {
         }
         ToolbarItem(placement: .confirmationAction) {
           Button {
-            if AIFoodAnalyzer.shared.isAPIKeyConfigured() { showingPhotoPicker = true }
+            if AIFoodAnalyzer.shared.isAvailable() { showingPhotoPicker = true }
             else { showingAPIKeyError = true }
           } label: {
             Image(systemName: "camera.viewfinder").font(.title3)
@@ -75,11 +75,10 @@ struct AddItemView: View {
           AIAnalysisResultView(result: result, image: image, mealType: mealType, date: date, onSave: { dismiss() })
         }
       }
-      .alert(NSLocalizedString("API Key Required", comment: "Alert title"), isPresented: $showingAPIKeyError) {
-        Button(NSLocalizedString("Open Settings", comment: "Button title")) { dismiss(); selectedTab = 2 }
-        Button(NSLocalizedString("Cancel", comment: "Button title"), role: .cancel) {}
+      .alert(NSLocalizedString("Sign In Required", comment: "Alert title"), isPresented: $showingAPIKeyError) {
+        Button(NSLocalizedString("OK", comment: "Button title"), role: .cancel) {}
       } message: {
-        Text(NSLocalizedString("Please set your OpenAI API key in Settings to use AI food analysis.", comment: "Alert message"))
+        Text(NSLocalizedString("Please sign in to use AI food analysis.", comment: "Alert message"))
       }
       .alert(NSLocalizedString("Analysis Error", comment: "Alert title"), isPresented: .constant(analysisError != nil)) {
         Button(NSLocalizedString("OK", comment: "Button title"), role: .cancel) { analysisError = nil }
