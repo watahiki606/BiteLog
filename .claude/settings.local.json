@@ -43,7 +43,11 @@
       "Bash(npx wrangler *)",
       "Bash(curl *)",
       "Bash(npm run *)",
-      "Bash(npm exec *)"
+      "Bash(npm exec *)",
+      "Bash(cat)",
+      "Read(//tmp/**)",
+      "Bash(python3 *)",
+      "Bash(gh pr *)"
     ],
     "deny": [],
     "env": {

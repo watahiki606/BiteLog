@@ -40,7 +40,7 @@ function colIdx(headers: string[], ...candidates: string[]): number {
 }
 
 // POST /api/csv/import
-csvImport.post('/', async (c) => {
+csvImport.post('/import', async (c) => {
   const userId = c.get('userId');
   const csvText = await c.req.text();
 
