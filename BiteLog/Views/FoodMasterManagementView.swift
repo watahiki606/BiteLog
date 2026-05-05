@@ -75,16 +75,26 @@ struct FoodMasterManagementView: View {
             FoodMasterRow(foodMaster: foodMaster)
               .contentShape(Rectangle())
               .onTapGesture {
-                selectedFoodMaster = foodMaster
-                searchFieldIsFocused = false
+                if canEdit(foodMaster) {
+                  selectedFoodMaster = foodMaster
+                  searchFieldIsFocused = false
+                }
               }
               .onAppear {
                 if foodMaster.id == foodMasters.last?.id && hasMoreData && !isLoading {
                   Task { await loadMoreContent() }
                 }
               }
+              .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                if canEdit(foodMaster) {
+                  Button(role: .destructive) {
+                    deleteFoodMaster(foodMaster)
+                  } label: {
+                    Label("Delete", systemImage: "trash")
+                  }
+                }
+              }
           }
-          .onDelete(perform: deleteFoodMasters)
 
           if hasMoreData {
             Section {
@@ -181,18 +191,17 @@ struct FoodMasterManagementView: View {
     await loadFoodMasters()
   }
 
-  private func deleteFoodMasters(offsets: IndexSet) {
-    let toDelete = offsets.map { foodMasters[$0] }
-    for item in toDelete {
-      foodMasters.removeAll { $0.id == item.id }
-    }
+  private func canEdit(_ foodMaster: FoodMasterDTO) -> Bool {
+    AuthManager.shared.isAdmin || foodMaster.createdBy == AuthManager.shared.userId
+  }
+
+  private func deleteFoodMaster(_ foodMaster: FoodMasterDTO) {
+    foodMasters.removeAll { $0.id == foodMaster.id }
     Task {
-      for item in toDelete {
-        do {
-          try await APIClient.shared.deleteFoodMaster(id: item.id)
-        } catch {
-          print("deleteFoodMaster error: \(error)")
-        }
+      do {
+        try await APIClient.shared.deleteFoodMaster(id: foodMaster.id)
+      } catch {
+        print("deleteFoodMaster error: \(error)")
       }
     }
   }
