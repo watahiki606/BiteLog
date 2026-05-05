@@ -18,6 +18,7 @@ type LogItemJoinRow = LogItemRow & {
   portion_size: number | null;
   portion_unit: string | null;
   unique_key: string | null;
+  fm_created_by: string | null;
   ufs_usage_count: number | null;
   ufs_last_used_date: string | null;
   ufs_last_number_of_servings: number | null;
@@ -37,6 +38,7 @@ function rowToFm(row: LogItemJoinRow): FoodMasterRow | null {
     portion_size: row.portion_size!,
     portion_unit: row.portion_unit!,
     unique_key: row.unique_key!,
+    created_by: row.fm_created_by,
     usage_count: row.ufs_usage_count ?? 0,
     last_used_date: row.ufs_last_used_date ?? null,
     last_number_of_servings: row.ufs_last_number_of_servings ?? 1.0,
@@ -45,7 +47,7 @@ function rowToFm(row: LogItemJoinRow): FoodMasterRow | null {
 
 const JOIN_SELECT = `SELECT li.*, fm.id as fm_id, fm.brand_name, fm.product_name, fm.calories,
         fm.dietary_fiber, fm.net_carbs, fm.fat, fm.protein,
-        fm.portion_size, fm.portion_unit, fm.unique_key,
+        fm.portion_size, fm.portion_unit, fm.unique_key, fm.created_by as fm_created_by,
         ufs.usage_count as ufs_usage_count,
         ufs.last_used_date as ufs_last_used_date,
         ufs.last_number_of_servings as ufs_last_number_of_servings

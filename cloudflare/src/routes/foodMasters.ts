@@ -8,7 +8,7 @@ foodMasters.use('*', authMiddleware);
 
 const FM_SELECT = `
   fm.id, fm.brand_name, fm.product_name, fm.calories, fm.dietary_fiber,
-  fm.net_carbs, fm.fat, fm.protein, fm.portion_size, fm.portion_unit, fm.unique_key,
+  fm.net_carbs, fm.fat, fm.protein, fm.portion_size, fm.portion_unit, fm.unique_key, fm.created_by,
   COALESCE(ufs.usage_count, 0) as usage_count,
   ufs.last_used_date,
   COALESCE(ufs.last_number_of_servings, 1.0) as last_number_of_servings`;
@@ -76,6 +76,7 @@ foodMasters.get('/:id', async (c) => {
 
 // POST /api/food-masters
 foodMasters.post('/', async (c) => {
+  const userId = c.get('userId');
   const body = await c.req.json<{
     id: string;
     brandName: string;
@@ -93,13 +94,13 @@ foodMasters.post('/', async (c) => {
   await c.env.DB.prepare(
     `INSERT INTO food_masters
       (id, brand_name, product_name, calories, dietary_fiber, net_carbs, fat, protein,
-       portion_size, portion_unit, unique_key)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       portion_size, portion_unit, unique_key, created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(unique_key) DO NOTHING`
   ).bind(
     body.id, body.brandName, body.productName, body.calories,
     body.dietaryFiber, body.netCarbs, body.fat, body.protein,
-    body.portionSize, body.portionUnit, body.uniqueKey
+    body.portionSize, body.portionUnit, body.uniqueKey, userId
   ).run();
 
   const row = await c.env.DB.prepare(
@@ -111,6 +112,7 @@ foodMasters.post('/', async (c) => {
 
 // POST /api/food-masters/batch（CSV用バッチ作成）
 foodMasters.post('/batch', async (c) => {
+  const userId = c.get('userId');
   const body = await c.req.json<{ items: Array<{
     id: string;
     brandName: string;
@@ -129,13 +131,13 @@ foodMasters.post('/batch', async (c) => {
     c.env.DB.prepare(
       `INSERT INTO food_masters
         (id, brand_name, product_name, calories, dietary_fiber, net_carbs, fat, protein,
-         portion_size, portion_unit, unique_key)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         portion_size, portion_unit, unique_key, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(unique_key) DO NOTHING`
     ).bind(
       item.id, item.brandName, item.productName, item.calories,
       item.dietaryFiber, item.netCarbs, item.fat, item.protein,
-      item.portionSize, item.portionUnit, item.uniqueKey
+      item.portionSize, item.portionUnit, item.uniqueKey, userId
     )
   );
 
@@ -148,6 +150,18 @@ foodMasters.post('/batch', async (c) => {
 
 // PUT /api/food-masters/:id
 foodMasters.put('/:id', async (c) => {
+  const userId = c.get('userId');
+  const isAdmin = c.get('isAdmin');
+
+  const existing = await c.env.DB.prepare(
+    `SELECT created_by FROM food_masters WHERE id = ?`
+  ).bind(c.req.param('id')).first<{ created_by: string | null }>();
+
+  if (!existing) return c.json({ error: 'Not found' }, 404);
+  if (!isAdmin && existing.created_by !== userId) {
+    return c.json({ error: 'Forbidden' }, 403);
+  }
+
   const body = await c.req.json<Partial<{
     brandName: string;
     productName: string;
@@ -199,6 +213,15 @@ foodMasters.delete('/all', async (c) => {
 // DELETE /api/food-masters/:id（安全削除: 関連LogItemをスナップショット化）
 foodMasters.delete('/:id', async (c) => {
   const id = c.req.param('id');
+
+  const existing = await c.env.DB.prepare(
+    `SELECT created_by FROM food_masters WHERE id = ?`
+  ).bind(id).first<{ created_by: string | null }>();
+
+  if (!existing) return c.json({ ok: true });
+  if (!c.get('isAdmin') && existing.created_by !== c.get('userId')) {
+    return c.json({ error: 'Forbidden' }, 403);
+  }
 
   // 関連する未削除のLogItemを取得
   const { results: relatedLogs } = await c.env.DB.prepare(

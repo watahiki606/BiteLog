@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS food_masters (
   protein REAL NOT NULL DEFAULT 0,
   portion_size REAL NOT NULL DEFAULT 1.0,
   portion_unit TEXT NOT NULL DEFAULT 'g',
-  unique_key TEXT NOT NULL UNIQUE
+  unique_key TEXT NOT NULL UNIQUE,
+  created_by TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_food_masters_product_name ON food_masters(product_name);
