@@ -137,6 +137,31 @@ final class APIClient {
     return try await request(path: "/api/food-masters/batch", method: "POST", body: Body(items: items))
   }
 
+  func importCSV(csvText: String) async throws -> CSVImportResult {
+    guard let url = URL(string: "/api/csv/import", relativeTo: baseURL) else {
+      throw APIError.invalidURL
+    }
+    var req = URLRequest(url: url)
+    req.httpMethod = "POST"
+    req.setValue("text/plain; charset=utf-8", forHTTPHeaderField: "Content-Type")
+    req.timeoutInterval = 300
+    if let token = await AuthManager.shared.sessionToken {
+      req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    }
+    req.httpBody = csvText.data(using: .utf8)
+
+    let (data, response) = try await session.data(for: req)
+    guard let http = response as? HTTPURLResponse else {
+      throw APIError.networkError(URLError(.badServerResponse))
+    }
+    switch http.statusCode {
+    case 200...299: break
+    case 401: throw APIError.unauthorized
+    default: throw APIError.serverError(http.statusCode)
+    }
+    return try decoder.decode(CSVImportResult.self, from: data)
+  }
+
   // MARK: - LogItem
 
   func fetchLogItems(logDate: String) async throws -> [LogItemDTO] {

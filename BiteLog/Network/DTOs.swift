@@ -145,6 +145,14 @@ struct BatchResult: Codable {
   var errors: Int
 }
 
+// MARK: - CSV Import Result
+
+struct CSVImportResult: Codable {
+  var created: Int
+  var skipped: Int
+  var foodMastersCreated: Int
+}
+
 // MARK: - NutritionSnapshot extension（FoodMasterDTOから生成）
 
 extension NutritionSnapshot {

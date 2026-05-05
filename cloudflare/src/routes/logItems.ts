@@ -153,24 +153,6 @@ logItems.post('/batch', async (c) => {
   const results = await c.env.DB.batch(statements);
   const created = results.filter(r => r.meta.changes > 0).length;
 
-  // CSV一括インポート後、food_masterごとにuser_food_statsを集計してUPSERT
-  const foodMasterIds = [...new Set(body.items.map(i => i.foodMasterId).filter((id): id is string => !!id))];
-  for (const fmId of foodMasterIds) {
-    await c.env.DB.prepare(
-      `INSERT INTO user_food_stats (user_id, food_master_id, usage_count, last_used_date, last_number_of_servings)
-       SELECT ?, ?, COUNT(*), MAX(timestamp),
-         (SELECT number_of_servings FROM log_items
-          WHERE user_id = ? AND food_master_id = ?
-          ORDER BY timestamp DESC LIMIT 1)
-       FROM log_items
-       WHERE user_id = ? AND food_master_id = ?
-       ON CONFLICT(user_id, food_master_id) DO UPDATE SET
-         usage_count = excluded.usage_count,
-         last_used_date = excluded.last_used_date,
-         last_number_of_servings = excluded.last_number_of_servings`
-    ).bind(userId, fmId, userId, fmId, userId, fmId).run();
-  }
-
   return c.json({ created, skipped: body.items.length - created, errors: 0 });
 });
 
