@@ -7,6 +7,7 @@ import logItems from './routes/logItems';
 import nutritionGoals from './routes/nutritionGoals';
 import userData from './routes/userData';
 import csvImport from './routes/csvImport';
+import aiAnalyze from './routes/aiAnalyze';
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -31,6 +32,7 @@ app.route('/api/log-items', logItems);
 app.route('/api/nutrition-goals', nutritionGoals);
 app.route('/api/user-data', userData);
 app.route('/api/csv', csvImport);
+app.route('/api/ai', aiAnalyze);
 
 // ヘルスチェック
 app.get('/health', (c) => c.json({ ok: true }));

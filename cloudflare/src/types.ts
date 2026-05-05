@@ -4,6 +4,7 @@ export type Bindings = {
   ADMIN_API_KEY: string;
   ADMIN_USER_ID: string;
   GOOGLE_CLIENT_ID: string;
+  OPENAI_API_KEY: string;
 };
 
 export type Variables = {
