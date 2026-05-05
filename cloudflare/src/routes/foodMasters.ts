@@ -102,7 +102,7 @@ foodMasters.post('/', async (c) => {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(unique_key) DO NOTHING`
   ).bind(
-    body.id.toLowerCase(), body.brandName, body.productName, body.calories,
+    body.id, body.brandName, body.productName, body.calories,
     body.dietaryFiber, body.netCarbs, body.fat, body.protein,
     body.portionSize, body.portionUnit, body.uniqueKey, userId
   ).run();
@@ -139,7 +139,7 @@ foodMasters.post('/batch', async (c) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(unique_key) DO NOTHING`
     ).bind(
-      item.id.toLowerCase(), item.brandName, item.productName, item.calories,
+      item.id, item.brandName, item.productName, item.calories,
       item.dietaryFiber, item.netCarbs, item.fat, item.protein,
       item.portionSize, item.portionUnit, item.uniqueKey, userId
     )

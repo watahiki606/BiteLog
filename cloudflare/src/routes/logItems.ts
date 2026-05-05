@@ -101,7 +101,7 @@ logItems.post('/', async (c) => {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`
   ).bind(
     body.id, userId, body.timestamp, body.logDate, body.mealType,
-    body.numberOfServings, body.foodMasterId?.toLowerCase() ?? null,
+    body.numberOfServings, body.foodMasterId ?? null,
     body.nutritionSnapshot ? JSON.stringify(body.nutritionSnapshot) : null
   ).run();
 
@@ -114,7 +114,7 @@ logItems.post('/', async (c) => {
          usage_count = usage_count + 1,
          last_used_date = datetime('now'),
          last_number_of_servings = excluded.last_number_of_servings`
-    ).bind(userId, body.foodMasterId.toLowerCase(), body.numberOfServings).run();
+    ).bind(userId, body.foodMasterId, body.numberOfServings).run();
   }
 
   // 作成したLogItemをJOINして返す
@@ -146,7 +146,7 @@ logItems.post('/batch', async (c) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`
     ).bind(
       item.id, userId, item.timestamp, item.logDate, item.mealType,
-      item.numberOfServings, item.foodMasterId?.toLowerCase() ?? null,
+      item.numberOfServings, item.foodMasterId ?? null,
       item.nutritionSnapshot ? JSON.stringify(item.nutritionSnapshot) : null
     )
   );

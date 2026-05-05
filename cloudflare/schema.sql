@@ -1,6 +1,6 @@
 -- food_masters: 全ユーザー共有のグローバル食品マスタ
 CREATE TABLE IF NOT EXISTS food_masters (
-  id TEXT PRIMARY KEY,
+  id TEXT PRIMARY KEY COLLATE NOCASE,
   brand_name TEXT NOT NULL DEFAULT '',
   product_name TEXT NOT NULL,
   calories REAL NOT NULL DEFAULT 0,
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS log_items (
   log_date TEXT NOT NULL,
   meal_type TEXT NOT NULL CHECK(meal_type IN ('Breakfast','Lunch','Dinner','Snack','Other')),
   number_of_servings REAL NOT NULL DEFAULT 1.0,
-  food_master_id TEXT REFERENCES food_masters(id) ON DELETE SET NULL,
+  food_master_id TEXT COLLATE NOCASE REFERENCES food_masters(id) ON DELETE SET NULL,
   nutrition_snapshot_json TEXT,
   is_master_deleted INTEGER NOT NULL DEFAULT 0
 );
@@ -35,7 +35,7 @@ CREATE INDEX IF NOT EXISTS idx_log_items_timestamp ON log_items(timestamp);
 -- user_food_stats: ユーザーごとの食品使用統計（パーソナライズされた検索順位のため）
 CREATE TABLE IF NOT EXISTS user_food_stats (
   user_id TEXT NOT NULL,
-  food_master_id TEXT NOT NULL REFERENCES food_masters(id) ON DELETE CASCADE,
+  food_master_id TEXT NOT NULL COLLATE NOCASE REFERENCES food_masters(id) ON DELETE CASCADE,
   usage_count INTEGER NOT NULL DEFAULT 0,
   last_used_date TEXT,
   last_number_of_servings REAL NOT NULL DEFAULT 1.0,
