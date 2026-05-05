@@ -133,11 +133,11 @@ csvImport.post('/import', async (c) => {
       c.env.DB.prepare(
         `INSERT INTO food_masters
           (id, brand_name, product_name, calories, dietary_fiber, net_carbs, fat, protein,
-           portion_size, portion_unit, unique_key)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           portion_size, portion_unit, unique_key, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(unique_key) DO NOTHING`
       ).bind(fm.id, fm.brandName, fm.productName, fm.calories, fm.dietaryFiber,
-             fm.netCarbs, fm.fat, fm.protein, fm.portionSize, fm.portionUnit, fm.uniqueKey)
+             fm.netCarbs, fm.fat, fm.protein, fm.portionSize, fm.portionUnit, fm.uniqueKey, userId)
     ));
     foodMastersCreated += results.filter(r => r.meta.changes > 0).length;
   }
