@@ -26,14 +26,16 @@ userData.delete('/', async (c) => {
     c.env.DB.prepare(`DELETE FROM log_items WHERE user_id = ?`).bind(userId),
   ]);
 
-  // 他のユーザーも参照していない孤立した food_masters を削除
+  // 自分が作成した food_masters のうち、誰のログにも参照されていないものを削除
+  // created_by を条件に含めることで他ユーザーの food_master は削除しない
   await c.env.DB.prepare(
     `DELETE FROM food_masters
-     WHERE id NOT IN (
+     WHERE created_by = ?
+     AND id NOT IN (
        SELECT DISTINCT food_master_id FROM log_items
        WHERE food_master_id IS NOT NULL
      )`
-  ).run();
+  ).bind(userId).run();
 
   return c.json({ ok: true });
 });
