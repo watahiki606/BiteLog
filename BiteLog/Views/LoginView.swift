@@ -46,15 +46,6 @@ struct LoginView: View {
           }
           .frame(height: 50)
 
-          #if DEBUG
-          Button("Debug: Skip Sign In") {
-            // Workers に認証なしでアクセスするためのデバッグ用ダミートークン
-            // Workers側で "debug-bypass" を許可する必要あり
-            debugSignIn()
-          }
-          .font(.footnote)
-          .foregroundColor(.secondary)
-          #endif
         }
 
         if let error = errorMessage {
@@ -71,21 +62,6 @@ struct LoginView: View {
     }
     .padding()
   }
-
-  #if DEBUG
-  private func debugSignIn() {
-    isSigningIn = true
-    Task {
-      do {
-        let response = try await APIClient.shared.signIn(provider: "debug", identityToken: "debug-bypass-token")
-        AuthManager.shared.storeToken(response.token)
-      } catch {
-        errorMessage = "Debug sign in failed: \(error.localizedDescription)"
-      }
-      isSigningIn = false
-    }
-  }
-  #endif
 
   private func handleGoogleSignIn() {
     isSigningIn = true
