@@ -9,7 +9,8 @@ database_name = "bitelog"
 database_id = "cf39b710-956c-4f27-ae1a-6dbf7a6a0fef"
 
 [vars]
-# 環境変数は wrangler secret put WORKER_JWT_SECRET で設定
+# 本番では wrangler secret put WORKER_JWT_SECRET で上書きすること
+WORKER_JWT_SECRET = "dev-and-test-secret"
 
 [dev]
 port = 8787
