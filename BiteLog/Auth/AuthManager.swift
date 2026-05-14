@@ -18,11 +18,16 @@ final class AuthManager: NSObject, ObservableObject {
 
   override init() {
     super.init()
-    // 起動時にKeychainからトークンを復元
+    // 起動時にKeychainからトークンを復元（期限切れなら削除）
     if let token = loadTokenFromKeychain() {
-      self.isSignedIn = true
-      self.userId = extractUserId(from: token)
-      self.isAdmin = UserDefaults.standard.bool(forKey: isAdminKey)
+      if isTokenExpired(token) {
+        deleteTokenFromKeychain()
+        UserDefaults.standard.removeObject(forKey: isAdminKey)
+      } else {
+        self.isSignedIn = true
+        self.userId = extractUserId(from: token)
+        self.isAdmin = UserDefaults.standard.bool(forKey: isAdminKey)
+      }
     }
   }
 
@@ -162,6 +167,18 @@ final class AuthManager: NSObject, ObservableObject {
   }
 
   private func extractUserId(from token: String) -> String? {
+    guard let payload = decodeJWTPayload(token) else { return nil }
+    return payload["sub"] as? String
+  }
+
+  private func isTokenExpired(_ token: String) -> Bool {
+    guard let payload = decodeJWTPayload(token),
+      let exp = payload["exp"] as? TimeInterval
+    else { return true }
+    return Date(timeIntervalSince1970: exp) <= Date()
+  }
+
+  private func decodeJWTPayload(_ token: String) -> [String: Any]? {
     let parts = token.split(separator: ".")
     guard parts.count >= 2 else { return nil }
     var base64 = String(parts[1])
@@ -169,10 +186,9 @@ final class AuthManager: NSObject, ObservableObject {
       .replacingOccurrences(of: "_", with: "/")
     while base64.count % 4 != 0 { base64 += "=" }
     guard let data = Data(base64Encoded: base64),
-      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-      let sub = json["sub"] as? String
+      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
     else { return nil }
-    return sub
+    return json
   }
 
   private static var presentingViewController: UIViewController? {
