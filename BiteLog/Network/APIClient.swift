@@ -66,6 +66,7 @@ final class APIClient {
     case 200...299:
       break
     case 401:
+      await AuthManager.shared.signOut()
       throw APIError.unauthorized
     case 404:
       throw APIError.notFound
@@ -107,7 +108,9 @@ final class APIClient {
     guard let http = response as? HTTPURLResponse else { return }
     switch http.statusCode {
     case 200...299: break
-    case 401: throw APIError.unauthorized
+    case 401:
+      await AuthManager.shared.signOut()
+      throw APIError.unauthorized
     case 404: throw APIError.notFound
     default: throw APIError.serverError(http.statusCode)
     }

@@ -177,6 +177,7 @@ struct AIAnalysisResultView: View {
   var onSave: () -> Void
   
   @State private var showingSaveConfirmation = false
+  @State private var saveError: String?
   
   // 編集可能なフィールド
   @State private var productName: String
@@ -305,6 +306,11 @@ struct AIAnalysisResultView: View {
       } message: {
         Text(String(format: NSLocalizedString("Save \"%@\" to %@?", comment: "Alert message"), productName, mealType.localizedName))
       }
+      .alert(NSLocalizedString("Save Failed", comment: "Alert title"), isPresented: Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
+        Button(NSLocalizedString("OK", comment: "Button title"), role: .cancel) {}
+      } message: {
+        Text(saveError ?? "")
+      }
     }
   }
   
@@ -382,12 +388,15 @@ struct AIAnalysisResultView: View {
           nutritionSnapshot: NutritionSnapshot.from(fm)
         )
         _ = try await APIClient.shared.createLogItem(logDTO)
+        await MainActor.run {
+          onSave()
+          dismiss()
+        }
       } catch {
         print("AIAnalysisResultView saveFoodItem error: \(error)")
-      }
-      await MainActor.run {
-        onSave()
-        dismiss()
+        await MainActor.run {
+          saveError = NSLocalizedString("Failed to save. Please try again.", comment: "Save error message")
+        }
       }
     }
   }

@@ -108,8 +108,8 @@ foodMasters.post('/', async (c) => {
   ).run();
 
   const row = await c.env.DB.prepare(
-    `SELECT * FROM food_masters WHERE unique_key = ?`
-  ).bind(body.uniqueKey).first<FoodMasterRow>();
+    `SELECT ${FM_SELECT} ${FM_JOIN} WHERE fm.unique_key = ?`
+  ).bind(userId, body.uniqueKey).first<FoodMasterRow>();
 
   return c.json(foodMasterToResponse(row!), 201);
 });
