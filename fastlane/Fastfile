@@ -11,9 +11,17 @@ platform :ios do
       in_house: false
     )
 
+    cert(api_key: api_key)
+
+    sigh(
+      app_identifier: "com.watahiki.BiteLog",
+      api_key: api_key,
+      force: true
+    )
+
     gym(
       scheme: "BiteLog",
-      export_method: "app-store",
+      export_method: "app-store-connect",
       configuration: "Release",
       clean: true
     )
