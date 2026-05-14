@@ -18,7 +18,7 @@ final class AuthManager: NSObject, ObservableObject {
 
   override init() {
     super.init()
-    // 起動時にKeychainからトークンを復元（期限切れなら削除）
+    // 起動時にKeychainからトークンを復元（期限切れなら削除、期限が近ければ自動リフレッシュ）
     if let token = loadTokenFromKeychain() {
       if isTokenExpired(token) {
         deleteTokenFromKeychain()
@@ -27,6 +27,9 @@ final class AuthManager: NSObject, ObservableObject {
         self.isSignedIn = true
         self.userId = extractUserId(from: token)
         self.isAdmin = UserDefaults.standard.bool(forKey: isAdminKey)
+        if isTokenExpiringSoon(token) {
+          Task { await refreshSession() }
+        }
       }
     }
   }
@@ -43,6 +46,17 @@ final class AuthManager: NSObject, ObservableObject {
     self.isAdmin = isAdmin
     self.isSignedIn = true
     UserDefaults.standard.set(isAdmin, forKey: isAdminKey)
+  }
+
+  @discardableResult
+  func refreshSession() async -> Bool {
+    do {
+      let response = try await APIClient.shared.refreshToken()
+      storeToken(response.token, isAdmin: response.isAdmin)
+      return true
+    } catch {
+      return false
+    }
   }
 
   func signOut() {
@@ -176,6 +190,15 @@ final class AuthManager: NSObject, ObservableObject {
       let exp = payload["exp"] as? TimeInterval
     else { return true }
     return Date(timeIntervalSince1970: exp) <= Date()
+  }
+
+  // 7日以内に期限切れになるか確認
+  private func isTokenExpiringSoon(_ token: String) -> Bool {
+    guard let payload = decodeJWTPayload(token),
+      let exp = payload["exp"] as? TimeInterval
+    else { return true }
+    let sevenDaysFromNow = Date().addingTimeInterval(7 * 24 * 60 * 60)
+    return Date(timeIntervalSince1970: exp) <= sevenDaysFromNow
   }
 
   private func decodeJWTPayload(_ token: String) -> [String: Any]? {

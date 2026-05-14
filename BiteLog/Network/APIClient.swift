@@ -32,7 +32,8 @@ final class APIClient {
   private func request<T: Decodable>(
     path: String,
     method: String = "GET",
-    body: (any Encodable)? = nil
+    body: (any Encodable)? = nil,
+    isRetry: Bool = false
   ) async throws -> T {
     guard let url = URL(string: path, relativeTo: baseURL) else {
       throw APIError.invalidURL
@@ -66,6 +67,12 @@ final class APIClient {
     case 200...299:
       break
     case 401:
+      if !isRetry && !path.contains("/api/auth/") {
+        let refreshed = await AuthManager.shared.refreshSession()
+        if refreshed {
+          return try await request(path: path, method: method, body: body, isRetry: true)
+        }
+      }
       await AuthManager.shared.signOut()
       throw APIError.unauthorized
     case 404:
@@ -81,7 +88,7 @@ final class APIClient {
     }
   }
 
-  private func requestVoid(path: String, method: String, body: (any Encodable)? = nil) async throws {
+  private func requestVoid(path: String, method: String, body: (any Encodable)? = nil, isRetry: Bool = false) async throws {
     guard let url = URL(string: path, relativeTo: baseURL) else {
       throw APIError.invalidURL
     }
@@ -109,6 +116,12 @@ final class APIClient {
     switch http.statusCode {
     case 200...299: break
     case 401:
+      if !isRetry && !path.contains("/api/auth/") {
+        let refreshed = await AuthManager.shared.refreshSession()
+        if refreshed {
+          return try await requestVoid(path: path, method: method, body: body, isRetry: true)
+        }
+      }
       await AuthManager.shared.signOut()
       throw APIError.unauthorized
     case 404: throw APIError.notFound
@@ -218,6 +231,10 @@ final class APIClient {
   func signIn(provider: String, identityToken: String) async throws -> AuthResponse {
     let body = AuthRequest(provider: provider, identityToken: identityToken)
     return try await request(path: "/api/auth/signin", method: "POST", body: body)
+  }
+
+  func refreshToken() async throws -> AuthResponse {
+    return try await request(path: "/api/auth/refresh", method: "POST")
   }
 
   // MARK: - Export
