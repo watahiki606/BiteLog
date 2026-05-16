@@ -11,7 +11,13 @@ platform :ios do
       in_house: false
     )
 
-    cert(api_key: api_key)
+    build_number = Time.now.strftime("%Y%m%d%H%M")
+    increment_build_number(build_number: build_number)
+
+    cert(
+      api_key: api_key,
+      keychain_password: ENV["KEYCHAIN_PASSWORD"]
+    )
 
     sigh(
       app_identifier: "com.watahiki.BiteLog",
@@ -21,9 +27,15 @@ platform :ios do
 
     gym(
       scheme: "BiteLog",
-      export_method: "app-store-connect",
+      export_method: "app-store",
       configuration: "Release",
-      clean: true
+      clean: true,
+      export_options: {
+        signingStyle: "automatic",
+        provisioningProfiles: {
+          "com.watahiki.BiteLog" => ENV["SIGH_NAME"]
+        }
+      }
     )
 
     upload_to_testflight(
