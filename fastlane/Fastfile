@@ -27,10 +27,18 @@ platform :ios do
     build_number = Time.now.strftime("%Y%m%d%H%M")
     increment_build_number(build_number: build_number)
 
-    cert(
-      api_key: api_key,
-      keychain_password: ENV["KEYCHAIN_PASSWORD"]
-    )
+    if ENV["CI"]
+      cert(
+        api_key: api_key,
+        keychain_path: "#{ENV['HOME']}/Library/Keychains/fastlane_tmp_keychain-db",
+        keychain_password: "match"
+      )
+    else
+      cert(
+        api_key: api_key,
+        keychain_password: ENV["KEYCHAIN_PASSWORD"]
+      )
+    end
 
     sigh(
       app_identifier: "com.watahiki.BiteLog",
