@@ -18,11 +18,19 @@ final class AuthManager: NSObject, ObservableObject {
 
   override init() {
     super.init()
-    // 起動時にKeychainからトークンを復元
+    // 起動時にKeychainからトークンを復元（期限切れなら削除、期限が近ければ自動リフレッシュ）
     if let token = loadTokenFromKeychain() {
-      self.isSignedIn = true
-      self.userId = extractUserId(from: token)
-      self.isAdmin = UserDefaults.standard.bool(forKey: isAdminKey)
+      if isTokenExpired(token) {
+        deleteTokenFromKeychain()
+        UserDefaults.standard.removeObject(forKey: isAdminKey)
+      } else {
+        self.isSignedIn = true
+        self.userId = extractUserId(from: token)
+        self.isAdmin = UserDefaults.standard.bool(forKey: isAdminKey)
+        if isTokenExpiringSoon(token) {
+          Task { await refreshSession() }
+        }
+      }
     }
   }
 
@@ -38,6 +46,17 @@ final class AuthManager: NSObject, ObservableObject {
     self.isAdmin = isAdmin
     self.isSignedIn = true
     UserDefaults.standard.set(isAdmin, forKey: isAdminKey)
+  }
+
+  @discardableResult
+  func refreshSession() async -> Bool {
+    do {
+      let response = try await APIClient.shared.refreshToken()
+      storeToken(response.token, isAdmin: response.isAdmin)
+      return true
+    } catch {
+      return false
+    }
   }
 
   func signOut() {
@@ -162,6 +181,27 @@ final class AuthManager: NSObject, ObservableObject {
   }
 
   private func extractUserId(from token: String) -> String? {
+    guard let payload = decodeJWTPayload(token) else { return nil }
+    return payload["sub"] as? String
+  }
+
+  private func isTokenExpired(_ token: String) -> Bool {
+    guard let payload = decodeJWTPayload(token),
+      let exp = payload["exp"] as? TimeInterval
+    else { return true }
+    return Date(timeIntervalSince1970: exp) <= Date()
+  }
+
+  // 7日以内に期限切れになるか確認
+  private func isTokenExpiringSoon(_ token: String) -> Bool {
+    guard let payload = decodeJWTPayload(token),
+      let exp = payload["exp"] as? TimeInterval
+    else { return true }
+    let sevenDaysFromNow = Date().addingTimeInterval(7 * 24 * 60 * 60)
+    return Date(timeIntervalSince1970: exp) <= sevenDaysFromNow
+  }
+
+  private func decodeJWTPayload(_ token: String) -> [String: Any]? {
     let parts = token.split(separator: ".")
     guard parts.count >= 2 else { return nil }
     var base64 = String(parts[1])
@@ -169,10 +209,9 @@ final class AuthManager: NSObject, ObservableObject {
       .replacingOccurrences(of: "_", with: "/")
     while base64.count % 4 != 0 { base64 += "=" }
     guard let data = Data(base64Encoded: base64),
-      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-      let sub = json["sub"] as? String
+      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
     else { return nil }
-    return sub
+    return json
   }
 
   private static var presentingViewController: UIViewController? {

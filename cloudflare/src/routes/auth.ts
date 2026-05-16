@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
-import { issueSessionJwt, verifyAppleToken, verifyGoogleToken } from '../middleware/auth';
-import type { Bindings } from '../types';
+import { authMiddleware, issueSessionJwt, verifyAppleToken, verifyGoogleToken } from '../middleware/auth';
+import type { Bindings, Variables } from '../types';
 
-const auth = new Hono<{ Bindings: Bindings }>();
+const auth = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 // POST /api/auth/signin
 // Body: { provider: "apple" | "google", identityToken: string }
@@ -35,6 +35,15 @@ auth.post('/signin', async (c) => {
 
   const sessionJwt = await issueSessionJwt(userId, c.env.WORKER_JWT_SECRET);
   const isAdmin = !!c.env.ADMIN_USER_ID && userId === c.env.ADMIN_USER_ID;
+  return c.json({ token: sessionJwt, userId, isAdmin });
+});
+
+// POST /api/auth/refresh
+// 現在有効なJWTで新しいJWT（30日）を発行する
+auth.post('/refresh', authMiddleware, async (c) => {
+  const userId = c.get('userId');
+  const isAdmin = c.get('isAdmin');
+  const sessionJwt = await issueSessionJwt(userId, c.env.WORKER_JWT_SECRET);
   return c.json({ token: sessionJwt, userId, isAdmin });
 });
 
