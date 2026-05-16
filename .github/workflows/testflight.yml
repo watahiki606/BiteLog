@@ -39,4 +39,7 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
-        run: bundle exec fastlane beta
+        run: |
+          echo "$ASC_KEY_CONTENT" | base64 --decode > /tmp/auth_key.p8
+          bundle exec fastlane beta
+          rm -f /tmp/auth_key.p8

@@ -40,18 +40,30 @@ platform :ios do
       force: true
     )
 
-    gym(
+    gym_params = {
       scheme: "BiteLog",
       export_method: "app-store",
       configuration: "Release",
-      clean: true,
-      export_options: {
+      clean: true
+    }
+
+    if ENV["CI"]
+      gym_params[:xcargs] = [
+        "-allowProvisioningUpdates",
+        "-authenticationKeyPath /tmp/auth_key.p8",
+        "-authenticationKeyID #{ENV['ASC_KEY_ID']}",
+        "-authenticationKeyIssuerID #{ENV['ASC_ISSUER_ID']}"
+      ].join(" ")
+    else
+      gym_params[:export_options] = {
         signingStyle: "automatic",
         provisioningProfiles: {
           "com.watahiki.BiteLog" => ENV["SIGH_NAME"]
         }
       }
-    )
+    end
+
+    gym(gym_params)
 
     upload_to_testflight(
       api_key: api_key,
