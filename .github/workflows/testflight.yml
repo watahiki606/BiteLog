@@ -20,6 +20,20 @@ jobs:
           bundler: 'latest'
           bundler-cache: true
 
+      - name: Import Distribution Certificate
+        env:
+          DIST_CERT_BASE64: ${{ secrets.DIST_CERT_BASE64 }}
+          DIST_CERT_PASSWORD: ${{ secrets.DIST_CERT_PASSWORD }}
+        run: |
+          security create-keychain -p "match" fastlane_tmp_keychain
+          security set-keychain-settings -lut 21600 fastlane_tmp_keychain
+          security unlock-keychain -p "match" fastlane_tmp_keychain
+          security list-keychain -d user -s fastlane_tmp_keychain
+          echo "$DIST_CERT_BASE64" | base64 --decode > /tmp/dist.p12
+          security import /tmp/dist.p12 -P "$DIST_CERT_PASSWORD" -A -t cert -f pkcs12 -k fastlane_tmp_keychain
+          security set-key-partition-list -S apple-tool:,apple: -k "match" fastlane_tmp_keychain
+          rm /tmp/dist.p12
+
       - name: Deploy to TestFlight
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
