@@ -9,6 +9,7 @@ struct ContentView: View {
   @State private var showingDatePicker = false
   @State private var selectedTab = 0
   @State private var logRefreshTrigger = 0
+  @State private var dragOffset: CGFloat = 0
 
   var body: some View {
     VStack(spacing: 0) {
@@ -89,6 +90,13 @@ struct ContentView: View {
           SettingsView()
         }
       }
+      .offset(x: dragOffset)
+      .gesture(DateSwipeGesture(
+        dragOffset: $dragOffset,
+        onDateChange: { goForward in
+          selectedDate = selectedDate.addingTimeInterval(goForward ? 86400 : -86400)
+        }
+      ))
       .opacity(selectedTab == 0 ? 1 : 0)
       .zIndex(selectedTab == 0 ? 1 : 0)
 
@@ -99,6 +107,7 @@ struct ContentView: View {
       .opacity(selectedTab == 1 ? 1 : 0)
       .zIndex(selectedTab == 1 ? 1 : 0)
       }
+      .clipped()
 
       // カスタムタブバー
       HStack {
@@ -355,5 +364,104 @@ struct DatePickerSheet: View {
       }
     }
     .presentationDetents([.medium])
+  }
+}
+
+// MARK: - Date Swipe Gesture
+
+class HorizontalPanGestureRecognizer: UIPanGestureRecognizer {
+  private var isDirectionDetermined = false
+
+  override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
+    super.touchesBegan(touches, with: event)
+    guard let touch = touches.first, let rootView = self.view else { return }
+    let location = touch.location(in: rootView)
+    if isLocationInTableView(location, in: rootView) {
+      state = .failed
+    }
+  }
+
+  override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent) {
+    super.touchesMoved(touches, with: event)
+    guard !isDirectionDetermined else { return }
+    let t = translation(in: view)
+    if abs(t.x) > 8 || abs(t.y) > 8 {
+      isDirectionDetermined = true
+      if abs(t.y) >= abs(t.x) { state = .failed }
+    }
+  }
+
+  override func reset() {
+    super.reset()
+    isDirectionDetermined = false
+  }
+
+  private func isLocationInTableView(_ location: CGPoint, in rootView: UIView) -> Bool {
+    var hitView: UIView? = rootView.hitTest(location, with: nil)
+    while let v = hitView {
+      if v is UICollectionView { return true }
+      hitView = v.superview
+    }
+    return false
+  }
+}
+
+struct DateSwipeGesture: UIGestureRecognizerRepresentable {
+  @Binding var dragOffset: CGFloat
+  var onDateChange: (Bool) -> Void
+
+  func makeUIGestureRecognizer(context: Context) -> HorizontalPanGestureRecognizer {
+    let recognizer = HorizontalPanGestureRecognizer()
+    recognizer.delegate = context.coordinator
+    return recognizer
+  }
+
+  func handleUIGestureRecognizerAction(_ recognizer: HorizontalPanGestureRecognizer, context: Context) {
+    let translation = recognizer.translation(in: recognizer.view)
+    let velocity = recognizer.velocity(in: recognizer.view)
+
+    switch recognizer.state {
+    case .changed:
+      dragOffset = translation.x
+    case .ended:
+      let h = translation.x
+      let screenWidth = UIScreen.main.bounds.width
+      if abs(h) > 50 || abs(velocity.x) > 500 {
+        let goForward = h < 0
+        let exitOffset: CGFloat = goForward ? -screenWidth : screenWidth
+        withAnimation(.easeInOut(duration: 0.2)) { dragOffset = exitOffset }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+          onDateChange(goForward)
+          dragOffset = -exitOffset
+          withAnimation(.easeInOut(duration: 0.2)) { dragOffset = 0 }
+        }
+      } else {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { dragOffset = 0 }
+      }
+    case .cancelled, .failed:
+      withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { dragOffset = 0 }
+    default:
+      break
+    }
+  }
+
+  func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+
+  class Coordinator: NSObject, UIGestureRecognizerDelegate {
+    func gestureRecognizer(
+      _ gestureRecognizer: UIGestureRecognizer,
+      shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer
+    ) -> Bool {
+      !isFromTableView(other)
+    }
+
+    private func isFromTableView(_ recognizer: UIGestureRecognizer) -> Bool {
+      var view: UIView? = recognizer.view
+      while let v = view {
+        if v is UICollectionView { return true }
+        view = v.superview
+      }
+      return false
+    }
   }
 }
