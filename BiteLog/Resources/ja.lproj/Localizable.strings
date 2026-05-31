@@ -53,6 +53,8 @@
 "CSV File Format:" = "CSVファイルのフォーマット:";
 "Select CSV File" = "CSVファイルを選択";
 "Close" = "閉じる";
+"Food Detail" = "食品詳細";
+"My Items" = "自分のみ";
 "Import Error" = "インポートエラー";
 "Import CSV" = "CSVインポート";
 "Export CSV" = "CSVエクスポート";

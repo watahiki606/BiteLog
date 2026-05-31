@@ -16,41 +16,47 @@ const FM_SELECT = `
 const FM_JOIN = `FROM food_masters fm
   LEFT JOIN user_food_stats ufs ON ufs.food_master_id = fm.id AND ufs.user_id = ?`;
 
-// GET /api/food-masters?q=&limit=20&offset=0
+// GET /api/food-masters?q=&limit=20&offset=0&onlyMine=true
 foodMasters.get('/', async (c) => {
   const userId = c.get('userId');
   const q = c.req.query('q') ?? '';
   const limit = Math.min(parseInt(c.req.query('limit') ?? '20'), 500);
   const offset = parseInt(c.req.query('offset') ?? '0');
+  const onlyMine = c.req.query('onlyMine') === 'true';
 
   let rows: FoodMasterRow[];
   let total: number;
 
   if (q) {
     const pattern = `%${q}%`;
+    const mineClause = onlyMine ? 'AND fm.created_by = ?' : '';
+    const mineBinds = onlyMine ? [userId] : [];
     const [dataResult, countResult] = await Promise.all([
       c.env.DB.prepare(
         `SELECT ${FM_SELECT} ${FM_JOIN}
-         WHERE (fm.brand_name LIKE ? OR fm.product_name LIKE ?)
+         WHERE (fm.brand_name LIKE ? OR fm.product_name LIKE ?) ${mineClause}
          ORDER BY usage_count DESC, ufs.last_used_date DESC
          LIMIT ? OFFSET ?`
-      ).bind(userId, pattern, pattern, limit, offset).all<FoodMasterRow>(),
+      ).bind(userId, pattern, pattern, ...mineBinds, limit, offset).all<FoodMasterRow>(),
       c.env.DB.prepare(
         `SELECT COUNT(*) as count FROM food_masters
-         WHERE brand_name LIKE ? OR product_name LIKE ?`
-      ).bind(pattern, pattern).first<{ count: number }>(),
+         WHERE (brand_name LIKE ? OR product_name LIKE ?) ${mineClause}`
+      ).bind(pattern, pattern, ...mineBinds).first<{ count: number }>(),
     ]);
     rows = dataResult.results;
     total = countResult?.count ?? 0;
   } else {
+    const mineClause = onlyMine ? 'WHERE fm.created_by = ?' : '';
+    const mineBinds = onlyMine ? [userId] : [];
+    const countClause = onlyMine ? 'WHERE created_by = ?' : '';
     const [dataResult, countResult] = await Promise.all([
       c.env.DB.prepare(
-        `SELECT ${FM_SELECT} ${FM_JOIN}
+        `SELECT ${FM_SELECT} ${FM_JOIN} ${mineClause}
          ORDER BY usage_count DESC, ufs.last_used_date DESC
          LIMIT ? OFFSET ?`
-      ).bind(userId, limit, offset).all<FoodMasterRow>(),
-      c.env.DB.prepare(`SELECT COUNT(*) as count FROM food_masters`)
-        .first<{ count: number }>(),
+      ).bind(userId, ...mineBinds, limit, offset).all<FoodMasterRow>(),
+      c.env.DB.prepare(`SELECT COUNT(*) as count FROM food_masters ${countClause}`)
+        .bind(...mineBinds).first<{ count: number }>(),
     ]);
     rows = dataResult.results;
     total = countResult?.count ?? 0;
@@ -60,6 +66,7 @@ foodMasters.get('/', async (c) => {
   return c.json({
     items: rows.map(r => ({
       ...foodMasterToResponse(r),
+      isMine: r.created_by === userId,
       ...(isAdmin ? { createdBy: r.created_by } : {}),
     })),
     total,
