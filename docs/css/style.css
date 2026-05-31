@@ -365,26 +365,403 @@ body {
     .container {
         padding: 0 15px;
     }
-    
+
     .hero {
         padding: 3rem 0;
     }
-    
+
     .hero-title {
         font-size: 1.8rem;
     }
-    
+
     .btn {
         padding: 0.7rem 1.5rem;
     }
-    
+
     .features,
     .download,
     .contact {
         padding: 3rem 0;
     }
-    
+
     .policy-content {
         padding: 1.5rem 1rem;
     }
+}
+
+/* ============================================
+   App Store Button (shared)
+   ============================================ */
+.app-store-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.85rem;
+    background: #000;
+    color: #fff;
+    padding: 0.9rem 1.75rem;
+    border-radius: 14px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border: 1.5px solid #333;
+}
+.app-store-btn:hover {
+    background: #1a1a1a;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+.app-store-btn__logo {
+    font-size: 2rem;
+    line-height: 1;
+}
+.app-store-btn__text {
+    text-align: left;
+}
+.app-store-btn__sub {
+    display: block;
+    font-size: 0.62rem;
+    opacity: 0.75;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.app-store-btn__main {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+/* ============================================
+   Support Page — Hero
+   ============================================ */
+.support-hero {
+    background: linear-gradient(150deg, #1a3d21 0%, #2c5530 55%, #3d6e47 100%);
+    color: #fff;
+    padding: 5.5rem 0 4.5rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+.support-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 25% 55%, rgba(74, 124, 89, 0.35) 0%, transparent 55%),
+        radial-gradient(circle at 75% 20%, rgba(109, 181, 128, 0.2) 0%, transparent 50%);
+    pointer-events: none;
+}
+.support-hero__inner {
+    position: relative;
+    z-index: 1;
+}
+.support-hero__badge {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.35rem 1rem;
+    border-radius: 100px;
+    margin-bottom: 1.5rem;
+}
+.support-hero__title {
+    font-size: 3.5rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+}
+.support-hero__sub {
+    font-size: 1.1rem;
+    opacity: 0.72;
+    margin-bottom: 2.75rem;
+}
+.support-nav {
+    display: flex;
+    gap: 0.65rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.support-nav__link {
+    display: inline-block;
+    padding: 0.45rem 1.2rem;
+    border-radius: 100px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+.support-nav__link:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.5);
+    color: #fff;
+}
+
+/* ============================================
+   Support Page — Sections
+   ============================================ */
+.support-section {
+    padding: 5rem 0;
+}
+.support-section--alt {
+    background: #f0f7f1;
+}
+.support-section__header {
+    margin-bottom: 2.75rem;
+}
+.support-section__title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1a3d21;
+    letter-spacing: -0.025em;
+    margin-bottom: 0.4rem;
+}
+.support-section__sub {
+    color: #6b7280;
+    font-size: 0.95rem;
+}
+
+/* ============================================
+   Support Page — Feature Cards
+   ============================================ */
+.support-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1.25rem;
+}
+.support-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 1.75rem;
+    box-shadow: 0 1px 4px rgba(44, 85, 48, 0.06), 0 4px 16px rgba(44, 85, 48, 0.06);
+    border: 1px solid rgba(44, 85, 48, 0.09);
+    transition: all 0.25s ease;
+}
+.support-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 2px 8px rgba(44, 85, 48, 0.1), 0 12px 32px rgba(44, 85, 48, 0.14);
+    border-color: rgba(44, 85, 48, 0.2);
+}
+.support-card__icon {
+    font-size: 2.2rem;
+    display: block;
+    margin-bottom: 1rem;
+}
+.support-card h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1a3d21;
+    margin-bottom: 0.5rem;
+}
+.support-card p,
+.support-card ul {
+    color: #555;
+    font-size: 0.875rem;
+    line-height: 1.75;
+}
+.support-card ul {
+    list-style: none;
+    padding: 0;
+}
+.support-card ul li {
+    padding-left: 1rem;
+    position: relative;
+    margin-bottom: 0.25rem;
+}
+.support-card ul li::before {
+    content: '›';
+    position: absolute;
+    left: 0;
+    color: #4a7c59;
+    font-weight: 700;
+}
+
+/* ============================================
+   Support Page — CSV Block
+   ============================================ */
+.csv-block {
+    background: #fff;
+    border-radius: 16px;
+    padding: 2rem 2.25rem;
+    box-shadow: 0 1px 4px rgba(44, 85, 48, 0.06), 0 4px 16px rgba(44, 85, 48, 0.06);
+    border: 1px solid rgba(44, 85, 48, 0.09);
+    margin-top: 2.5rem;
+}
+.csv-block pre {
+    background: #1a3d21;
+    color: #a8d5b5;
+    padding: 1.25rem 1.5rem;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    overflow-x: auto;
+    margin-bottom: 1.75rem;
+    font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+    line-height: 1.65;
+}
+.csv-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+.csv-table th {
+    background: #f0f7f1;
+    color: #1a3d21;
+    padding: 0.65rem 1rem;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #c8e6d0;
+}
+.csv-table td {
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid #eef0ee;
+    color: #444;
+    vertical-align: top;
+}
+.csv-table tr:last-child td {
+    border-bottom: none;
+}
+.csv-table td code {
+    background: #f0f7f1;
+    color: #2c5530;
+    padding: 0.15rem 0.45rem;
+    border-radius: 5px;
+    font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+    font-size: 0.78rem;
+}
+
+/* ============================================
+   Support Page — FAQ Accordion
+   ============================================ */
+.faq-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    margin-top: 2.5rem;
+}
+.faq-item {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid rgba(44, 85, 48, 0.1);
+    overflow: hidden;
+    transition: box-shadow 0.2s ease;
+}
+.faq-item[open] {
+    box-shadow: 0 4px 20px rgba(44, 85, 48, 0.1);
+    border-color: rgba(44, 85, 48, 0.2);
+}
+.faq-item summary {
+    padding: 1.2rem 1.5rem;
+    cursor: pointer;
+    font-weight: 600;
+    color: #1a3d21;
+    font-size: 0.95rem;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    transition: background 0.15s ease;
+    gap: 1rem;
+}
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::after {
+    content: '›';
+    font-size: 1.4rem;
+    color: #4a7c59;
+    font-weight: 400;
+    flex-shrink: 0;
+    transform: rotate(90deg);
+    transition: transform 0.25s ease;
+    line-height: 1;
+}
+.faq-item[open] > summary {
+    background: #f0f7f1;
+    border-bottom: 1px solid rgba(44, 85, 48, 0.1);
+}
+.faq-item[open] > summary::after {
+    transform: rotate(270deg);
+}
+.faq-item__body {
+    padding: 1.25rem 1.5rem;
+    color: #4b5563;
+    font-size: 0.9rem;
+    line-height: 1.8;
+}
+.faq-item__body code {
+    background: #f0f7f1;
+    color: #2c5530;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.82rem;
+}
+
+/* ============================================
+   Support Page — CTA
+   ============================================ */
+.support-cta {
+    background: linear-gradient(135deg, #2c5530 0%, #4a7c59 100%);
+    padding: 5rem 0;
+    text-align: center;
+    color: #fff;
+}
+.support-cta h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.025em;
+}
+.support-cta p {
+    opacity: 0.75;
+    margin-bottom: 2.5rem;
+    font-size: 1rem;
+}
+.support-cta-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.link-ghost {
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    font-size: 0.9rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+    padding-bottom: 2px;
+    transition: all 0.2s;
+}
+.link-ghost:hover {
+    color: #fff;
+    border-color: #fff;
+}
+
+/* ============================================
+   Responsive — Support Page
+   ============================================ */
+@media (max-width: 768px) {
+    .support-hero { padding: 4rem 0 3.5rem; }
+    .support-hero__title { font-size: 2.25rem; }
+    .support-section { padding: 3.5rem 0; }
+    .support-grid { grid-template-columns: 1fr; gap: 1rem; }
+    .csv-block { padding: 1.5rem; }
+    .csv-block pre { font-size: 0.72rem; }
+    .csv-table { font-size: 0.8rem; }
+    .support-cta { padding: 3.5rem 0; }
+    .support-cta h2 { font-size: 1.5rem; }
+}
+@media (max-width: 480px) {
+    .support-hero__title { font-size: 1.9rem; }
+    .faq-item summary { font-size: 0.875rem; }
+    .app-store-btn { padding: 0.8rem 1.4rem; }
+    .app-store-btn__main { font-size: 1rem; }
 }
