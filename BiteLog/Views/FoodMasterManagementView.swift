@@ -6,8 +6,10 @@ struct FoodMasterManagementView: View {
   @State private var isInitialLoading = true
 
   @State private var searchText = ""
+  @State private var filterMyItems = false
   @State private var showingAddForm = false
   @State private var selectedFoodMaster: FoodMasterDTO?
+  @State private var viewingFoodMaster: FoodMasterDTO?
 
   @State private var currentPage = 0
   private let pageSize = 20
@@ -64,6 +66,28 @@ struct FoodMasterManagementView: View {
       .padding(.top, 8)
       .animation(.easeInOut(duration: 0.2), value: searchFieldIsFocused)
 
+      HStack {
+        Button {
+          filterMyItems.toggle()
+          Task { await resetAndSearch() }
+        } label: {
+          Label(
+            NSLocalizedString("My Items", comment: "My food items filter"),
+            systemImage: "person.fill"
+          )
+          .font(.subheadline.weight(.medium))
+          .padding(.horizontal, 12)
+          .padding(.vertical, 6)
+          .background(filterMyItems ? Color.blue : Color(UIColor.tertiarySystemFill))
+          .foregroundColor(filterMyItems ? .white : .primary)
+          .clipShape(Capsule())
+        }
+        Spacer()
+      }
+      .padding(.horizontal)
+      .padding(.bottom, 4)
+      .animation(.easeInOut(duration: 0.15), value: filterMyItems)
+
       if isInitialLoading {
         ProgressView()
           .padding()
@@ -75,9 +99,11 @@ struct FoodMasterManagementView: View {
             FoodMasterRow(foodMaster: foodMaster)
               .contentShape(Rectangle())
               .onTapGesture {
+                searchFieldIsFocused = false
                 if canEdit(foodMaster) {
                   selectedFoodMaster = foodMaster
-                  searchFieldIsFocused = false
+                } else {
+                  viewingFoodMaster = foodMaster
                 }
               }
               .onAppear {
@@ -141,6 +167,9 @@ struct FoodMasterManagementView: View {
     ) { foodMaster in
       FoodMasterFormView(mode: .edit(foodMaster))
     }
+    .sheet(item: $viewingFoodMaster, onDismiss: { viewingFoodMaster = nil }) { foodMaster in
+      FoodMasterDetailView(foodMaster: foodMaster)
+    }
     .onAppear {
       if !isDataLoaded { Task { await loadFoodMasters() } }
     }
@@ -164,7 +193,8 @@ struct FoodMasterManagementView: View {
       let resp = try await APIClient.shared.fetchFoodMasters(
         query: searchText,
         limit: pageSize,
-        offset: currentPage * pageSize
+        offset: currentPage * pageSize,
+        onlyMine: filterMyItems
       )
       await MainActor.run {
         if currentPage == 0 {
@@ -192,7 +222,7 @@ struct FoodMasterManagementView: View {
   }
 
   private func canEdit(_ foodMaster: FoodMasterDTO) -> Bool {
-    AuthManager.shared.isAdmin || foodMaster.createdBy == AuthManager.shared.userId
+    AuthManager.shared.isAdmin || foodMaster.isMine == true
   }
 
   private func deleteFoodMaster(_ foodMaster: FoodMasterDTO) {
@@ -202,6 +232,75 @@ struct FoodMasterManagementView: View {
         try await APIClient.shared.deleteFoodMaster(id: foodMaster.id)
       } catch {
         print("deleteFoodMaster error: \(error)")
+      }
+    }
+  }
+}
+
+// フードマスター詳細表示（読み取り専用）
+struct FoodMasterDetailView: View {
+  let foodMaster: FoodMasterDTO
+  @Environment(\.dismiss) var dismiss
+
+  var body: some View {
+    NavigationStack {
+      Form {
+        Section(header: Text(NSLocalizedString("Basic Info", comment: "Basic info"))) {
+          LabeledContent(
+            NSLocalizedString("Brand Name", comment: "Brand name"),
+            value: foodMaster.brandName
+          )
+          LabeledContent(
+            NSLocalizedString("Product Name", comment: "Product name"),
+            value: foodMaster.productName
+          )
+          LabeledContent(
+            NSLocalizedString("Portion Size", comment: "Portion size"),
+            value: "\(NutritionFormatter.formatNutrition(foodMaster.portionSize)) \(foodMaster.portionUnit)"
+          )
+        }
+
+        Section(
+          header: Text(
+            String(
+              format: NSLocalizedString(
+                "Nutrition (per %@ %@)", comment: "Nutrition with portion size and unit"),
+              NutritionFormatter.formatNutrition(foodMaster.portionSize),
+              foodMaster.portionUnit
+            ))
+        ) {
+          LabeledContent(
+            NSLocalizedString("Calories", comment: "Calories"),
+            value: "\(NutritionFormatter.formatNutrition(foodMaster.calories)) kcal"
+          )
+          LabeledContent(
+            NSLocalizedString("Protein", comment: "Protein"),
+            value: "\(NutritionFormatter.formatNutrition(foodMaster.protein)) g"
+          )
+          LabeledContent(
+            NSLocalizedString("Fat", comment: "Fat"),
+            value: "\(NutritionFormatter.formatNutrition(foodMaster.fat)) g"
+          )
+          LabeledContent(
+            NSLocalizedString("Sugar", comment: "Sugar"),
+            value: "\(NutritionFormatter.formatNutrition(foodMaster.netCarbs)) g"
+          )
+          LabeledContent(
+            NSLocalizedString("Dietary Fiber", comment: "Dietary Fiber"),
+            value: "\(NutritionFormatter.formatNutrition(foodMaster.dietaryFiber)) g"
+          )
+          LabeledContent(
+            NSLocalizedString("Carbohydrates (Sugar + Fiber)", comment: "Carbohydrates"),
+            value: "\(NutritionFormatter.formatNutrition(foodMaster.netCarbs + foodMaster.dietaryFiber)) g"
+          )
+        }
+        .headerProminence(.increased)
+      }
+      .navigationTitle(NSLocalizedString("Food Detail", comment: "Food detail"))
+      .toolbar {
+        ToolbarItem(placement: .confirmationAction) {
+          Button(NSLocalizedString("Close", comment: "Close")) { dismiss() }
+        }
       }
     }
   }
@@ -258,6 +357,12 @@ struct FoodMasterRow: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
       HStack(alignment: .firstTextBaseline) {
+        if foodMaster.isMine == true {
+          Image(systemName: "person.fill")
+            .font(.system(size: 10, weight: .medium))
+            .foregroundColor(.blue)
+            .padding(.top, 2)
+        }
         Text("\(foodMaster.brandName) \(foodMaster.productName)")
           .font(.subheadline.weight(.medium))
           .lineLimit(1)

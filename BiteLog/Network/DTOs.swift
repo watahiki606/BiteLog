@@ -15,6 +15,7 @@ struct FoodMasterDTO: Codable, Identifiable, Hashable {
   var portionUnit: String
   var uniqueKey: String
   var createdBy: String?
+  var isMine: Bool?
   var usageCount: Int
   var lastUsedDate: Date?
   var lastNumberOfServings: Double

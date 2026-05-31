@@ -131,9 +131,10 @@ final class APIClient {
 
   // MARK: - FoodMaster
 
-  func fetchFoodMasters(query: String = "", limit: Int = 30, offset: Int = 0) async throws -> FoodMasterListResponse {
+  func fetchFoodMasters(query: String = "", limit: Int = 30, offset: Int = 0, onlyMine: Bool = false) async throws -> FoodMasterListResponse {
     let q = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-    return try await request(path: "/api/food-masters?q=\(q)&limit=\(limit)&offset=\(offset)")
+    let mine = onlyMine ? "&onlyMine=true" : ""
+    return try await request(path: "/api/food-masters?q=\(q)&limit=\(limit)&offset=\(offset)\(mine)")
   }
 
   func createFoodMaster(_ dto: FoodMasterCreateDTO) async throws -> FoodMasterDTO {
