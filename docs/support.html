@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>サポート - BiteLog</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1 class="logo"><a href="index.html">🍽️ BiteLog</a></h1>
+            <nav class="nav">
+                <a href="index.html">ホーム</a>
+                <a href="index.html#features">機能</a>
+                <a href="index.html#contact">お問い合わせ</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="policy-content">
+                <h1>サポート</h1>
+
+                <section>
+                    <h2>アプリ概要</h2>
+                    <p>
+                        BiteLog は、シンプルな食事記録アプリです。
+                        食事記録を通じて食習慣を可視化し、健康的な食生活への気づきを促します。
+                    </p>
+                </section>
+
+                <section>
+                    <h2>主な機能</h2>
+
+                    <h3>アカウント・サインイン</h3>
+                    <ul>
+                        <li>Apple Sign-In または Google Sign-In でアカウントを作成・ログインします</li>
+                        <li>サインインするとデータがクラウドに保存され、複数デバイスからアクセスできます</li>
+                        <li>サインアウトは設定画面から行えます</li>
+                    </ul>
+
+                    <h3>食事記録</h3>
+                    <ul>
+                        <li><strong>簡単な入力フォーム：</strong>ブランド名、商品名、量、単位、栄養成分を手動で入力します</li>
+                        <li><strong>過去の食事からの検索：</strong>過去に登録した食事データを検索し、再利用できます</li>
+                        <li><strong>食事タイプの分類：</strong>朝食・昼食・夕食・間食の4つに分類して記録できます</li>
+                        <li><strong>日付ごとの表示：</strong>日付を選択してその日の食事記録を一覧で確認できます。スワイプで前後の日に移動できます</li>
+                        <li><strong>栄養素の自動計算：</strong>カロリー・タンパク質・脂質・炭水化物の合計値を日別・食事タイプ別に表示します</li>
+                    </ul>
+
+                    <h3>AI 食品画像分析</h3>
+                    <ul>
+                        <li>食事の写真を撮影またはフォトライブラリから選択すると、AI が栄養素を自動推定します</li>
+                        <li>カメラおよびフォトライブラリへのアクセス許可が必要です</li>
+                        <li>分析結果はあくまで参考値です。必要に応じて手動で修正してください</li>
+                    </ul>
+
+                    <h3>食品マスター管理</h3>
+                    <ul>
+                        <li>よく食べる食品を食品マスターとして登録・管理できます</li>
+                        <li>登録した食品は食事記録時に検索して再利用できます</li>
+                        <li>自分が登録した食品のみを表示するフィルタリング機能があります</li>
+                    </ul>
+
+                    <h3>CSV インポート・エクスポート</h3>
+                    <p>設定画面から CSV 形式でデータのインポート・エクスポートができます。</p>
+                    <p><strong>対応 CSV フォーマット：</strong></p>
+                    <pre style="background:#f5f5f5;padding:1rem;border-radius:6px;overflow-x:auto;font-size:0.85rem;">date,meal_type,brand_name,product_name,calories,carbs,dietary_fiber,fat,protein,portion_amount,portion_unit
+2024-03-20,Breakfast,ブランドA,商品B,200,30,5,10,8,1.0,個</pre>
+                    <ul>
+                        <li><strong>date：</strong>日付（YYYY-MM-DD 形式）</li>
+                        <li><strong>meal_type：</strong>食事タイプ（Breakfast / Lunch / Dinner / Snack）</li>
+                        <li><strong>brand_name：</strong>ブランド名</li>
+                        <li><strong>product_name：</strong>商品名</li>
+                        <li><strong>calories：</strong>カロリー</li>
+                        <li><strong>carbs：</strong>炭水化物（総量）</li>
+                        <li><strong>dietary_fiber：</strong>食物繊維</li>
+                        <li><strong>fat：</strong>脂質</li>
+                        <li><strong>protein：</strong>タンパク質</li>
+                        <li><strong>portion_amount：</strong>摂取量（数値）</li>
+                        <li><strong>portion_unit：</strong>単位（個、g、ml など）</li>
+                    </ul>
+
+                    <h3>言語設定</h3>
+                    <ul>
+                        <li>日本語と英語に対応しています</li>
+                        <li>デフォルトではシステム設定に従った言語で表示されます</li>
+                        <li>設定画面からアプリの表示言語を切り替えられます（変更後は再起動が必要です）</li>
+                    </ul>
+
+                    <h3>データ管理</h3>
+                    <ul>
+                        <li><strong>データ削除：</strong>設定画面の「データ管理」からすべての記録データを削除できます（取り消しできません）</li>
+                        <li><strong>CSV エクスポート：</strong>全食事記録を CSV 形式でダウンロードできます</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2>栄養素の計算方法</h2>
+                    <p>
+                        本アプリでは、<strong>正味炭水化物（Net Carbs）</strong>を管理の基準として使用しています。
+                        正味炭水化物は「炭水化物 − 食物繊維」として計算されます。
+                        CSV インポート時に炭水化物（carbs）と食物繊維（dietary_fiber）の両方を指定すると、
+                        正味炭水化物は自動的に計算されます。
+                    </p>
+                </section>
+
+                <section>
+                    <h2>よくある質問（FAQ）</h2>
+
+                    <h3>Q: CSV インポートがうまくいきません</h3>
+                    <p>
+                        CSV ファイルのフォーマットをご確認ください。
+                        ヘッダー行が含まれているか、各項目の区切りがカンマ「,」であるか、
+                        日付が YYYY-MM-DD 形式であるか、meal_type が英語（Breakfast / Lunch / Dinner / Snack）
+                        になっているかをご確認ください。
+                    </p>
+
+                    <h3>Q: 過去の食事を検索しても何も表示されません</h3>
+                    <p>
+                        ブランド名または商品名のキーワードで検索できます。
+                        過去に一度も食事を登録していない場合は検索結果は表示されません。
+                    </p>
+
+                    <h3>Q: 単位を自由に設定できますか？</h3>
+                    <p>
+                        はい、食品を登録する際に「g」「個」などの一般的な単位のほか、
+                        「パック」「切れ」「カップ」など任意の単位を入力できます。
+                    </p>
+
+                    <h3>Q: AI 画像分析の精度はどのくらいですか？</h3>
+                    <p>
+                        AI の分析結果はあくまで参考値です。食品の種類・量・撮影条件によって
+                        精度が異なります。分析結果は必要に応じて手動で修正してください。
+                    </p>
+
+                    <h3>Q: データはデバイスを変えても引き継げますか？</h3>
+                    <p>
+                        はい。同じ Apple または Google アカウントでサインインすると、
+                        クラウドに保存されたデータを引き継げます。
+                    </p>
+                </section>
+
+                <section>
+                    <h2>お問い合わせ</h2>
+                    <p>
+                        ご不明な点・不具合の報告は
+                        <a href="https://github.com/watahiki606/BiteLog/issues" target="_blank">
+                            GitHub の Issues ページ
+                        </a>
+                        からお願いします。
+                    </p>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>BiteLog</h3>
+                    <p>健康的な食生活をサポートする食事記録アプリ</p>
+                </div>
+                <div class="footer-section">
+                    <h4>リンク</h4>
+                    <ul>
+                        <li><a href="index.html">ホーム</a></li>
+                        <li><a href="privacy.html">プライバシーポリシー</a></li>
+                        <li><a href="terms.html">利用規約</a></li>
+                        <li><a href="support.html">サポート</a></li>
+                        <li><a href="https://github.com/watahiki606/BiteLog" target="_blank">GitHub</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 BiteLog. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
