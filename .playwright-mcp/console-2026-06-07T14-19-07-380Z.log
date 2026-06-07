@@ -1,2 +1,0 @@
-[     383ms] [ERROR] Loading the stylesheet 'https://bitelog-admin.pages.dev/assets/index-IAtWPM-U.css' violates the following Content Security Policy directive: "style-src 'unsafe-inline'". Note that 'style-src-elem' was not explicitly set, so 'style-src' is used as a fallback. The action has been blocked. @ https://bitelog-admin.pages.dev/:8
-[     855ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "new-password"): (More info: https://goo.gl/9p2vKq) %o @ https://bitelog-admin.pages.dev/:0

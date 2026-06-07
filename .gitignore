@@ -97,6 +97,11 @@ BiteLog/Config/APIKeys.swift
 # Node / Cloudflare local artifacts
 node_modules/
 cloudflare/node_modules/
+frontend/node_modules/
 .wrangler/
 cloudflare/.dev.vars
 cloudflare/.env*
+
+# Debug / test artifacts
+.playwright-mcp/
+screenshot-*.png
