@@ -1,0 +1,10 @@
+- generic [ref=e5]:
+  - generic [ref=e6]:
+    - generic [ref=e7]: BITELOG
+    - generic [ref=e8]: Admin Access Terminal
+  - generic [ref=e9]:
+    - generic [ref=e10]:
+      - text: Access Key
+      - textbox "••••••••" [active] [ref=e11]
+    - button "▼ ADVANCED" [ref=e12]
+    - button "AUTHENTICATE" [disabled] [ref=e13]

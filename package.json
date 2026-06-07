@@ -1,0 +1,14 @@
+{
+  "name": "bitelog",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "cloudflare"
+  ],
+  "dependencies": {
+    "hono": "^4.12.23"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260607.1"
+  }
+}
