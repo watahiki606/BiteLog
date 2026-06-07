@@ -17,6 +17,7 @@ app.use('*', cors({
     const allowed = [
       'https://bitelog-admin.pages.dev',
       'http://localhost:3000',
+      'http://localhost:5173',
       'http://localhost:8788',
     ];
     return allowed.includes(origin ?? '') ? origin : '';
@@ -38,3 +39,4 @@ app.route('/api/ai', aiAnalyze);
 app.get('/health', (c) => c.json({ ok: true }));
 
 export default app;
+export type AppType = typeof app;
