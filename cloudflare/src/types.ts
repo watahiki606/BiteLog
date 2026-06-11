@@ -4,6 +4,9 @@ export type Bindings = {
   ADMIN_API_KEY: string;
   ADMIN_USER_ID: string;
   GOOGLE_CLIENT_ID: string;
+  // Web管理画面のソーシャルログイン用（未設定の場合はWebからのサインイン不可）
+  GOOGLE_WEB_CLIENT_ID?: string;
+  APPLE_WEB_SERVICE_ID?: string;
   OPENAI_API_KEY: string;
 };
 

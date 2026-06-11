@@ -15,11 +15,13 @@ interface FoodMaster {
   portionSize: number;
   portionUnit: string;
   usageCount: number;
+  isMine: boolean;
   createdBy?: string;
 }
 
 interface Props {
   onToast: (msg: Omit<ToastMessage, 'id'>) => void;
+  isAdmin: boolean;
 }
 
 const LIMIT = 30;
@@ -38,7 +40,7 @@ const emptyForm = {
 
 type FormData = typeof emptyForm;
 
-export default function FoodMasterPage({ onToast }: Props) {
+export default function FoodMasterPage({ onToast, isAdmin }: Props) {
   const [items, setItems] = useState<FoodMaster[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
@@ -111,6 +113,10 @@ export default function FoodMasterPage({ onToast }: Props) {
         const res = await client.api['food-masters'][':id'].$put({
           param: { id: editing.id },
         } as any, { init: { body: JSON.stringify(form), headers: { 'Content-Type': 'application/json' } } });
+        if (res.status === 403) {
+          onToast({ message: '他のユーザーが作成した食品は編集できません', type: 'error' });
+          return;
+        }
         if (!res.ok) throw new Error();
       } else {
         const id = crypto.randomUUID();
@@ -132,6 +138,11 @@ export default function FoodMasterPage({ onToast }: Props) {
     try {
       const client = createClient();
       const res = await client.api['food-masters'][':id'].$delete({ param: { id: item.id } });
+      if (res.status === 403) {
+        onToast({ message: '他のユーザーが作成した食品は削除できません', type: 'error' });
+        setDeleteTarget(null);
+        return;
+      }
       if (!res.ok) throw new Error();
       onToast({ message: '削除しました', type: 'success' });
       setDeleteTarget(null);
@@ -199,10 +210,12 @@ export default function FoodMasterPage({ onToast }: Props) {
                   <span className="px-1.5 py-0.5 text-xs" style={{ border: '1px solid #1a1a3e', color: '#6060a0' }}>{item.usageCount}</span>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => openEdit(item)} className="px-2 py-1 text-xs text-neon-cyan border border-neon-cyan/30 hover:border-neon-cyan hover:bg-neon-cyan/10 transition-all">EDIT</button>
-                    <button onClick={() => setDeleteTarget(item)} className="px-2 py-1 text-xs text-destructive border border-destructive/30 hover:border-destructive hover:bg-destructive/10 transition-all">DEL</button>
-                  </div>
+                  {(isAdmin || item.isMine) && (
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => openEdit(item)} className="px-2 py-1 text-xs text-neon-cyan border border-neon-cyan/30 hover:border-neon-cyan hover:bg-neon-cyan/10 transition-all">EDIT</button>
+                      <button onClick={() => setDeleteTarget(item)} className="px-2 py-1 text-xs text-destructive border border-destructive/30 hover:border-destructive hover:bg-destructive/10 transition-all">DEL</button>
+                    </div>
+                  )}
                 </td>
               </motion.tr>
             ))}

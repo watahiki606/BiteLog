@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { isAuthenticated } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
 import SetupModal from '@/components/SetupModal';
 import Sidebar from '@/components/Sidebar';
 import Toast, { type ToastMessage } from '@/components/Toast';
@@ -10,7 +10,7 @@ import NutritionGoalsPage from '@/pages/NutritionGoalsPage';
 type Tab = 'food' | 'log' | 'goals';
 
 export default function App() {
-  const [authed, setAuthed] = useState(isAuthenticated());
+  const [session, setSession] = useState(getSession());
   const [activeTab, setActiveTab] = useState<Tab>('food');
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
@@ -23,8 +23,8 @@ export default function App() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  if (!authed) {
-    return <SetupModal onAuthenticated={() => setAuthed(true)} />;
+  if (!session) {
+    return <SetupModal onAuthenticated={() => setSession(getSession())} />;
   }
 
   return (
@@ -32,10 +32,11 @@ export default function App() {
       <Sidebar
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        onLogout={() => setAuthed(false)}
+        onLogout={() => setSession(null)}
+        isAdmin={session.isAdmin}
       />
       <main className="flex-1 flex flex-col overflow-hidden bg-bg-deep">
-        {activeTab === 'food' && <FoodMasterPage onToast={addToast} />}
+        {activeTab === 'food' && <FoodMasterPage onToast={addToast} isAdmin={session.isAdmin} />}
         {activeTab === 'log' && <MealLogPage onToast={addToast} />}
         {activeTab === 'goals' && <NutritionGoalsPage onToast={addToast} />}
       </main>

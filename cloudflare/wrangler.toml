@@ -12,5 +12,9 @@ database_id = "cf39b710-956c-4f27-ae1a-6dbf7a6a0fef"
 # 本番では wrangler secret put WORKER_JWT_SECRET で上書きすること
 WORKER_JWT_SECRET = "dev-and-test-secret"
 
+# Web管理画面のソーシャルログインを有効にするには、以下も wrangler secret put で設定する
+# - GOOGLE_WEB_CLIENT_ID: Google Cloud ConsoleのWebアプリ用OAuthクライアントID（iOSと同じプロジェクト）
+# - APPLE_WEB_SERVICE_ID: Apple DeveloperのServices ID（例: com.watahiki.BiteLog.web）
+
 [dev]
 port = 8787
