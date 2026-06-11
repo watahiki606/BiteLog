@@ -22,9 +22,17 @@ auth.post('/signin', async (c) => {
   let userId: string;
   try {
     if (provider === 'apple') {
-      userId = await verifyAppleToken(identityToken, [APPLE_BUNDLE_ID]);
+      // iOSアプリ(Bundle ID)とWeb(Services ID)の両方を受理する
+      const allowedAudiences = [APPLE_BUNDLE_ID, c.env.APPLE_WEB_SERVICE_ID].filter(
+        (aud): aud is string => !!aud
+      );
+      userId = await verifyAppleToken(identityToken, allowedAudiences);
     } else if (provider === 'google') {
-      userId = await verifyGoogleToken(identityToken, [c.env.GOOGLE_CLIENT_ID]);
+      // iOS用とWeb用のOAuthクライアントIDの両方を受理する
+      const allowedAudiences = [c.env.GOOGLE_CLIENT_ID, c.env.GOOGLE_WEB_CLIENT_ID].filter(
+        (aud): aud is string => !!aud
+      );
+      userId = await verifyGoogleToken(identityToken, allowedAudiences);
     } else {
       return c.json({ error: 'Unsupported provider' }, 400);
     }
