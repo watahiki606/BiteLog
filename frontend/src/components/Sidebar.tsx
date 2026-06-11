@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { clearToken } from '@/lib/auth';
+import { clearSession } from '@/lib/auth';
 
 type Tab = 'food' | 'log' | 'goals';
 
@@ -7,6 +7,7 @@ interface Props {
   activeTab: Tab;
   onTabChange: (tab: Tab) => void;
   onLogout: () => void;
+  isAdmin: boolean;
 }
 
 const tabs: { id: Tab; label: string; icon: string }[] = [
@@ -15,9 +16,9 @@ const tabs: { id: Tab; label: string; icon: string }[] = [
   { id: 'goals', label: 'NUTRITION', icon: '◇' },
 ];
 
-export default function Sidebar({ activeTab, onTabChange, onLogout }: Props) {
+export default function Sidebar({ activeTab, onTabChange, onLogout, isAdmin }: Props) {
   function handleLogout() {
-    clearToken();
+    clearSession();
     onLogout();
   }
 
@@ -29,7 +30,9 @@ export default function Sidebar({ activeTab, onTabChange, onLogout }: Props) {
       {/* ブランド */}
       <div className="px-5 py-6 border-b border-border-dim">
         <GlitchText text="BITELOG" />
-        <div className="text-xs text-muted-foreground tracking-widest mt-1">ADMIN v2.0</div>
+        <div className="text-xs text-muted-foreground tracking-widest mt-1">
+          {isAdmin ? 'ADMIN v2.0' : 'USER MODE'}
+        </div>
       </div>
 
       {/* ナビゲーション */}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { setToken, API_URL } from '@/lib/auth';
+import { setSession, API_URL } from '@/lib/auth';
 
 interface Props {
   onAuthenticated: () => void;
@@ -27,7 +27,8 @@ export default function SetupModal({ onAuthenticated }: Props) {
         return;
       }
 
-      setToken(password);
+      const { userId, isAdmin } = (await res.json()) as { userId: string; isAdmin: boolean };
+      setSession({ token: password, userId, isAdmin });
       onAuthenticated();
     } catch {
       setError('接続エラー: APIサーバーに到達できません');
