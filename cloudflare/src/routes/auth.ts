@@ -38,6 +38,12 @@ auth.post('/signin', async (c) => {
   return c.json({ token: sessionJwt, userId, isAdmin });
 });
 
+// GET /api/auth/verify
+// 資格情報(管理キーまたはJWT)の有効性を確認する。管理画面のログイン検証に使う
+auth.get('/verify', authMiddleware, (c) => {
+  return c.json({ userId: c.get('userId'), isAdmin: c.get('isAdmin') });
+});
+
 // POST /api/auth/refresh
 // 現在有効なJWTで新しいJWT（30日）を発行する
 auth.post('/refresh', authMiddleware, async (c) => {

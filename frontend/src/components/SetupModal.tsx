@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { setToken, setApiUrl, getApiUrl } from '@/lib/auth';
+import { setToken, API_URL } from '@/lib/auth';
 
 interface Props {
   onAuthenticated: () => void;
@@ -8,8 +8,6 @@ interface Props {
 
 export default function SetupModal({ onAuthenticated }: Props) {
   const [password, setPassword] = useState('');
-  const [apiUrl, setApiUrlState] = useState(getApiUrl());
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -19,8 +17,7 @@ export default function SetupModal({ onAuthenticated }: Props) {
     setLoading(true);
 
     try {
-      setApiUrl(apiUrl);
-      const res = await fetch(`${apiUrl}/health`, {
+      const res = await fetch(`${API_URL}/api/auth/verify`, {
         headers: { Authorization: `Bearer ${password}` },
       });
 
@@ -70,7 +67,7 @@ export default function SetupModal({ onAuthenticated }: Props) {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs text-muted-foreground mb-1 tracking-wider uppercase">
-                Access Key
+                Password
               </label>
               <input
                 type="password"
@@ -82,29 +79,6 @@ export default function SetupModal({ onAuthenticated }: Props) {
                 autoFocus
               />
             </div>
-
-            <button
-              type="button"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="text-xs text-muted-foreground hover:text-neon-cyan transition-colors tracking-wider"
-            >
-              {showAdvanced ? '▲' : '▼'} ADVANCED
-            </button>
-
-            {showAdvanced && (
-              <div>
-                <label className="block text-xs text-muted-foreground mb-1 tracking-wider uppercase">
-                  API Endpoint
-                </label>
-                <input
-                  type="url"
-                  value={apiUrl}
-                  onChange={(e) => setApiUrlState(e.target.value)}
-                  className="w-full bg-bg-card border border-border-dim px-3 py-2 text-xs text-foreground focus:outline-none focus:border-neon-cyan transition-colors"
-                  style={{ fontFamily: 'inherit' }}
-                />
-              </div>
-            )}
 
             {error && (
               <p className="text-xs text-destructive tracking-wide">{error}</p>
@@ -123,7 +97,7 @@ export default function SetupModal({ onAuthenticated }: Props) {
                 boxShadow: loading ? 'none' : '0 0 15px rgba(0,229,255,0.3)',
               }}
             >
-              {loading ? 'CONNECTING...' : 'AUTHENTICATE'}
+              {loading ? 'CONNECTING...' : 'LOGIN'}
             </motion.button>
           </form>
         </div>

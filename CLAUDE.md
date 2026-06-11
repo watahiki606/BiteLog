@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 BiteLog is an iOS application for meal tracking and nutrition management. Built with SwiftUI and SwiftData, it manages food nutrition data and records daily meals.
 
+The repository also contains a web admin console: `frontend/` (React SPA on Cloudflare Pages) and `cloudflare/` (Hono API on Cloudflare Workers + D1). See "Web Admin Console" below.
+
 ## Development Environment & Build Commands
 
 ### Required Tools
@@ -73,6 +75,53 @@ SweetPad: Generate Build Server Config
 - Minimum iOS version: iOS 18.2
 - Supported devices: iPhone only
 - Current version: 1.6
+
+## Web Admin Console (frontend / cloudflare)
+
+### Structure
+
+- Bun workspaces monorepo: `frontend/` + `cloudflare/`
+- `frontend/`: React 19 + Vite + Tailwind CSS v4. Deployed to Cloudflare Pages (`bitelog-admin.pages.dev`)
+- `cloudflare/`: Hono on Cloudflare Workers + D1. Deployed to `bitelog-workers.v10acdict.workers.dev`
+- Type-safe API calls via Hono RPC: `cloudflare/src/index.ts` exports `AppType`, consumed by `frontend/src/lib/api.ts`
+- Admin auth: password is checked against the `ADMIN_API_KEY` Worker secret via `GET /api/auth/verify` (sent as `Authorization: Bearer` on every request)
+
+### Local Development
+
+```bash
+# API (port 8787). Local secrets live in cloudflare/.dev.vars (gitignored)
+cd cloudflare && npm run dev
+
+# Frontend (port 5173). Connects to the production Worker by default;
+# to use the local Worker, copy .env.development.local.example to .env.development.local
+cd frontend && bun run dev
+```
+
+### Test & Build
+
+```bash
+cd cloudflare && npm test        # vitest
+cd frontend && bun run build     # includes tsc type check
+```
+
+### Deploy (manual — no git integration)
+
+Deploy the Worker first when the frontend depends on new API endpoints.
+
+```bash
+# 1. Worker
+cd cloudflare && npm run deploy
+
+# 2. Pages (--branch main is required; otherwise it becomes a preview deployment)
+cd frontend && bun run build
+cd ../cloudflare && npx wrangler pages deploy ../frontend/dist --project-name bitelog-admin --branch main
+```
+
+### Development Flow
+
+1. Create a GitHub issue describing the problem (why)
+2. Branch from up-to-date main — run `git fetch origin main` first; local main may be stale
+3. Open a PR with `Closes #N`. Verify the actual diff with `gh pr diff` before writing the description
 
 ## Testing Strategy
 
