@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { authMiddleware, issueSessionJwt, verifyAppleToken, verifyGoogleToken } from '../middleware/auth';
+import { APPLE_BUNDLE_ID, authMiddleware, issueSessionJwt, verifyAppleToken, verifyGoogleToken } from '../middleware/auth';
 import type { Bindings, Variables } from '../types';
 
 const auth = new Hono<{ Bindings: Bindings; Variables: Variables }>();
@@ -22,9 +22,9 @@ auth.post('/signin', async (c) => {
   let userId: string;
   try {
     if (provider === 'apple') {
-      userId = await verifyAppleToken(identityToken);
+      userId = await verifyAppleToken(identityToken, [APPLE_BUNDLE_ID]);
     } else if (provider === 'google') {
-      userId = await verifyGoogleToken(identityToken, c.env.GOOGLE_CLIENT_ID);
+      userId = await verifyGoogleToken(identityToken, [c.env.GOOGLE_CLIENT_ID]);
     } else {
       return c.json({ error: 'Unsupported provider' }, 400);
     }
