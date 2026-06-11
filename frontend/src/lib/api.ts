@@ -1,9 +1,9 @@
 import { hc } from 'hono/client';
 import type { AppType } from '../../../cloudflare/src/index';
-import { getToken, getApiUrl } from './auth';
+import { getToken, API_URL } from './auth';
 
 export function createClient() {
-  return hc<AppType>(getApiUrl(), {
+  return hc<AppType>(API_URL, {
     headers: () => ({
       Authorization: `Bearer ${getToken()}`,
     }),
