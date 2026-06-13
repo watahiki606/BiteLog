@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { setSession, API_URL } from '@/lib/auth';
 import {
   isAppleLoginConfigured,
   isGoogleLoginConfigured,
@@ -13,10 +12,7 @@ interface Props {
 }
 
 export default function SetupModal({ onAuthenticated }: Props) {
-  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [showAdminForm, setShowAdminForm] = useState(false);
   const googleButtonRef = useRef<HTMLDivElement>(null);
 
   const googleEnabled = isGoogleLoginConfigured();
@@ -42,31 +38,6 @@ export default function SetupModal({ onAuthenticated }: Props) {
       if (err instanceof Error && err.message.includes('サインイン')) {
         setError(err.message);
       }
-    }
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    try {
-      const res = await fetch(`${API_URL}/api/auth/verify`, {
-        headers: { Authorization: `Bearer ${password}` },
-      });
-
-      if (!res.ok) {
-        setError('認証失敗: パスワードを確認してください');
-        setLoading(false);
-        return;
-      }
-
-      const { userId, isAdmin } = (await res.json()) as { userId: string; isAdmin: boolean };
-      setSession({ token: password, userId, isAdmin });
-      onAuthenticated();
-    } catch {
-      setError('接続エラー: APIサーバーに到達できません');
-      setLoading(false);
     }
   }
 
@@ -99,8 +70,8 @@ export default function SetupModal({ onAuthenticated }: Props) {
             </div>
           </div>
 
-          {socialEnabled && (
-            <div className="space-y-3 mb-6">
+          {socialEnabled ? (
+            <div className="space-y-3">
               {googleEnabled && (
                 <div ref={googleButtonRef} className="flex justify-center" />
               )}
@@ -118,59 +89,16 @@ export default function SetupModal({ onAuthenticated }: Props) {
                 </motion.button>
               )}
             </div>
+          ) : (
+            <p className="text-xs text-muted-foreground tracking-wide">
+              ソーシャルログインが設定されていません。VITE_GOOGLE_CLIENT_ID または
+              VITE_APPLE_SERVICE_ID を設定してください。
+            </p>
           )}
 
           {error && (
-            <p className="text-xs text-destructive tracking-wide mb-4">{error}</p>
+            <p className="text-xs text-destructive tracking-wide mt-4">{error}</p>
           )}
-
-          {/* 管理者用パスワードログイン(折りたたみ) */}
-          <div className={socialEnabled ? 'border-t border-border-dim pt-4' : ''}>
-            {socialEnabled && (
-              <button
-                type="button"
-                onClick={() => setShowAdminForm((v) => !v)}
-                className="w-full text-left text-xs text-muted-foreground tracking-widest uppercase hover:text-neon-cyan transition-colors"
-              >
-                {showAdminForm ? '▾' : '▸'} Admin Access
-              </button>
-            )}
-
-            {(!socialEnabled || showAdminForm) && (
-              <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-                <div>
-                  <label className="block text-xs text-muted-foreground mb-1 tracking-wider uppercase">
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-bg-card border border-border-dim px-3 py-2 text-sm text-foreground focus:outline-none focus:border-neon-cyan transition-colors"
-                    style={{ fontFamily: 'inherit' }}
-                    placeholder="••••••••"
-                    autoFocus
-                  />
-                </div>
-
-                <motion.button
-                  type="submit"
-                  disabled={loading || !password}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full py-2 text-sm font-bold tracking-widest uppercase transition-all disabled:opacity-40"
-                  style={{
-                    background: loading ? 'transparent' : 'rgba(0,229,255,0.1)',
-                    border: '1px solid #00e5ff',
-                    color: '#00e5ff',
-                    boxShadow: loading ? 'none' : '0 0 15px rgba(0,229,255,0.3)',
-                  }}
-                >
-                  {loading ? 'CONNECTING...' : 'LOGIN'}
-                </motion.button>
-              </form>
-            )}
-          </div>
         </div>
       </motion.div>
     </div>

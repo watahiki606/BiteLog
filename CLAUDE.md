@@ -84,8 +84,7 @@ SweetPad: Generate Build Server Config
 - `frontend/`: React 19 + Vite + Tailwind CSS v4. Deployed to Cloudflare Pages (`bitelog-admin.pages.dev`)
 - `cloudflare/`: Hono on Cloudflare Workers + D1. Deployed to `bitelog-workers.v10acdict.workers.dev`
 - Type-safe API calls via Hono RPC: `cloudflare/src/index.ts` exports `AppType`, consumed by `frontend/src/lib/api.ts`
-- Admin auth: password is checked against the `ADMIN_API_KEY` Worker secret via `GET /api/auth/verify` (sent as `Authorization: Bearer` on every request)
-- User auth (social login): the login screen also offers Sign in with Apple / Google. The identity token goes to `POST /api/auth/signin`, which returns a 30-day session JWT tied to the same `userId` as the iOS app. Regular users see and edit only their own data (`isAdmin: false`)
+- Auth (social login only): the login screen offers Sign in with Apple / Google. The identity token goes to `POST /api/auth/signin`, which returns a 30-day session JWT tied to the same `userId` as the iOS app. Regular users see and edit only their own data (`isAdmin: false`); the user whose `userId` matches the `ADMIN_USER_ID` Worker secret gets `isAdmin: true`
   - Worker secrets: `GOOGLE_WEB_CLIENT_ID` (web OAuth client in the same Google Cloud project as iOS), `APPLE_WEB_SERVICE_ID` (Apple Services ID, e.g. `com.watahiki.BiteLog.web`)
   - Frontend build-time vars: `VITE_GOOGLE_CLIENT_ID`, `VITE_APPLE_SERVICE_ID` (see `frontend/.env.example`). Buttons are hidden when unset; Apple is also hidden on non-https origins (localhost) because Apple return URLs cannot point to localhost
 
