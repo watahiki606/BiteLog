@@ -25,7 +25,7 @@ class AIFoodAnalyzer {
   }
 
   // 写真から料理を分析
-  func analyzeFood(image: UIImage) async throws -> FoodAnalysisResult {
+  func analyzeFood(image: UIImage, note: String? = nil) async throws -> FoodAnalysisResult {
     let available = await MainActor.run { AuthManager.shared.isSignedIn }
     guard available else {
       throw AnalysisError.notAuthenticated
@@ -40,7 +40,7 @@ class AIFoodAnalyzer {
     let base64Image = imageData.base64EncodedString()
 
     do {
-      let response = try await APIClient.shared.analyzeFoodImage(imageBase64: base64Image)
+      let response = try await APIClient.shared.analyzeFoodImage(imageBase64: base64Image, note: note)
       return FoodAnalysisResult(
         productName: response.productName,
         calories: response.calories,

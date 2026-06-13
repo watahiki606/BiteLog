@@ -5,11 +5,12 @@ import PhotosUI
 struct PhotoPickerView: View {
   @Environment(\.dismiss) var dismiss
   @Binding var selectedImage: UIImage?
-  var onAnalyze: (UIImage) -> Void
-  
+  var onAnalyze: (UIImage, String?) -> Void
+
   @State private var showingImagePicker = false
   @State private var showingCamera = false
   @State private var sourceType: UIImagePickerController.SourceType = .photoLibrary
+  @State private var note: String = ""
   
   var body: some View {
     NavigationStack {
@@ -23,10 +24,23 @@ struct PhotoPickerView: View {
               .frame(maxHeight: 400)
               .cornerRadius(12)
               .shadow(radius: 5)
-            
+
+            VStack(alignment: .leading, spacing: 4) {
+              Text(NSLocalizedString("Note (optional)", comment: "Label"))
+                .font(.caption)
+                .foregroundColor(.secondary)
+              TextField(
+                NSLocalizedString("e.g. Brand/product name, amount eaten, etc.", comment: "Placeholder"),
+                text: $note
+              )
+              .textFieldStyle(.roundedBorder)
+            }
+            .padding(.horizontal)
+
             HStack(spacing: 16) {
               Button {
                 selectedImage = nil
+                note = ""
               } label: {
                 Label(NSLocalizedString("Reselect", comment: "Button title"), systemImage: "arrow.clockwise")
                   .frame(maxWidth: .infinity)
@@ -35,9 +49,10 @@ struct PhotoPickerView: View {
                   .foregroundColor(.primary)
                   .cornerRadius(10)
               }
-              
+
               Button {
-                onAnalyze(image)
+                let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
+                onAnalyze(image, trimmedNote.isEmpty ? nil : trimmedNote)
               } label: {
                 Label(NSLocalizedString("Analyze", comment: "Button title"), systemImage: "sparkles")
                   .frame(maxWidth: .infinity)
