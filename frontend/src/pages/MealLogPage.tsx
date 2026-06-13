@@ -11,6 +11,7 @@ interface NutritionSource {
   fat: number;
   netCarbs: number;
   dietaryFiber: number;
+  portionSize: number;
 }
 
 interface LogItem {
@@ -43,12 +44,12 @@ function today() {
 function getNutrition(item: LogItem) {
   const src = item.isMasterDeleted ? item.nutritionSnapshot : (item.foodMaster ?? item.nutritionSnapshot);
   if (!src) return { calories: 0, protein: 0, fat: 0, netCarbs: 0, name: '—', brand: '' };
-  const s = item.numberOfServings;
+  const ratio = src.portionSize > 0 ? item.numberOfServings / src.portionSize : 0;
   return {
-    calories: Math.round(src.calories * s),
-    protein: Math.round(src.protein * s * 10) / 10,
-    fat: Math.round(src.fat * s * 10) / 10,
-    netCarbs: Math.round(src.netCarbs * s * 10) / 10,
+    calories: Math.round(src.calories * ratio),
+    protein: Math.round(src.protein * ratio * 10) / 10,
+    fat: Math.round(src.fat * ratio * 10) / 10,
+    netCarbs: Math.round(src.netCarbs * ratio * 10) / 10,
     name: src.productName,
     brand: src.brandName,
   };
