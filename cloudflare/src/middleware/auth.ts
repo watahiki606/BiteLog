@@ -107,24 +107,6 @@ export async function verifyGoogleToken(
   return `google:${payload.sub}`;
 }
 
-// タイミング攻撃対策の定数時間比較
-async function constantTimeEqual(a: string, b: string): Promise<boolean> {
-  const enc = new TextEncoder();
-  const keyData = enc.encode('bitelog-admin-compare');
-  const key = await crypto.subtle.importKey(
-    'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
-  );
-  const [sigA, sigB] = await Promise.all([
-    crypto.subtle.sign('HMAC', key, enc.encode(a)),
-    crypto.subtle.sign('HMAC', key, enc.encode(b)),
-  ]);
-  const viewA = new Uint8Array(sigA);
-  const viewB = new Uint8Array(sigB);
-  let diff = 0;
-  for (let i = 0; i < viewA.length; i++) diff |= viewA[i] ^ viewB[i];
-  return diff === 0;
-}
-
 // 認証ミドルウェア（全APIルートに適用）
 export const authMiddleware = createMiddleware<{ Bindings: Bindings; Variables: Variables }>(
   async (c, next) => {
@@ -133,14 +115,6 @@ export const authMiddleware = createMiddleware<{ Bindings: Bindings; Variables: 
       return c.json({ error: 'Unauthorized' }, 401);
     }
     const token = authHeader.slice(7);
-
-    // 管理画面用パスワード認証（期限なし）
-    if (c.env.ADMIN_API_KEY && await constantTimeEqual(token, c.env.ADMIN_API_KEY)) {
-      c.set('userId', c.env.ADMIN_USER_ID || 'admin');
-      c.set('isAdmin', true);
-      await next();
-      return;
-    }
 
     try {
       const userId = await verifySessionJwt(token, c.env.WORKER_JWT_SECRET);

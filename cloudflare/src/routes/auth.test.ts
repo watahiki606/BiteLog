@@ -124,6 +124,15 @@ describe('POST /api/auth/signin', () => {
     expect(res.status).toBe(200);
   });
 
+  it('ADMIN_API_KEYと一致するパスワードをBearerに入れても401になる(パスワード認証は廃止)', async () => {
+    const res = await app.request(
+      '/api/auth/verify',
+      { headers: { Authorization: 'Bearer legacy-admin-password' } },
+      { ...TEST_ENV, ADMIN_API_KEY: 'legacy-admin-password' }
+    );
+    expect(res.status).toBe(401);
+  });
+
   it('signinで得たトークンで /api/auth/verify が通る', async () => {
     const signinRes = await signin(
       'google',

@@ -6,7 +6,7 @@ export default defineConfig({
     cloudflareTest({
       wrangler: { configPath: './wrangler.toml' },
       miniflare: {
-        vars: { WORKER_JWT_SECRET: 'test-secret' },
+        bindings: { WORKER_JWT_SECRET: 'dev-and-test-secret' },
       },
     }),
   ],

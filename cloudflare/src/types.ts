@@ -1,7 +1,6 @@
 export type Bindings = {
   DB: D1Database;
   WORKER_JWT_SECRET: string;
-  ADMIN_API_KEY: string;
   ADMIN_USER_ID: string;
   GOOGLE_CLIENT_ID: string;
   // Web管理画面のソーシャルログイン用（未設定の場合はWebからのサインイン不可）
