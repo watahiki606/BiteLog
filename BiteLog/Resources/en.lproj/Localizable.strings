@@ -132,6 +132,8 @@
 "AI Food Analysis" = "AI Food Analysis";
 "Reselect" = "Reselect";
 "Analyze" = "Analyze";
+"Note (optional)" = "Note (optional)";
+"e.g. Brand/product name, amount eaten, etc." = "e.g. Brand/product name, amount eaten, etc.";
 
 // AI Analysis
 "Analyzing food..." = "Analyzing food...";

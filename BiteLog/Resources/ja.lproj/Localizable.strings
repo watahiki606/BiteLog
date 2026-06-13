@@ -165,6 +165,8 @@
 "AI Food Analysis" = "AI料理分析";
 "Reselect" = "再選択";
 "Analyze" = "分析する";
+"Note (optional)" = "補足メモ(任意)";
+"e.g. Brand/product name, amount eaten, etc." = "例: 店名・商品名、食べた量など";
 
 // AI Analysis
 "Analyzing food..." = "料理を分析中...";

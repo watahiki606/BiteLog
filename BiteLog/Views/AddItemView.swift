@@ -68,7 +68,7 @@ struct AddItemView: View {
         if !isDataLoaded { Task { await loadFoodMasters() } }
       }
       .sheet(isPresented: $showingPhotoPicker) {
-        PhotoPickerView(selectedImage: $selectedImage) { image in analyzeImage(image) }
+        PhotoPickerView(selectedImage: $selectedImage) { image, note in analyzeImage(image, note: note) }
       }
       .sheet(isPresented: $showingAnalysisResult) {
         if let result = analysisResult, let image = selectedImage {
@@ -103,11 +103,11 @@ struct AddItemView: View {
     }
   }
 
-  private func analyzeImage(_ image: UIImage) {
+  private func analyzeImage(_ image: UIImage, note: String?) {
     Task {
       await MainActor.run { isAnalyzing = true; showingPhotoPicker = false }
       do {
-        let result = try await AIFoodAnalyzer.shared.analyzeFood(image: image)
+        let result = try await AIFoodAnalyzer.shared.analyzeFood(image: image, note: note)
         await MainActor.run { isAnalyzing = false; analysisResult = result; showingAnalysisResult = true }
       } catch {
         await MainActor.run { isAnalyzing = false; analysisError = error.localizedDescription }

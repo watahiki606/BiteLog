@@ -177,6 +177,7 @@ extension NutritionSnapshot {
 
 struct AIAnalyzeRequest: Codable {
   var imageBase64: String
+  var note: String?
 }
 
 struct AIAnalyzeResponse: Codable {
