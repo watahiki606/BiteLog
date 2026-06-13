@@ -1,4 +1,4 @@
-const TOKEN_KEY = 'bitelog_admin_token';
+const TOKEN_KEY = 'bitelog_session_token';
 const USER_KEY = 'bitelog_session_user';
 
 export const API_URL =
