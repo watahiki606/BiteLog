@@ -47,7 +47,7 @@ auth.post('/signin', async (c) => {
 });
 
 // GET /api/auth/verify
-// 資格情報(管理キーまたはJWT)の有効性を確認する。管理画面のログイン検証に使う
+// セッションJWTの有効性を確認する。管理画面のログイン検証に使う
 auth.get('/verify', authMiddleware, (c) => {
   return c.json({ userId: c.get('userId'), isAdmin: c.get('isAdmin') });
 });
