@@ -64,7 +64,8 @@ struct StatisticsView: View {
   @EnvironmentObject private var nutritionGoalsManager: NutritionGoalsManager
 
   @State private var periodType: StatsPeriodType = .week
-  @State private var anchorDate = Date()
+  /// スクロール表示中ウィンドウの先頭日（週/月モードで使用）
+  @State private var scrollPosition = Date()
   @State private var customStart = Calendar.current.date(byAdding: .day, value: -6, to: Date())!
   @State private var customEnd = Date()
   @State private var trendMetric: TrendMetric = .calories
@@ -73,29 +74,41 @@ struct StatisticsView: View {
   @State private var isLoading = false
 
   private let calendar = Calendar.current
+  /// 起動時点の今日（スクロール範囲の基準。ビュー生成中に固定）
+  private let referenceDate = Calendar.current.startOfDay(for: Date())
+
+  /// スクロールで一度に見せる日数（週=7 / 月=30 のローリングウィンドウ）
+  private var domainDays: Int { periodType == .month ? 30 : 7 }
+  private var domainSeconds: TimeInterval { Double(domainDays) * 86400 }
 
   // MARK: - 期間計算
 
-  private var interval: (start: Date, end: Date) {
+  /// データ取得範囲。週/月は約1年分まとめて取得し、スクロールはメモリ上で処理する
+  private var loadInterval: (start: Date, end: Date) {
     switch periodType {
-    case .week:
-      let start = calendar.dateInterval(of: .weekOfYear, for: anchorDate)?.start
-        ?? calendar.startOfDay(for: anchorDate)
-      let end = calendar.date(byAdding: .day, value: 6, to: start)!
-      return (start, end)
-    case .month:
-      let start = calendar.dateInterval(of: .month, for: anchorDate)?.start
-        ?? calendar.startOfDay(for: anchorDate)
-      let end = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: start)!
-      return (start, end)
     case .custom:
-      let s = calendar.startOfDay(for: min(customStart, customEnd))
-      let e = calendar.startOfDay(for: max(customStart, customEnd))
-      return (s, e)
+      return (
+        calendar.startOfDay(for: min(customStart, customEnd)),
+        calendar.startOfDay(for: max(customStart, customEnd)))
+    default:
+      let start = calendar.date(byAdding: .day, value: -364, to: referenceDate)!
+      return (start, referenceDate)
     }
   }
 
-  private var days: [Date] {
+  /// 現在表示中（スクロール位置）のウィンドウ。各カードの集計対象
+  private var visibleInterval: (start: Date, end: Date) {
+    switch periodType {
+    case .custom:
+      return loadInterval
+    default:
+      let start = calendar.startOfDay(for: scrollPosition)
+      let end = calendar.date(byAdding: .day, value: domainDays - 1, to: start)!
+      return (start, end)
+    }
+  }
+
+  private func days(in interval: (start: Date, end: Date)) -> [Date] {
     var result: [Date] = []
     var d = calendar.startOfDay(for: interval.start)
     let end = calendar.startOfDay(for: interval.end)
@@ -107,11 +120,12 @@ struct StatisticsView: View {
     return result
   }
 
+  /// 取得範囲（=トレンドグラフのスクロール範囲）が変わったときだけ再フェッチ
   private var taskID: String {
-    "\(LogItemDTO.formatLogDate(interval.start))-\(LogItemDTO.formatLogDate(interval.end))"
+    "\(LogItemDTO.formatLogDate(loadInterval.start))-\(LogItemDTO.formatLogDate(loadInterval.end))"
   }
 
-  // MARK: - 集計
+  // MARK: - 集計（トレンドグラフ＝全取得分 / カード＝表示中ウィンドウ）
 
   private var totalsByDate: [String: NutritionValues] {
     Dictionary(grouping: items, by: { $0.logDate })
@@ -120,19 +134,34 @@ struct StatisticsView: View {
       }
   }
 
+  /// トレンドグラフ用の日別系列（取得範囲全体。記録のない日は0）
   private var dailyPoints: [StatsDayPoint] {
     let totals = totalsByDate
-    return days.map { day in
+    return days(in: loadInterval).map { day in
       StatsDayPoint(date: day, values: totals[LogItemDTO.formatLogDate(day)] ?? .zero)
     }
   }
 
+  /// 表示中ウィンドウ内のログ
+  private var visibleItems: [LogItemDTO] {
+    let from = LogItemDTO.formatLogDate(visibleInterval.start)
+    let to = LogItemDTO.formatLogDate(visibleInterval.end)
+    return items.filter { $0.logDate >= from && $0.logDate <= to }
+  }
+
+  private var visibleTotalsByDate: [String: NutritionValues] {
+    Dictionary(grouping: visibleItems, by: { $0.logDate })
+      .mapValues { dayItems in
+        dayItems.reduce(NutritionValues.zero) { $0 + $1.nutritionValues }
+      }
+  }
+
   private var periodTotal: NutritionValues {
-    items.reduce(NutritionValues.zero) { $0 + $1.nutritionValues }
+    visibleItems.reduce(NutritionValues.zero) { $0 + $1.nutritionValues }
   }
 
   /// 記録があった日数（1件以上ログがある日）
-  private var recordedDayCount: Int { totalsByDate.count }
+  private var recordedDayCount: Int { visibleTotalsByDate.count }
 
   private var average: NutritionValues {
     let n = Double(recordedDayCount)
@@ -147,12 +176,12 @@ struct StatisticsView: View {
   private var daysOnTarget: Int {
     let target = nutritionGoalsManager.targetCalories
     guard target > 0 else { return 0 }
-    return totalsByDate.values.filter { $0.calories > 0 && $0.calories <= target }.count
+    return visibleTotalsByDate.values.filter { $0.calories > 0 && $0.calories <= target }.count
   }
 
   private var mealTypeTotals: [(type: MealType, values: NutritionValues)] {
     MealType.allCases.map { mealType in
-      let v = items.filter { $0.mealType == mealType }
+      let v = visibleItems.filter { $0.mealType == mealType }
         .reduce(NutritionValues.zero) { $0 + $1.nutritionValues }
       return (mealType, v)
     }
@@ -190,6 +219,19 @@ struct StatisticsView: View {
     .refreshable {
       await load()
     }
+    .onChange(of: periodType) { _, _ in
+      scrollToRecentWindow()
+    }
+    .onAppear {
+      scrollToRecentWindow()
+    }
+  }
+
+  /// 直近のウィンドウ（最新日が今日になる位置）へスクロール位置を合わせる
+  private func scrollToRecentWindow() {
+    guard periodType != .custom else { return }
+    scrollPosition = calendar.date(
+      byAdding: .day, value: -(domainDays - 1), to: referenceDate)!
   }
 
   // MARK: - 期間セレクタ
@@ -219,7 +261,7 @@ struct StatisticsView: View {
       } else {
         HStack {
           Button {
-            shiftPeriod(forward: false)
+            shiftWindow(forward: false)
           } label: {
             Image(systemName: "chevron.left")
           }
@@ -228,10 +270,11 @@ struct StatisticsView: View {
             .font(.subheadline.weight(.medium))
           Spacer()
           Button {
-            shiftPeriod(forward: true)
+            shiftWindow(forward: true)
           } label: {
             Image(systemName: "chevron.right")
           }
+          .disabled(isAtLatestWindow)
         }
       }
     }
@@ -244,19 +287,27 @@ struct StatisticsView: View {
 
   private var periodLabel: String {
     let f = DateFormatter()
-    f.dateFormat = periodType == .month ? "yyyy/MM" : "M/d"
-    if periodType == .month {
-      return f.string(from: interval.start)
-    }
-    return "\(f.string(from: interval.start)) - \(f.string(from: interval.end))"
+    f.dateFormat = "M/d"
+    return "\(f.string(from: visibleInterval.start)) - \(f.string(from: visibleInterval.end))"
   }
 
-  private func shiftPeriod(forward: Bool) {
-    let value = forward ? 1 : -1
-    let component: Calendar.Component = periodType == .month ? .month : .weekOfYear
-    if let d = calendar.date(byAdding: component, value: value, to: anchorDate) {
-      anchorDate = d
+  /// 表示可能な最新ウィンドウの先頭日
+  private var latestWindowStart: Date {
+    calendar.date(byAdding: .day, value: -(domainDays - 1), to: loadInterval.end)!
+  }
+
+  private var isAtLatestWindow: Bool {
+    calendar.startOfDay(for: scrollPosition) >= calendar.startOfDay(for: latestWindowStart)
+  }
+
+  /// チェブロンで1ウィンドウ分スクロール（取得範囲内にクランプ）
+  private func shiftWindow(forward: Bool) {
+    let delta = (forward ? 1 : -1) * domainDays
+    guard let shifted = calendar.date(byAdding: .day, value: delta, to: scrollPosition) else {
+      return
     }
+    let clamped = min(max(shifted, loadInterval.start), latestWindowStart)
+    withAnimation { scrollPosition = clamped }
   }
 
   // MARK: - 空状態
@@ -288,29 +339,43 @@ struct StatisticsView: View {
       .pickerStyle(.segmented)
       .padding(.bottom, 4)
 
-      let goal = trendGoal
+      if periodType == .custom {
+        // カスタムは範囲全体を一画面に表示（スクロールなし）
+        trendChart
+          .frame(height: 200)
+      } else {
+        // 週/月は横スクロールで期間を移動（ヘルスケア風）
+        trendChart
+          .chartScrollableAxes(.horizontal)
+          .chartXVisibleDomain(length: domainSeconds)
+          .chartScrollPosition(x: $scrollPosition)
+          .chartScrollTargetBehavior(.paging)
+          .frame(height: 200)
+      }
+    }
+  }
 
-      Chart {
-        ForEach(dailyPoints) { point in
-          BarMark(
-            x: .value("Date", point.date, unit: .day),
-            y: .value("Value", trendMetric.value(point.values))
-          )
-          .foregroundStyle(trendMetric.color.gradient)
-        }
-        if goal > 0 {
-          RuleMark(y: .value("Goal", goal))
-            .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
-            .foregroundStyle(.secondary)
-        }
+  private var trendChart: some View {
+    let goal = trendGoal
+    return Chart {
+      ForEach(dailyPoints) { point in
+        BarMark(
+          x: .value("Date", point.date, unit: .day),
+          y: .value("Value", trendMetric.value(point.values))
+        )
+        .foregroundStyle(trendMetric.color.gradient)
       }
-      .chartXAxis {
-        AxisMarks(values: .stride(by: .day, count: xAxisStride)) { value in
-          AxisGridLine()
-          AxisValueLabel(format: .dateTime.month(.defaultDigits).day())
-        }
+      if goal > 0 {
+        RuleMark(y: .value("Goal", goal))
+          .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+          .foregroundStyle(.secondary)
       }
-      .frame(height: 200)
+    }
+    .chartXAxis {
+      AxisMarks(values: .stride(by: .day, count: xAxisStride)) { _ in
+        AxisGridLine()
+        AxisValueLabel(format: .dateTime.month(.defaultDigits).day())
+      }
     }
   }
 
@@ -324,10 +389,15 @@ struct StatisticsView: View {
   }
 
   private var xAxisStride: Int {
-    let count = days.count
-    if count <= 8 { return 1 }
-    if count <= 16 { return 2 }
-    return max(count / 8, 1)
+    switch periodType {
+    case .week: return 1
+    case .month: return 5
+    case .custom:
+      let count = days(in: loadInterval).count
+      if count <= 8 { return 1 }
+      if count <= 16 { return 2 }
+      return max(count / 8, 1)
+    }
   }
 
   // MARK: - 平均・達成率カード
@@ -537,8 +607,8 @@ struct StatisticsView: View {
     defer { isLoading = false }
     do {
       items = try await APIClient.shared.fetchLogItems(
-        from: LogItemDTO.formatLogDate(interval.start),
-        to: LogItemDTO.formatLogDate(interval.end))
+        from: LogItemDTO.formatLogDate(loadInterval.start),
+        to: LogItemDTO.formatLogDate(loadInterval.end))
     } catch {
       print("StatisticsView load error: \(error)")
     }
