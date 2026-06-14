@@ -186,6 +186,12 @@ final class APIClient {
     return resp.items
   }
 
+  /// 統計タブの期間集計用。from/to はともに "yyyy-MM-dd"（両端含む）
+  func fetchLogItems(from: String, to: String) async throws -> [LogItemDTO] {
+    let resp: LogItemListResponse = try await request(path: "/api/log-items?from=\(from)&to=\(to)")
+    return resp.items
+  }
+
   func createLogItem(_ dto: LogItemCreateDTO) async throws -> LogItemDTO {
     return try await request(path: "/api/log-items", method: "POST", body: dto)
   }

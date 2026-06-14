@@ -205,3 +205,23 @@
 "Calories are automatically calculated" = "カロリーは自動計算されます";
 "Reset to Defaults" = "デフォルトに戻す";
 
+// Statistics
+"Statistics" = "統計";
+"Week" = "週";
+"Month" = "月";
+"Year" = "年";
+"Custom" = "カスタム";
+"From" = "開始";
+"To" = "終了";
+"Trend" = "推移";
+"Daily Average" = "1日平均";
+"Goal Achieved Days" = "目標達成日数";
+"days" = "日";
+"Calories within ±10% of goal" = "カロリーが目標の±10%以内";
+"PFC Balance" = "PFCバランス";
+"By Meal Type" = "食事タイプ別";
+"Period Total" = "期間合計";
+"No records in this period" = "この期間の記録はありません";
+"Failed to load statistics" = "統計の読み込みに失敗しました";
+"Retry" = "再試行";
+
