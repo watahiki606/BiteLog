@@ -205,3 +205,18 @@
 "Calories are automatically calculated" = "カロリーは自動計算されます";
 "Reset to Defaults" = "デフォルトに戻す";
 
+
+/* Statistics */
+"Statistics" = "統計";
+"Week" = "週";
+"Month" = "月";
+"Custom" = "カスタム";
+"From" = "開始";
+"To" = "終了";
+"Trend" = "推移";
+"Daily Average" = "1日平均";
+"Days on Target" = "目標達成日数";
+"%d / %d days" = "%d / %d 日";
+"PFC Balance" = "PFCバランス";
+"By Meal Type" = "食事タイプ別";
+"No records in this period" = "この期間の記録はありません";

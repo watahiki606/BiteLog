@@ -190,3 +190,19 @@
 "Macronutrients" = "Macronutrients";
 "Calories are automatically calculated" = "Calories are automatically calculated";
 "Reset to Defaults" = "Reset to Defaults";
+
+/* Statistics */
+"Statistics" = "Statistics";
+"Week" = "Week";
+"Month" = "Month";
+"Custom" = "Custom";
+"From" = "From";
+"To" = "To";
+"Trend" = "Trend";
+"Daily Average" = "Daily Average";
+"Days on Target" = "Days on Target";
+"%d / %d days" = "%d / %d days";
+"PFC Balance" = "PFC Balance";
+"By Meal Type" = "By Meal Type";
+"No records in this period" = "No records in this period";
+"Carbs (Sugar + Fiber)" = "Carbs (Sugar + Fiber)";
