@@ -4,13 +4,14 @@ import SwiftUI
 // MARK: - 期間タイプ
 
 enum StatsPeriodType: CaseIterable, Identifiable {
-  case week, month, custom
+  case week, month, year, custom
   var id: Self { self }
 
   var localizedName: String {
     switch self {
     case .week: return NSLocalizedString("Week", comment: "Statistics period")
     case .month: return NSLocalizedString("Month", comment: "Statistics period")
+    case .year: return NSLocalizedString("Year", comment: "Statistics period")
     case .custom: return NSLocalizedString("Custom", comment: "Statistics period")
     }
   }
@@ -64,26 +65,44 @@ struct StatisticsView: View {
   @EnvironmentObject private var nutritionGoalsManager: NutritionGoalsManager
 
   @State private var periodType: StatsPeriodType = .week
-  /// スクロール表示中ウィンドウの先頭日（週/月モードで使用）
+  /// スクロール表示中ウィンドウの先頭日（週/月/年モードで使用）
   @State private var scrollPosition = Date()
   @State private var customStart = Calendar.current.date(byAdding: .day, value: -6, to: Date())!
   @State private var customEnd = Date()
   @State private var trendMetric: TrendMetric = .calories
 
   @State private var items: [LogItemDTO] = []
+  /// 取得済みの最も古い日。スクロールで端に近づくと過去へ伸ばす
+  @State private var loadedStart = Calendar.current.date(byAdding: .day, value: -730, to: Date())!
   @State private var isLoading = false
+  @State private var isLoadingMore = false
 
   private let calendar = Calendar.current
   /// 起動時点の今日（スクロール範囲の基準。ビュー生成中に固定）
   private let referenceDate = Calendar.current.startOfDay(for: Date())
 
-  /// スクロールで一度に見せる日数（週=7 / 月=30 のローリングウィンドウ）
-  private var domainDays: Int { periodType == .month ? 30 : 7 }
-  private var domainSeconds: TimeInterval { Double(domainDays) * 86400 }
+  /// 初回取得する日数（年表示でも遡れるよう2年分）
+  private let initialSpanDays = 730
+  /// 端に達したとき追加で遡る日数（1年ずつ）
+  private let chunkDays = 365
+
+  /// スクロールで一度に見せる日数（週=7 / 月=30 / 年=365 のローリングウィンドウ）
+  private var visibleSpanDays: Int {
+    switch periodType {
+    case .week: return 7
+    case .month: return 30
+    case .year: return 365
+    case .custom: return max(days(in: loadInterval).count, 1)
+    }
+  }
+  private var domainSeconds: TimeInterval { Double(visibleSpanDays) * 86400 }
+
+  /// トレンドグラフのバー単位（年は月次集計、それ以外は日次）
+  private var barUnit: Calendar.Component { periodType == .year ? .month : .day }
 
   // MARK: - 期間計算
 
-  /// データ取得範囲。週/月は約1年分まとめて取得し、スクロールはメモリ上で処理する
+  /// データ取得範囲。週/月/年はまとめて取得し、スクロールはメモリ上で処理する
   private var loadInterval: (start: Date, end: Date) {
     switch periodType {
     case .custom:
@@ -91,8 +110,7 @@ struct StatisticsView: View {
         calendar.startOfDay(for: min(customStart, customEnd)),
         calendar.startOfDay(for: max(customStart, customEnd)))
     default:
-      let start = calendar.date(byAdding: .day, value: -364, to: referenceDate)!
-      return (start, referenceDate)
+      return (loadedStart, referenceDate)
     }
   }
 
@@ -103,7 +121,7 @@ struct StatisticsView: View {
       return loadInterval
     default:
       let start = calendar.startOfDay(for: scrollPosition)
-      let end = calendar.date(byAdding: .day, value: domainDays - 1, to: start)!
+      let end = calendar.date(byAdding: .day, value: visibleSpanDays - 1, to: start)!
       return (start, end)
     }
   }
@@ -120,9 +138,38 @@ struct StatisticsView: View {
     return result
   }
 
-  /// 取得範囲（=トレンドグラフのスクロール範囲）が変わったときだけ再フェッチ
+  private func monthStart(_ date: Date) -> Date {
+    calendar.dateInterval(of: .month, for: date)?.start ?? calendar.startOfDay(for: date)
+  }
+
+  private func months(in interval: (start: Date, end: Date)) -> [Date] {
+    var result: [Date] = []
+    var m = monthStart(interval.start)
+    let last = monthStart(interval.end)
+    while m <= last {
+      result.append(m)
+      guard let next = calendar.date(byAdding: .month, value: 1, to: m) else { break }
+      m = next
+    }
+    return result
+  }
+
+  /// "yyyy-MM-dd" 文字列を Date へ（formatLogDate と対）
+  private static let logDateFormatter: DateFormatter = {
+    let f = DateFormatter()
+    f.dateFormat = "yyyy-MM-dd"
+    return f
+  }()
+
+  private static func parseLogDate(_ string: String) -> Date? {
+    logDateFormatter.date(from: string)
+  }
+
+  /// 取得範囲の種類が変わったときだけ再フェッチ（週/月/年は同じ"wide"扱い）
   private var taskID: String {
-    "\(LogItemDTO.formatLogDate(loadInterval.start))-\(LogItemDTO.formatLogDate(loadInterval.end))"
+    periodType == .custom
+      ? "custom-\(LogItemDTO.formatLogDate(loadInterval.start))-\(LogItemDTO.formatLogDate(loadInterval.end))"
+      : "wide"
   }
 
   // MARK: - 集計（トレンドグラフ＝全取得分 / カード＝表示中ウィンドウ）
@@ -134,11 +181,30 @@ struct StatisticsView: View {
       }
   }
 
-  /// トレンドグラフ用の日別系列（取得範囲全体。記録のない日は0）
-  private var dailyPoints: [StatsDayPoint] {
-    let totals = totalsByDate
-    return days(in: loadInterval).map { day in
-      StatsDayPoint(date: day, values: totals[LogItemDTO.formatLogDate(day)] ?? .zero)
+  /// 月初日をキーにした月別集計（年表示のトレンド用）
+  private var totalsByMonth: [Date: NutritionValues] {
+    var dict: [Date: NutritionValues] = [:]
+    for item in items {
+      guard let d = StatisticsView.parseLogDate(item.logDate) else { continue }
+      let key = monthStart(d)
+      dict[key] = (dict[key] ?? .zero) + item.nutritionValues
+    }
+    return dict
+  }
+
+  /// トレンドグラフ用の系列（取得範囲全体。記録のない期間は0）。
+  /// 年は月次、それ以外は日次で集計する。
+  private var trendPoints: [StatsDayPoint] {
+    if barUnit == .month {
+      let totals = totalsByMonth
+      return months(in: loadInterval).map { m in
+        StatsDayPoint(date: m, values: totals[m] ?? .zero)
+      }
+    } else {
+      let totals = totalsByDate
+      return days(in: loadInterval).map { day in
+        StatsDayPoint(date: day, values: totals[LogItemDTO.formatLogDate(day)] ?? .zero)
+      }
     }
   }
 
@@ -222,6 +288,9 @@ struct StatisticsView: View {
     .onChange(of: periodType) { _, _ in
       scrollToRecentWindow()
     }
+    .onChange(of: scrollPosition) { _, _ in
+      Task { await loadOlderIfNeeded() }
+    }
     .onAppear {
       scrollToRecentWindow()
     }
@@ -231,7 +300,7 @@ struct StatisticsView: View {
   private func scrollToRecentWindow() {
     guard periodType != .custom else { return }
     scrollPosition = calendar.date(
-      byAdding: .day, value: -(domainDays - 1), to: referenceDate)!
+      byAdding: .day, value: -(visibleSpanDays - 1), to: referenceDate)!
   }
 
   // MARK: - 期間セレクタ
@@ -293,7 +362,7 @@ struct StatisticsView: View {
 
   /// 表示可能な最新ウィンドウの先頭日
   private var latestWindowStart: Date {
-    calendar.date(byAdding: .day, value: -(domainDays - 1), to: loadInterval.end)!
+    calendar.date(byAdding: .day, value: -(visibleSpanDays - 1), to: loadInterval.end)!
   }
 
   private var isAtLatestWindow: Bool {
@@ -302,7 +371,7 @@ struct StatisticsView: View {
 
   /// チェブロンで1ウィンドウ分スクロール（取得範囲内にクランプ）
   private func shiftWindow(forward: Bool) {
-    let delta = (forward ? 1 : -1) * domainDays
+    let delta = (forward ? 1 : -1) * visibleSpanDays
     guard let shifted = calendar.date(byAdding: .day, value: delta, to: scrollPosition) else {
       return
     }
@@ -358,23 +427,31 @@ struct StatisticsView: View {
   private var trendChart: some View {
     let goal = trendGoal
     return Chart {
-      ForEach(dailyPoints) { point in
+      ForEach(trendPoints) { point in
         BarMark(
-          x: .value("Date", point.date, unit: .day),
+          x: .value("Date", point.date, unit: barUnit),
           y: .value("Value", trendMetric.value(point.values))
         )
         .foregroundStyle(trendMetric.color.gradient)
       }
+      // 年（月次集計）の目標ラインは月合計の概算（1日目標×30）
       if goal > 0 {
-        RuleMark(y: .value("Goal", goal))
+        RuleMark(y: .value("Goal", barUnit == .month ? goal * 30 : goal))
           .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
           .foregroundStyle(.secondary)
       }
     }
     .chartXAxis {
-      AxisMarks(values: .stride(by: .day, count: xAxisStride)) { _ in
-        AxisGridLine()
-        AxisValueLabel(format: .dateTime.month(.defaultDigits).day())
+      if barUnit == .month {
+        AxisMarks(values: .stride(by: .month, count: 2)) { _ in
+          AxisGridLine()
+          AxisValueLabel(format: .dateTime.year(.twoDigits).month(.narrow))
+        }
+      } else {
+        AxisMarks(values: .stride(by: .day, count: xAxisStride)) { _ in
+          AxisGridLine()
+          AxisValueLabel(format: .dateTime.month(.defaultDigits).day())
+        }
       }
     }
   }
@@ -392,6 +469,7 @@ struct StatisticsView: View {
     switch periodType {
     case .week: return 1
     case .month: return 5
+    case .year: return 1
     case .custom:
       let count = days(in: loadInterval).count
       if count <= 8 { return 1 }
@@ -606,11 +684,47 @@ struct StatisticsView: View {
     isLoading = true
     defer { isLoading = false }
     do {
-      items = try await APIClient.shared.fetchLogItems(
-        from: LogItemDTO.formatLogDate(loadInterval.start),
-        to: LogItemDTO.formatLogDate(loadInterval.end))
+      if periodType == .custom {
+        items = try await APIClient.shared.fetchLogItems(
+          from: LogItemDTO.formatLogDate(loadInterval.start),
+          to: LogItemDTO.formatLogDate(loadInterval.end))
+      } else {
+        let start = calendar.date(byAdding: .day, value: -initialSpanDays, to: referenceDate)!
+        items = try await APIClient.shared.fetchLogItems(
+          from: LogItemDTO.formatLogDate(start),
+          to: LogItemDTO.formatLogDate(referenceDate))
+        loadedStart = start
+      }
     } catch {
       print("StatisticsView load error: \(error)")
+    }
+  }
+
+  /// スクロールで取得済みの端に近づいたら、さらに過去を1年分追加取得する。
+  /// 既存データは保持したまま追記し、スクロール位置は維持される。
+  /// @MainActor で直列化し、同じ範囲の二重取得（重複集計）を防ぐ。
+  @MainActor
+  private func loadOlderIfNeeded() async {
+    guard periodType != .custom, !isLoadingMore else { return }
+    // 表示ウィンドウの先頭が、取得済み開始から1ウィンドウ分以内に来たら先読み
+    let threshold = calendar.date(byAdding: .day, value: visibleSpanDays, to: loadedStart)!
+    guard calendar.startOfDay(for: scrollPosition) <= threshold else { return }
+    // 際限ない取得を避けるため最大10年で打ち切り
+    let earliest = calendar.date(byAdding: .year, value: -10, to: referenceDate)!
+    guard loadedStart > earliest else { return }
+
+    isLoadingMore = true
+    defer { isLoadingMore = false }
+    let newStart = calendar.date(byAdding: .day, value: -chunkDays, to: loadedStart)!
+    let chunkEnd = calendar.date(byAdding: .day, value: -1, to: loadedStart)!
+    do {
+      let older = try await APIClient.shared.fetchLogItems(
+        from: LogItemDTO.formatLogDate(newStart),
+        to: LogItemDTO.formatLogDate(chunkEnd))
+      items.append(contentsOf: older)
+      loadedStart = newStart
+    } catch {
+      print("StatisticsView loadOlder error: \(error)")
     }
   }
 }
