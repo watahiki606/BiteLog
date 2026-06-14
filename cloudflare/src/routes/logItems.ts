@@ -56,6 +56,8 @@ const logItems = new Hono<{ Bindings: Bindings; Variables: Variables }>()
   .get('/', async (c) => {
     const userId = c.get('userId');
     const logDate = c.req.query('logDate');
+    const from = c.req.query('from');
+    const to = c.req.query('to');
     const limit = parseInt(c.req.query('limit') ?? '0');
     const offset = parseInt(c.req.query('offset') ?? '0');
 
@@ -63,6 +65,14 @@ const logItems = new Hono<{ Bindings: Bindings; Variables: Variables }>()
       const { results } = await c.env.DB.prepare(
         `${JOIN_SELECT} WHERE li.user_id = ? AND li.log_date = ? ORDER BY li.timestamp ASC`
       ).bind(userId, logDate).all<LogItemJoinRow>();
+      const items = results.map(row => logItemToResponse(row, rowToFm(row)));
+      return c.json({ items });
+    } else if (from && to) {
+      // 統計タブの期間集計用。log_date は "yyyy-MM-dd" 文字列で辞書順＝日付順なので範囲比較が成立する
+      const { results } = await c.env.DB.prepare(
+        `${JOIN_SELECT} WHERE li.user_id = ? AND li.log_date >= ? AND li.log_date <= ?
+         ORDER BY li.log_date ASC, li.timestamp ASC`
+      ).bind(userId, from, to).all<LogItemJoinRow>();
       const items = results.map(row => logItemToResponse(row, rowToFm(row)));
       return c.json({ items });
     } else {
