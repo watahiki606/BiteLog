@@ -435,39 +435,49 @@ struct StatisticsView: View {
 
   @ViewBuilder
   private var mealTypeCard: some View {
-    let totals = mealTypeTotals
+    let totals = mealTypeTotals.filter { $0.values.calories > 0 }
     let maxCalories = totals.map { $0.values.calories }.max() ?? 0
 
     statsCard(title: NSLocalizedString("By Meal Type", comment: "Statistics section")) {
-      VStack(spacing: 10) {
+      VStack(spacing: 14) {
         ForEach(totals, id: \.type) { entry in
-          HStack(spacing: 10) {
-            Image(systemName: entry.type.iconName)
-              .font(.system(size: 14))
-              .foregroundColor(entry.type.accentColor)
-              .frame(width: 20)
-            Text(entry.type.localizedName)
-              .font(.subheadline)
-              .frame(width: 64, alignment: .leading)
+          VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+              Image(systemName: entry.type.iconName)
+                .font(.system(size: 14))
+                .foregroundColor(entry.type.accentColor)
+                .frame(width: 20)
+              Text(entry.type.localizedName)
+                .font(.subheadline.weight(.medium))
+              Spacer()
+              Text("\(NutritionFormatter.formatNutrition(entry.values.calories))")
+                .font(.subheadline.weight(.semibold))
+                + Text(" kcal")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            }
 
             GeometryReader { geo in
               ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: 3)
                   .fill(entry.type.accentColor.opacity(0.12))
-                  .frame(height: 8)
+                  .frame(height: 6)
                 RoundedRectangle(cornerRadius: 3)
                   .fill(entry.type.accentColor)
                   .frame(
                     width: maxCalories > 0
                       ? geo.size.width * (entry.values.calories / maxCalories) : 0,
-                    height: 8)
+                    height: 6)
               }
             }
-            .frame(height: 8)
+            .frame(height: 6)
 
-            Text("\(NutritionFormatter.formatNutrition(entry.values.calories))")
-              .font(.caption.weight(.medium))
-              .frame(width: 52, alignment: .trailing)
+            HStack(spacing: 6) {
+              MacroChip(label: "P", value: entry.values.protein, color: .blue)
+              MacroChip(label: "F", value: entry.values.fat, color: .yellow)
+              MacroChip(label: "S", value: entry.values.netCarbs, color: .green)
+              MacroChip(label: "Fb", value: entry.values.dietaryFiber, color: .brown)
+            }
           }
         }
       }
