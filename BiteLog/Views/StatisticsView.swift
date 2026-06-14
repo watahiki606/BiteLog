@@ -59,6 +59,15 @@ struct StatsDayPoint: Identifiable {
   var id: Date { date }
 }
 
+// MARK: - 表示中ウィンドウの集計結果（1パスでまとめて算出）
+
+struct VisibleStats {
+  var total: NutritionValues = .zero
+  var recordedDays = 0
+  var daysOnTarget = 0
+  var mealTotals: [MealType: NutritionValues] = [:]
+}
+
 // MARK: - 統計画面
 
 struct StatisticsView: View {
@@ -71,7 +80,11 @@ struct StatisticsView: View {
   @State private var customEnd = Date()
   @State private var trendMetric: TrendMetric = .calories
 
-  @State private var items: [LogItemDTO] = []
+  // 集計結果をキャッシュ（生のログは保持せず畳み込む。5万件規模でも軽量）
+  @State private var dayTotals: [String: NutritionValues] = [:]
+  @State private var dayMealTotals: [String: [MealType: NutritionValues]] = [:]
+  @State private var monthTotals: [Date: NutritionValues] = [:]
+  @State private var trendPoints: [StatsDayPoint] = []
   /// 取得済みの最も古い日。スクロールで端に近づくと過去へ伸ばす
   @State private var loadedStart = Calendar.current.date(byAdding: .day, value: -730, to: Date())!
   @State private var isLoading = false
@@ -85,6 +98,8 @@ struct StatisticsView: View {
   private let initialSpanDays = 730
   /// 端に達したとき追加で遡る日数（1年ずつ）
   private let chunkDays = 365
+  /// 日次グラフで描く最大バー本数（直近約2年。長期は年表示の月次バーで見る）
+  private let maxDailyBars = 732
 
   /// スクロールで一度に見せる日数（週=7 / 月=30 / 年=365 のローリングウィンドウ）
   private var visibleSpanDays: Int {
@@ -172,84 +187,52 @@ struct StatisticsView: View {
       : "wide"
   }
 
-  // MARK: - 集計（トレンドグラフ＝全取得分 / カード＝表示中ウィンドウ）
+  // MARK: - 集計
+  // 生のログは保持せず、取得時に日別/月別の合計へ畳み込んで @State にキャッシュする。
+  // スクロールでは再集計せず、表示中ウィンドウのカード値だけを可視日数ぶん走査する。
 
-  private var totalsByDate: [String: NutritionValues] {
-    Dictionary(grouping: items, by: { $0.logDate })
-      .mapValues { dayItems in
-        dayItems.reduce(NutritionValues.zero) { $0 + $1.nutritionValues }
-      }
-  }
-
-  /// 月初日をキーにした月別集計（年表示のトレンド用）
-  private var totalsByMonth: [Date: NutritionValues] {
-    var dict: [Date: NutritionValues] = [:]
-    for item in items {
-      guard let d = StatisticsView.parseLogDate(item.logDate) else { continue }
-      let key = monthStart(d)
-      dict[key] = (dict[key] ?? .zero) + item.nutritionValues
-    }
-    return dict
-  }
-
-  /// トレンドグラフ用の系列（取得範囲全体。記録のない期間は0）。
-  /// 年は月次、それ以外は日次で集計する。
-  private var trendPoints: [StatsDayPoint] {
-    if barUnit == .month {
-      let totals = totalsByMonth
-      return months(in: loadInterval).map { m in
-        StatsDayPoint(date: m, values: totals[m] ?? .zero)
-      }
-    } else {
-      let totals = totalsByDate
-      return days(in: loadInterval).map { day in
-        StatsDayPoint(date: day, values: totals[LogItemDTO.formatLogDate(day)] ?? .zero)
+  /// 表示中ウィンドウの集計（1パス・O(可視日数)。件数に依存しない）
+  private var visibleStats: VisibleStats {
+    var s = VisibleStats()
+    let target = nutritionGoalsManager.targetCalories
+    for day in days(in: visibleInterval) {
+      let key = LogItemDTO.formatLogDate(day)
+      guard let v = dayTotals[key] else { continue }
+      s.total = s.total + v
+      s.recordedDays += 1
+      if target > 0, v.calories > 0, v.calories <= target { s.daysOnTarget += 1 }
+      if let meals = dayMealTotals[key] {
+        for (meal, mv) in meals {
+          s.mealTotals[meal] = (s.mealTotals[meal] ?? .zero) + mv
+        }
       }
     }
+    return s
   }
 
-  /// 表示中ウィンドウ内のログ
-  private var visibleItems: [LogItemDTO] {
-    let from = LogItemDTO.formatLogDate(visibleInterval.start)
-    let to = LogItemDTO.formatLogDate(visibleInterval.end)
-    return items.filter { $0.logDate >= from && $0.logDate <= to }
-  }
-
-  private var visibleTotalsByDate: [String: NutritionValues] {
-    Dictionary(grouping: visibleItems, by: { $0.logDate })
-      .mapValues { dayItems in
-        dayItems.reduce(NutritionValues.zero) { $0 + $1.nutritionValues }
-      }
-  }
-
-  private var periodTotal: NutritionValues {
-    visibleItems.reduce(NutritionValues.zero) { $0 + $1.nutritionValues }
-  }
-
-  /// 記録があった日数（1件以上ログがある日）
-  private var recordedDayCount: Int { visibleTotalsByDate.count }
-
-  private var average: NutritionValues {
-    let n = Double(recordedDayCount)
+  private func averageValues(_ stats: VisibleStats) -> NutritionValues {
+    let n = Double(stats.recordedDays)
     guard n > 0 else { return .zero }
-    let t = periodTotal
+    let t = stats.total
     return NutritionValues(
       calories: t.calories / n, netCarbs: t.netCarbs / n,
       dietaryFiber: t.dietaryFiber / n, fat: t.fat / n, protein: t.protein / n)
   }
 
-  /// カロリー目標以内だった記録日数
-  private var daysOnTarget: Int {
-    let target = nutritionGoalsManager.targetCalories
-    guard target > 0 else { return 0 }
-    return visibleTotalsByDate.values.filter { $0.calories > 0 && $0.calories <= target }.count
-  }
-
-  private var mealTypeTotals: [(type: MealType, values: NutritionValues)] {
-    MealType.allCases.map { mealType in
-      let v = visibleItems.filter { $0.mealType == mealType }
-        .reduce(NutritionValues.zero) { $0 + $1.nutritionValues }
-      return (mealType, v)
+  /// キャッシュからトレンド系列を再構築（取得時・期間タイプ変更時のみ呼ぶ）
+  private func rebuildTrendPoints() {
+    if barUnit == .month {
+      // 年：取得済みの全月（10年でも約120本と軽量）
+      trendPoints = months(in: loadInterval).map { m in
+        StatsDayPoint(date: m, values: monthTotals[m] ?? .zero)
+      }
+    } else {
+      // 週/月：直近 maxDailyBars 日ぶんに制限（長期は年表示で見る）
+      let all = days(in: loadInterval)
+      let capped = all.count > maxDailyBars ? Array(all.suffix(maxDailyBars)) : all
+      trendPoints = capped.map { day in
+        StatsDayPoint(date: day, values: dayTotals[LogItemDTO.formatLogDate(day)] ?? .zero)
+      }
     }
   }
 
@@ -260,13 +243,14 @@ struct StatisticsView: View {
       VStack(spacing: 16) {
         periodSelector
 
-        if items.isEmpty && !isLoading {
-          emptyState
-        } else {
+        if !dayTotals.isEmpty {
+          let stats = visibleStats
           trendCard
-          averageCard
-          pfcBalanceCard
-          mealTypeCard
+          averageCard(stats)
+          pfcBalanceCard(stats)
+          mealTypeCard(stats)
+        } else if !isLoading {
+          emptyState
         }
       }
       .padding(.vertical)
@@ -275,7 +259,7 @@ struct StatisticsView: View {
     .navigationTitle(NSLocalizedString("Statistics", comment: "Statistics tab"))
     .navigationBarTitleDisplayMode(.inline)
     .overlay {
-      if isLoading && items.isEmpty {
+      if isLoading && dayTotals.isEmpty {
         ProgressView()
       }
     }
@@ -287,6 +271,7 @@ struct StatisticsView: View {
     }
     .onChange(of: periodType) { _, _ in
       scrollToRecentWindow()
+      rebuildTrendPoints()
     }
     .onChange(of: scrollPosition) { _, _ in
       Task { await loadOlderIfNeeded() }
@@ -480,30 +465,30 @@ struct StatisticsView: View {
 
   // MARK: - 平均・達成率カード
 
-  @ViewBuilder
-  private var averageCard: some View {
-    statsCard(title: NSLocalizedString("Daily Average", comment: "Statistics section")) {
+  private func averageCard(_ stats: VisibleStats) -> some View {
+    let avg = averageValues(stats)
+    return statsCard(title: NSLocalizedString("Daily Average", comment: "Statistics section")) {
       HStack(spacing: 16) {
         CalorieRingView(
-          calories: average.calories,
+          calories: avg.calories,
           targetCalories: nutritionGoalsManager.targetCalories
         )
         VStack(spacing: 8) {
           MacroBarView(
             label: NSLocalizedString("Protein", comment: "Nutrient label"),
-            value: average.protein, maxValue: nutritionGoalsManager.targetProtein,
+            value: avg.protein, maxValue: nutritionGoalsManager.targetProtein,
             color: .blue, icon: "p.circle.fill")
           MacroBarView(
             label: NSLocalizedString("Fat", comment: "Nutrient label"),
-            value: average.fat, maxValue: nutritionGoalsManager.targetFat,
+            value: avg.fat, maxValue: nutritionGoalsManager.targetFat,
             color: .yellow, icon: "f.circle.fill")
           MacroBarView(
             label: NSLocalizedString("Sugar", comment: "Nutrient label"),
-            value: average.netCarbs, maxValue: nutritionGoalsManager.targetNetCarbs,
+            value: avg.netCarbs, maxValue: nutritionGoalsManager.targetNetCarbs,
             color: .green, icon: "s.circle.fill")
           MacroBarView(
             label: NSLocalizedString("Dietary Fiber", comment: "Nutrient label"),
-            value: average.dietaryFiber, maxValue: nutritionGoalsManager.targetFiber,
+            value: avg.dietaryFiber, maxValue: nutritionGoalsManager.targetFiber,
             color: .brown, icon: "leaf.circle.fill")
         }
       }
@@ -521,7 +506,7 @@ struct StatisticsView: View {
         Text(
           String(
             format: NSLocalizedString("%d / %d days", comment: "Days on target / recorded days"),
-            daysOnTarget, recordedDayCount)
+            stats.daysOnTarget, stats.recordedDays)
         )
         .font(.subheadline.weight(.semibold))
       }
@@ -530,14 +515,13 @@ struct StatisticsView: View {
 
   // MARK: - PFCバランスカード
 
-  @ViewBuilder
-  private var pfcBalanceCard: some View {
-    let p = periodTotal.protein * 4
-    let f = periodTotal.fat * 9
-    let c = periodTotal.carbs * 4
+  private func pfcBalanceCard(_ stats: VisibleStats) -> some View {
+    let p = stats.total.protein * 4
+    let f = stats.total.fat * 9
+    let c = stats.total.carbs * 4
     let total = p + f + c
 
-    statsCard(title: NSLocalizedString("PFC Balance", comment: "Statistics section")) {
+    return statsCard(title: NSLocalizedString("PFC Balance", comment: "Statistics section")) {
       if total > 0 {
         let segments: [(label: String, value: Double, color: Color)] = [
           (NSLocalizedString("Protein", comment: "Nutrient label"), p, .blue),
@@ -581,12 +565,14 @@ struct StatisticsView: View {
 
   // MARK: - 食事タイプ別カード
 
-  @ViewBuilder
-  private var mealTypeCard: some View {
-    let totals = mealTypeTotals.filter { $0.values.calories > 0 }
+  private func mealTypeCard(_ stats: VisibleStats) -> some View {
+    let periodTotal = stats.total
+    let totals = MealType.allCases
+      .map { (type: $0, values: stats.mealTotals[$0] ?? .zero) }
+      .filter { $0.values.calories > 0 }
     let maxCalories = totals.map { $0.values.calories }.max() ?? 0
 
-    statsCard(title: NSLocalizedString("By Meal Type", comment: "Statistics section")) {
+    return statsCard(title: NSLocalizedString("By Meal Type", comment: "Statistics section")) {
       VStack(spacing: 14) {
         // 期間全体の合計
         VStack(alignment: .leading, spacing: 6) {
@@ -684,28 +670,32 @@ struct StatisticsView: View {
     isLoading = true
     defer { isLoading = false }
     do {
+      let fetched: [LogItemDTO]
       if periodType == .custom {
-        items = try await APIClient.shared.fetchLogItems(
+        fetched = try await APIClient.shared.fetchLogItems(
           from: LogItemDTO.formatLogDate(loadInterval.start),
           to: LogItemDTO.formatLogDate(loadInterval.end))
+        loadedStart = loadInterval.start
       } else {
         let start = calendar.date(byAdding: .day, value: -initialSpanDays, to: referenceDate)!
-        items = try await APIClient.shared.fetchLogItems(
+        fetched = try await APIClient.shared.fetchLogItems(
           from: LogItemDTO.formatLogDate(start),
           to: LogItemDTO.formatLogDate(referenceDate))
         loadedStart = start
       }
+      ingest(fetched, reset: true)
     } catch {
       print("StatisticsView load error: \(error)")
     }
   }
 
   /// スクロールで取得済みの端に近づいたら、さらに過去を1年分追加取得する。
-  /// 既存データは保持したまま追記し、スクロール位置は維持される。
+  /// 既存の集計は保持したまま畳み込み、スクロール位置は維持される。
   /// @MainActor で直列化し、同じ範囲の二重取得（重複集計）を防ぐ。
   @MainActor
   private func loadOlderIfNeeded() async {
-    guard periodType != .custom, !isLoadingMore else { return }
+    // 日次（週/月）は直近2年に固定。過去への追加取得は年表示のみ（月次バーで軽い）
+    guard periodType == .year, !isLoadingMore else { return }
     // 表示ウィンドウの先頭が、取得済み開始から1ウィンドウ分以内に来たら先読み
     let threshold = calendar.date(byAdding: .day, value: visibleSpanDays, to: loadedStart)!
     guard calendar.startOfDay(for: scrollPosition) <= threshold else { return }
@@ -721,10 +711,39 @@ struct StatisticsView: View {
       let older = try await APIClient.shared.fetchLogItems(
         from: LogItemDTO.formatLogDate(newStart),
         to: LogItemDTO.formatLogDate(chunkEnd))
-      items.append(contentsOf: older)
       loadedStart = newStart
+      ingest(older, reset: false)
     } catch {
       print("StatisticsView loadOlder error: \(error)")
     }
+  }
+
+  /// 取得したログを日別/月別の合計へ畳み込む（生のログは破棄）。
+  /// reset=true で全キャッシュをクリアしてから取り込む。
+  private func ingest(_ newItems: [LogItemDTO], reset: Bool) {
+    if reset {
+      dayTotals = [:]
+      dayMealTotals = [:]
+      monthTotals = [:]
+    }
+    var dt = dayTotals
+    var dmt = dayMealTotals
+    var mt = monthTotals
+    for item in newItems {
+      let key = item.logDate
+      let v = item.nutritionValues
+      dt[key] = (dt[key] ?? .zero) + v
+      var meals = dmt[key] ?? [:]
+      meals[item.mealType] = (meals[item.mealType] ?? .zero) + v
+      dmt[key] = meals
+      if let d = StatisticsView.parseLogDate(key) {
+        let mkey = monthStart(d)
+        mt[mkey] = (mt[mkey] ?? .zero) + v
+      }
+    }
+    dayTotals = dt
+    dayMealTotals = dmt
+    monthTotals = mt
+    rebuildTrendPoints()
   }
 }
