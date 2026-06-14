@@ -440,6 +440,33 @@ struct StatisticsView: View {
 
     statsCard(title: NSLocalizedString("By Meal Type", comment: "Statistics section")) {
       VStack(spacing: 14) {
+        // 期間全体の合計
+        VStack(alignment: .leading, spacing: 6) {
+          HStack(spacing: 8) {
+            Image(systemName: "sum")
+              .font(.system(size: 14))
+              .foregroundColor(.primary)
+              .frame(width: 20)
+            Text(NSLocalizedString("Total", comment: "Period total"))
+              .font(.subheadline.weight(.bold))
+            Spacer()
+            Text("\(NutritionFormatter.formatNutrition(periodTotal.calories))")
+              .font(.subheadline.weight(.bold))
+              + Text(" kcal")
+              .font(.caption)
+              .foregroundColor(.secondary)
+          }
+
+          HStack(spacing: 6) {
+            MacroChip(label: "P", value: periodTotal.protein, color: .blue)
+            MacroChip(label: "F", value: periodTotal.fat, color: .yellow)
+            MacroChip(label: "S", value: periodTotal.netCarbs, color: .green)
+            MacroChip(label: "Fb", value: periodTotal.dietaryFiber, color: .brown)
+          }
+        }
+
+        Divider()
+
         ForEach(totals, id: \.type) { entry in
           VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
