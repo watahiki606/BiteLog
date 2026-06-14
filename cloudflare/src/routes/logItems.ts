@@ -74,6 +74,58 @@ const logItems = new Hono<{ Bindings: Bindings; Variables: Variables }>()
       return c.json({ items, hasMore: results.length === pageLimit });
     }
   })
+  // 統計タブ用の期間集計。日付×食事タイプごとの栄養合計を SQL 側で算出して返す。
+  // 生ログを期間分そのまま返すと Worker の CPU 制限を超える（exceededCpu/503）ため、
+  // 集計を D1 に寄せて返却行数と JS の処理量を最小化する。
+  // 栄養値は iOS の NutritionSnapshot.scaled(by:) と同じく ratio = servings / portionSize で按分。
+  // FoodMaster が結合できればそれを優先し、無ければ nutrition_snapshot_json を使う（iOS と同順）。
+  .get('/summary', async (c) => {
+    const userId = c.get('userId');
+    const from = c.req.query('from');
+    const to = c.req.query('to');
+    if (!from || !to) {
+      return c.json({ error: 'from and to are required' }, 400);
+    }
+
+    const { results } = await c.env.DB.prepare(
+      `WITH base AS (
+         SELECT li.log_date AS log_date, li.meal_type AS meal_type,
+           li.number_of_servings AS s,
+           COALESCE(fm.calories,      json_extract(li.nutrition_snapshot_json, '$.calories'))     AS cal,
+           COALESCE(fm.protein,       json_extract(li.nutrition_snapshot_json, '$.protein'))      AS pro,
+           COALESCE(fm.fat,           json_extract(li.nutrition_snapshot_json, '$.fat'))          AS fat,
+           COALESCE(fm.net_carbs,     json_extract(li.nutrition_snapshot_json, '$.netCarbs'))     AS nc,
+           COALESCE(fm.dietary_fiber, json_extract(li.nutrition_snapshot_json, '$.dietaryFiber')) AS fib,
+           COALESCE(fm.portion_size,  json_extract(li.nutrition_snapshot_json, '$.portionSize'))  AS psize
+         FROM log_items li
+         LEFT JOIN food_masters fm ON fm.id = li.food_master_id
+         WHERE li.user_id = ? AND li.log_date >= ? AND li.log_date <= ?
+       )
+       SELECT log_date, meal_type,
+         SUM(CASE WHEN psize > 0 THEN cal * s / psize ELSE 0 END) AS calories,
+         SUM(CASE WHEN psize > 0 THEN pro * s / psize ELSE 0 END) AS protein,
+         SUM(CASE WHEN psize > 0 THEN fat * s / psize ELSE 0 END) AS fat,
+         SUM(CASE WHEN psize > 0 THEN nc  * s / psize ELSE 0 END) AS netCarbs,
+         SUM(CASE WHEN psize > 0 THEN fib * s / psize ELSE 0 END) AS dietaryFiber
+       FROM base
+       GROUP BY log_date, meal_type
+       ORDER BY log_date ASC`
+    ).bind(userId, from, to).all<{
+      log_date: string; meal_type: string;
+      calories: number; protein: number; fat: number; netCarbs: number; dietaryFiber: number;
+    }>();
+
+    const items = results.map(r => ({
+      logDate: r.log_date,
+      mealType: r.meal_type,
+      calories: r.calories ?? 0,
+      protein: r.protein ?? 0,
+      fat: r.fat ?? 0,
+      netCarbs: r.netCarbs ?? 0,
+      dietaryFiber: r.dietaryFiber ?? 0,
+    }));
+    return c.json({ items });
+  })
   .post('/', async (c) => {
     const userId = c.get('userId');
     const body = await c.req.json<{

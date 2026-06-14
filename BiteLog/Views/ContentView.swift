@@ -106,6 +106,13 @@ struct ContentView: View {
       }
       .opacity(selectedTab == 1 ? 1 : 0)
       .zIndex(selectedTab == 1 ? 1 : 0)
+
+      // 統計タブ
+      NavigationStack {
+        StatisticsView()
+      }
+      .opacity(selectedTab == 2 ? 1 : 0)
+      .zIndex(selectedTab == 2 ? 1 : 0)
       }
       .clipped()
 
@@ -139,6 +146,20 @@ struct ContentView: View {
           }
           .frame(maxWidth: .infinity)
           .foregroundColor(selectedTab == 1 ? .blue : .gray)
+        }
+
+        // 統計タブ
+        Button(action: {
+          selectedTab = 2
+        }) {
+          VStack(spacing: 4) {
+            Image(systemName: "chart.xyaxis.line")
+              .font(.system(size: 24))
+            Text(NSLocalizedString("Statistics", comment: "Tab name"))
+              .font(.caption)
+          }
+          .frame(maxWidth: .infinity)
+          .foregroundColor(selectedTab == 2 ? .blue : .gray)
         }
       }
       .padding(.vertical, 8)

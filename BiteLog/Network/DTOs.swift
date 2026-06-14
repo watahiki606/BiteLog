@@ -113,6 +113,41 @@ struct LogItemListResponse: Codable {
   var hasMore: Bool?
 }
 
+// MARK: - 統計集計用
+
+/// 栄養を集計できる型の共通インターフェース。LogItemDTO（個別ログ）と
+/// DaySummaryDTO（サーバ側で日付×食事タイプに集計済み）の両方が準拠する。
+protocol NutritionContributing {
+  var logDate: String { get }
+  var mealType: MealType { get }
+  var nutritionValues: NutritionValues { get }
+}
+
+extension LogItemDTO: NutritionContributing {}
+
+/// GET /api/log-items/summary の1行（特定日・特定食事タイプの栄養合計）。
+struct DaySummaryDTO: Codable, Identifiable, NutritionContributing {
+  var logDate: String
+  var mealType: MealType
+  var calories: Double
+  var protein: Double
+  var fat: Double
+  var netCarbs: Double
+  var dietaryFiber: Double
+
+  var id: String { "\(logDate)-\(mealType.rawValue)" }
+
+  var nutritionValues: NutritionValues {
+    NutritionValues(
+      calories: calories, netCarbs: netCarbs, dietaryFiber: dietaryFiber, fat: fat,
+      protein: protein)
+  }
+}
+
+struct DaySummaryListResponse: Codable {
+  var items: [DaySummaryDTO]
+}
+
 // MARK: - NutritionGoals DTO
 
 struct NutritionGoalsDTO: Codable {
