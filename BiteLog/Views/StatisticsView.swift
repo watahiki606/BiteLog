@@ -456,6 +456,10 @@ struct StatisticsView: View {
   private func pageChart(start: Date, end: Date) -> some View {
     let pts = points(start: start, end: end)
     let goal = trendGoal
+    let goalLine = barUnit == .month ? goal * 30 : goal
+    // 全バー0のページ（未取得など）でもY軸が退化しないよう上限を確保
+    let maxValue = pts.map { trendMetric.value($0.values) }.max() ?? 0
+    let yMax = max(maxValue * 1.1, goalLine * 1.1, 1)
     return Chart {
       ForEach(pts) { point in
         BarMark(
@@ -466,12 +470,13 @@ struct StatisticsView: View {
       }
       if goal > 0 {
         // 年（月次集計）の目標ラインは月合計の概算（1日目標×30）
-        RuleMark(y: .value("Goal", barUnit == .month ? goal * 30 : goal))
+        RuleMark(y: .value("Goal", goalLine))
           .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
           .foregroundStyle(.secondary)
       }
     }
     .chartXScale(domain: start...calendar.date(byAdding: .day, value: 1, to: end)!)
+    .chartYScale(domain: 0...yMax)
     .chartXAxis { trendAxis }
   }
 
@@ -735,23 +740,25 @@ struct StatisticsView: View {
     }
   }
 
-  /// 表示中ページが取得済みの端に近づいたら、さらに過去を1年分追加取得する。
+  /// 表示中ページが取得済みより古ければ、そのページを丸ごと含む範囲を1度だけ取得する。
   /// 既存の集計は保持したまま畳み込み、ページ位置は維持される。
+  /// 取得済みなら即 return するので、スクロールで連続発火しても多重取得しない。
   /// @MainActor で直列化し、同じ範囲の二重取得（重複集計）を防ぐ。
   @MainActor
   private func loadOlderIfNeeded() async {
     guard periodType != .custom, !isLoadingMore else { return }
-    // 表示中ページの先頭が、取得済み開始から1期間分以内に来たら先読み
-    let threshold = nextPeriodStart(calendar.startOfDay(for: loadedStart))
-    guard currentAnchor <= threshold else { return }
+    let loadedStartDay = calendar.startOfDay(for: loadedStart)
+    // 表示中ページを完全に含むのに必要な開始日（1期間ぶん先読み）
+    let needFrom = prevPeriodStart(periodStart(currentAnchor))
+    guard needFrom < loadedStartDay else { return }  // 既に取得済み
     // 際限ない取得を避けるため最大 horizonYears 年で打ち切り
     let earliest = calendar.date(byAdding: .year, value: -horizonYears, to: referenceDate)!
-    guard loadedStart > earliest else { return }
+    let newStart = max(needFrom, calendar.startOfDay(for: earliest))
+    guard newStart < loadedStartDay else { return }
 
     isLoadingMore = true
     defer { isLoadingMore = false }
-    let newStart = calendar.date(byAdding: .day, value: -chunkDays, to: loadedStart)!
-    let chunkEnd = calendar.date(byAdding: .day, value: -1, to: loadedStart)!
+    let chunkEnd = calendar.date(byAdding: .day, value: -1, to: loadedStartDay)!
     do {
       let older = try await APIClient.shared.fetchLogItems(
         from: LogItemDTO.formatLogDate(newStart),
