@@ -43,7 +43,7 @@ struct StatisticsCalculatorTests {
   // MARK: - dailyTotals
 
   @Test func dailyTotalsEmptyReturnsEmpty() {
-    #expect(StatisticsCalculator.dailyTotals([]).isEmpty)
+    #expect(StatisticsCalculator.dailyTotals([] as [LogItemDTO]).isEmpty)
   }
 
   @Test func dailyTotalsGroupsByDateAndSumsAscending() {
@@ -124,7 +124,7 @@ struct StatisticsCalculatorTests {
   // MARK: - pfcBalance
 
   @Test func pfcBalanceEmptyReturnsZero() {
-    #expect(StatisticsCalculator.pfcBalance([]) == .zero)
+    #expect(StatisticsCalculator.pfcBalance([] as [LogItemDTO]) == .zero)
   }
 
   @Test func pfcBalanceComputesEnergyRatio() {

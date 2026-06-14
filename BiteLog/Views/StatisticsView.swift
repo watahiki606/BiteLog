@@ -92,8 +92,8 @@ struct StatisticsView: View {
     byAdding: .day, value: -29, to: Calendar.current.startOfDay(for: Date()))!
   @State private var customTo: Date = Calendar.current.startOfDay(for: Date())
 
-  // 読み込み済みバッファ（[bufferFrom, bufferTo]）
-  @State private var items: [LogItemDTO] = []
+  // 読み込み済みバッファ（[bufferFrom, bufferTo]）。日付×食事タイプの集計済みデータ。
+  @State private var items: [DaySummaryDTO] = []
   @State private var bufferFrom: Date = Date()
   @State private var bufferTo: Date = Date()
   @State private var isLoading = false
@@ -125,7 +125,7 @@ struct StatisticsView: View {
     return (from, to)
   }
 
-  private var visibleItems: [LogItemDTO] {
+  private var visibleItems: [DaySummaryDTO] {
     let fromStr = StatDate.string(visibleRange.from)
     let toStr = StatDate.string(visibleRange.to)
     return items.filter { $0.logDate >= fromStr && $0.logDate <= toStr }
@@ -478,7 +478,7 @@ struct StatisticsView: View {
     }
 
     do {
-      let fetched = try await APIClient.shared.fetchLogItems(
+      let fetched = try await APIClient.shared.fetchDailySummary(
         from: StatDate.string(from), to: StatDate.string(to))
       items = fetched
       bufferFrom = from
@@ -503,7 +503,7 @@ struct StatisticsView: View {
     let newFrom = cal.date(byAdding: .day, value: -(visibleDays * 3), to: bufferFrom) ?? bufferFrom
     let oldFromMinus1 = cal.date(byAdding: .day, value: -1, to: bufferFrom) ?? bufferFrom
     do {
-      let older = try await APIClient.shared.fetchLogItems(
+      let older = try await APIClient.shared.fetchDailySummary(
         from: StatDate.string(newFrom), to: StatDate.string(oldFromMinus1))
       // 重複排除して前方に結合
       let existingIDs = Set(items.map(\.id))

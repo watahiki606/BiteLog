@@ -27,7 +27,7 @@ enum StatisticsCalculator {
   static let fiberKcal = 2.0
 
   /// 日別合計。logDate でグルーピングし、各日の `NutritionValues` を合算。日付昇順で返す。
-  static func dailyTotals(_ items: [LogItemDTO]) -> [DailyNutrition] {
+  static func dailyTotals(_ items: [some NutritionContributing]) -> [DailyNutrition] {
     let grouped = Dictionary(grouping: items, by: { $0.logDate })
     return grouped
       .map { date, dayItems in
@@ -40,13 +40,13 @@ enum StatisticsCalculator {
   }
 
   /// 期間全体の合計。
-  static func periodTotal(_ items: [LogItemDTO]) -> NutritionValues {
+  static func periodTotal(_ items: [some NutritionContributing]) -> NutritionValues {
     items.reduce(.zero) { $0 + $1.nutritionValues }
   }
 
   /// 1日平均（期間合計 ÷ 対象日数）。
   /// - Parameter dayCount: 期間の暦日数（記録の有無に依らない母数）。0以下なら `.zero`。
-  static func dailyAverage(_ items: [LogItemDTO], dayCount: Int) -> NutritionValues {
+  static func dailyAverage(_ items: [some NutritionContributing], dayCount: Int) -> NutritionValues {
     guard dayCount > 0 else { return .zero }
     let total = periodTotal(items)
     let d = Double(dayCount)
@@ -64,7 +64,7 @@ enum StatisticsCalculator {
   ///   - targetCalories: 1日の目標カロリー。0以下なら 0 を返す。
   ///   - tolerance: 許容割合（0.1 = ±10%）。
   static func goalAchievedDays(
-    _ items: [LogItemDTO], targetCalories: Double, tolerance: Double = 0.1
+    _ items: [some NutritionContributing], targetCalories: Double, tolerance: Double = 0.1
   ) -> Int {
     guard targetCalories > 0 else { return 0 }
     let lower = targetCalories * (1 - tolerance)
@@ -74,7 +74,7 @@ enum StatisticsCalculator {
   }
 
   /// PFCのエネルギー比率（合計100%）。記録が無い/エネルギー0なら `.zero`。
-  static func pfcBalance(_ items: [LogItemDTO]) -> PFCBalance {
+  static func pfcBalance(_ items: [some NutritionContributing]) -> PFCBalance {
     let total = periodTotal(items)
     let pCal = total.protein * proteinKcal
     let fCal = total.fat * fatKcal
@@ -89,7 +89,7 @@ enum StatisticsCalculator {
   }
 
   /// 食事タイプ別の合計。記録のないタイプはキーに含まれない。
-  static func mealTypeTotals(_ items: [LogItemDTO]) -> [MealType: NutritionValues] {
+  static func mealTypeTotals(_ items: [some NutritionContributing]) -> [MealType: NutritionValues] {
     Dictionary(grouping: items, by: { $0.mealType })
       .mapValues { typeItems in typeItems.reduce(.zero) { $0 + $1.nutritionValues } }
   }

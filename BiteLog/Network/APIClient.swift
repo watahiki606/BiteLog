@@ -186,9 +186,11 @@ final class APIClient {
     return resp.items
   }
 
-  /// 統計タブの期間集計用。from/to はともに "yyyy-MM-dd"（両端含む）
-  func fetchLogItems(from: String, to: String) async throws -> [LogItemDTO] {
-    let resp: LogItemListResponse = try await request(path: "/api/log-items?from=\(from)&to=\(to)")
+  /// 統計タブの期間集計用。日付×食事タイプごとの栄養合計をサーバ側で集計して取得する。
+  /// from/to はともに "yyyy-MM-dd"（両端含む）。
+  func fetchDailySummary(from: String, to: String) async throws -> [DaySummaryDTO] {
+    let resp: DaySummaryListResponse = try await request(
+      path: "/api/log-items/summary?from=\(from)&to=\(to)")
     return resp.items
   }
 
