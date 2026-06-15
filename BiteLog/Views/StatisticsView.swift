@@ -239,6 +239,11 @@ struct StatisticsView: View {
           metric: metric,
           visibleDays: visibleDays,
           visibleSeconds: visibleSeconds,
+          // スクロール域＝バッファ全体に固定。マークは可視ウィンドウぶんだけ描画（仮想化）しても
+          // スクロール extent は縮まない。末日が端で切れないよう右端は +1 日。
+          domainStart: cal.startOfDay(for: bufferFrom),
+          domainEnd: cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: bufferTo))
+            ?? bufferTo,
           goalLine: metric == .calories ? nutritionGoalsManager.targetCalories : nil,
           xAxisStride: xAxisStride,
           initialScrollX: settledScrollX,
@@ -500,11 +505,17 @@ struct StatisticsView: View {
 
 /// `scrollX` を自身で所有することで、横スクロール中の再評価をこの View 内に閉じ込める。
 /// 親（カード群）はスクロール停止時（`onScrollSettled`）にのみ再評価される。
+///
+/// 仮想化: スクロール域は `chartXScale(domain:)` でバッファ全体に固定したうえで、
+/// 描画する `LineMark` は毎フレーム可視ウィンドウ（`scrollX ± pad`）ぶんだけに絞る。
+/// これで描画マーク数はバッファ増加（無限スクロール）と無関係に O(可視日数) で有界化される。
 private struct TrendChartView: View {
   let series: [DailyNutrition]
   let metric: TrendMetric
   let visibleDays: Int
   let visibleSeconds: TimeInterval
+  let domainStart: Date
+  let domainEnd: Date
   let goalLine: Double?
   let xAxisStride: Int
   let initialScrollX: Date
@@ -516,13 +527,15 @@ private struct TrendChartView: View {
 
   init(
     series: [DailyNutrition], metric: TrendMetric, visibleDays: Int, visibleSeconds: TimeInterval,
-    goalLine: Double?, xAxisStride: Int, initialScrollX: Date,
+    domainStart: Date, domainEnd: Date, goalLine: Double?, xAxisStride: Int, initialScrollX: Date,
     onScroll: @escaping (Date) -> Void, onScrollSettled: @escaping (Date) -> Void
   ) {
     self.series = series
     self.metric = metric
     self.visibleDays = visibleDays
     self.visibleSeconds = visibleSeconds
+    self.domainStart = domainStart
+    self.domainEnd = domainEnd
     self.goalLine = goalLine
     self.xAxisStride = xAxisStride
     self.initialScrollX = initialScrollX
@@ -534,9 +547,32 @@ private struct TrendChartView: View {
   // 長期間（月/年）は点を省き直線補間にして描画コストを抑える。
   private var simplified: Bool { visibleDays > 60 }
 
+  /// 描画対象の可視ウィンドウ。可視範囲 `[scrollX, scrollX+visibleSeconds]` に
+  /// 前後 1 画面ぶんの余白（pad）を足し、速いフリックでも端が空かないようにする。
+  private var visibleSlice: ArraySlice<DailyNutrition> {
+    let pad = visibleSeconds
+    let fromStr = StatDate.string(scrollX.addingTimeInterval(-pad))
+    let toStr = StatDate.string(scrollX.addingTimeInterval(visibleSeconds + pad))
+    // series は date 昇順ソート済み。二分探索で [fromStr, toStr] のスライスを取り出す。
+    let lo = lowerBound { $0.date >= fromStr }
+    let hi = lowerBound { $0.date > toStr }
+    return series[lo..<hi]
+  }
+
+  /// `predicate` が false→true に単調変化する最初の index（lower_bound）。
+  private func lowerBound(_ predicate: (DailyNutrition) -> Bool) -> Int {
+    var low = 0
+    var high = series.count
+    while low < high {
+      let mid = (low + high) / 2
+      if predicate(series[mid]) { high = mid } else { low = mid + 1 }
+    }
+    return low
+  }
+
   var body: some View {
     Chart {
-      ForEach(series) { day in
+      ForEach(visibleSlice) { day in
         if let date = StatDate.date(day.date) {
           LineMark(
             x: .value("Date", date, unit: .day),
@@ -561,6 +597,7 @@ private struct TrendChartView: View {
           .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
       }
     }
+    .chartXScale(domain: domainStart...domainEnd)
     .chartScrollableAxes(.horizontal)
     .chartXVisibleDomain(length: visibleSeconds)
     .chartScrollPosition(x: $scrollX)
