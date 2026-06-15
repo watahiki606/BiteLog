@@ -100,8 +100,12 @@ struct StatisticsView: View {
   @State private var isLoadingMore = false
   @State private var loadFailed = false
 
-  // グラフのスクロール位置（可視範囲の左端）
-  @State private var scrollX: Date = Date()
+  // トレンド系列。items 変化時のみ再計算してメモ化（スクロールでは再計算しない）。
+  @State private var trendSeries: [DailyNutrition] = []
+
+  // スクロール停止時のみ更新される可視左端。カード集計はこちらに連動させ、
+  // スクロール中の毎ティック再集計を避ける。
+  @State private var settledScrollX: Date = Date()
 
   private let cal = Calendar.current
 
@@ -118,16 +122,16 @@ struct StatisticsView: View {
 
   private var visibleSeconds: TimeInterval { Double(visibleDays) * 86400 }
 
-  /// 現在グラフに見えている期間 [from, to]（両端の日付）。各カードの集計対象。
-  private var visibleRange: (from: Date, to: Date) {
-    let from = cal.startOfDay(for: scrollX)
+  /// カードが集計対象とする期間 [from, to]（両端の日付）。スクロール停止時の位置。
+  private var settledRange: (from: Date, to: Date) {
+    let from = cal.startOfDay(for: settledScrollX)
     let to = cal.date(byAdding: .day, value: visibleDays - 1, to: from) ?? from
     return (from, to)
   }
 
-  private var visibleItems: [DaySummaryDTO] {
-    let fromStr = StatDate.string(visibleRange.from)
-    let toStr = StatDate.string(visibleRange.to)
+  private var settledItems: [DaySummaryDTO] {
+    let fromStr = StatDate.string(settledRange.from)
+    let toStr = StatDate.string(settledRange.to)
     return items.filter { $0.logDate >= fromStr && $0.logDate <= toStr }
   }
 
@@ -197,7 +201,7 @@ struct StatisticsView: View {
     f.locale = languageManager.locale
     f.dateStyle = .medium
     f.timeStyle = .none
-    let text = "\(f.string(from: visibleRange.from)) – \(f.string(from: visibleRange.to))"
+    let text = "\(f.string(from: settledRange.from)) – \(f.string(from: settledRange.to))"
     return Text(text)
       .font(.subheadline.weight(.medium))
       .foregroundColor(.secondary)
@@ -230,57 +234,24 @@ struct StatisticsView: View {
         }
         .pickerStyle(.segmented)
 
-        trendChart
+        TrendChartView(
+          series: trendSeries,
+          metric: metric,
+          visibleDays: visibleDays,
+          visibleSeconds: visibleSeconds,
+          goalLine: metric == .calories ? nutritionGoalsManager.targetCalories : nil,
+          xAxisStride: xAxisStride,
+          initialScrollX: settledScrollX,
+          onScroll: { x in
+            // 同期・軽量: 境界に近いときだけ追加取得を起動（毎ティック Task 生成を回避）。
+            if shouldLoadMore(at: x) {
+              Task { await loadMoreIfNeeded() }
+            }
+          },
+          onScrollSettled: { x in settledScrollX = x }
+        )
+        .id(reloadKey)
       }
-    }
-  }
-
-  private var trendSeries: [DailyNutrition] {
-    StatisticsCalculator.dailyTotals(items)
-  }
-
-  @ViewBuilder
-  private var trendChart: some View {
-    let series = trendSeries
-    let goalLine = metric == .calories ? nutritionGoalsManager.targetCalories : nil
-
-    Chart {
-      ForEach(series) { day in
-        if let date = StatDate.date(day.date) {
-          LineMark(
-            x: .value("Date", date, unit: .day),
-            y: .value(metric.localizedName, metric.value(day.values))
-          )
-          .foregroundStyle(metric.color)
-          .interpolationMethod(.catmullRom)
-
-          PointMark(
-            x: .value("Date", date, unit: .day),
-            y: .value(metric.localizedName, metric.value(day.values))
-          )
-          .foregroundStyle(metric.color)
-          .symbolSize(28)
-        }
-      }
-      if let goalLine {
-        RuleMark(y: .value("Goal", goalLine))
-          .foregroundStyle(.secondary.opacity(0.6))
-          .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
-      }
-    }
-    .chartScrollableAxes(.horizontal)
-    .chartXVisibleDomain(length: visibleSeconds)
-    .chartScrollPosition(x: $scrollX)
-    .chartXAxis {
-      AxisMarks(values: .stride(by: visibleDays > 60 ? .month : .day, count: xAxisStride)) { _ in
-        AxisGridLine()
-        AxisTick()
-        AxisValueLabel(format: .dateTime.month(.abbreviated).day())
-      }
-    }
-    .frame(height: 200)
-    .onChange(of: scrollX) { _, _ in
-      Task { await loadMoreIfNeeded() }
     }
   }
 
@@ -296,9 +267,9 @@ struct StatisticsView: View {
   // MARK: - ② 1日平均と目標達成日数
 
   private var averageCard: some View {
-    let avg = StatisticsCalculator.dailyAverage(visibleItems, dayCount: visibleDays)
+    let avg = StatisticsCalculator.dailyAverage(settledItems, dayCount: visibleDays)
     let achieved = StatisticsCalculator.goalAchievedDays(
-      visibleItems, targetCalories: nutritionGoalsManager.targetCalories)
+      settledItems, targetCalories: nutritionGoalsManager.targetCalories)
 
     return CardView(title: NSLocalizedString("Daily Average", comment: "Statistics section")) {
       VStack(spacing: 16) {
@@ -344,7 +315,7 @@ struct StatisticsView: View {
   // MARK: - ③ PFCバランス
 
   private var pfcBalanceCard: some View {
-    let balance = StatisticsCalculator.pfcBalance(visibleItems)
+    let balance = StatisticsCalculator.pfcBalance(settledItems)
 
     return CardView(title: NSLocalizedString("PFC Balance", comment: "Statistics section")) {
       VStack(spacing: 12) {
@@ -382,8 +353,8 @@ struct StatisticsView: View {
   // MARK: - ④ 食事タイプ別内訳
 
   private var mealTypeCard: some View {
-    let total = StatisticsCalculator.periodTotal(visibleItems)
-    let totals = StatisticsCalculator.mealTypeTotals(visibleItems)
+    let total = StatisticsCalculator.periodTotal(settledItems)
+    let totals = StatisticsCalculator.mealTypeTotals(settledItems)
     let rows: [(type: MealType, values: NutritionValues)] = MealType.allCases.compactMap { type in
       guard let v = totals[type] else { return nil }
       return (type, v)
@@ -481,10 +452,11 @@ struct StatisticsView: View {
       let fetched = try await APIClient.shared.fetchDailySummary(
         from: StatDate.string(from), to: StatDate.string(to))
       items = fetched
+      trendSeries = StatisticsCalculator.dailyTotals(items)
       bufferFrom = from
       bufferTo = to
       // 最新の可視期間を表示（左端＝to - (visibleDays-1)）
-      scrollX = cal.date(byAdding: .day, value: -(visibleDays - 1), to: to) ?? to
+      settledScrollX = cal.date(byAdding: .day, value: -(visibleDays - 1), to: to) ?? to
       isLoading = false
     } catch {
       loadFailed = true
@@ -492,12 +464,19 @@ struct StatisticsView: View {
     }
   }
 
-  /// 左端がバッファ先頭に近づいたら過去側を追加取得（無限スクロール）。custom では拡張しない。
-  private func loadMoreIfNeeded() async {
-    guard period != .custom, !isLoadingMore, AuthManager.shared.isSignedIn else { return }
+  /// 可視左端がバッファ先頭に近いか（同期・軽量）。true のときだけ追加取得を起動する。
+  /// custom では拡張しない。フェッチ中は再発火させない。
+  private func shouldLoadMore(at x: Date) -> Bool {
+    guard period != .custom, !isLoadingMore, AuthManager.shared.isSignedIn else { return false }
     // 可視左端がバッファ先頭から visibleDays 以内なら拡張
     let threshold = cal.date(byAdding: .day, value: visibleDays, to: bufferFrom) ?? bufferFrom
-    guard cal.startOfDay(for: scrollX) <= threshold else { return }
+    return cal.startOfDay(for: x) <= threshold
+  }
+
+  /// 過去側を追加取得（無限スクロール）。起動判定は `shouldLoadMore(at:)` が済ませている。
+  /// View は @MainActor なので `isLoadingMore` ガードで多重実行を防げる。
+  private func loadMoreIfNeeded() async {
+    guard period != .custom, !isLoadingMore, AuthManager.shared.isSignedIn else { return }
 
     isLoadingMore = true
     let newFrom = cal.date(byAdding: .day, value: -(visibleDays * 3), to: bufferFrom) ?? bufferFrom
@@ -508,10 +487,99 @@ struct StatisticsView: View {
       // 重複排除して前方に結合
       let existingIDs = Set(items.map(\.id))
       items = older.filter { !existingIDs.contains($0.id) } + items
+      trendSeries = StatisticsCalculator.dailyTotals(items)
       bufferFrom = newFrom
     } catch {
       // 追加取得の失敗は致命的でないため握りつぶす（次のスクロールで再試行）
     }
     isLoadingMore = false
+  }
+}
+
+// MARK: - トレンドチャート（スクロール位置を自前で保持する子 View）
+
+/// `scrollX` を自身で所有することで、横スクロール中の再評価をこの View 内に閉じ込める。
+/// 親（カード群）はスクロール停止時（`onScrollSettled`）にのみ再評価される。
+private struct TrendChartView: View {
+  let series: [DailyNutrition]
+  let metric: TrendMetric
+  let visibleDays: Int
+  let visibleSeconds: TimeInterval
+  let goalLine: Double?
+  let xAxisStride: Int
+  let initialScrollX: Date
+  let onScroll: (Date) -> Void
+  let onScrollSettled: (Date) -> Void
+
+  @State private var scrollX: Date
+  @State private var settleTask: Task<Void, Never>?
+
+  init(
+    series: [DailyNutrition], metric: TrendMetric, visibleDays: Int, visibleSeconds: TimeInterval,
+    goalLine: Double?, xAxisStride: Int, initialScrollX: Date,
+    onScroll: @escaping (Date) -> Void, onScrollSettled: @escaping (Date) -> Void
+  ) {
+    self.series = series
+    self.metric = metric
+    self.visibleDays = visibleDays
+    self.visibleSeconds = visibleSeconds
+    self.goalLine = goalLine
+    self.xAxisStride = xAxisStride
+    self.initialScrollX = initialScrollX
+    self.onScroll = onScroll
+    self.onScrollSettled = onScrollSettled
+    _scrollX = State(initialValue: initialScrollX)
+  }
+
+  // 長期間（月/年）は点を省き直線補間にして描画コストを抑える。
+  private var simplified: Bool { visibleDays > 60 }
+
+  var body: some View {
+    Chart {
+      ForEach(series) { day in
+        if let date = StatDate.date(day.date) {
+          LineMark(
+            x: .value("Date", date, unit: .day),
+            y: .value(metric.localizedName, metric.value(day.values))
+          )
+          .foregroundStyle(metric.color)
+          .interpolationMethod(simplified ? .linear : .catmullRom)
+
+          if !simplified {
+            PointMark(
+              x: .value("Date", date, unit: .day),
+              y: .value(metric.localizedName, metric.value(day.values))
+            )
+            .foregroundStyle(metric.color)
+            .symbolSize(28)
+          }
+        }
+      }
+      if let goalLine {
+        RuleMark(y: .value("Goal", goalLine))
+          .foregroundStyle(.secondary.opacity(0.6))
+          .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+      }
+    }
+    .chartScrollableAxes(.horizontal)
+    .chartXVisibleDomain(length: visibleSeconds)
+    .chartScrollPosition(x: $scrollX)
+    .chartXAxis {
+      AxisMarks(values: .stride(by: visibleDays > 60 ? .month : .day, count: xAxisStride)) { _ in
+        AxisGridLine()
+        AxisTick()
+        AxisValueLabel(format: .dateTime.month(.abbreviated).day())
+      }
+    }
+    .frame(height: 200)
+    .onChange(of: scrollX) { _, x in
+      onScroll(x)  // 同期・軽量（境界近傍のみ追加取得を起動）
+      // デバウンス: 停止後にのみカード集計を更新する
+      settleTask?.cancel()
+      settleTask = Task {
+        try? await Task.sleep(for: .milliseconds(150))
+        if !Task.isCancelled { onScrollSettled(x) }
+      }
+    }
   }
 }
