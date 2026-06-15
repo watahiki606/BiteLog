@@ -63,6 +63,57 @@ enum TrendMetric: String, CaseIterable, Identifiable {
   }
 }
 
+/// トレンドの下でセグメント切替する詳細セクション。選択中のカードのみ描画する。
+enum StatSection: String, CaseIterable, Identifiable {
+  case average, pfc, mealType
+  var id: String { rawValue }
+
+  var localizedName: String {
+    switch self {
+    case .average: return NSLocalizedString("Daily Average", comment: "Statistics section")
+    case .pfc: return NSLocalizedString("PFC Balance", comment: "Statistics section")
+    case .mealType: return NSLocalizedString("By Meal Type", comment: "Statistics section")
+    }
+  }
+}
+
+/// トレンドグラフの集計単位（X軸の1点が表す期間）。
+/// 年単位は複数年を映す期間が無く棒が1本になるため一旦持たない。
+enum StatBucket: String, CaseIterable, Identifiable {
+  case day, week, month
+  var id: String { rawValue }
+
+  var localizedName: String {
+    switch self {
+    case .day: return NSLocalizedString("Day", comment: "Trend bucket")
+    case .week: return NSLocalizedString("Week", comment: "Statistics period")
+    case .month: return NSLocalizedString("Month", comment: "Statistics period")
+    }
+  }
+
+  /// グルーピングに使う暦単位。`.day` は集計せず日次のまま表示するため nil。
+  var component: Calendar.Component? {
+    switch self {
+    case .day: return nil
+    case .week: return .weekOfYear
+    case .month: return .month
+    }
+  }
+}
+
+/// バケット内の集計方法。
+enum StatAggregation: String, CaseIterable, Identifiable {
+  case average, total
+  var id: String { rawValue }
+
+  var localizedName: String {
+    switch self {
+    case .average: return NSLocalizedString("Average", comment: "Aggregation")
+    case .total: return NSLocalizedString("Total", comment: "Aggregation")
+    }
+  }
+}
+
 // MARK: - 日付ユーティリティ
 
 private enum StatDate {
@@ -86,6 +137,9 @@ struct StatisticsView: View {
 
   @State private var period: StatPeriod = .week
   @State private var metric: TrendMetric = .calories
+  @State private var section: StatSection = .average
+  @State private var bucket: StatBucket = .day
+  @State private var aggregation: StatAggregation = .total
 
   // カスタム期間
   @State private var customFrom: Date = Calendar.current.date(
@@ -122,6 +176,32 @@ struct StatisticsView: View {
 
   private var visibleSeconds: TimeInterval { Double(visibleDays) * 86400 }
 
+  /// period に対して意味のある集計単位だけを出す（棒が1本しか出ない組み合わせを避ける）。
+  private var availableBuckets: [StatBucket] {
+    switch period {
+    case .week: return [.day]
+    case .month: return [.day, .week]
+    case .year: return [.day, .week, .month]
+    case .custom:
+      if visibleDays <= 31 { return [.day, .week] }
+      return [.day, .week, .month]
+    }
+  }
+
+  /// トレンドグラフに描く系列。日次（`trendSeries`）を選択中の単位/集計で丸め直す。
+  private var displayTrendSeries: [DailyNutrition] {
+    guard let component = bucket.component else { return trendSeries }
+    return StatisticsCalculator.bucketed(
+      trendSeries, by: component, average: aggregation == .average, calendar: cal)
+  }
+
+  /// カロリー目標線。合計バケットでは日次目標と比較できないため出さない。
+  private var trendGoalLine: Double? {
+    guard metric == .calories else { return nil }
+    if bucket != .day && aggregation == .total { return nil }
+    return nutritionGoalsManager.targetCalories
+  }
+
   /// カードが集計対象とする期間 [from, to]（両端の日付）。スクロール停止時の位置。
   private var settledRange: (from: Date, to: Date) {
     let from = cal.startOfDay(for: settledScrollX)
@@ -137,7 +217,7 @@ struct StatisticsView: View {
 
   var body: some View {
     ScrollView {
-      VStack(spacing: 16) {
+      VStack(spacing: 10) {
         periodSelector
 
         if isLoading {
@@ -146,19 +226,26 @@ struct StatisticsView: View {
         } else if loadFailed {
           errorView
         } else {
-          visibleRangeLabel
+          dateNavigationBar
           trendCard
-          averageCard
-          pfcBalanceCard
-          mealTypeCard
+          sectionSelector
+          switch section {
+          case .average: averageCard
+          case .pfc: pfcBalanceCard
+          case .mealType: mealTypeCard
+          }
         }
       }
       .padding()
     }
     .background(Color(UIColor.systemGroupedBackground))
-    .navigationTitle(NSLocalizedString("Statistics", comment: "Tab name"))
-    .navigationBarTitleDisplayMode(.inline)
+    // 下部タブバーに「統計」ラベルがあり重複するため、上部ナビバーは隠して縦幅を確保。
+    .toolbar(.hidden, for: .navigationBar)
     .task(id: reloadKey) { await reload() }
+    .onChange(of: period) { _, _ in
+      // period を変えると使えない単位が出るので、対象外なら日次に戻す。
+      if !availableBuckets.contains(bucket) { bucket = .day }
+    }
   }
 
   // task(id:) が変わったら全リセット＆再取得
@@ -169,7 +256,7 @@ struct StatisticsView: View {
   // MARK: - 期間セレクタ
 
   private var periodSelector: some View {
-    VStack(spacing: 12) {
+    VStack(spacing: 8) {
       Picker("", selection: $period) {
         ForEach(StatPeriod.allCases) { p in
           Text(p.localizedName).tag(p)
@@ -196,16 +283,59 @@ struct StatisticsView: View {
     }
   }
 
-  private var visibleRangeLabel: some View {
+  /// 期間ラベルの両サイドに前後ページ送りの矢印を備えたナビゲーションバー。
+  private var dateNavigationBar: some View {
     let f = DateFormatter()
     f.locale = languageManager.locale
     f.dateStyle = .medium
     f.timeStyle = .none
     let text = "\(f.string(from: settledRange.from)) – \(f.string(from: settledRange.to))"
-    return Text(text)
-      .font(.subheadline.weight(.medium))
-      .foregroundColor(.secondary)
-      .frame(maxWidth: .infinity, alignment: .leading)
+    // 進む側は最新の可視期間（左端が today-(visibleDays-1)）に達したら無効化
+    let latestFrom = cal.date(
+      byAdding: .day, value: -(visibleDays - 1), to: cal.startOfDay(for: Date())) ?? Date()
+    let atLatest = settledRange.from >= latestFrom
+
+    return HStack {
+      Button { page(by: -visibleDays) } label: {
+        Image(systemName: "chevron.left").font(.body.weight(.semibold))
+      }
+      .disabled(period == .custom)
+
+      Spacer()
+      Text(text)
+        .font(.subheadline.weight(.medium))
+        .foregroundColor(.secondary)
+      Spacer()
+
+      Button { page(by: visibleDays) } label: {
+        Image(systemName: "chevron.right").font(.body.weight(.semibold))
+      }
+      .disabled(period == .custom || atLatest)
+    }
+    .frame(maxWidth: .infinity)
+  }
+
+  /// 表示するセクションを選ぶセグメント。選択中のカードだけを描画する。
+  private var sectionSelector: some View {
+    Picker("", selection: $section) {
+      ForEach(StatSection.allCases) { s in
+        Text(s.localizedName).tag(s)
+      }
+    }
+    .pickerStyle(.segmented)
+  }
+
+  /// 可視期間を deltaDays 分ずらす。進む側は今日を超えないようクランプし、
+  /// 戻る側は既存の無限スクロール機構でバッファを拡張する。custom は固定範囲のため無効。
+  private func page(by deltaDays: Int) {
+    guard period != .custom else { return }
+    let candidate = cal.date(byAdding: .day, value: deltaDays, to: settledScrollX) ?? settledScrollX
+    let latestFrom = cal.date(
+      byAdding: .day, value: -(visibleDays - 1), to: cal.startOfDay(for: Date())) ?? Date()
+    settledScrollX = min(cal.startOfDay(for: candidate), latestFrom)
+    if shouldLoadMore(at: settledScrollX) {
+      Task { await loadMoreIfNeeded() }
+    }
   }
 
   private var errorView: some View {
@@ -225,8 +355,8 @@ struct StatisticsView: View {
   // MARK: - ① 期間トレンド（無限横スクロール）
 
   private var trendCard: some View {
-    CardView(title: NSLocalizedString("Trend", comment: "Statistics section")) {
-      VStack(alignment: .leading, spacing: 12) {
+    CardView {
+      VStack(alignment: .leading, spacing: 10) {
         Picker("", selection: $metric) {
           ForEach(TrendMetric.allCases) { m in
             Text(m.localizedName).tag(m)
@@ -234,14 +364,35 @@ struct StatisticsView: View {
         }
         .pickerStyle(.segmented)
 
+        HStack(spacing: 8) {
+          Picker("", selection: $bucket) {
+            ForEach(availableBuckets) { b in
+              Text(b.localizedName).tag(b)
+            }
+          }
+          .pickerStyle(.segmented)
+
+          if bucket != .day {
+            Picker("", selection: $aggregation) {
+              ForEach(StatAggregation.allCases) { a in
+                Text(a.localizedName).tag(a)
+              }
+            }
+            .pickerStyle(.segmented)
+            .fixedSize()
+          }
+        }
+
         TrendChartView(
-          series: trendSeries,
+          series: displayTrendSeries,
           metric: metric,
+          bucket: bucket,
           visibleDays: visibleDays,
           visibleSeconds: visibleSeconds,
-          goalLine: metric == .calories ? nutritionGoalsManager.targetCalories : nil,
+          goalLine: trendGoalLine,
           xAxisStride: xAxisStride,
           initialScrollX: settledScrollX,
+          scrollTarget: settledScrollX,
           onScroll: { x in
             // 同期・軽量: 境界に近いときだけ追加取得を起動（毎ティック Task 生成を回避）。
             if shouldLoadMore(at: x) {
@@ -271,7 +422,7 @@ struct StatisticsView: View {
     let achieved = StatisticsCalculator.goalAchievedDays(
       settledItems, targetCalories: nutritionGoalsManager.targetCalories)
 
-    return CardView(title: NSLocalizedString("Daily Average", comment: "Statistics section")) {
+    return CardView {
       VStack(spacing: 16) {
         HStack(alignment: .center, spacing: 20) {
           CalorieRingView(
@@ -317,7 +468,7 @@ struct StatisticsView: View {
   private var pfcBalanceCard: some View {
     let balance = StatisticsCalculator.pfcBalance(settledItems)
 
-    return CardView(title: NSLocalizedString("PFC Balance", comment: "Statistics section")) {
+    return CardView {
       VStack(spacing: 12) {
         GeometryReader { geo in
           HStack(spacing: 0) {
@@ -361,15 +512,16 @@ struct StatisticsView: View {
     }
     let maxCal = rows.map { $0.values.calories }.max() ?? 0
 
-    return CardView(title: NSLocalizedString("By Meal Type", comment: "Statistics section")) {
+    return CardView {
       VStack(alignment: .leading, spacing: 16) {
-        // 期間合計
+        // 期間合計（ラベルと数値を1行に）
         VStack(alignment: .leading, spacing: 6) {
-          Text(NSLocalizedString("Period Total", comment: "Statistics metric"))
-            .font(.caption).foregroundColor(.secondary)
           HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Text(NSLocalizedString("Period Total", comment: "Statistics metric"))
+              .font(.caption).foregroundColor(.secondary)
+            Spacer()
             Text(NutritionFormatter.formatNutrition(total.calories))
-              .font(.system(size: 24, weight: .bold, design: .rounded))
+              .font(.system(size: 20, weight: .bold, design: .rounded))
             Text("kcal").font(.subheadline).foregroundColor(.secondary)
           }
           HStack(spacing: 6) {
@@ -503,11 +655,14 @@ struct StatisticsView: View {
 private struct TrendChartView: View {
   let series: [DailyNutrition]
   let metric: TrendMetric
+  let bucket: StatBucket
   let visibleDays: Int
   let visibleSeconds: TimeInterval
   let goalLine: Double?
   let xAxisStride: Int
   let initialScrollX: Date
+  /// 矢印操作など外部からの一方向ジャンプ先。ライブスクロールには関与しない。
+  let scrollTarget: Date
   let onScroll: (Date) -> Void
   let onScrollSettled: (Date) -> Void
 
@@ -515,43 +670,85 @@ private struct TrendChartView: View {
   @State private var settleTask: Task<Void, Never>?
 
   init(
-    series: [DailyNutrition], metric: TrendMetric, visibleDays: Int, visibleSeconds: TimeInterval,
-    goalLine: Double?, xAxisStride: Int, initialScrollX: Date,
-    onScroll: @escaping (Date) -> Void, onScrollSettled: @escaping (Date) -> Void
+    series: [DailyNutrition], metric: TrendMetric, bucket: StatBucket, visibleDays: Int,
+    visibleSeconds: TimeInterval, goalLine: Double?, xAxisStride: Int, initialScrollX: Date,
+    scrollTarget: Date, onScroll: @escaping (Date) -> Void, onScrollSettled: @escaping (Date) -> Void
   ) {
     self.series = series
     self.metric = metric
+    self.bucket = bucket
     self.visibleDays = visibleDays
     self.visibleSeconds = visibleSeconds
     self.goalLine = goalLine
     self.xAxisStride = xAxisStride
     self.initialScrollX = initialScrollX
+    self.scrollTarget = scrollTarget
     self.onScroll = onScroll
     self.onScrollSettled = onScrollSettled
     _scrollX = State(initialValue: initialScrollX)
   }
 
-  // 長期間（月/年）は点を省き直線補間にして描画コストを抑える。
+  // 長期間（月/年）は点を省き直線補間にして描画コストを抑える。日次表示のみ対象。
   private var simplified: Bool { visibleDays > 60 }
+
+  // 棒グラフの1本が占める暦単位。
+  private var barUnit: Calendar.Component {
+    switch bucket {
+    case .day: return .day
+    case .week: return .weekOfYear
+    case .month: return .month
+    }
+  }
+
+  private var axisStrideComponent: Calendar.Component {
+    switch bucket {
+    case .day: return visibleDays > 60 ? .month : .day
+    case .week: return .weekOfYear
+    case .month: return .month
+    }
+  }
+
+  private var axisStrideCount: Int {
+    switch bucket {
+    case .day: return xAxisStride
+    case .week: return max(visibleDays / 7 / 6, 1)
+    case .month: return 1
+    }
+  }
+
+  private var axisLabelFormat: Date.FormatStyle {
+    switch bucket {
+    case .day, .week: return .dateTime.month(.abbreviated).day()
+    case .month: return .dateTime.month(.abbreviated)
+    }
+  }
 
   var body: some View {
     Chart {
       ForEach(series) { day in
         if let date = StatDate.date(day.date) {
-          LineMark(
-            x: .value("Date", date, unit: .day),
-            y: .value(metric.localizedName, metric.value(day.values))
-          )
-          .foregroundStyle(metric.color)
-          .interpolationMethod(simplified ? .linear : .catmullRom)
-
-          if !simplified {
-            PointMark(
+          if bucket == .day {
+            LineMark(
               x: .value("Date", date, unit: .day),
               y: .value(metric.localizedName, metric.value(day.values))
             )
             .foregroundStyle(metric.color)
-            .symbolSize(28)
+            .interpolationMethod(simplified ? .linear : .catmullRom)
+
+            if !simplified {
+              PointMark(
+                x: .value("Date", date, unit: .day),
+                y: .value(metric.localizedName, metric.value(day.values))
+              )
+              .foregroundStyle(metric.color)
+              .symbolSize(28)
+            }
+          } else {
+            BarMark(
+              x: .value("Date", date, unit: barUnit),
+              y: .value(metric.localizedName, metric.value(day.values))
+            )
+            .foregroundStyle(metric.color)
           }
         }
       }
@@ -565,13 +762,13 @@ private struct TrendChartView: View {
     .chartXVisibleDomain(length: visibleSeconds)
     .chartScrollPosition(x: $scrollX)
     .chartXAxis {
-      AxisMarks(values: .stride(by: visibleDays > 60 ? .month : .day, count: xAxisStride)) { _ in
+      AxisMarks(values: .stride(by: axisStrideComponent, count: axisStrideCount)) { _ in
         AxisGridLine()
         AxisTick()
-        AxisValueLabel(format: .dateTime.month(.abbreviated).day())
+        AxisValueLabel(format: axisLabelFormat)
       }
     }
-    .frame(height: 200)
+    .frame(height: 170)
     .onChange(of: scrollX) { _, x in
       onScroll(x)  // 同期・軽量（境界近傍のみ追加取得を起動）
       // デバウンス: 停止後にのみカード集計を更新する
@@ -579,6 +776,14 @@ private struct TrendChartView: View {
       settleTask = Task {
         try? await Task.sleep(for: .milliseconds(150))
         if !Task.isCancelled { onScrollSettled(x) }
+      }
+    }
+    .onChange(of: scrollTarget) { _, target in
+      // 矢印操作など外部からのジャンプ。日単位で差があるときのみ反映し、
+      // onScrollSettled 経由の帰還ループを防ぐ。
+      let cal = Calendar.current
+      if !cal.isDate(target, inSameDayAs: scrollX) {
+        withAnimation { scrollX = target }
       }
     }
   }

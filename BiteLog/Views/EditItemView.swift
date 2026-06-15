@@ -122,20 +122,20 @@ struct EditItemView: View {
                     foodMaster?.portionUnit ?? item.portionUnit))
                   .font(.caption).foregroundColor(.secondary).padding(.bottom, 4)
 
-                  EditNutrientRow(icon: "flame.fill", iconColor: .orange, label: NSLocalizedString("Calories", comment: "Nutrient label"), value: String(format: "%.2f", perPortionCalories), totalValue: totalCalories, unit: "kcal")
-                  EditNutrientRow(icon: "p.circle.fill", iconColor: .blue, label: NSLocalizedString("Protein", comment: "Nutrient label"), value: String(format: "%.2f", perPortionProtein), totalValue: totalProtein, unit: "g")
-                  EditNutrientRow(icon: "f.circle.fill", iconColor: .yellow, label: NSLocalizedString("Fat", comment: "Nutrient label"), value: String(format: "%.2f", perPortionFat), totalValue: totalFat, unit: "g")
-                  EditNutrientRow(icon: "c.circle.fill", iconColor: .green, label: NSLocalizedString("Sugar", comment: "Nutrient label"), value: String(format: "%.2f", perPortionNetCarbs), totalValue: totalNetCarbs, unit: "g")
-                  EditNutrientRow(icon: "leaf.circle.fill", iconColor: .brown, label: NSLocalizedString("Dietary Fiber", comment: "Nutrient label"), value: String(format: "%.2f", perPortionDietaryFiber), totalValue: totalDietaryFiber, unit: "g")
+                  EditNutrientRow(icon: "flame.fill", iconColor: .orange, label: NSLocalizedString("Calories", comment: "Nutrient label"), value: NutritionFormatter.formatNutrition(perPortionCalories), totalValue: totalCalories, unit: "kcal")
+                  EditNutrientRow(icon: "p.circle.fill", iconColor: .blue, label: NSLocalizedString("Protein", comment: "Nutrient label"), value: NutritionFormatter.formatNutrition(perPortionProtein), totalValue: totalProtein, unit: "g")
+                  EditNutrientRow(icon: "f.circle.fill", iconColor: .yellow, label: NSLocalizedString("Fat", comment: "Nutrient label"), value: NutritionFormatter.formatNutrition(perPortionFat), totalValue: totalFat, unit: "g")
+                  EditNutrientRow(icon: "c.circle.fill", iconColor: .green, label: NSLocalizedString("Sugar", comment: "Nutrient label"), value: NutritionFormatter.formatNutrition(perPortionNetCarbs), totalValue: totalNetCarbs, unit: "g")
+                  EditNutrientRow(icon: "leaf.circle.fill", iconColor: .brown, label: NSLocalizedString("Dietary Fiber", comment: "Nutrient label"), value: NutritionFormatter.formatNutrition(perPortionDietaryFiber), totalValue: totalDietaryFiber, unit: "g")
 
                   HStack {
                     Image(systemName: "c.circle.fill").foregroundColor(.gray).frame(width: 24)
                     Text(NSLocalizedString("Carbs (Sugar + Fiber)", comment: "Nutrient label")).foregroundColor(.secondary)
                     Spacer()
-                    Text(String(format: "%.2f", perPortionNetCarbs + perPortionDietaryFiber)).foregroundColor(.secondary)
+                    Text(NutritionFormatter.formatNutrition(perPortionNetCarbs + perPortionDietaryFiber)).foregroundColor(.secondary)
                     Text("g").foregroundColor(.secondary).frame(width: 20, alignment: .leading)
                     Text("→").foregroundColor(.secondary).padding(.horizontal, 4)
-                    Text(String(format: "%.2f", totalCarbs)).foregroundColor(.secondary)
+                    Text(NutritionFormatter.formatNutrition(totalCarbs)).foregroundColor(.secondary)
                     Text("g").foregroundColor(.secondary)
                   }
                   .padding(.vertical, 12).padding(.horizontal, 12)
@@ -204,7 +204,7 @@ struct EditNutrientRow: View {
       Text(value.isEmpty ? "0" : value).multilineTextAlignment(.trailing)
       Text(unit).foregroundColor(.secondary).frame(width: unit == "kcal" ? 40 : 20, alignment: .leading)
       Text("→").foregroundColor(.secondary).padding(.horizontal, 4)
-      Text(String(format: "%.2f", totalValue)).foregroundColor(.primary)
+      Text(NutritionFormatter.formatNutrition(totalValue)).foregroundColor(.primary)
       Text(unit).foregroundColor(.secondary)
     }
     .padding(.vertical, 12).padding(.horizontal, 12)

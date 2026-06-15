@@ -2,19 +2,21 @@ import SwiftUI
 
 // カードビュー
 struct CardView<Content: View>: View {
-  let title: String
+  let title: String?
   let content: Content
 
-  init(title: String, @ViewBuilder content: () -> Content) {
+  init(title: String? = nil, @ViewBuilder content: () -> Content) {
     self.title = title
     self.content = content()
   }
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 16) {
-      Text(title)
-        .font(.headline)
-        .foregroundColor(.primary)
+    VStack(alignment: .leading, spacing: title == nil ? 0 : 16) {
+      if let title {
+        Text(title)
+          .font(.headline)
+          .foregroundColor(.primary)
+      }
 
       content
     }

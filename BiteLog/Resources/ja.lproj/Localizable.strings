@@ -210,7 +210,10 @@
 "Week" = "週";
 "Month" = "月";
 "Year" = "年";
+"Day" = "日";
 "Custom" = "カスタム";
+"Average" = "平均";
+"Total" = "合計";
 "From" = "開始";
 "To" = "終了";
 "Trend" = "推移";
