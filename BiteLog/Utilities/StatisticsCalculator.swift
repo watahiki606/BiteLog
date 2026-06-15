@@ -26,6 +26,50 @@ enum StatisticsCalculator {
   static let netCarbsKcal = 4.0
   static let fiberKcal = 2.0
 
+  /// 日別系列を週/月などのバケットに集計し直す（トレンドグラフの単位切替用）。
+  /// 各バケットの代表日は期間先頭（月なら1日、週なら週初め）。`average` のときは
+  /// バケットの**暦日数**で割った日平均（記録のない日は0扱い。1日平均カードと定義を揃える）、
+  /// それ以外は合計を返す。日付昇順。
+  /// - Parameter component: グルーピング単位（`.weekOfYear` / `.month`）。
+  static func bucketed(
+    _ daily: [DailyNutrition], by component: Calendar.Component,
+    average: Bool, calendar: Calendar
+  ) -> [DailyNutrition] {
+    let groups = Dictionary(grouping: daily) { d -> String in
+      guard let date = bucketFormatter.date(from: d.date),
+        let start = calendar.dateInterval(of: component, for: date)?.start
+      else { return d.date }
+      return bucketFormatter.string(from: start)
+    }
+    return groups.map { key, days in
+      let sum = days.reduce(NutritionValues.zero) { $0 + $1.values }
+      let values: NutritionValues
+      if average {
+        // バケットの暦日数（週=7、月=その月の日数）で割る。記録の無い日も母数に含める。
+        let start = bucketFormatter.date(from: key)
+        let calendarDays = start.flatMap {
+          calendar.range(of: .day, in: component, for: $0)?.count
+        } ?? days.count
+        let n = Double(max(calendarDays, 1))
+        values = NutritionValues(
+          calories: sum.calories / n, netCarbs: sum.netCarbs / n,
+          dietaryFiber: sum.dietaryFiber / n, fat: sum.fat / n, protein: sum.protein / n)
+      } else {
+        values = sum
+      }
+      return DailyNutrition(date: key, values: values)
+    }
+    .sorted { $0.date < $1.date }
+  }
+
+  private static let bucketFormatter: DateFormatter = {
+    let f = DateFormatter()
+    f.calendar = Calendar(identifier: .gregorian)
+    f.locale = Locale(identifier: "en_US_POSIX")
+    f.dateFormat = "yyyy-MM-dd"
+    return f
+  }()
+
   /// 日別合計。logDate でグルーピングし、各日の `NutritionValues` を合算。日付昇順で返す。
   static func dailyTotals(_ items: [some NutritionContributing]) -> [DailyNutrition] {
     let grouped = Dictionary(grouping: items, by: { $0.logDate })

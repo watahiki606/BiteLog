@@ -196,7 +196,10 @@
 "Week" = "Week";
 "Month" = "Month";
 "Year" = "Year";
+"Day" = "Day";
 "Custom" = "Custom";
+"Average" = "Average";
+"Total" = "Total";
 "From" = "From";
 "To" = "To";
 "Trend" = "Trend";

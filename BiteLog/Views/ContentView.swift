@@ -248,7 +248,6 @@ struct NutrientRow: View {
   let label: String
   let value: Double
   let unit: String
-  let format: String
   let icon: String
   let color: Color
 

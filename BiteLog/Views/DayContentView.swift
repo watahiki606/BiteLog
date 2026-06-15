@@ -141,7 +141,7 @@ struct DayContentView: View {
 
       NutrientRow(
         label: NSLocalizedString("Carbs (Sugar + Fiber)", comment: "Nutrient label"),
-        value: dailyTotals.carbs, unit: "g", format: "%.3f",
+        value: dailyTotals.carbs, unit: "g",
         icon: "c.circle.fill", color: .gray
       )
       .padding(.vertical, 8)
