@@ -102,6 +102,9 @@ frontend/node_modules/
 cloudflare/.dev.vars
 cloudflare/.env*
 
+# Claude Code
+.claude/settings.local.json
+
 # Debug / test artifacts
 .playwright-mcp/
 screenshot-*.png
