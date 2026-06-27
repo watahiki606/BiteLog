@@ -32,11 +32,6 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -53,7 +48,6 @@
   --color-border-dim: var(--border-dim);
 }
 
-/* セマンティック変数は shared/theme.css のパレットへマッピング（alpha 派生のみリテラル） */
 :root {
   --background: var(--bg-deep);
   --foreground: var(--fg);
@@ -74,12 +68,6 @@
   --input: var(--bg-card);
   --ring: #00e5ff40;
   --radius: 0.125rem;
-
-  --chart-1: var(--neon-cyan);
-  --chart-2: var(--neon-green);
-  --chart-3: var(--neon-magenta);
-  --chart-4: var(--neon-yellow);
-  --chart-5: var(--neon-orange);
 }
 
 * {
@@ -95,8 +83,9 @@ body {
 }
 
 #root {
-  height: 100dvh;
+  min-height: 100dvh;
   display: flex;
+  flex-direction: column;
 }
 
 /* グリッド背景 */

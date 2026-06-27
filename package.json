@@ -3,7 +3,8 @@
   "private": true,
   "workspaces": [
     "frontend",
-    "cloudflare"
+    "cloudflare",
+    "docs"
   ],
   "dependencies": {
     "hono": "^4.12.23"
