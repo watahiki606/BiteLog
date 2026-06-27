@@ -6,8 +6,9 @@ import Toast, { type ToastMessage } from '@/components/Toast';
 import FoodMasterPage from '@/pages/FoodMasterPage';
 import MealLogPage from '@/pages/MealLogPage';
 import NutritionGoalsPage from '@/pages/NutritionGoalsPage';
+import StatisticsPage from '@/pages/StatisticsPage';
 
-type Tab = 'food' | 'log' | 'goals';
+type Tab = 'food' | 'log' | 'goals' | 'stats';
 
 export default function App() {
   const [session, setSession] = useState(getSession());
@@ -36,9 +37,10 @@ export default function App() {
         isAdmin={session.isAdmin}
       />
       <main className="flex-1 flex flex-col overflow-hidden bg-bg-deep">
-        {activeTab === 'food' && <FoodMasterPage onToast={addToast} isAdmin={session.isAdmin} />}
-        {activeTab === 'log' && <MealLogPage onToast={addToast} />}
+        {activeTab === 'food'  && <FoodMasterPage onToast={addToast} isAdmin={session.isAdmin} />}
+        {activeTab === 'log'   && <MealLogPage onToast={addToast} />}
         {activeTab === 'goals' && <NutritionGoalsPage onToast={addToast} />}
+        {activeTab === 'stats' && <StatisticsPage onToast={addToast} />}
       </main>
       <Toast toasts={toasts} onRemove={removeToast} />
     </div>

@@ -1,7 +1,7 @@
 import { motion } from 'motion/react';
 import { clearSession } from '@/lib/auth';
 
-type Tab = 'food' | 'log' | 'goals';
+type Tab = 'food' | 'log' | 'goals' | 'stats';
 
 interface Props {
   activeTab: Tab;
@@ -11,9 +11,10 @@ interface Props {
 }
 
 const tabs: { id: Tab; label: string; icon: string }[] = [
-  { id: 'food', label: 'FOOD MASTER', icon: '◈' },
-  { id: 'log', label: 'MEAL LOG', icon: '◉' },
-  { id: 'goals', label: 'NUTRITION', icon: '◇' },
+  { id: 'food',  label: 'FOOD MASTER', icon: '◈' },
+  { id: 'log',   label: 'MEAL LOG',    icon: '◉' },
+  { id: 'goals', label: 'NUTRITION',   icon: '◇' },
+  { id: 'stats', label: 'STATISTICS',  icon: '◎' },
 ];
 
 export default function Sidebar({ activeTab, onTabChange, onLogout, isAdmin }: Props) {
