@@ -78,6 +78,7 @@
 
 body {
   font-family: "JetBrains Mono", "Noto Sans JP", ui-monospace, monospace;
+  font-size-adjust: from-font;
   background-color: var(--background);
   color: var(--foreground);
   -webkit-font-smoothing: antialiased;
