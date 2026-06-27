@@ -6,7 +6,7 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 
 BiteLog is an iOS application for meal tracking and nutrition management. Built with SwiftUI and SwiftData, it manages food nutrition data and records daily meals.
 
-The repository also contains a web admin console: `frontend/` (React SPA on Cloudflare Pages) and `cloudflare/` (Hono API on Cloudflare Workers + D1).
+The repository also contains web apps under `apps/`: `apps/web/` (React SPA on Cloudflare Pages), `apps/docs/` (React SSG on Cloudflare Pages), and `cloudflare/` (Hono API on Cloudflare Workers + D1).
 
 ## ワークフロー設計
 
@@ -77,7 +77,7 @@ Detailed, situational guidance lives in skills under `.claude/skills/` and is
 loaded on demand. Use the matching skill when the work calls for it:
 
 - **ios-development** — building/running/debugging the iOS app (SweetPad commands, required tools), data models and view structure
-- **web-admin-console** — working under `frontend/` or `cloudflare/` (local dev, auth, Hono RPC, tests, Cloudflare deploy)
+- **web-admin-console** — working under `apps/web/`, `apps/docs/`, or `cloudflare/` (local dev, auth, Hono RPC, tests, Cloudflare deploy)
 - **tdd-testing** — writing tests / implementing features test-first (t-wada's TDD)
 
 ## Development Flow

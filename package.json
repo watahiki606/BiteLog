@@ -2,9 +2,9 @@
   "name": "bitelog",
   "private": true,
   "workspaces": [
-    "frontend",
-    "cloudflare",
-    "docs"
+    "apps/web",
+    "apps/docs",
+    "cloudflare"
   ],
   "dependencies": {
     "hono": "^4.12.23"
