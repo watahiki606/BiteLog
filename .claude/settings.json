@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git *)",
+            "command": "cmd=$(jq -r '.tool_input.command // \"\"'); if printf '%s' \"$cmd\" | grep -Eq 'git[[:space:]]+(checkout|switch)[[:space:]].*(-b|-B|-c|-C|--create)' && ! printf '%s' \"$cmd\" | grep -q 'origin/main'; then printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"新ブランチは origin/main から切ること(CLAUDE.md)。git fetch origin main && git checkout -b <name> origin/main の形にしてください。\"}}'; fi",
+            "statusMessage": "ブランチ作成元を確認中..."
+          }
+        ]
+      }
+    ]
+  }
+}
