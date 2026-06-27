@@ -105,6 +105,9 @@ cloudflare/.env*
 # Claude Code
 .claude/settings.local.json
 
+# Build artifacts
+apps/docs/dist/
+
 # Debug / test artifacts
 .playwright-mcp/
 screenshot-*.png
