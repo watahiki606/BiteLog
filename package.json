@@ -2,7 +2,8 @@
   "name": "bitelog",
   "private": true,
   "workspaces": [
-    "frontend",
+    "apps/web",
+    "apps/docs",
     "cloudflare"
   ],
   "dependencies": {

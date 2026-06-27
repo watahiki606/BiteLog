@@ -42,7 +42,7 @@ export default function SetupModal({ onAuthenticated }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-bg-deep cyber-grid">
+    <div className="fixed inset-0 flex items-center justify-center bg-bg-deep neon-grid">
       <div className="scanlines" />
 
       <motion.div

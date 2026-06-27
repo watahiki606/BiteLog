@@ -1,10 +1,5 @@
-@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap");
-
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
-
-@custom-variant dark (&:is(.dark *));
+/* デザイントークン（単一ソース） */
+@import "./theme.css";
 
 @theme inline {
   --font-sans: "JetBrains Mono", ui-monospace, monospace;
@@ -39,43 +34,42 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
 
-  /* Cyberpunk extras */
-  --color-neon-cyan: #00e5ff;
-  --color-neon-green: #00ff41;
-  --color-neon-magenta: #ff00ff;
-  --color-neon-yellow: #ffff00;
-  --color-bg-deep: #050510;
-  --color-bg-surface: #0a0a1a;
-  --color-bg-card: #0d0d22;
-  --color-border-dim: #1a1a3e;
+  --color-neon-cyan: var(--neon-cyan);
+  --color-neon-green: var(--neon-green);
+  --color-neon-magenta: var(--neon-magenta);
+  --color-neon-yellow: var(--neon-yellow);
+  --color-bg-deep: var(--bg-deep);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-card: var(--bg-card);
+  --color-border-dim: var(--border-dim);
 }
 
 :root {
-  --background: #050510;
-  --foreground: #e0e0f0;
-  --card: #0a0a1a;
-  --card-foreground: #e0e0f0;
-  --popover: #0d0d22;
-  --popover-foreground: #e0e0f0;
-  --primary: #00e5ff;
-  --primary-foreground: #050510;
-  --secondary: #0d0d22;
-  --secondary-foreground: #a0a0c0;
-  --muted: #0d0d22;
-  --muted-foreground: #6060a0;
+  --background: var(--bg-deep);
+  --foreground: var(--fg);
+  --card: var(--bg-surface);
+  --card-foreground: var(--fg);
+  --popover: var(--bg-card);
+  --popover-foreground: var(--fg);
+  --primary: var(--neon-cyan);
+  --primary-foreground: var(--bg-deep);
+  --secondary: var(--bg-card);
+  --secondary-foreground: var(--fg-subtle);
+  --muted: var(--bg-card);
+  --muted-foreground: var(--fg-muted);
   --accent: #00e5ff20;
-  --accent-foreground: #00e5ff;
-  --destructive: #ff3366;
-  --border: #1a1a3e;
-  --input: #0d0d22;
+  --accent-foreground: var(--neon-cyan);
+  --destructive: var(--danger);
+  --border: var(--border-dim);
+  --input: var(--bg-card);
   --ring: #00e5ff40;
   --radius: 0.125rem;
 
-  --chart-1: #00e5ff;
-  --chart-2: #00ff41;
-  --chart-3: #ff00ff;
-  --chart-4: #ffff00;
-  --chart-5: #ff6600;
+  --chart-1: var(--neon-cyan);
+  --chart-2: var(--neon-green);
+  --chart-3: var(--neon-magenta);
+  --chart-4: var(--neon-yellow);
+  --chart-5: var(--neon-orange);
 }
 
 * {
@@ -90,13 +84,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-#root {
-  height: 100dvh;
-  display: flex;
-}
-
-/* サイバーグリッド背景 */
-.cyber-grid {
+/* グリッド背景 */
+.neon-grid {
   background-image:
     linear-gradient(rgba(0, 229, 255, 0.04) 1px, transparent 1px),
     linear-gradient(90deg, rgba(0, 229, 255, 0.04) 1px, transparent 1px);

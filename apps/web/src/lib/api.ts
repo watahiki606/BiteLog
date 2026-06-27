@@ -1,5 +1,5 @@
 import { hc } from 'hono/client';
-import type { AppType } from '../../../cloudflare/src/index';
+import type { AppType } from '../../../../cloudflare/src/index';
 import { getToken, clearSession, API_URL } from './auth';
 
 export function createClient() {

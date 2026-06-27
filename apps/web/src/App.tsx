@@ -28,7 +28,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-full w-full overflow-hidden cyber-grid scanlines">
+    <div className="flex h-full w-full overflow-hidden neon-grid scanlines">
       <Sidebar
         activeTab={activeTab}
         onTabChange={setActiveTab}
