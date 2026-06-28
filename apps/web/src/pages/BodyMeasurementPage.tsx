@@ -113,9 +113,12 @@ export default function BodyMeasurementPage({ onToast }: Props) {
     setImporting(true);
     try {
       const csvText = await file.text();
+      // init.headers を渡すと Hono クライアントが Authorization ヘッダごと
+      // 上書きしてしまう（client.js: ...opt.init が headers の後に展開される）。
+      // import は c.req.text() で読むため Content-Type 指定は不要。body だけ渡す。
       const res = await createClient().api['body-measurements'].import.$post(
         {},
-        { init: { body: csvText, headers: { 'Content-Type': 'text/csv' } } }
+        { init: { body: csvText } }
       );
       if (!res.ok) throw new Error();
       const { created, skipped } = await res.json();
