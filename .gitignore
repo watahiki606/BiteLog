@@ -111,3 +111,6 @@ apps/docs/dist/
 # Debug / test artifacts
 .playwright-mcp/
 screenshot-*.png
+
+# Personal body-composition data (HealthPlanet export) — never commit
+measurements.csv

@@ -9,6 +9,7 @@ import userData from './routes/userData';
 import csvImport from './routes/csvImport';
 import aiAnalyze from './routes/aiAnalyze';
 import bodyMeasurements from './routes/bodyMeasurements';
+import statistics from './routes/statistics';
 
 const base = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -37,6 +38,7 @@ const app = base
   .route('/api/csv', csvImport)
   .route('/api/ai', aiAnalyze)
   .route('/api/body-measurements', bodyMeasurements)
+  .route('/api/statistics', statistics)
   .get('/health', (c) => c.json({ ok: true }));
 
 export default app;

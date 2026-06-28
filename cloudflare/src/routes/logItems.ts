@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { Bindings, Variables, LogItemRow, FoodMasterRow } from '../types';
 import { logItemToResponse } from '../types';
 import { authMiddleware } from '../middleware/auth';
+import { NUTRITION_BASE_CTE, NUTRITION_SUM_COLUMNS } from '../lib/nutritionSql';
 
 type LogItemJoinRow = LogItemRow & {
   fm_id: string | null;
@@ -88,25 +89,9 @@ const logItems = new Hono<{ Bindings: Bindings; Variables: Variables }>()
     }
 
     const { results } = await c.env.DB.prepare(
-      `WITH base AS (
-         SELECT li.log_date AS log_date, li.meal_type AS meal_type,
-           li.number_of_servings AS s,
-           COALESCE(fm.calories,      json_extract(li.nutrition_snapshot_json, '$.calories'))     AS cal,
-           COALESCE(fm.protein,       json_extract(li.nutrition_snapshot_json, '$.protein'))      AS pro,
-           COALESCE(fm.fat,           json_extract(li.nutrition_snapshot_json, '$.fat'))          AS fat,
-           COALESCE(fm.net_carbs,     json_extract(li.nutrition_snapshot_json, '$.netCarbs'))     AS nc,
-           COALESCE(fm.dietary_fiber, json_extract(li.nutrition_snapshot_json, '$.dietaryFiber')) AS fib,
-           COALESCE(fm.portion_size,  json_extract(li.nutrition_snapshot_json, '$.portionSize'))  AS psize
-         FROM log_items li
-         LEFT JOIN food_masters fm ON fm.id = li.food_master_id
-         WHERE li.user_id = ? AND li.log_date >= ? AND li.log_date <= ?
-       )
+      `WITH ${NUTRITION_BASE_CTE}
        SELECT log_date, meal_type,
-         SUM(CASE WHEN psize > 0 THEN cal * s / psize ELSE 0 END) AS calories,
-         SUM(CASE WHEN psize > 0 THEN pro * s / psize ELSE 0 END) AS protein,
-         SUM(CASE WHEN psize > 0 THEN fat * s / psize ELSE 0 END) AS fat,
-         SUM(CASE WHEN psize > 0 THEN nc  * s / psize ELSE 0 END) AS netCarbs,
-         SUM(CASE WHEN psize > 0 THEN fib * s / psize ELSE 0 END) AS dietaryFiber
+         ${NUTRITION_SUM_COLUMNS}
        FROM base
        GROUP BY log_date, meal_type
        ORDER BY log_date ASC`
