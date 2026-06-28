@@ -1,28 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { createClient } from '@/lib/api';
 import type { ToastMessage } from '@/components/Toast';
-
-interface NutritionSource {
-  productName: string;
-  brandName: string;
-  calories: number;
-  protein: number;
-  fat: number;
-  netCarbs: number;
-  dietaryFiber: number;
-  portionSize: number;
-}
-
-interface LogItem {
-  id: string;
-  timestamp: string;
-  mealType: string;
-  numberOfServings: number;
-  isMasterDeleted: boolean;
-  foodMaster: NutritionSource | null;
-  nutritionSnapshot: NutritionSource | null;
-}
+import { useLogItems, type LogItem } from '@/hooks/useLogItems';
 
 interface Props {
   onToast: (msg: Omit<ToastMessage, 'id'>) => void;
@@ -57,26 +37,13 @@ function getNutrition(item: LogItem) {
 
 export default function MealLogPage({ onToast }: Props) {
   const [date, setDate] = useState(today());
-  const [items, setItems] = useState<LogItem[]>([]);
-  const [loading, setLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<LogItem | null>(null);
 
-  const fetchItems = useCallback(async (d: string) => {
-    setLoading(true);
-    try {
-      const client = createClient();
-      const res = await client.api['log-items'].$get({ query: { logDate: d } });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setItems(data.items as LogItem[]);
-    } catch {
-      onToast({ message: 'データの取得に失敗しました', type: 'error' });
-    } finally {
-      setLoading(false);
-    }
-  }, [onToast]);
-
-  useEffect(() => { fetchItems(date); }, [date, fetchItems]);
+  const onError = useCallback(
+    () => onToast({ message: 'データの取得に失敗しました', type: 'error' }),
+    [onToast]
+  );
+  const { data: items = [], isLoading: loading, mutate } = useLogItems(date, onError);
 
   async function handleDelete(item: LogItem) {
     try {
@@ -85,7 +52,7 @@ export default function MealLogPage({ onToast }: Props) {
       if (!res.ok) throw new Error();
       onToast({ message: '削除しました', type: 'success' });
       setDeleteTarget(null);
-      fetchItems(date);
+      mutate();
     } catch {
       onToast({ message: '削除に失敗しました', type: 'error' });
     }

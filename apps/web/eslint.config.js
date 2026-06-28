@@ -19,4 +19,12 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // shadcn 生成のUIコンポーネントは variants 定数を同居エクスポートするため、
+    // fast-refresh の only-export-components ルール対象外にする。
+    files: ['**/components/ui/**'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])
