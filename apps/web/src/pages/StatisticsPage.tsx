@@ -1,40 +1,21 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { motion } from 'motion/react';
 import {
   LineChart, Line, BarChart, Bar,
   XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
-import { createClient } from '@/lib/api';
 import type { ToastMessage } from '@/components/Toast';
+import { useSummary, useGoals, type Goals } from '@/hooks/useStatistics';
+import {
+  dailyTotals, fillDays, bucketed, periodTotal, dailyAverage,
+  goalAchievedDays, pfcBalance, mealTypeTotals, carbs,
+  formatDate,
+  type NutritionValues, type Bucket,
+} from '@/lib/statistics';
 
 type Period = 'week' | 'month' | 'year';
-type Metric = 'calories' | 'protein' | 'fat' | 'netCarbs';
-
-interface DaySummary {
-  logDate: string;
-  mealType: string;
-  calories: number;
-  protein: number;
-  fat: number;
-  netCarbs: number;
-  dietaryFiber: number;
-}
-
-interface DayTotal {
-  date: string;
-  calories: number;
-  protein: number;
-  fat: number;
-  netCarbs: number;
-  dietaryFiber: number;
-}
-
-interface Goals {
-  calories: number;
-  protein: number;
-  fat: number;
-  netCarbs: number;
-}
+type Metric = 'calories' | 'protein' | 'fat' | 'carbs';
+type Aggregation = 'average' | 'total';
 
 interface Props {
   onToast: (msg: Omit<ToastMessage, 'id'>) => void;
@@ -44,7 +25,7 @@ const METRIC_CONFIG: Record<Metric, { label: string; unit: string; color: string
   calories: { label: 'CALORIES', unit: 'kcal', color: '#ffff00' },
   protein:  { label: 'PROTEIN',  unit: 'g',    color: '#00ff41' },
   fat:      { label: 'FAT',      unit: 'g',    color: '#ff00ff' },
-  netCarbs: { label: 'CARBS',    unit: 'g',    color: '#00e5ff' },
+  carbs:    { label: 'CARBS',    unit: 'g',    color: '#00e5ff' },
 };
 
 const MEAL_COLORS: Record<string, string> = {
@@ -57,74 +38,43 @@ const MEAL_COLORS: Record<string, string> = {
 
 const PERIOD_DAYS: Record<Period, number> = { week: 7, month: 30, year: 365 };
 
-function formatDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function getRange(period: Period): { from: string; to: string } {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(start.getDate() - (PERIOD_DAYS[period] - 1));
-  return { from: formatDate(start), to: formatDate(end) };
-}
-
-function aggregateDaily(items: DaySummary[]): Map<string, DayTotal> {
-  const map = new Map<string, DayTotal>();
-  for (const item of items) {
-    const e = map.get(item.logDate) ?? { date: item.logDate, calories: 0, protein: 0, fat: 0, netCarbs: 0, dietaryFiber: 0 };
-    map.set(item.logDate, {
-      date: item.logDate,
-      calories: e.calories + item.calories,
-      protein: e.protein + item.protein,
-      fat: e.fat + item.fat,
-      netCarbs: e.netCarbs + item.netCarbs,
-      dietaryFiber: e.dietaryFiber + item.dietaryFiber,
-    });
-  }
-  return map;
-}
-
-function fillDays(dailyMap: Map<string, DayTotal>, from: string, to: string): DayTotal[] {
-  const result: DayTotal[] = [];
-  let current = from;
-  while (current <= to) {
-    result.push(dailyMap.get(current) ?? { date: current, calories: 0, protein: 0, fat: 0, netCarbs: 0, dietaryFiber: 0 });
-    const d = new Date(current + 'T00:00:00');
-    d.setDate(d.getDate() + 1);
-    current = formatDate(d);
-  }
-  return result;
-}
-
-function weeklyBuckets(dailyTotals: DayTotal[]): DayTotal[] {
-  const weeks = new Map<string, DayTotal>();
-  for (const day of dailyTotals) {
-    const d = new Date(day.date + 'T00:00:00');
-    const dow = d.getDay();
-    d.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1));
-    const key = formatDate(d);
-    const e = weeks.get(key) ?? { date: key, calories: 0, protein: 0, fat: 0, netCarbs: 0, dietaryFiber: 0 };
-    weeks.set(key, {
-      date: key,
-      calories: e.calories + day.calories,
-      protein: e.protein + day.protein,
-      fat: e.fat + day.fat,
-      netCarbs: e.netCarbs + day.netCarbs,
-      dietaryFiber: e.dietaryFiber + day.dietaryFiber,
-    });
-  }
-  return Array.from(weeks.values()).sort((a, b) => a.date.localeCompare(b.date));
-}
+// period に対して意味のある集計単位だけを出す（棒が1本しか出ない組み合わせを避ける）。
+const BUCKETS_FOR: Record<Period, Bucket[]> = {
+  week:  ['day'],
+  month: ['day', 'week'],
+  year:  ['day', 'week', 'month'],
+};
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAYS   = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-function makeXFormatter(period: Period) {
+function metricValue(v: NutritionValues, m: Metric): number {
+  switch (m) {
+    case 'calories': return v.calories;
+    case 'protein':  return v.protein;
+    case 'fat':      return v.fat;
+    case 'carbs':    return carbs(v);
+  }
+}
+
+/** 今日を基準に、offset ページ分だけ過去にずらした表示レンジ [from, to]。 */
+function rangeFor(period: Period, offset: number): { from: string; to: string } {
+  const days = PERIOD_DAYS[period];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const to = new Date(today);
+  to.setDate(to.getDate() - offset * days);
+  const from = new Date(to);
+  from.setDate(from.getDate() - (days - 1));
+  return { from: formatDate(from), to: formatDate(to) };
+}
+
+function makeXFormatter(period: Period, bucket: Bucket) {
   return (dateStr: string) => {
     const d = new Date(dateStr + 'T00:00:00');
-    if (period === 'week')  return DAYS[d.getDay()];
-    if (period === 'month') return `${d.getMonth() + 1}/${d.getDate()}`;
-    return MONTHS[d.getMonth()];
+    if (bucket === 'month') return MONTHS[d.getMonth()];
+    if (bucket === 'day' && period === 'week') return DAYS[d.getDay()];
+    return `${d.getMonth() + 1}/${d.getDate()}`;
   };
 }
 
@@ -178,6 +128,36 @@ function MacroBar({ label, value, target, unit, color }: { label: string; value:
   );
 }
 
+/** 区切りトグル（period / metric / bucket / aggregation 共通の小ボタン群）。 */
+function Segmented<T extends string>({ options, value, onChange, colorFor }: {
+  options: { key: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+  colorFor?: (key: T) => string;
+}) {
+  return (
+    <div className="flex gap-1">
+      {options.map(({ key, label }) => {
+        const active = value === key;
+        const color = colorFor?.(key) ?? '#00e5ff';
+        return (
+          <button
+            key={key}
+            onClick={() => onChange(key)}
+            aria-pressed={active}
+            className="px-2.5 py-1 text-xs tracking-widest uppercase transition-all"
+            style={{
+              border:     `1px solid ${active ? color : '#1a1a3e'}`,
+              color:      active ? color : '#6060a0',
+              background: active ? `${color}18` : 'transparent',
+            }}
+          >{label}</button>
+        );
+      })}
+    </div>
+  );
+}
+
 const chartTooltipStyle = {
   contentStyle: { background: '#0d0d22', border: '1px solid #1a1a3e', borderRadius: 0, fontSize: 10, fontFamily: 'JetBrains Mono, monospace' },
   labelStyle:   { color: '#6060a0' },
@@ -186,79 +166,67 @@ const chartTooltipStyle = {
 // ─── Main page ───────────────────────────────────────────────
 
 export default function StatisticsPage({ onToast }: Props) {
-  const [period, setPeriod]   = useState<Period>('month');
-  const [metric, setMetric]   = useState<Metric>('calories');
-  const [items, setItems]     = useState<DaySummary[]>([]);
-  const [goals, setGoals]     = useState<Goals>({ calories: 0, protein: 0, fat: 0, netCarbs: 0 });
-  const [loading, setLoading] = useState(false);
+  const [period, setPeriod]           = useState<Period>('month');
+  const [metric, setMetric]           = useState<Metric>('calories');
+  const [bucket, setBucket]           = useState<Bucket>('day');
+  const [aggregation, setAggregation] = useState<Aggregation>('total');
+  const [offset, setOffset]           = useState(0);
 
-  const fetchData = useCallback(async (p: Period) => {
-    setLoading(true);
-    const { from, to } = getRange(p);
-    try {
-      const client = createClient();
-      const [summaryRes, goalsRes] = await Promise.all([
-        client.api['log-items'].summary.$get({ query: { from, to } }),
-        client.api['nutrition-goals'].$get(),
-      ]);
-      if (!summaryRes.ok) throw new Error('summary');
-      const summaryData = await summaryRes.json();
-      setItems(summaryData.items as DaySummary[]);
+  const { from, to } = useMemo(() => rangeFor(period, offset), [period, offset]);
 
-      if (goalsRes.ok) {
-        const g = await goalsRes.json() as { targetProtein: number; targetFat: number; targetNetCarbs: number; targetFiber: number };
-        setGoals({
-          calories: Math.round(g.targetProtein * 4 + g.targetFat * 9 + g.targetNetCarbs * 4 + g.targetFiber * 2),
-          protein:  g.targetProtein,
-          fat:      g.targetFat,
-          netCarbs: g.targetNetCarbs,
-        });
-      }
-    } catch {
-      onToast({ message: 'データの取得に失敗しました', type: 'error' });
-    } finally {
-      setLoading(false);
-    }
-  }, [onToast]);
-
-  useEffect(() => { fetchData(period); }, [period, fetchData]);
-
-  // ─── Derived data ─────────────────────────────────────────
-
-  const { from, to } = getRange(period);
-  const days         = PERIOD_DAYS[period];
-  const dailyMap     = aggregateDaily(items);
-  const dailyFilled  = fillDays(dailyMap, from, to);
-  const chartData    = period === 'year' ? weeklyBuckets(dailyFilled) : dailyFilled;
-  const xFormatter   = makeXFormatter(period);
-
-  const periodTotal = dailyFilled.reduce(
-    (acc, d) => ({ calories: acc.calories + d.calories, protein: acc.protein + d.protein, fat: acc.fat + d.fat, netCarbs: acc.netCarbs + d.netCarbs }),
-    { calories: 0, protein: 0, fat: 0, netCarbs: 0 }
+  const onError = useCallback(
+    () => onToast({ message: 'データの取得に失敗しました', type: 'error' }),
+    [onToast]
   );
-  const avg = {
-    calories: periodTotal.calories / days,
-    protein:  periodTotal.protein  / days,
-    fat:      periodTotal.fat      / days,
-    netCarbs: periodTotal.netCarbs / days,
+  const { data: items = [], isLoading } = useSummary(from, to, onError);
+  const { data: goalsData } = useGoals();
+  const goals: Goals = goalsData ?? { calories: 0, protein: 0, fat: 0, netCarbs: 0, fiber: 0 };
+
+  // period を変えるとページサイズと使える単位が変わるので、レンジを最新に戻し bucket を補正。
+  const changePeriod = (p: Period) => {
+    setPeriod(p);
+    setOffset(0);
+    if (!BUCKETS_FOR[p].includes(bucket)) setBucket('day');
   };
 
-  const activeDays = dailyFilled.filter(d => d.calories > 0).length;
-  const goalDays   = dailyFilled.filter(d => d.calories > 0 && goals.calories > 0 && Math.abs(d.calories - goals.calories) / goals.calories <= 0.1).length;
+  const availableBuckets = BUCKETS_FOR[period];
+  const days = PERIOD_DAYS[period];
 
-  const pfcE     = { p: avg.protein * 4, f: avg.fat * 9, c: avg.netCarbs * 4 };
-  const pfcTotal = pfcE.p + pfcE.f + pfcE.c;
-  const pfc      = pfcTotal > 0
-    ? { protein: (pfcE.p / pfcTotal) * 100, fat: (pfcE.f / pfcTotal) * 100, carbs: (pfcE.c / pfcTotal) * 100 }
-    : { protein: 0, fat: 0, carbs: 0 };
+  // ─── Derived data（items / period / offset / bucket / aggregation に連動して再計算）─
 
-  const mealTotals: Record<string, number> = {};
-  for (const item of items) {
-    mealTotals[item.mealType] = (mealTotals[item.mealType] ?? 0) + item.calories;
-  }
-  const maxMealCal = Math.max(...Object.values(mealTotals), 1);
+  const filledDaily = useMemo(
+    () => fillDays(dailyTotals(items), from, to),
+    [items, from, to]
+  );
+
+  const chartData = useMemo(() => {
+    const series = bucket === 'day'
+      ? filledDaily
+      : bucketed(filledDaily, bucket, aggregation === 'average');
+    return series.map((d) => ({ date: d.date, value: metricValue(d.values, metric) }));
+  }, [filledDaily, bucket, aggregation, metric]);
+
+  const avg     = useMemo(() => dailyAverage(items, days), [items, days]);
+  const total   = useMemo(() => periodTotal(items), [items]);
+  const balance = useMemo(() => pfcBalance(items), [items]);
+  const meals   = useMemo(() => mealTypeTotals(items), [items]);
+
+  const activeDays = filledDaily.filter((d) => d.values.calories > 0).length;
+  const goalDays   = goalAchievedDays(items, goals.calories);
+
+  // エネルギー/日（1日平均の PFC エネルギー）。
+  const energyPerDay = avg.protein * 4 + avg.fat * 9 + avg.netCarbs * 4 + avg.dietaryFiber * 2;
+  const maxMealCal   = Math.max(...Object.values(meals).map((v) => v.calories), 1);
 
   const metricConf = METRIC_CONFIG[metric];
+  const xFormatter = makeXFormatter(period, bucket);
+
+  // 合計バケットでは日次目標と比較できないため、目標線は日次か平均のときだけ。
+  const showGoalLine = metric === 'calories' && goals.calories > 0
+    && (bucket === 'day' || aggregation === 'average');
+
+  // ─── Date navigation ──────────────────────────────────────
+  const navLabel = `${from.replaceAll('-', '/')} – ${to.replaceAll('-', '/')}`;
 
   // ─── Render ───────────────────────────────────────────────
 
@@ -270,53 +238,109 @@ export default function StatisticsPage({ onToast }: Props) {
           <h2 className="text-sm font-bold tracking-widest text-neon-cyan text-glow-cyan uppercase">Statistics</h2>
           <p className="text-xs text-muted-foreground mt-0.5">{activeDays} active days</p>
         </div>
-        <div className="flex gap-1">
-          {(['week', 'month', 'year'] as Period[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className="px-3 py-1.5 text-xs tracking-widest uppercase transition-all"
-              style={{
-                border:     `1px solid ${period === p ? '#00e5ff' : '#1a1a3e'}`,
-                color:      period === p ? '#00e5ff' : '#6060a0',
-                background: period === p ? 'rgba(0,229,255,0.08)' : 'transparent',
-                boxShadow:  period === p ? '0 0 8px rgba(0,229,255,0.2)' : 'none',
-              }}
-            >{p}</button>
-          ))}
-        </div>
+        <Segmented
+          options={(['week', 'month', 'year'] as Period[]).map((p) => ({ key: p, label: p }))}
+          value={period}
+          onChange={changePeriod}
+        />
       </div>
 
       <div className="flex-1 p-6 space-y-4">
+
+        {/* Date navigation */}
+        <div className="flex items-center justify-between text-xs">
+          <button
+            onClick={() => setOffset((o) => o + 1)}
+            aria-label="前の期間"
+            className="px-3 py-1.5 tracking-widest transition-all"
+            style={{ border: '1px solid #1a1a3e', color: '#6060a0' }}
+          >◀</button>
+          <span className="text-muted-foreground tracking-widest">{navLabel}</span>
+          <button
+            onClick={() => setOffset((o) => Math.max(o - 1, 0))}
+            aria-label="次の期間"
+            disabled={offset === 0}
+            className="px-3 py-1.5 tracking-widest transition-all"
+            style={{
+              border: '1px solid #1a1a3e',
+              color: offset === 0 ? '#2a2a4e' : '#6060a0',
+              cursor: offset === 0 ? 'not-allowed' : 'pointer',
+            }}
+          >▶</button>
+        </div>
 
         {/* Trend Chart */}
         <motion.div
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
           className="bg-bg-card border border-border-dim p-4"
         >
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3">
             <span className="text-xs text-muted-foreground tracking-widest">TREND</span>
-            <div className="flex gap-1">
-              {(Object.entries(METRIC_CONFIG) as [Metric, (typeof METRIC_CONFIG)[Metric]][]).map(([key, conf]) => (
-                <button
-                  key={key}
-                  onClick={() => setMetric(key)}
-                  className="px-2.5 py-1 text-xs tracking-widest uppercase transition-all"
-                  style={{
-                    border:     `1px solid ${metric === key ? conf.color : '#1a1a3e'}`,
-                    color:      metric === key ? conf.color : '#6060a0',
-                    background: metric === key ? `${conf.color}18` : 'transparent',
-                  }}
-                >{conf.label}</button>
-              ))}
-            </div>
+            <Segmented
+              options={(Object.keys(METRIC_CONFIG) as Metric[]).map((k) => ({ key: k, label: METRIC_CONFIG[k].label }))}
+              value={metric}
+              onChange={setMetric}
+              colorFor={(k) => METRIC_CONFIG[k].color}
+            />
           </div>
 
-          {loading ? (
+          {/* Bucket / aggregation controls */}
+          <div className="flex items-center justify-between mb-4">
+            {availableBuckets.length > 1 ? (
+              <Segmented
+                options={availableBuckets.map((b) => ({ key: b, label: b }))}
+                value={bucket}
+                onChange={setBucket}
+              />
+            ) : <span />}
+            {bucket !== 'day' && (
+              <Segmented
+                options={(['average', 'total'] as Aggregation[]).map((a) => ({ key: a, label: a }))}
+                value={aggregation}
+                onChange={setAggregation}
+              />
+            )}
+          </div>
+
+          {isLoading ? (
             <div className="h-44 flex items-center justify-center text-muted-foreground tracking-widest text-xs">LOADING...</div>
           ) : (
             <ResponsiveContainer width="100%" height={176}>
-              {period === 'year' ? (
+              {bucket === 'day' ? (
+                <LineChart data={chartData} margin={{ top: 5, right: 4, bottom: 5, left: 4 }}>
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={xFormatter}
+                    tick={{ fill: '#6060a0', fontSize: 9, fontFamily: 'JetBrains Mono, monospace' }}
+                    axisLine={false} tickLine={false}
+                    interval={chartData.length <= 8 ? 0 : 'preserveStartEnd'}
+                  />
+                  <YAxis hide domain={[0, 'auto']} />
+                  <Tooltip
+                    {...chartTooltipStyle}
+                    itemStyle={{ color: metricConf.color }}
+                    formatter={(v) => [`${Math.round(Number(v) * 10) / 10} ${metricConf.unit}`, metricConf.label]}
+                    labelFormatter={(label) => xFormatter(String(label))}
+                  />
+                  {showGoalLine && (
+                    <ReferenceLine
+                      y={goals.calories}
+                      stroke="#ffffff25"
+                      strokeDasharray="4 4"
+                      label={{ value: `${goals.calories} goal`, fill: '#6060a0', fontSize: 8, fontFamily: 'JetBrains Mono, monospace', position: 'insideTopRight' }}
+                    />
+                  )}
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke={metricConf.color}
+                    strokeWidth={1.5}
+                    dot={chartData.length <= 14 ? { r: 3, fill: metricConf.color, stroke: 'none' } : false}
+                    activeDot={{ r: 4, fill: metricConf.color, stroke: 'none' }}
+                    style={{ filter: `drop-shadow(0 0 4px ${metricConf.color}80)` }}
+                  />
+                </LineChart>
+              ) : (
                 <BarChart data={chartData} margin={{ top: 5, right: 4, bottom: 5, left: 4 }}>
                   <XAxis
                     dataKey="date"
@@ -332,27 +356,7 @@ export default function StatisticsPage({ onToast }: Props) {
                     formatter={(v) => [`${Math.round(Number(v) * 10) / 10} ${metricConf.unit}`, metricConf.label]}
                     labelFormatter={(label) => xFormatter(String(label))}
                   />
-                  <Bar dataKey={metric} fill={metricConf.color} fillOpacity={0.75} radius={[1, 1, 0, 0]}
-                    style={{ filter: `drop-shadow(0 0 3px ${metricConf.color}60)` }}
-                  />
-                </BarChart>
-              ) : (
-                <LineChart data={chartData} margin={{ top: 5, right: 4, bottom: 5, left: 4 }}>
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={xFormatter}
-                    tick={{ fill: '#6060a0', fontSize: 9, fontFamily: 'JetBrains Mono, monospace' }}
-                    axisLine={false} tickLine={false}
-                    interval={period === 'week' ? 0 : 'preserveStartEnd'}
-                  />
-                  <YAxis hide domain={[0, 'auto']} />
-                  <Tooltip
-                    {...chartTooltipStyle}
-                    itemStyle={{ color: metricConf.color }}
-                    formatter={(v) => [`${Math.round(Number(v) * 10) / 10} ${metricConf.unit}`, metricConf.label]}
-                    labelFormatter={(label) => xFormatter(String(label))}
-                  />
-                  {metric === 'calories' && goals.calories > 0 && (
+                  {showGoalLine && (
                     <ReferenceLine
                       y={goals.calories}
                       stroke="#ffffff25"
@@ -360,16 +364,10 @@ export default function StatisticsPage({ onToast }: Props) {
                       label={{ value: `${goals.calories} goal`, fill: '#6060a0', fontSize: 8, fontFamily: 'JetBrains Mono, monospace', position: 'insideTopRight' }}
                     />
                   )}
-                  <Line
-                    type="monotone"
-                    dataKey={metric}
-                    stroke={metricConf.color}
-                    strokeWidth={1.5}
-                    dot={period === 'week' ? { r: 3, fill: metricConf.color, stroke: 'none' } : false}
-                    activeDot={{ r: 4, fill: metricConf.color, stroke: 'none' }}
-                    style={{ filter: `drop-shadow(0 0 4px ${metricConf.color}80)` }}
+                  <Bar dataKey="value" fill={metricConf.color} fillOpacity={0.75} radius={[1, 1, 0, 0]}
+                    style={{ filter: `drop-shadow(0 0 3px ${metricConf.color}60)` }}
                   />
-                </LineChart>
+                </BarChart>
               )}
             </ResponsiveContainer>
           )}
@@ -399,9 +397,9 @@ export default function StatisticsPage({ onToast }: Props) {
                 </div>
               </div>
             </div>
-            <MacroBar label="PROTEIN" value={avg.protein}  target={goals.protein}  unit="g" color="#00ff41" />
-            <MacroBar label="FAT"     value={avg.fat}       target={goals.fat}      unit="g" color="#ff00ff" />
-            <MacroBar label="CARBS"   value={avg.netCarbs}  target={goals.netCarbs} unit="g" color="#00e5ff" />
+            <MacroBar label="PROTEIN" value={avg.protein}     target={goals.protein}                unit="g" color="#00ff41" />
+            <MacroBar label="FAT"     value={avg.fat}         target={goals.fat}                    unit="g" color="#ff00ff" />
+            <MacroBar label="CARBS"   value={carbs(avg)}      target={goals.netCarbs + goals.fiber} unit="g" color="#00e5ff" />
           </motion.div>
 
           {/* PFC Balance */}
@@ -411,11 +409,11 @@ export default function StatisticsPage({ onToast }: Props) {
           >
             <div className="text-xs text-muted-foreground tracking-widest mb-3">PFC BALANCE</div>
             <div className="flex h-3 mb-4 overflow-hidden" style={{ border: '1px solid #1a1a3e' }}>
-              {pfcTotal > 0 ? (
+              {balance.protein + balance.fat + balance.carbs > 0 ? (
                 <>
-                  <div className="h-full" style={{ width: `${pfc.protein}%`, background: '#00ff41', boxShadow: '0 0 6px #00ff4180' }} />
-                  <div className="h-full" style={{ width: `${pfc.fat}%`,     background: '#ff00ff', boxShadow: '0 0 6px #ff00ff80' }} />
-                  <div className="h-full" style={{ width: `${pfc.carbs}%`,   background: '#00e5ff', boxShadow: '0 0 6px #00e5ff80' }} />
+                  <div className="h-full" style={{ width: `${balance.protein}%`, background: '#00ff41', boxShadow: '0 0 6px #00ff4180' }} />
+                  <div className="h-full" style={{ width: `${balance.fat}%`,     background: '#ff00ff', boxShadow: '0 0 6px #ff00ff80' }} />
+                  <div className="h-full" style={{ width: `${balance.carbs}%`,   background: '#00e5ff', boxShadow: '0 0 6px #00e5ff80' }} />
                 </>
               ) : (
                 <div className="h-full w-full" style={{ background: '#1a1a3e' }} />
@@ -423,9 +421,9 @@ export default function StatisticsPage({ onToast }: Props) {
             </div>
             <div className="space-y-2.5">
               {[
-                { label: 'PROTEIN', pct: pfc.protein, color: '#00ff41' },
-                { label: 'FAT',     pct: pfc.fat,     color: '#ff00ff' },
-                { label: 'CARBS',   pct: pfc.carbs,   color: '#00e5ff' },
+                { label: 'PROTEIN', pct: balance.protein, color: '#00ff41' },
+                { label: 'FAT',     pct: balance.fat,     color: '#ff00ff' },
+                { label: 'CARBS',   pct: balance.carbs,   color: '#00e5ff' },
               ].map(({ label, pct: p, color }) => (
                 <div key={label} className="flex items-center gap-2">
                   <div className="w-2 h-2 flex-shrink-0" style={{ background: color, boxShadow: `0 0 4px ${color}` }} />
@@ -439,7 +437,7 @@ export default function StatisticsPage({ onToast }: Props) {
             </div>
             <div className="mt-4 pt-3 border-t border-border-dim">
               <div className="text-xs text-muted-foreground tracking-widest">ENERGY / DAY</div>
-              <div className="text-neon-yellow font-bold">{Math.round(pfcTotal)}<span className="text-muted-foreground font-normal text-xs"> kcal</span></div>
+              <div className="text-neon-yellow font-bold">{Math.round(energyPerDay)}<span className="text-muted-foreground font-normal text-xs"> kcal</span></div>
             </div>
           </motion.div>
 
@@ -451,7 +449,7 @@ export default function StatisticsPage({ onToast }: Props) {
             <div className="text-xs text-muted-foreground tracking-widest mb-3">BY MEAL TYPE</div>
             <div className="space-y-2.5">
               {['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Other'].map((mealType) => {
-                const cal   = mealTotals[mealType] ?? 0;
+                const cal   = meals[mealType]?.calories ?? 0;
                 const pct   = cal / maxMealCal;
                 const color = MEAL_COLORS[mealType] ?? '#6060a0';
                 return (
@@ -472,7 +470,7 @@ export default function StatisticsPage({ onToast }: Props) {
             </div>
             <div className="mt-4 pt-3 border-t border-border-dim">
               <div className="text-xs text-muted-foreground tracking-widest">TOTAL PERIOD</div>
-              <div className="text-neon-yellow font-bold">{Math.round(periodTotal.calories).toLocaleString()}<span className="text-muted-foreground font-normal text-xs"> kcal</span></div>
+              <div className="text-neon-yellow font-bold">{Math.round(total.calories).toLocaleString()}<span className="text-muted-foreground font-normal text-xs"> kcal</span></div>
             </div>
           </motion.div>
 
