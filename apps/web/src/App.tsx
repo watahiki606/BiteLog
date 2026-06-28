@@ -7,8 +7,9 @@ import FoodMasterPage from '@/pages/FoodMasterPage';
 import MealLogPage from '@/pages/MealLogPage';
 import NutritionGoalsPage from '@/pages/NutritionGoalsPage';
 import StatisticsPage from '@/pages/StatisticsPage';
+import BodyMeasurementPage from '@/pages/BodyMeasurementPage';
 
-type Tab = 'food' | 'log' | 'goals' | 'stats';
+type Tab = 'food' | 'log' | 'goals' | 'stats' | 'body';
 
 export default function App() {
   const [session, setSession] = useState(getSession());
@@ -41,6 +42,7 @@ export default function App() {
         {activeTab === 'log'   && <MealLogPage onToast={addToast} />}
         {activeTab === 'goals' && <NutritionGoalsPage onToast={addToast} />}
         {activeTab === 'stats' && <StatisticsPage onToast={addToast} />}
+        {activeTab === 'body'  && <BodyMeasurementPage onToast={addToast} />}
       </main>
       <Toast toasts={toasts} onRemove={removeToast} />
     </div>

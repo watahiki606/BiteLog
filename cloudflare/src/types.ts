@@ -52,6 +52,51 @@ export type NutritionGoalsRow = {
   target_fiber: number;
 };
 
+export type BodyMeasurementRow = {
+  id: string;
+  user_id: string;
+  source_date: string | null;
+  measured_at: string;
+  measurement_date_raw: string | null;
+  measurement_time_raw: string | null;
+  measurement_index: number | null;
+  item_count: number | null;
+  input_method: string | null;
+  weight_kg: number | null;
+  body_fat_percent: number | null;
+  muscle_mass_kg: number | null;
+  muscle_score: number | null;
+  visceral_fat_level: number | null;
+  basal_metabolism_kcal: number | null;
+  metabolic_age: number | null;
+  bone_mass_kg: number | null;
+  body_water_percent: number | null;
+  page_url: string | null;
+};
+
+export function bodyMeasurementToResponse(row: BodyMeasurementRow) {
+  return {
+    id: row.id,
+    sourceDate: row.source_date,
+    measuredAt: row.measured_at,
+    measurementDateRaw: row.measurement_date_raw,
+    measurementTimeRaw: row.measurement_time_raw,
+    measurementIndex: row.measurement_index,
+    itemCount: row.item_count,
+    inputMethod: row.input_method,
+    weightKg: row.weight_kg,
+    bodyFatPercent: row.body_fat_percent,
+    muscleMassKg: row.muscle_mass_kg,
+    muscleScore: row.muscle_score,
+    visceralFatLevel: row.visceral_fat_level,
+    basalMetabolismKcal: row.basal_metabolism_kcal,
+    metabolicAge: row.metabolic_age,
+    boneMassKg: row.bone_mass_kg,
+    bodyWaterPercent: row.body_water_percent,
+    pageUrl: row.page_url,
+  };
+}
+
 export function foodMasterToResponse(row: FoodMasterRow) {
   return {
     id: row.id,
