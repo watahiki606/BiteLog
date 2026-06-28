@@ -12,7 +12,7 @@ The repository contains web apps under `apps/` and an API worker, in addition to
 ## Structure
 
 - Bun workspaces monorepo: `apps/web` + `apps/docs` + `cloudflare`
-- `apps/web/`: React 19 + Vite + Tailwind CSS v4. Deployed to Cloudflare Pages (`bitelog-admin.pages.dev`)
+- `apps/web/`: React 19 + Vite + Tailwind CSS v4. Deployed to Cloudflare Pages (`bitelog-web.pages.dev`)
 - `apps/docs/`: React 19 + Vite + Tailwind CSS v4 + vite-react-ssg (SSG). Deployed to Cloudflare Pages (`bitelog-docs.pages.dev`)
 - `apps/shared/theme.css`: デザイントークンの単一ソース。apps/web と apps/docs が `../../shared/theme.css` で @import する
 - `cloudflare/`: Hono on Cloudflare Workers + D1. Deployed to `bitelog-workers.v10acdict.workers.dev`
@@ -53,7 +53,7 @@ cd cloudflare && npm run deploy
 
 # 2. Web app Pages (--branch main is required; otherwise it becomes a preview deployment)
 cd apps/web && bun run build
-cd ../../cloudflare && npx wrangler pages deploy ../apps/web/dist --project-name bitelog-admin --branch main
+cd ../../cloudflare && npx wrangler pages deploy ../apps/web/dist --project-name bitelog-web --branch main
 
 # 3. Docs Pages (4 static HTML pages: /, /support, /privacy, /terms)
 cd apps/docs && bun run build
