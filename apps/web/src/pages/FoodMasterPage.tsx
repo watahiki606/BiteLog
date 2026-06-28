@@ -74,9 +74,12 @@ export default function FoodMasterPage({ onToast, isAdmin }: Props) {
       if (editing) {
         // PUT は Hono RPC がバリデータなしで json ボディを型推論できないため、
         // param だけ渡し、ボディは init で送る。
+        // init.headers は渡さない: Hono クライアントが {headers, ...opt.init} の順で
+        // 展開するため、init.headers を渡すと Authorization ごと上書きされ 401 になる。
+        // サーバは c.req.json() で読み、Content-Type を見ないため body のみで十分。
         const res = await client.api['food-masters'][':id'].$put(
           { param: { id: editing.id } },
-          { init: { body: JSON.stringify(form), headers: { 'Content-Type': 'application/json' } } }
+          { init: { body: JSON.stringify(form) } }
         );
         if (res.status === 403) {
           onToast({ message: '他のユーザーが作成した食品は編集できません', type: 'error' });

@@ -45,6 +45,34 @@ CREATE TABLE IF NOT EXISTS user_food_stats (
 CREATE INDEX IF NOT EXISTS idx_user_food_stats_usage
   ON user_food_stats(user_id, usage_count DESC, last_used_date DESC);
 
+-- body_measurements: ユーザーごとの体組成計測データ（HealthPlanet由来のCSV全17列）
+-- measured_at（計測のISOタイムスタンプ）を自然キーとし、再インポート時の重複を防ぐ
+CREATE TABLE IF NOT EXISTS body_measurements (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  source_date TEXT,
+  measured_at TEXT NOT NULL,
+  measurement_date_raw TEXT,
+  measurement_time_raw TEXT,
+  measurement_index INTEGER,
+  item_count INTEGER,
+  input_method TEXT,
+  weight_kg REAL,
+  body_fat_percent REAL,
+  muscle_mass_kg REAL,
+  muscle_score REAL,
+  visceral_fat_level REAL,
+  basal_metabolism_kcal REAL,
+  metabolic_age INTEGER,
+  bone_mass_kg REAL,
+  body_water_percent REAL,
+  page_url TEXT,
+  UNIQUE(user_id, measured_at)
+);
+
+CREATE INDEX IF NOT EXISTS idx_body_measurements_user_date
+  ON body_measurements(user_id, measured_at);
+
 -- nutrition_goals: ユーザーごとの栄養目標（user_idで分離）
 CREATE TABLE IF NOT EXISTS nutrition_goals (
   user_id TEXT PRIMARY KEY,
