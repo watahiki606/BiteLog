@@ -1,18 +1,27 @@
 import { useState, useMemo, useCallback } from 'react';
 import { motion } from 'motion/react';
 import {
-  LineChart, Line, BarChart, Bar,
+  Line, Bar, ComposedChart,
   XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 import type { ToastMessage } from '@/components/Toast';
 import { useSummary } from '@/hooks/useStatistics';
+import { useDailyStats } from '@/hooks/useDailyStats';
+import { useBodyMeasurements } from '@/hooks/useBodyMeasurements';
 import { useNutritionGoals, targetCalories } from '@/hooks/useNutritionGoals';
 import {
-  dailyTotals, fillDays, bucketed, periodTotal, dailyAverage,
+  dailyTotals, fillDays, periodTotal, dailyAverage,
   goalAchievedDays, pfcBalance, mealTypeTotals, carbs,
   formatDate,
-  type NutritionValues, type Bucket,
+  type Bucket,
 } from '@/lib/statistics';
+import {
+  BODY_METRICS, correlationSeries, bodyDeltas,
+  type BodyMetricKey,
+} from '@/lib/correlation';
+
+// 体組成の折れ線。'off' で非表示。
+type BodyLine = BodyMetricKey | 'off';
 
 type Period = 'week' | 'month' | 'year';
 type Metric = 'calories' | 'protein' | 'fat' | 'carbs';
@@ -48,15 +57,6 @@ const BUCKETS_FOR: Record<Period, Bucket[]> = {
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAYS   = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-function metricValue(v: NutritionValues, m: Metric): number {
-  switch (m) {
-    case 'calories': return v.calories;
-    case 'protein':  return v.protein;
-    case 'fat':      return v.fat;
-    case 'carbs':    return carbs(v);
-  }
-}
 
 /** 今日を基準に、offset ページ分だけ過去にずらした表示レンジ [from, to]。 */
 function rangeFor(period: Period, offset: number): { from: string; to: string } {
@@ -172,6 +172,7 @@ export default function StatisticsPage({ onToast }: Props) {
   const [bucket, setBucket]           = useState<Bucket>('day');
   const [aggregation, setAggregation] = useState<Aggregation>('total');
   const [offset, setOffset]           = useState(0);
+  const [bodyMetric, setBodyMetric]   = useState<BodyLine>('weightKg');
 
   const { from, to } = useMemo(() => rangeFor(period, offset), [period, offset]);
 
@@ -180,6 +181,10 @@ export default function StatisticsPage({ onToast }: Props) {
     [onToast]
   );
   const { data: items = [], isLoading } = useSummary(from, to, onError);
+  const { data: daily = [] } = useDailyStats(from, to, onError);
+  // ユーザーが体組成データを保有しているか（measured_at 降順・最新が先頭）。
+  // 選択期間外でもセクションを出して「期間外」を案内するために使う。
+  const { data: allBody = [] } = useBodyMeasurements();
   const { data: rawGoals } = useNutritionGoals();
   const goals = {
     calories: rawGoals ? targetCalories(rawGoals) : 0,
@@ -206,13 +211,6 @@ export default function StatisticsPage({ onToast }: Props) {
     [items, from, to]
   );
 
-  const chartData = useMemo(() => {
-    const series = bucket === 'day'
-      ? filledDaily
-      : bucketed(filledDaily, bucket, aggregation === 'average');
-    return series.map((d) => ({ date: d.date, value: metricValue(d.values, metric) }));
-  }, [filledDaily, bucket, aggregation, metric]);
-
   const avg     = useMemo(() => dailyAverage(items, days), [items, days]);
   const total   = useMemo(() => periodTotal(items), [items]);
   const balance = useMemo(() => pfcBalance(items), [items]);
@@ -227,6 +225,18 @@ export default function StatisticsPage({ onToast }: Props) {
 
   const metricConf = METRIC_CONFIG[metric];
   const xFormatter = makeXFormatter(period, bucket);
+
+  // ─── Body composition (correlation) ──────────────────────
+  const hasAnyBody = allBody.length > 0;                       // 全期間で体組成データを持っているか
+  const bodyLineActive = hasAnyBody && bodyMetric !== 'off';   // 折れ線を描くか
+  const effectiveBodyKey: BodyMetricKey = bodyMetric === 'off' ? 'weightKg' : bodyMetric;
+  const bodyConf = BODY_METRICS.find((m) => m.key === effectiveBodyKey)!;
+  // 栄養素（棒/折れ線）と体組成（折れ線）を同一の日次系列にまとめてグラフ描画する。
+  const corrData = useMemo(
+    () => correlationSeries(daily, from, to, bucket, aggregation === 'average', metric, effectiveBodyKey),
+    [daily, from, to, bucket, aggregation, metric, effectiveBodyKey]
+  );
+  const deltas = useMemo(() => bodyDeltas(daily), [daily]);
 
   // 合計バケットでは日次目標と比較できないため、目標線は日次か平均のときだけ。
   const showGoalLine = metric === 'calories' && goals.calories > 0
@@ -292,7 +302,7 @@ export default function StatisticsPage({ onToast }: Props) {
           </div>
 
           {/* Bucket / aggregation controls */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3">
             {availableBuckets.length > 1 ? (
               <Segmented
                 options={availableBuckets.map((b) => ({ key: b, label: b }))}
@@ -309,73 +319,92 @@ export default function StatisticsPage({ onToast }: Props) {
             )}
           </div>
 
+          {/* Body line toggle（体組成データを持つ場合のみ。OFF で折れ線を非表示） */}
+          {hasAnyBody && (
+            <div className="flex items-center gap-2 mb-4 overflow-x-auto">
+              <span className="text-xs text-muted-foreground tracking-widest flex-shrink-0">BODY</span>
+              <Segmented
+                options={[
+                  { key: 'off' as BodyLine, label: 'off' },
+                  ...BODY_METRICS.map((m) => ({ key: m.key as BodyLine, label: m.label })),
+                ]}
+                value={bodyMetric}
+                onChange={setBodyMetric}
+                colorFor={(k) => (k === 'off' ? '#6060a0' : BODY_METRICS.find((m) => m.key === k)!.color)}
+              />
+            </div>
+          )}
+
           {isLoading ? (
             <div className="h-44 flex items-center justify-center text-muted-foreground tracking-widest text-xs">LOADING...</div>
           ) : (
-            <ResponsiveContainer width="100%" height={176}>
-              {bucket === 'day' ? (
-                <LineChart data={chartData} margin={{ top: 5, right: 4, bottom: 5, left: 4 }}>
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={xFormatter}
-                    tick={{ fill: '#6060a0', fontSize: 9, fontFamily: 'JetBrains Mono, monospace' }}
-                    axisLine={false} tickLine={false}
-                    interval={chartData.length <= 8 ? 0 : 'preserveStartEnd'}
+            <ResponsiveContainer width="100%" height={188}>
+              <ComposedChart data={corrData} margin={{ top: 5, right: 4, bottom: 5, left: 4 }}>
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={xFormatter}
+                  tick={{ fill: '#6060a0', fontSize: 9, fontFamily: 'JetBrains Mono, monospace' }}
+                  axisLine={false} tickLine={false}
+                  interval={bucket === 'day' && corrData.length > 8 ? 'preserveStartEnd' : 0}
+                />
+                <YAxis yAxisId="nutrient" hide domain={[0, 'auto']} />
+                <YAxis yAxisId="body" orientation="right" hide domain={['auto', 'auto']} />
+                <Tooltip
+                  {...chartTooltipStyle}
+                  formatter={(v, name) =>
+                    name === metricConf.label
+                      ? [`${Math.round(Number(v) * 10) / 10} ${metricConf.unit}`, metricConf.label]
+                      : [`${Math.round(Number(v) * 10) / 10} ${bodyConf.unit}`, bodyConf.label]
+                  }
+                  labelFormatter={(label) => xFormatter(String(label))}
+                />
+                {showGoalLine && (
+                  <ReferenceLine
+                    yAxisId="nutrient"
+                    y={goals.calories}
+                    stroke="#ffffff25"
+                    strokeDasharray="4 4"
+                    label={{ value: `${goals.calories} goal`, fill: '#6060a0', fontSize: 8, fontFamily: 'JetBrains Mono, monospace', position: 'insideTopRight' }}
                   />
-                  <YAxis hide domain={[0, 'auto']} />
-                  <Tooltip
-                    {...chartTooltipStyle}
-                    itemStyle={{ color: metricConf.color }}
-                    formatter={(v) => [`${Math.round(Number(v) * 10) / 10} ${metricConf.unit}`, metricConf.label]}
-                    labelFormatter={(label) => xFormatter(String(label))}
-                  />
-                  {showGoalLine && (
-                    <ReferenceLine
-                      y={goals.calories}
-                      stroke="#ffffff25"
-                      strokeDasharray="4 4"
-                      label={{ value: `${goals.calories} goal`, fill: '#6060a0', fontSize: 8, fontFamily: 'JetBrains Mono, monospace', position: 'insideTopRight' }}
-                    />
-                  )}
+                )}
+                {bucket === 'day' ? (
                   <Line
+                    yAxisId="nutrient"
                     type="monotone"
-                    dataKey="value"
+                    dataKey="nutrient"
+                    name={metricConf.label}
                     stroke={metricConf.color}
                     strokeWidth={1.5}
-                    dot={chartData.length <= 14 ? { r: 3, fill: metricConf.color, stroke: 'none' } : false}
+                    dot={corrData.length <= 14 ? { r: 3, fill: metricConf.color, stroke: 'none' } : false}
                     activeDot={{ r: 4, fill: metricConf.color, stroke: 'none' }}
                     style={{ filter: `drop-shadow(0 0 4px ${metricConf.color}80)` }}
                   />
-                </LineChart>
-              ) : (
-                <BarChart data={chartData} margin={{ top: 5, right: 4, bottom: 5, left: 4 }}>
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={xFormatter}
-                    tick={{ fill: '#6060a0', fontSize: 9, fontFamily: 'JetBrains Mono, monospace' }}
-                    axisLine={false} tickLine={false}
-                    interval="preserveStartEnd"
-                  />
-                  <YAxis hide domain={[0, 'auto']} />
-                  <Tooltip
-                    {...chartTooltipStyle}
-                    itemStyle={{ color: metricConf.color }}
-                    formatter={(v) => [`${Math.round(Number(v) * 10) / 10} ${metricConf.unit}`, metricConf.label]}
-                    labelFormatter={(label) => xFormatter(String(label))}
-                  />
-                  {showGoalLine && (
-                    <ReferenceLine
-                      y={goals.calories}
-                      stroke="#ffffff25"
-                      strokeDasharray="4 4"
-                      label={{ value: `${goals.calories} goal`, fill: '#6060a0', fontSize: 8, fontFamily: 'JetBrains Mono, monospace', position: 'insideTopRight' }}
-                    />
-                  )}
-                  <Bar dataKey="value" fill={metricConf.color} fillOpacity={0.75} radius={[1, 1, 0, 0]}
+                ) : (
+                  <Bar
+                    yAxisId="nutrient"
+                    dataKey="nutrient"
+                    name={metricConf.label}
+                    fill={metricConf.color}
+                    fillOpacity={bodyLineActive ? 0.4 : 0.75}
+                    radius={[1, 1, 0, 0]}
                     style={{ filter: `drop-shadow(0 0 3px ${metricConf.color}60)` }}
                   />
-                </BarChart>
-              )}
+                )}
+                {bodyLineActive && (
+                  <Line
+                    yAxisId="body"
+                    type="monotone"
+                    dataKey="body"
+                    name={bodyConf.label}
+                    stroke={bodyConf.color}
+                    strokeWidth={2}
+                    connectNulls={false}
+                    dot={corrData.length <= 31 ? { r: 2.5, fill: bodyConf.color, stroke: 'none' } : false}
+                    activeDot={{ r: 4, fill: bodyConf.color, stroke: 'none' }}
+                    style={{ filter: `drop-shadow(0 0 4px ${bodyConf.color}80)` }}
+                  />
+                )}
+              </ComposedChart>
             </ResponsiveContainer>
           )}
         </motion.div>
@@ -482,6 +511,41 @@ export default function StatisticsPage({ onToast }: Props) {
           </motion.div>
 
         </div>
+
+        {/* Latest body composition + 期間始端比の差分（選択期間に体組成データがある場合のみ） */}
+        {deltas.some((d) => d.latest != null) && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
+            className="bg-bg-card border border-border-dim p-4"
+          >
+            <div className="text-xs text-muted-foreground tracking-widest mb-3">BODY COMPOSITION</div>
+            <div className="grid grid-cols-3 gap-x-4 gap-y-3">
+              {BODY_METRICS.map((m) => {
+                const d = deltas.find((x) => x.key === m.key)!;
+                if (d.latest == null) return null;
+                const up = d.delta != null && d.delta > 0;
+                const down = d.delta != null && d.delta < 0;
+                return (
+                  <div key={m.key}>
+                    <div className="text-xs tracking-widest mb-0.5" style={{ color: m.color }}>{m.label}</div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="font-bold" style={{ color: m.color }}>
+                        {Math.round(d.latest * 10) / 10}
+                      </span>
+                      <span className="text-muted-foreground text-xs">{m.unit}</span>
+                      {d.delta != null && d.delta !== 0 && (
+                        <span className="text-xs" style={{ color: up ? '#ff3366' : down ? '#00ff41' : '#6060a0' }}>
+                          {up ? '▲' : '▼'}{Math.abs(Math.round(d.delta * 10) / 10)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+
       </div>
     </div>
   );
