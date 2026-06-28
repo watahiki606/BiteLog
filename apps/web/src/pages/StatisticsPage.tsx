@@ -5,7 +5,8 @@ import {
   XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 import type { ToastMessage } from '@/components/Toast';
-import { useSummary, useGoals, type Goals } from '@/hooks/useStatistics';
+import { useSummary } from '@/hooks/useStatistics';
+import { useNutritionGoals, targetCalories } from '@/hooks/useNutritionGoals';
 import {
   dailyTotals, fillDays, bucketed, periodTotal, dailyAverage,
   goalAchievedDays, pfcBalance, mealTypeTotals, carbs,
@@ -179,8 +180,14 @@ export default function StatisticsPage({ onToast }: Props) {
     [onToast]
   );
   const { data: items = [], isLoading } = useSummary(from, to, onError);
-  const { data: goalsData } = useGoals();
-  const goals: Goals = goalsData ?? { calories: 0, protein: 0, fat: 0, netCarbs: 0, fiber: 0 };
+  const { data: rawGoals } = useNutritionGoals();
+  const goals = {
+    calories: rawGoals ? targetCalories(rawGoals) : 0,
+    protein:  rawGoals?.targetProtein  ?? 0,
+    fat:      rawGoals?.targetFat       ?? 0,
+    netCarbs: rawGoals?.targetNetCarbs  ?? 0,
+    fiber:    rawGoals?.targetFiber     ?? 0,
+  };
 
   // period を変えるとページサイズと使える単位が変わるので、レンジを最新に戻し bucket を補正。
   const changePeriod = (p: Period) => {

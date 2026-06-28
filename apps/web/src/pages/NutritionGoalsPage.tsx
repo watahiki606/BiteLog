@@ -1,49 +1,41 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { createClient } from '@/lib/api';
 import type { ToastMessage } from '@/components/Toast';
-
-interface Goals {
-  targetProtein: number;
-  targetFat: number;
-  targetNetCarbs: number;
-  targetFiber: number;
-}
+import {
+  useNutritionGoals, targetCalories as calcCalories,
+  type NutritionGoals,
+} from '@/hooks/useNutritionGoals';
 
 interface Props {
   onToast: (msg: Omit<ToastMessage, 'id'>) => void;
 }
 
 export default function NutritionGoalsPage({ onToast }: Props) {
-  const [goals, setGoals] = useState<Goals>({ targetProtein: 0, targetFat: 0, targetNetCarbs: 0, targetFiber: 0 });
-  const [loading, setLoading] = useState(false);
+  const onError = useCallback(
+    () => onToast({ message: '目標の取得に失敗しました', type: 'error' }),
+    [onToast]
+  );
+  const { data: serverGoals, isLoading, mutate } = useNutritionGoals(onError);
   const [saving, setSaving] = useState(false);
+  // 未保存の編集はローカル draft に持つ（共有キャッシュを汚さず、統計ページへ漏らさない）。
+  const [draft, setDraft] = useState<NutritionGoals | null>(null);
+  const goals = draft ?? serverGoals;
 
-  useEffect(() => {
-    async function fetchGoals() {
-      setLoading(true);
-      try {
-        const client = createClient();
-        const res = await client.api['nutrition-goals'].$get();
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        setGoals(data as Goals);
-      } catch {
-        onToast({ message: '目標の取得に失敗しました', type: 'error' });
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchGoals();
-  }, [onToast]);
+  function setField(key: keyof NutritionGoals, val: number) {
+    if (!goals) return;
+    setDraft({ ...goals, [key]: val });
+  }
 
   async function handleSave() {
+    if (!goals) return;
     setSaving(true);
     try {
-      const client = createClient();
-      const res = await client.api['nutrition-goals'].$put({ json: goals });
+      const res = await createClient().api['nutrition-goals'].$put({ json: goals });
       if (!res.ok) throw new Error();
       onToast({ message: '目標を保存しました', type: 'success' });
+      setDraft(null);
+      mutate(); // サーバの確定値で再同期
     } catch {
       onToast({ message: '保存に失敗しました', type: 'error' });
     } finally {
@@ -51,20 +43,18 @@ export default function NutritionGoalsPage({ onToast }: Props) {
     }
   }
 
-  const targetCalories = Math.round(
-    goals.targetProtein * 4 + goals.targetFat * 9 + goals.targetNetCarbs * 4 + goals.targetFiber * 2
-  );
+  if (isLoading || !goals) {
+    return <div className="flex items-center justify-center h-full text-muted-foreground tracking-widest text-xs">LOADING...</div>;
+  }
 
-  const fields: { key: keyof Goals; label: string; color: string }[] = [
+  const targetCalories = calcCalories(goals);
+
+  const fields: { key: keyof NutritionGoals; label: string; color: string }[] = [
     { key: 'targetProtein',  label: 'PROTEIN',  color: '#00ff41' },
     { key: 'targetFat',      label: 'FAT',       color: '#ff00ff' },
     { key: 'targetNetCarbs', label: 'NET CARBS', color: '#00e5ff' },
     { key: 'targetFiber',    label: 'FIBER',     color: '#6060a0' },
   ];
-
-  if (loading) {
-    return <div className="flex items-center justify-center h-full text-muted-foreground tracking-widest text-xs">LOADING...</div>;
-  }
 
   return (
     <div className="flex flex-col h-full">
@@ -93,7 +83,7 @@ export default function NutritionGoalsPage({ onToast }: Props) {
                 <label className="block text-xs text-muted-foreground tracking-widest uppercase mb-2">{f.label}</label>
                 <div className="flex items-center gap-3">
                   <input type="number" step="1" min="0" value={goals[f.key]}
-                    onChange={(e) => setGoals((g) => ({ ...g, [f.key]: Number(e.target.value) }))}
+                    onChange={(e) => setField(f.key, Number(e.target.value))}
                     className="bg-bg-surface border border-border-dim px-3 py-2 text-lg font-bold focus:outline-none focus:border-neon-cyan transition-colors w-32 text-right"
                     style={{ color: f.color, fontFamily: 'inherit' }}
                   />

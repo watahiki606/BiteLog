@@ -1,30 +1,13 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { createClient } from '@/lib/api';
 import type { ToastMessage } from '@/components/Toast';
-
-interface FoodMaster {
-  id: string;
-  brandName: string;
-  productName: string;
-  calories: number;
-  protein: number;
-  fat: number;
-  netCarbs: number;
-  dietaryFiber: number;
-  portionSize: number;
-  portionUnit: string;
-  usageCount: number;
-  isMine: boolean;
-  createdBy?: string;
-}
+import { useFoodMasters, FOOD_MASTER_LIMIT as LIMIT, type FoodMaster } from '@/hooks/useFoodMasters';
 
 interface Props {
   onToast: (msg: Omit<ToastMessage, 'id'>) => void;
   isAdmin: boolean;
 }
-
-const LIMIT = 30;
 
 const emptyForm = {
   brandName: '',
@@ -41,47 +24,27 @@ const emptyForm = {
 type FormData = typeof emptyForm;
 
 export default function FoodMasterPage({ onToast, isAdmin }: Props) {
-  const [items, setItems] = useState<FoodMaster[]>([]);
-  const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const [query, setQuery] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<FoodMaster | null>(null);
   const [form, setForm] = useState<FormData>(emptyForm);
   const [deleteTarget, setDeleteTarget] = useState<FoodMaster | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchItems = useCallback(async (q: string, off: number) => {
-    setLoading(true);
-    try {
-      const client = createClient();
-      const res = await client.api['food-masters'].$get({
-        query: { q, limit: String(LIMIT), offset: String(off) },
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setItems(data.items as FoodMaster[]);
-      setTotal(data.total);
-    } catch {
-      onToast({ message: 'データの取得に失敗しました', type: 'error' });
-    } finally {
-      setLoading(false);
-    }
-  }, [onToast]);
-
+  // 入力をデバウンスして検索語を確定。確定時に1ページ目へ戻す。
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      setOffset(0);
-      fetchItems(query, 0);
-    }, 300);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [query, fetchItems]);
+    const t = setTimeout(() => { setDebouncedQuery(query); setOffset(0); }, 300);
+    return () => clearTimeout(t);
+  }, [query]);
 
-  useEffect(() => {
-    fetchItems(query, offset);
-  }, [offset]); // eslint-disable-line react-hooks/exhaustive-deps
+  const onError = useCallback(
+    () => onToast({ message: 'データの取得に失敗しました', type: 'error' }),
+    [onToast]
+  );
+  const { data, isLoading: loading, mutate } = useFoodMasters(debouncedQuery, offset, onError);
+  const items = data?.items ?? [];
+  const total = data?.total ?? 0;
 
   function openAdd() {
     setEditing(null);
@@ -109,10 +72,12 @@ export default function FoodMasterPage({ onToast, isAdmin }: Props) {
     try {
       const client = createClient();
       if (editing) {
-        // PUT は Hono RPC がバリデータなしで json ボディを型推論できないため as any
-        const res = await client.api['food-masters'][':id'].$put({
-          param: { id: editing.id },
-        } as any, { init: { body: JSON.stringify(form), headers: { 'Content-Type': 'application/json' } } });
+        // PUT は Hono RPC がバリデータなしで json ボディを型推論できないため、
+        // param だけ渡し、ボディは init で送る。
+        const res = await client.api['food-masters'][':id'].$put(
+          { param: { id: editing.id } },
+          { init: { body: JSON.stringify(form), headers: { 'Content-Type': 'application/json' } } }
+        );
         if (res.status === 403) {
           onToast({ message: '他のユーザーが作成した食品は編集できません', type: 'error' });
           return;
@@ -128,7 +93,7 @@ export default function FoodMasterPage({ onToast, isAdmin }: Props) {
       }
       onToast({ message: editing ? '更新しました' : '追加しました', type: 'success' });
       setModalOpen(false);
-      fetchItems(query, offset);
+      mutate();
     } catch {
       onToast({ message: '保存に失敗しました', type: 'error' });
     }
@@ -146,7 +111,7 @@ export default function FoodMasterPage({ onToast, isAdmin }: Props) {
       if (!res.ok) throw new Error();
       onToast({ message: '削除しました', type: 'success' });
       setDeleteTarget(null);
-      fetchItems(query, offset);
+      mutate();
     } catch {
       onToast({ message: '削除に失敗しました', type: 'error' });
     }
