@@ -17,7 +17,7 @@ const base = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 base.use('*', cors({
   origin: (origin) => {
     const allowed = [
-      'https://bitelog-admin.pages.dev',
+      'https://bitelog-web.pages.dev',
       'http://localhost:3000',
       'http://localhost:5173',
       'http://localhost:8788',
