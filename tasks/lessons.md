@@ -44,3 +44,29 @@
 - **使いどころ**: サインインしないと主要画面を開けないアプリでも、
   表示コンポーネントが素のデータしか受け取らないなら、テストから
   ライト/ダーク × 文字サイズ標準/AX5 を描き出して目視できる。
+
+## サインインが要るアプリでも、実画面は確認できる
+
+- **状況**: BiteLog はサインインしないと主要画面に入れず、UI を変えても
+  実際の表示を見られないまま「できました」と報告してしまった。
+- **確認できた手順**（すべて一時的な変更で、確認後に戻す）:
+  1. `Resources/Info.plist` の `CLOUDFLARE_WORKER_URL` をローカルのモックAPIに向ける。
+     ATS 用に `NSAppTransportSecurity.NSAllowsArbitraryLoads` を足す
+  2. Python の `http.server` で必要なエンドポイントだけ返すモックを立てる
+  3. ユニットテストは**アプリのプロセス内**で動くので、テストから
+     `AuthManager.shared.storeToken(<偽JWT>)` を呼べば Keychain に入る。
+     クライアントは `exp` しか見ないので、署名は何でもよい
+  4. UIテストでタブを巡回して `app.screenshot()` を PNG に保存する
+- **詰まった点**:
+  - `CODE_SIGNING_ALLOWED=NO` の未署名ビルドだと Keychain 書き込みが黙って失敗する。
+    `storeToken` はメモリ上のフラグだけ立てるので、テストは成功したように見える。
+    書いた値を読み戻して確認すること
+  - 署名を有効にすると、テストターゲットに Info.plist が無くビルドが落ちる。
+    `GENERATE_INFOPLIST_FILE=YES` をコマンドラインで渡すと通る
+  - `-parallel-testing-enabled NO` にしないとシミュレータのクローンで動き、
+    書き出したファイルごと消える
+  - 広告のトラッキング許可ダイアログは
+    `xcrun simctl privacy <id> deny user-tracking <bundle-id>` で出なくなる
+- **成果**: この確認でしか出ない問題が3件見つかった。ツールバーの Picker が
+  幅いっぱいに伸びる、選択肢1つのセグメントが出る、`.confirmationAction` に
+  置いたボタンが「完了」に見える、のいずれも部品単体の描画では分からなかった。
