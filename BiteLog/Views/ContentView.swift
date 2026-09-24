@@ -184,55 +184,55 @@ struct ContentView: View {
   }
 }
 
-// 新しいアイテム行ビュー
+/// ログ1件の行。タイトル + 補助情報 + 右端に数値、という iOS の一覧行の形に合わせる。
 struct ItemRowView: View {
   let item: LogItemDTO
   var onUpdate: ((LogItemDTO) -> Void)?
   @State private var showingEditSheet = false
 
+  private var displayName: String {
+    item.brandName.isEmpty ? item.productName : "\(item.brandName) \(item.productName)"
+  }
+
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
       HStack(alignment: .firstTextBaseline) {
-        if item.isMasterDeleted {
-          Text("\(item.brandName) \(item.productName)")
-            .font(.subheadline.weight(.medium))
-            .foregroundColor(.secondary)
-            .strikethrough()
-            .lineLimit(1)
-          Text(NSLocalizedString("(Deleted)", comment: "Deleted Food indicator"))
-            .font(.caption2)
-            .foregroundColor(.red)
-            .padding(.horizontal, 4)
-            .padding(.vertical, 2)
-            .background(Color.red.opacity(0.1))
-            .cornerRadius(4)
-        } else {
-          Text("\(item.brandName) \(item.productName)")
-            .font(.subheadline.weight(.medium))
-            .foregroundColor(.primary)
-            .lineLimit(1)
+        VStack(alignment: .leading, spacing: 2) {
+          HStack(spacing: 4) {
+            Text(displayName)
+              .font(.subheadline.weight(.medium))
+              .foregroundStyle(item.isMasterDeleted ? .secondary : .primary)
+              .strikethrough(item.isMasterDeleted)
+              .lineLimit(2)
+
+            if item.isMasterDeleted {
+              Text(NSLocalizedString("(Deleted)", comment: "Deleted Food indicator"))
+                .font(.caption2)
+                .foregroundStyle(.red)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+                .background(Color.red.opacity(0.12), in: RoundedRectangle(cornerRadius: 4))
+            }
+          }
+
+          Text("\(NutritionFormatter.formatNutrition(item.numberOfServings)) \(item.portionUnit)")
+            .font(.caption)
+            .monospacedDigit()
+            .foregroundStyle(.secondary)
         }
-        Spacer()
-        Text("\(item.calories, specifier: "%.0f")")
-          .font(.system(size: 15, weight: .semibold, design: .rounded))
-        + Text(" kcal")
-          .font(.system(size: 12))
-          .foregroundColor(.secondary)
+
+        Spacer(minLength: 8)
+
+        CalorieLabel(calories: item.calories)
       }
-      HStack(spacing: 6) {
-        MacroChip(label: "P", value: item.protein, color: .blue)
-        MacroChip(label: "F", value: item.fat, color: .yellow)
-        MacroChip(label: "S", value: item.netCarbs, color: .green)
-        MacroChip(label: "Fb", value: item.dietaryFiber, color: .brown)
-        Spacer()
-        Text("\(NutritionFormatter.formatNutrition(item.numberOfServings)) \(item.portionUnit)")
-          .font(.caption)
-          .foregroundColor(.secondary)
-      }
+
+      NutrientChipRow(values: item.nutritionValues)
     }
     .padding(.vertical, 4)
     .contentShape(Rectangle())
     .onTapGesture { showingEditSheet = true }
+    .accessibilityElement(children: .combine)
+    .accessibilityAddTraits(.isButton)
     .sheet(isPresented: $showingEditSheet) {
       EditItemView(item: item, onSaved: onUpdate)
     }
@@ -241,70 +241,6 @@ struct ItemRowView: View {
 
 #Preview {
   ContentView()
-}
-
-// 栄養素行のコンポーネント
-struct NutrientRow: View {
-  let label: String
-  let value: Double
-  let unit: String
-  let icon: String
-  let color: Color
-
-  var body: some View {
-    HStack {
-      Image(systemName: icon)
-        .foregroundColor(color.opacity(0.8))
-        .font(.system(size: 14, weight: .medium))
-        .frame(width: 22)
-
-      Text(label)
-        .font(.system(size: 15))
-        .foregroundColor(.primary.opacity(0.9))
-
-      Spacer()
-
-      Text(formattedValue)
-        .font(.system(size: 15, weight: .medium))
-        + Text(" \(unit)")
-        .font(.system(size: 14))
-        .foregroundColor(.secondary)
-    }
-    .padding(.horizontal)
-  }
-
-  private var formattedValue: String {
-    // すべての栄養素に適応的フォーマットを使用
-    return NutritionFormatter.formatNutrition(value)
-  }
-}
-
-// 栄養素バッジコンポーネント
-struct NutrientBadge: View {
-  let value: Double
-  let unit: String
-  let name: String
-  let color: Color
-  let icon: String
-
-  var body: some View {
-    HStack(spacing: 3) {
-      Circle()
-        .fill(color)
-        .frame(width: 6, height: 6)
-
-      Text(name)
-        .font(.system(size: 12, weight: .medium))
-        .foregroundColor(color.opacity(0.9))
-
-      Text("\(value, specifier: value >= 100 ? "%.0f" : "%.1f")\(unit)")
-        .font(.system(size: 13, weight: .semibold, design: .rounded))
-    }
-    .padding(.vertical, 3)
-    .padding(.horizontal, 6)
-    .background(color.opacity(0.06))
-    .cornerRadius(6)
-  }
 }
 
 // 空の食事セクション
@@ -335,28 +271,6 @@ struct EmptyMealView: View {
     .padding(.horizontal)
   }
 }
-struct MacroView: View {
-  let label: String
-  let value: Double
-  let color: Color
-
-  var body: some View {
-    HStack(spacing: 3) {
-      Text(label)
-        .font(.system(size: 11, weight: .medium))
-        .foregroundColor(color.opacity(0.7))
-
-      Text("\(NutritionFormatter.formatNutrition(value))g")
-        .font(.system(size: 13))
-        .foregroundColor(.primary.opacity(0.8))
-    }
-    .padding(.vertical, 3)
-    .padding(.horizontal, 6)
-    .background(color.opacity(0.04))
-    .cornerRadius(3)
-  }
-}
-
 // 日付選択シート
 struct DatePickerSheet: View {
   @Binding var selectedDate: Date

@@ -87,8 +87,8 @@ struct EditItemView: View {
                 } else {
                   Button(action: { showingFoodSearch = true }) {
                     HStack {
-                      Image(systemName: "magnifyingglass").foregroundColor(.blue)
-                      Text(NSLocalizedString("Search for food", comment: "Search for food")).foregroundColor(.blue)
+                      Image(systemName: "magnifyingglass")
+                      Text(NSLocalizedString("Search for food", comment: "Search for food"))
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 12)
                     .background(Color(UIColor.secondarySystemBackground)).cornerRadius(10)
@@ -122,24 +122,20 @@ struct EditItemView: View {
                     foodMaster?.portionUnit ?? item.portionUnit))
                   .font(.caption).foregroundColor(.secondary).padding(.bottom, 4)
 
-                  EditNutrientRow(icon: "flame.fill", iconColor: .orange, label: NSLocalizedString("Calories", comment: "Nutrient label"), value: NutritionFormatter.formatNutrition(perPortionCalories), totalValue: totalCalories, unit: "kcal")
-                  EditNutrientRow(icon: "p.circle.fill", iconColor: .blue, label: NSLocalizedString("Protein", comment: "Nutrient label"), value: NutritionFormatter.formatNutrition(perPortionProtein), totalValue: totalProtein, unit: "g")
-                  EditNutrientRow(icon: "f.circle.fill", iconColor: .yellow, label: NSLocalizedString("Fat", comment: "Nutrient label"), value: NutritionFormatter.formatNutrition(perPortionFat), totalValue: totalFat, unit: "g")
-                  EditNutrientRow(icon: "c.circle.fill", iconColor: .green, label: NSLocalizedString("Sugar", comment: "Nutrient label"), value: NutritionFormatter.formatNutrition(perPortionNetCarbs), totalValue: totalNetCarbs, unit: "g")
-                  EditNutrientRow(icon: "leaf.circle.fill", iconColor: .brown, label: NSLocalizedString("Dietary Fiber", comment: "Nutrient label"), value: NutritionFormatter.formatNutrition(perPortionDietaryFiber), totalValue: totalDietaryFiber, unit: "g")
-
-                  HStack {
-                    Image(systemName: "c.circle.fill").foregroundColor(.gray).frame(width: 24)
-                    Text(NSLocalizedString("Carbs (Sugar + Fiber)", comment: "Nutrient label")).foregroundColor(.secondary)
-                    Spacer()
-                    Text(NutritionFormatter.formatNutrition(perPortionNetCarbs + perPortionDietaryFiber)).foregroundColor(.secondary)
-                    Text("g").foregroundColor(.secondary).frame(width: 20, alignment: .leading)
-                    Text("→").foregroundColor(.secondary).padding(.horizontal, 4)
-                    Text(NutritionFormatter.formatNutrition(totalCarbs)).foregroundColor(.secondary)
-                    Text("g").foregroundColor(.secondary)
-                  }
-                  .padding(.vertical, 12).padding(.horizontal, 12)
-                  .background(Color(UIColor.secondarySystemBackground)).cornerRadius(10)
+                  EditNutrientRow(
+                    nutrient: .calories, perPortion: perPortionCalories, total: totalCalories)
+                  EditNutrientRow(
+                    nutrient: .protein, perPortion: perPortionProtein, total: totalProtein)
+                  EditNutrientRow(
+                    nutrient: .fat, perPortion: perPortionFat, total: totalFat)
+                  EditNutrientRow(
+                    nutrient: .netCarbs, perPortion: perPortionNetCarbs, total: totalNetCarbs)
+                  EditNutrientRow(
+                    nutrient: .fiber, perPortion: perPortionDietaryFiber, total: totalDietaryFiber)
+                  EditNutrientRow(
+                    nutrient: .carbs,
+                    perPortion: perPortionNetCarbs + perPortionDietaryFiber,
+                    total: totalCarbs)
                 }
               }
             }
@@ -187,28 +183,43 @@ struct EditItemView: View {
   }
 }
 
-// 栄養素表示用の共通コンポーネント
+/// 「1食あたり → 合計」を1行で示す。栄養素の名前・色・単位は `Nutrient` から引く。
 struct EditNutrientRow: View {
-  let icon: String
-  let iconColor: Color
-  let label: String
-  let value: String
-  let totalValue: Double
-  let unit: String
+  let nutrient: Nutrient
+  let perPortion: Double
+  let total: Double
 
   var body: some View {
-    HStack {
-      Image(systemName: icon).foregroundColor(iconColor).frame(width: 24)
-      Text(label).foregroundColor(.primary)
-      Spacer()
-      Text(value.isEmpty ? "0" : value).multilineTextAlignment(.trailing)
-      Text(unit).foregroundColor(.secondary).frame(width: unit == "kcal" ? 40 : 20, alignment: .leading)
-      Text("→").foregroundColor(.secondary).padding(.horizontal, 4)
-      Text(NutritionFormatter.formatNutrition(totalValue)).foregroundColor(.primary)
-      Text(unit).foregroundColor(.secondary)
+    HStack(spacing: 6) {
+      Image(systemName: nutrient.symbolName)
+        .foregroundStyle(nutrient.color)
+        .accessibilityHidden(true)
+
+      Text(nutrient.localizedName)
+
+      Spacer(minLength: 8)
+
+      Text("\(nutrient.format(perPortion))\(nutrient.unit)")
+        .monospacedDigit()
+        .foregroundStyle(.secondary)
+
+      Image(systemName: "arrow.right")
+        .font(.caption2)
+        .foregroundStyle(.secondary)
+        .accessibilityHidden(true)
+
+      Text("\(nutrient.format(total))\(nutrient.unit)")
+        .monospacedDigit()
+        .fontWeight(.medium)
     }
-    .padding(.vertical, 12).padding(.horizontal, 12)
-    .background(Color(UIColor.secondarySystemBackground)).cornerRadius(10)
+    .font(.subheadline)
+    .padding(12)
+    .background(
+      Color(UIColor.tertiarySystemGroupedBackground),
+      in: RoundedRectangle(cornerRadius: 10)
+    )
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(nutrient.accessibilityLabel(for: total))
   }
 }
 

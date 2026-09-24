@@ -56,11 +56,9 @@ struct PhotoPickerView: View {
               } label: {
                 Label(NSLocalizedString("Analyze", comment: "Button title"), systemImage: "sparkles")
                   .frame(maxWidth: .infinity)
-                  .padding()
-                  .background(Color.blue)
-                  .foregroundColor(.white)
-                  .cornerRadius(10)
               }
+              .buttonStyle(.borderedProminent)
+              .controlSize(.large)
             }
             .padding(.horizontal)
           }
@@ -69,8 +67,9 @@ struct PhotoPickerView: View {
           VStack(spacing: 20) {
             Image(systemName: "camera.viewfinder")
               .font(.system(size: 80))
-              .foregroundColor(.blue)
+              .foregroundStyle(.tint)
               .padding()
+              .accessibilityHidden(true)
             
             Text(NSLocalizedString("Select Photo", comment: "Title"))
               .font(.title2)
@@ -87,36 +86,25 @@ struct PhotoPickerView: View {
                 sourceType = .camera
                 showingCamera = true
               } label: {
-                HStack {
-                  Image(systemName: "camera.fill")
-                    .font(.title3)
-                  Text(NSLocalizedString("Take Photo", comment: "Button title"))
-                    .fontWeight(.semibold)
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.blue)
-                .foregroundColor(.white)
-                .cornerRadius(12)
+                Label(NSLocalizedString("Take Photo", comment: "Button title"), systemImage: "camera.fill")
+                  .frame(maxWidth: .infinity)
               }
+              .buttonStyle(.borderedProminent)
+              .controlSize(.large)
               .disabled(!UIImagePickerController.isSourceTypeAvailable(.camera))
               
               Button {
                 sourceType = .photoLibrary
                 showingImagePicker = true
               } label: {
-                HStack {
-                  Image(systemName: "photo.fill")
-                    .font(.title3)
-                  Text(NSLocalizedString("Choose from Library", comment: "Button title"))
-                    .fontWeight(.semibold)
-                }
+                Label(
+                  NSLocalizedString("Choose from Library", comment: "Button title"),
+                  systemImage: "photo.fill"
+                )
                 .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.blue.opacity(0.1))
-                .foregroundColor(.blue)
-                .cornerRadius(12)
               }
+              .buttonStyle(.bordered)
+              .controlSize(.large)
             }
             .padding(.horizontal)
           }
@@ -292,13 +280,10 @@ struct AIAnalysisResultView: View {
             showingSaveConfirmation = true
           } label: {
             Text(NSLocalizedString("Save to Food Log", comment: "Button title"))
-              .fontWeight(.semibold)
               .frame(maxWidth: .infinity)
-              .padding()
-              .background(Color.blue)
-              .foregroundColor(.white)
-              .cornerRadius(12)
           }
+          .buttonStyle(.borderedProminent)
+          .controlSize(.large)
           .padding(.horizontal)
           .padding(.bottom)
         }

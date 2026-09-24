@@ -78,8 +78,8 @@ struct FoodMasterManagementView: View {
           .font(.subheadline.weight(.medium))
           .padding(.horizontal, 12)
           .padding(.vertical, 6)
-          .background(filterMyItems ? Color.blue : Color(UIColor.tertiarySystemFill))
-          .foregroundColor(filterMyItems ? .white : .primary)
+          .background(filterMyItems ? Color.accentColor : Color(UIColor.tertiarySystemFill))
+          .foregroundStyle(filterMyItems ? Color.white : Color.primary)
           .clipShape(Capsule())
         }
         Spacer()
@@ -331,17 +331,11 @@ struct EmptyFoodMasterView: View {
       .padding(.horizontal, 40)
       .lineLimit(nil)
 
-      Button {
+      Button(NSLocalizedString("Add Food Item", comment: "Add food item")) {
         showAddForm = true
-      } label: {
-        Text(NSLocalizedString("Add Food Item", comment: "Add food item"))
-          .fontWeight(.semibold)
-          .padding(.horizontal, 20)
-          .padding(.vertical, 10)
-          .background(Color.blue)
-          .foregroundColor(.white)
-          .cornerRadius(10)
       }
+      .buttonStyle(.borderedProminent)
+      .controlSize(.large)
       .padding(.top, 10)
 
       Spacer()
@@ -350,47 +344,49 @@ struct EmptyFoodMasterView: View {
   }
 }
 
-// フード行表示用コンポーネント
+/// 食品マスタ1件の行。ログの行 (`ItemRowView`) と同じ形にして、
+/// 同じ食品が画面ごとに違う見た目で出ないようにする。
 struct FoodMasterRow: View {
   let foodMaster: FoodMasterDTO
+
+  private var displayName: String {
+    foodMaster.brandName.isEmpty
+      ? foodMaster.productName
+      : "\(foodMaster.brandName) \(foodMaster.productName)"
+  }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
       HStack(alignment: .firstTextBaseline) {
-        if foodMaster.isMine == true {
-          Image(systemName: "person.fill")
-            .font(.system(size: 10, weight: .medium))
-            .foregroundColor(.blue)
-            .padding(.top, 2)
+        VStack(alignment: .leading, spacing: 2) {
+          HStack(spacing: 4) {
+            if foodMaster.isMine == true {
+              Image(systemName: "person.fill")
+                .font(.caption2)
+                .foregroundStyle(.tint)
+                .accessibilityLabel(NSLocalizedString("My Items", comment: "My food items filter"))
+            }
+
+            Text(displayName)
+              .font(.subheadline.weight(.medium))
+              .lineLimit(2)
+          }
+
+          Text("\(NutritionFormatter.formatNutrition(foodMaster.portionSize)) \(foodMaster.portionUnit)")
+            .font(.caption)
+            .monospacedDigit()
+            .foregroundStyle(.secondary)
         }
-        Text("\(foodMaster.brandName) \(foodMaster.productName)")
-          .font(.subheadline.weight(.medium))
-          .lineLimit(1)
 
-        Spacer()
+        Spacer(minLength: 8)
 
-        Text("\(foodMaster.calories, specifier: "%.0f")")
-          .font(.system(size: 15, weight: .semibold, design: .rounded))
-          .foregroundColor(.primary)
-        + Text(" kcal")
-          .font(.system(size: 12))
-          .foregroundColor(.secondary)
+        CalorieLabel(calories: foodMaster.calories)
       }
 
-      HStack(spacing: 6) {
-        MacroChip(label: "P", value: foodMaster.protein, color: .blue)
-        MacroChip(label: "F", value: foodMaster.fat, color: .yellow)
-        MacroChip(label: "S", value: foodMaster.netCarbs, color: .green)
-        MacroChip(label: "Fb", value: foodMaster.dietaryFiber, color: .brown)
-
-        Spacer()
-
-        Text("\(NutritionFormatter.formatNutrition(foodMaster.portionSize)) \(foodMaster.portionUnit)")
-          .font(.caption)
-          .foregroundColor(.secondary)
-      }
+      NutrientChipRow(values: foodMaster.portionNutritionValues)
     }
     .padding(.vertical, 4)
+    .accessibilityElement(children: .combine)
   }
 }
 

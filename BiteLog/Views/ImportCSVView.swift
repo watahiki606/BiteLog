@@ -90,13 +90,10 @@ struct ImportCSVView: View {
               NSLocalizedString("Select CSV File", comment: "Button title"),
               systemImage: "doc.badge.plus"
             )
-            .font(.headline)
-            .padding()
             .frame(maxWidth: .infinity)
-            .background(Color.blue)
-            .foregroundColor(.white)
-            .cornerRadius(10)
           }
+          .buttonStyle(.borderedProminent)
+          .controlSize(.large)
           .padding(.horizontal)
         }
 

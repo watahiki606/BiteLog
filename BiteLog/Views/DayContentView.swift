@@ -109,29 +109,25 @@ struct DayContentView: View {
           targetCalories: nutritionGoalsManager.targetCalories
         )
         VStack(spacing: 8) {
-          MacroBarView(
-            label: NSLocalizedString("Protein", comment: "Nutrient label"),
+          NutrientBar(
+            nutrient: .protein,
             value: dailyTotals.protein,
-            maxValue: nutritionGoalsManager.targetProtein,
-            color: .blue, icon: "p.circle.fill"
+            target: nutritionGoalsManager.targetProtein
           )
-          MacroBarView(
-            label: NSLocalizedString("Fat", comment: "Nutrient label"),
+          NutrientBar(
+            nutrient: .fat,
             value: dailyTotals.fat,
-            maxValue: nutritionGoalsManager.targetFat,
-            color: .yellow, icon: "f.circle.fill"
+            target: nutritionGoalsManager.targetFat
           )
-          MacroBarView(
-            label: NSLocalizedString("Sugar", comment: "Nutrient label"),
+          NutrientBar(
+            nutrient: .netCarbs,
             value: dailyTotals.netCarbs,
-            maxValue: nutritionGoalsManager.targetNetCarbs,
-            color: .green, icon: "s.circle.fill"
+            target: nutritionGoalsManager.targetNetCarbs
           )
-          MacroBarView(
-            label: NSLocalizedString("Dietary Fiber", comment: "Nutrient label"),
+          NutrientBar(
+            nutrient: .fiber,
             value: dailyTotals.fiber,
-            maxValue: nutritionGoalsManager.targetFiber,
-            color: .brown, icon: "leaf.circle.fill"
+            target: nutritionGoalsManager.targetFiber
           )
         }
       }
@@ -139,16 +135,21 @@ struct DayContentView: View {
 
       Divider().padding(.horizontal)
 
-      NutrientRow(
-        label: NSLocalizedString("Carbs (Sugar + Fiber)", comment: "Nutrient label"),
-        value: dailyTotals.carbs, unit: "g",
-        icon: "c.circle.fill", color: .gray
-      )
+      LabeledContent {
+        Text("\(Nutrient.carbs.format(dailyTotals.carbs))\(Nutrient.carbs.unit)")
+          .monospacedDigit()
+      } label: {
+        // 上に糖質を別途出しているので、ここは内訳が分かる長い名前を使う。
+        Text(NSLocalizedString("Carbs (Sugar + Fiber)", comment: "Nutrient label"))
+      }
+      .font(.subheadline)
+      .padding(.horizontal)
       .padding(.vertical, 8)
     }
-    .background(Color(UIColor.systemBackground))
-    .cornerRadius(12)
-    .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+    .background(
+      Color(UIColor.secondarySystemGroupedBackground),
+      in: RoundedRectangle(cornerRadius: 12)
+    )
     .padding(.horizontal)
     .padding(.vertical, 8)
   }
@@ -158,31 +159,31 @@ struct DayContentView: View {
     VStack(alignment: .leading, spacing: 8) {
       HStack {
         Image(systemName: mealType.iconName)
-          .font(.system(size: 16, weight: .medium))
-          .foregroundColor(mealType.accentColor)
+          .font(.subheadline.weight(.medium))
+          .foregroundStyle(mealType.accentColor)
+          .accessibilityHidden(true)
         Text(mealType.localizedName)
           .font(.headline)
         Spacer()
         Button(action: { onAddTapped(date, mealType) }) {
           Label(NSLocalizedString("Add", comment: "Add button"), systemImage: "plus.circle.fill")
             .font(.subheadline)
-            .foregroundColor(mealType.accentColor)
+            .foregroundStyle(mealType.accentColor)
         }
       }
       .padding(.horizontal)
 
       let totals = mealTypeTotals(for: mealType)
       if filteredItems.contains(where: { $0.mealType == mealType }) {
-        ScrollView(.horizontal, showsIndicators: false) {
-          HStack(spacing: 8) {
-            NutrientBadge(value: totals.calories, unit: "kcal", name: "Cal", color: .orange, icon: "flame.fill")
-            NutrientBadge(value: totals.protein, unit: "g", name: "P", color: .blue, icon: "p.circle.fill")
-            NutrientBadge(value: totals.fat, unit: "g", name: "F", color: .yellow, icon: "f.circle.fill")
-            NutrientBadge(value: totals.netCarbs, unit: "g", name: "S", color: .green, icon: "s.circle.fill")
-            NutrientBadge(value: totals.fiber, unit: "g", name: "Fb", color: .brown, icon: "leaf.circle.fill")
-          }
-          .padding(.horizontal)
+        HStack(spacing: 6) {
+          CalorieLabel(calories: totals.calories, textStyle: .caption)
+          NutrientChipRow(
+            values: NutritionValues(
+              calories: totals.calories, netCarbs: totals.netCarbs,
+              dietaryFiber: totals.fiber, fat: totals.fat, protein: totals.protein))
+          Spacer(minLength: 0)
         }
+        .padding(.horizontal)
         .padding(.vertical, 4)
       }
 
@@ -192,7 +193,7 @@ struct DayContentView: View {
       if mealItems.isEmpty {
         Button(action: { Task { await copyPreviousDayMeals(for: mealType) } }) {
           HStack {
-            Image(systemName: "arrow.counterclockwise").font(.body).foregroundColor(.blue)
+            Image(systemName: "arrow.counterclockwise").font(.body).foregroundStyle(.tint)
             Text(
               String(
                 format: NSLocalizedString("Copy yesterday's %@", comment: "Copy previous day meal"),
@@ -202,8 +203,10 @@ struct DayContentView: View {
           }
           .frame(maxWidth: .infinity)
           .padding()
-          .background(Color(UIColor.systemBackground))
-          .cornerRadius(6)
+          .background(
+            Color(UIColor.tertiarySystemGroupedBackground),
+            in: RoundedRectangle(cornerRadius: 8)
+          )
         }
         .buttonStyle(PlainButtonStyle())
         .padding(.horizontal)
@@ -221,8 +224,7 @@ struct DayContentView: View {
         .fill(Color(UIColor.secondarySystemGroupedBackground))
         .overlay(RoundedRectangle(cornerRadius: 12).fill(mealType.accentColor.opacity(0.03)))
     )
-    .overlay(RoundedRectangle(cornerRadius: 12).stroke(mealType.accentColor.opacity(0.1), lineWidth: 0.5))
-    .shadow(color: Color.black.opacity(0.05), radius: 3, x: 0, y: 1)
+    .overlay(RoundedRectangle(cornerRadius: 12).stroke(mealType.accentColor.opacity(0.15), lineWidth: 0.5))
     .padding(.horizontal)
   }
 

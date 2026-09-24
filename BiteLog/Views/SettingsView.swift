@@ -31,7 +31,7 @@ struct SettingsView: View {
                 Text(language.displayName)
                 Spacer()
                 if languageManager.selectedLanguage == language {
-                  Image(systemName: "checkmark").foregroundColor(.blue)
+                  Image(systemName: "checkmark").foregroundStyle(.tint)
                 }
               }
             }

@@ -228,3 +228,16 @@
 "Failed to load statistics" = "統計の読み込みに失敗しました";
 "Retry" = "再試行";
 
+
+// Design System - 栄養素の短縮ラベル（一覧のチップなど幅が取れない場所用）
+"Nutrient.Short.Calories" = "カロリー";
+"Nutrient.Short.Protein" = "タンパク";
+"Nutrient.Short.Fat" = "脂質";
+"Nutrient.Short.NetCarbs" = "糖質";
+"Nutrient.Short.Fiber" = "繊維";
+"Nutrient.Short.Carbs" = "炭水化物";
+
+// Design System - VoiceOver
+"Unit.Kilocalories" = "キロカロリー";
+"Unit.Grams" = "グラム";
+"%@ of %@ goal" = "目標 %2$@ の %1$@";

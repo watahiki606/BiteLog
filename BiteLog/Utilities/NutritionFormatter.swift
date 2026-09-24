@@ -16,4 +16,12 @@ enum NutritionFormatter {
       return String(format: "%.1f", value)
     }
   }
+
+  /// カロリーは 0.1 kcal 単位に意味が無いため整数に丸める。
+  ///
+  /// - Parameter value: フォーマットするカロリー値
+  /// - Returns: 整数に丸めた文字列
+  static func formatCalories(_ value: Double) -> String {
+    String(format: "%.0f", value.rounded())
+  }
 }

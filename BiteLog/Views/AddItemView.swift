@@ -185,7 +185,7 @@ struct AddItemView: View {
         Section {
           Button { showQuickCreationSheet = true } label: {
             HStack {
-              Image(systemName: "plus.circle.fill").font(.title2).foregroundColor(.blue)
+              Image(systemName: "plus.circle.fill").font(.title2).foregroundStyle(.tint)
               VStack(alignment: .leading, spacing: 4) {
                 Text(String(format: NSLocalizedString("Create and add \"%@\"", comment: "Create and add button"), searchText)).font(.headline)
                 Text(NSLocalizedString("Quickly add a new food item", comment: "Quick add description")).font(.caption).foregroundColor(.secondary)
@@ -218,23 +218,25 @@ struct AddItemView: View {
       Text(NSLocalizedString("No search results found", comment: "No search results message")).font(.headline).foregroundColor(.secondary)
       if !searchText.isEmpty {
         Button { showQuickCreationSheet = true } label: {
-          HStack {
-            Image(systemName: "plus.circle.fill").font(.title2)
-            Text(String(format: NSLocalizedString("Create and add \"%@\"", comment: "Create and add button"), searchText)).fontWeight(.semibold)
-          }
-          .padding(.horizontal, 20).padding(.vertical, 10)
-          .background(Color.blue).foregroundColor(.white).cornerRadius(10)
+          Label(
+            String(
+              format: NSLocalizedString("Create and add \"%@\"", comment: "Create and add button"),
+              searchText),
+            systemImage: "plus.circle.fill")
         }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
         .padding(.top, 10)
         Text(NSLocalizedString("or", comment: "Or text")).font(.subheadline).foregroundColor(.secondary)
       }
       Text(NSLocalizedString("Register new food items in the food tab", comment: "No search results message"))
         .font(.subheadline).foregroundColor(.secondary).multilineTextAlignment(.center).padding(.horizontal).lineLimit(nil)
-      Button { dismiss(); selectedTab = 1 } label: {
-        Text(NSLocalizedString("Go to Food Management", comment: "Go to food management button"))
-          .fontWeight(.semibold).padding(.horizontal, 20).padding(.vertical, 10)
-          .background(Color(UIColor.systemGray5)).foregroundColor(.primary).cornerRadius(10)
+      Button(NSLocalizedString("Go to Food Management", comment: "Go to food management button")) {
+        dismiss()
+        selectedTab = 1
       }
+      .buttonStyle(.bordered)
+      .controlSize(.large)
     }
     .frame(maxWidth: .infinity).padding(.vertical, 40)
     .sheet(isPresented: $showQuickCreationSheet) {
@@ -326,11 +328,12 @@ struct EmptyFoodMasterPromptView: View {
       Text(NSLocalizedString("No Food Items Registered", comment: "No food items")).font(.title2).fontWeight(.bold)
       Text(NSLocalizedString("You need to register food items before you can add meals.", comment: "Register food prompt"))
         .multilineTextAlignment(.center).foregroundColor(.secondary).padding(.horizontal, 40).lineLimit(nil)
-      Button { dismiss(); selectedTab = 1 } label: {
-        Text(NSLocalizedString("Go to Food Management", comment: "Go to food management button"))
-          .fontWeight(.semibold).padding(.horizontal, 20).padding(.vertical, 10)
-          .background(Color.blue).foregroundColor(.white).cornerRadius(10)
+      Button(NSLocalizedString("Go to Food Management", comment: "Go to food management button")) {
+        dismiss()
+        selectedTab = 1
       }
+      .buttonStyle(.borderedProminent)
+      .controlSize(.large)
       .padding(.top, 10)
       Spacer()
     }
@@ -338,38 +341,44 @@ struct EmptyFoodMasterPromptView: View {
   }
 }
 
-// 過去の食事アイテムカード
+/// 検索結果の行。以前は影付きカードを List の中に入れていたため、
+/// 同じ食品が食品管理画面と別デザインで出ていた。`FoodMasterRow` に統一する。
+///
+/// ここだけは前回の摂取量 (`lastNumberOfServings`) 換算の値を出すので、
+/// 1食分を出す `FoodMasterRow` とは表示する数値が異なる。
 struct PastItemCard: View {
   let item: FoodMasterDTO
 
   private var servings: Double { item.lastNumberOfServings }
   private var nutrition: NutritionValues { NutritionSnapshot.from(item).scaled(by: servings) }
 
+  private var displayName: String {
+    item.brandName.isEmpty ? item.productName : "\(item.brandName) \(item.productName)"
+  }
+
   var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      HStack {
-        VStack(alignment: .leading, spacing: 4) {
-          Text("\(item.brandName) \(item.productName)").font(.headline)
+    VStack(alignment: .leading, spacing: 6) {
+      HStack(alignment: .firstTextBaseline) {
+        VStack(alignment: .leading, spacing: 2) {
+          Text(displayName)
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(.primary)
+            .lineLimit(2)
+
+          Text("\(NutritionFormatter.formatNutrition(servings)) \(item.portionUnit)")
+            .font(.caption)
+            .monospacedDigit()
+            .foregroundStyle(.secondary)
         }
-        Spacer()
-        Text("\(nutrition.calories, specifier: "%.0f")").font(.title3.bold())
-          + Text(" kcal").font(.subheadline).foregroundColor(.secondary)
+
+        Spacer(minLength: 8)
+
+        CalorieLabel(calories: nutrition.calories)
       }
-      HStack(spacing: 8) {
-        MacroNutrientBadge(label: "P", value: nutrition.protein, color: .blue)
-        MacroNutrientBadge(label: "F", value: nutrition.fat, color: .yellow)
-        MacroNutrientBadge(label: "S", value: nutrition.netCarbs, color: .green)
-        MacroNutrientBadge(label: "Fiber", value: nutrition.dietaryFiber, color: .brown)
-      }
-      HStack {
-        Text(NSLocalizedString("Servings:", comment: "Servings label")).font(.subheadline).foregroundColor(.secondary)
-        Text("\(NutritionFormatter.formatNutrition(servings)) \(item.portionUnit)").font(.subheadline)
-        Spacer()
-      }
+
+      NutrientChipRow(values: nutrition)
     }
-    .padding()
-    .background(Color(UIColor.systemBackground))
-    .cornerRadius(12)
-    .shadow(color: Color.black.opacity(0.05), radius: 3, x: 0, y: 2)
+    .padding(.vertical, 4)
+    .accessibilityElement(children: .combine)
   }
 }

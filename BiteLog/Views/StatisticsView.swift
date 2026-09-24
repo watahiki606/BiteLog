@@ -33,34 +33,23 @@ enum TrendMetric: String, CaseIterable, Identifiable {
   case calories, protein, fat, carbs
   var id: String { rawValue }
 
-  var localizedName: String {
+  /// 表示名・色・単位は `Nutrient` を唯一の出典にする。
+  var nutrient: Nutrient {
     switch self {
-    case .calories: return NSLocalizedString("Calories", comment: "Nutrient")
-    case .protein: return NSLocalizedString("Protein", comment: "Nutrient")
-    case .fat: return NSLocalizedString("Fat", comment: "Nutrient")
-    case .carbs: return NSLocalizedString("Carbs", comment: "Nutrient")
+    case .calories: return .calories
+    case .protein: return .protein
+    case .fat: return .fat
+    case .carbs: return .carbs
     }
   }
 
-  var color: Color {
-    switch self {
-    case .calories: return .orange
-    case .protein: return .blue
-    case .fat: return .yellow
-    case .carbs: return .green
-    }
-  }
+  var localizedName: String { nutrient.localizedName }
 
-  var unit: String { self == .calories ? "kcal" : "g" }
+  var color: Color { nutrient.color }
 
-  func value(_ v: NutritionValues) -> Double {
-    switch self {
-    case .calories: return v.calories
-    case .protein: return v.protein
-    case .fat: return v.fat
-    case .carbs: return v.carbs
-    }
-  }
+  var unit: String { nutrient.unit }
+
+  func value(_ v: NutritionValues) -> Double { nutrient.value(of: v) }
 }
 
 /// トレンドの下でセグメント切替する詳細セクション。選択中のカードのみ描画する。
@@ -434,8 +423,8 @@ struct StatisticsView: View {
               .foregroundColor(.secondary)
             HStack(alignment: .firstTextBaseline, spacing: 2) {
               Text("\(achieved)")
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundColor(.primary)
+                .font(.system(.title, design: .rounded, weight: .bold))
+                .monospacedDigit()
               Text("/ \(visibleDays) " + NSLocalizedString("days", comment: "days unit"))
                 .font(.subheadline)
                 .foregroundColor(.secondary)
@@ -448,16 +437,15 @@ struct StatisticsView: View {
         }
 
         VStack(spacing: 8) {
-          MacroBarView(
-            label: NSLocalizedString("Protein", comment: "Nutrient"), value: avg.protein,
-            maxValue: nutritionGoalsManager.targetProtein, color: .blue, icon: "p.circle")
-          MacroBarView(
-            label: NSLocalizedString("Fat", comment: "Nutrient"), value: avg.fat,
-            maxValue: nutritionGoalsManager.targetFat, color: .yellow, icon: "f.circle")
-          MacroBarView(
-            label: NSLocalizedString("Carbs", comment: "Nutrient"), value: avg.carbs,
-            maxValue: nutritionGoalsManager.targetNetCarbs + nutritionGoalsManager.targetFiber,
-            color: .green, icon: "c.circle")
+          NutrientBar(
+            nutrient: .protein, value: avg.protein,
+            target: nutritionGoalsManager.targetProtein)
+          NutrientBar(
+            nutrient: .fat, value: avg.fat,
+            target: nutritionGoalsManager.targetFat)
+          NutrientBar(
+            nutrient: .carbs, value: avg.carbs,
+            target: nutritionGoalsManager.targetNetCarbs + nutritionGoalsManager.targetFiber)
         }
       }
     }
@@ -520,14 +508,12 @@ struct StatisticsView: View {
             Text(NSLocalizedString("Period Total", comment: "Statistics metric"))
               .font(.caption).foregroundColor(.secondary)
             Spacer()
-            Text(NutritionFormatter.formatNutrition(total.calories))
-              .font(.system(size: 20, weight: .bold, design: .rounded))
-            Text("kcal").font(.subheadline).foregroundColor(.secondary)
+            CalorieLabel(calories: total.calories, textStyle: .title3)
           }
           HStack(spacing: 6) {
-            MacroChip(label: "P", value: total.protein, color: .blue)
-            MacroChip(label: "F", value: total.fat, color: .yellow)
-            MacroChip(label: "C", value: total.carbs, color: .green)
+            NutrientChip(nutrient: .protein, value: total.protein)
+            NutrientChip(nutrient: .fat, value: total.fat)
+            NutrientChip(nutrient: .carbs, value: total.carbs)
           }
         }
 
@@ -551,14 +537,13 @@ struct StatisticsView: View {
     VStack(alignment: .leading, spacing: 4) {
       HStack {
         Image(systemName: type.iconName)
-          .font(.system(size: 12))
-          .foregroundColor(type.accentColor)
-          .frame(width: 16)
+          .font(.caption2)
+          .foregroundStyle(type.accentColor)
+          .accessibilityHidden(true)
         Text(type.localizedName)
-          .font(.system(size: 13, weight: .medium))
+          .font(.caption.weight(.medium))
         Spacer()
-        Text("\(NutritionFormatter.formatNutrition(values.calories)) kcal")
-          .font(.system(size: 13, weight: .semibold, design: .rounded))
+        CalorieLabel(calories: values.calories, textStyle: .caption)
       }
       GeometryReader { geo in
         RoundedRectangle(cornerRadius: 3)
@@ -571,9 +556,9 @@ struct StatisticsView: View {
       }
       .frame(height: 6)
       HStack(spacing: 6) {
-        MacroChip(label: "P", value: values.protein, color: .blue)
-        MacroChip(label: "F", value: values.fat, color: .yellow)
-        MacroChip(label: "C", value: values.carbs, color: .green)
+        NutrientChip(nutrient: .protein, value: values.protein)
+        NutrientChip(nutrient: .fat, value: values.fat)
+        NutrientChip(nutrient: .carbs, value: values.carbs)
       }
     }
   }

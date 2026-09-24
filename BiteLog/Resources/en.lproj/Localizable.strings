@@ -213,3 +213,16 @@
 "No records in this period" = "No records in this period";
 "Failed to load statistics" = "Failed to load statistics";
 "Retry" = "Retry";
+
+// Design System - short nutrient labels for narrow places such as list chips
+"Nutrient.Short.Calories" = "Cal";
+"Nutrient.Short.Protein" = "P";
+"Nutrient.Short.Fat" = "F";
+"Nutrient.Short.NetCarbs" = "Sugar";
+"Nutrient.Short.Fiber" = "Fiber";
+"Nutrient.Short.Carbs" = "Carbs";
+
+// Design System - VoiceOver
+"Unit.Kilocalories" = "kilocalories";
+"Unit.Grams" = "grams";
+"%@ of %@ goal" = "%1$@ of %2$@ goal";

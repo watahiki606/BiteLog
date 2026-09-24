@@ -22,6 +22,13 @@ struct FoodMasterDTO: Codable, Identifiable, Hashable {
 
   var carbohydrates: Double { netCarbs + dietaryFiber }
 
+  /// 1食分 (portionSize 分) の栄養素値。表示コンポーネントに渡すためのまとめ。
+  var portionNutritionValues: NutritionValues {
+    NutritionValues(
+      calories: calories, netCarbs: netCarbs, dietaryFiber: dietaryFiber, fat: fat,
+      protein: protein)
+  }
+
   static func createUniqueKey(brandName: String, productName: String, portionUnit: String) -> String {
     "\(brandName)|\(productName)|\(portionUnit)"
   }
