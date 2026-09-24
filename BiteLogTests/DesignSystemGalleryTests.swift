@@ -139,6 +139,10 @@ private struct GalleryView: View {
         }
       }
 
+      group("Daily Totals") {
+        DailyTotalsSample()
+      }
+
       group("Card") {
         CardView(title: "Daily Total") {
           NutrientChipRow(values: overSample)
@@ -156,6 +160,22 @@ private struct GalleryView: View {
         .font(.caption.weight(.semibold))
         .foregroundStyle(.secondary)
       content()
+    }
+  }
+}
+
+/// 要約ビューは Binding を持つので、確認用に State を持つ入れ物を挟む。
+private struct DailyTotalsSample: View {
+  @State private var showsAllNutrients = true
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      DailyTotalsView(
+        totals: NutritionValues(
+          calories: 1642, netCarbs: 186.3, dietaryFiber: 14.2, fat: 52.8, protein: 94.5),
+        goals: NutritionGoalsTargets(
+          calories: 2000, protein: 120, fat: 60, netCarbs: 250, fiber: 20),
+        showsAllNutrients: $showsAllNutrients)
     }
   }
 }

@@ -232,3 +232,8 @@
 "Yesterday" = "Yesterday";
 "Previous day" = "Previous day";
 "Next day" = "Next day";
+
+// Log screen
+"More nutrients" = "More nutrients";
+"Not logged yet" = "Not logged yet";
+"More options for %@" = "More options for %@";
