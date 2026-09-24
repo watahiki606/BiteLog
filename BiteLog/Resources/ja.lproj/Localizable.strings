@@ -241,3 +241,9 @@
 "Unit.Kilocalories" = "キロカロリー";
 "Unit.Grams" = "グラム";
 "%@ of %@ goal" = "目標 %2$@ の %1$@";
+
+// 日付ナビゲーション
+"Today" = "今日";
+"Yesterday" = "昨日";
+"Previous day" = "前の日";
+"Next day" = "次の日";

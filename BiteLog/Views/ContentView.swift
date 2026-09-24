@@ -1,5 +1,12 @@
 import SwiftUI
 
+/// タブの識別子。数値インデックスだと「1 はどの画面か」が呼び出し側から読めないため型で持つ。
+enum AppTab: Hashable {
+  case log
+  case food
+  case statistics
+}
+
 struct ContentView: View {
   @EnvironmentObject private var languageManager: LanguageManager
 
@@ -7,231 +14,205 @@ struct ContentView: View {
   @State private var showingAddItemFor: (date: Date, mealType: MealType)?
   @State private var showingSettings = false
   @State private var showingDatePicker = false
-  @State private var selectedTab = 0
+  @State private var selectedTab: AppTab = .log
   @State private var logRefreshTrigger = 0
   @State private var dragOffset: CGFloat = 0
 
   var body: some View {
-    VStack(spacing: 0) {
-      // メインコンテンツ
-      ZStack {
-        // ログタブ
+    TabView(selection: tabSelection) {
+      Tab(NSLocalizedString("Log", comment: "Log"), systemImage: "book", value: AppTab.log) {
+        logTab
+      }
+
+      Tab(
+        NSLocalizedString("Food", comment: "Food"), systemImage: "list.bullet.clipboard",
+        value: AppTab.food
+      ) {
         NavigationStack {
-        VStack(spacing: 0) {
-          DayContentView(
-            date: selectedDate,
-            selectedDate: selectedDate,
-            onAddTapped: { date, mealType in
-              showingAddItemFor = (date, mealType)
-            },
-            refreshTrigger: logRefreshTrigger
-          )
-          .navigationBarTitleDisplayMode(.inline)
-          .toolbar {
-            ToolbarItem(placement: .principal) {
-              HStack {
-                Button(action: {
-                  selectedDate = selectedDate.addingTimeInterval(-86400)
-                }) {
-                  Image(systemName: "chevron.left")
-                }
-
-                Button(action: {
-                  showingDatePicker = true
-                }) {
-                  Text(dateFormatter.string(from: selectedDate))
-                    .font(.headline)
-                }
-
-                Button(action: {
-                  selectedDate = selectedDate.addingTimeInterval(86400)
-                }) {
-                  Image(systemName: "chevron.right")
-                }
-              }
-            }
-
-            ToolbarItem(placement: .navigationBarTrailing) {
-              Menu {
-
-                Button {
-                  showingSettings = true
-                } label: {
-                  Label(
-                    NSLocalizedString("Settings", comment: "Settings"), systemImage: "gearshape")
-                }
-              } label: {
-                Image(systemName: "ellipsis.circle")
-              }
-            }
-          }
-        }
-        .navigationTitle("BiteLog")
-        .sheet(
-          isPresented: Binding(
-            get: { showingAddItemFor != nil },
-            set: { if !$0 { showingAddItemFor = nil } }
-          ),
-          onDismiss: { logRefreshTrigger += 1 }
-        ) {
-          if let itemInfo = showingAddItemFor {
-            AddItemView(
-              preselectedMealType: itemInfo.mealType,
-              selectedDate: itemInfo.date,
-              selectedTab: $selectedTab
-            )
-            .presentationDetents([.medium, .large])
-          }
-        }
-        .sheet(isPresented: $showingDatePicker) {
-          DatePickerSheet(selectedDate: $selectedDate, isPresented: $showingDatePicker)
-        }
-        .sheet(isPresented: $showingSettings) {
-          SettingsView()
+          FoodMasterManagementView()
         }
       }
-      .offset(x: dragOffset)
-      .gesture(DateSwipeGesture(
-        dragOffset: $dragOffset,
-        onDateChange: { goForward in
-          selectedDate = selectedDate.addingTimeInterval(goForward ? 86400 : -86400)
-        }
-      ))
-      .opacity(selectedTab == 0 ? 1 : 0)
-      .zIndex(selectedTab == 0 ? 1 : 0)
 
-      // フード管理タブ
-      NavigationStack {
-        FoodMasterManagementView()
-      }
-      .opacity(selectedTab == 1 ? 1 : 0)
-      .zIndex(selectedTab == 1 ? 1 : 0)
-
-      // 統計タブ
-      NavigationStack {
-        StatisticsView()
-      }
-      .opacity(selectedTab == 2 ? 1 : 0)
-      .zIndex(selectedTab == 2 ? 1 : 0)
-      }
-      .clipped()
-
-      // カスタムタブバー
-      HStack {
-        // Logタブ
-        Button(action: {
-          selectedDate = Calendar.current.startOfDay(for: Date())
-          selectedTab = 0
-          logRefreshTrigger += 1
-        }) {
-          VStack(spacing: 4) {
-            Image(systemName: "book")
-              .font(.system(size: 24))
-            Text(NSLocalizedString("Log", comment: "Log"))
-              .font(.caption)
-          }
-          .frame(maxWidth: .infinity)
-          .foregroundColor(selectedTab == 0 ? .blue : .gray)
-        }
-
-        // Foodタブ
-        Button(action: {
-          selectedTab = 1
-        }) {
-          VStack(spacing: 4) {
-            Image(systemName: "list.bullet.clipboard")
-              .font(.system(size: 24))
-            Text(NSLocalizedString("Food", comment: "Food"))
-              .font(.caption)
-          }
-          .frame(maxWidth: .infinity)
-          .foregroundColor(selectedTab == 1 ? .blue : .gray)
-        }
-
-        // 統計タブ
-        Button(action: {
-          selectedTab = 2
-        }) {
-          VStack(spacing: 4) {
-            Image(systemName: "chart.xyaxis.line")
-              .font(.system(size: 24))
-            Text(NSLocalizedString("Statistics", comment: "Tab name"))
-              .font(.caption)
-          }
-          .frame(maxWidth: .infinity)
-          .foregroundColor(selectedTab == 2 ? .blue : .gray)
+      Tab(
+        NSLocalizedString("Statistics", comment: "Tab name"), systemImage: "chart.xyaxis.line",
+        value: AppTab.statistics
+      ) {
+        NavigationStack {
+          StatisticsView()
         }
       }
-      .padding(.vertical, 8)
-      .background(
-        Color(UIColor.systemBackground)
-          .ignoresSafeArea(edges: .bottom)
-      )
-      .overlay(
-        Rectangle()
-          .frame(height: 0.5)
-          .foregroundColor(Color.gray.opacity(0.3)),
-        alignment: .top
-      )
     }
   }
 
-  private var dateFormatter: DateFormatter {
-    let formatter = DateFormatter()
-    formatter.dateStyle = .medium
-    formatter.timeStyle = .none
-    return formatter
+  /// 選択中のログタブをもう一度タップしたら今日に戻す。
+  /// タブバー自作をやめた代わりに、この挙動だけ Binding の set 側で拾う。
+  private var tabSelection: Binding<AppTab> {
+    Binding(
+      get: { selectedTab },
+      set: { newValue in
+        if newValue == .log && selectedTab == .log {
+          selectedDate = Calendar.current.startOfDay(for: Date())
+          logRefreshTrigger += 1
+        }
+        selectedTab = newValue
+      }
+    )
+  }
+
+  // MARK: - ログタブ
+
+  private var logTab: some View {
+    NavigationStack {
+      DayContentView(
+        date: selectedDate,
+        selectedDate: selectedDate,
+        onAddTapped: { date, mealType in
+          showingAddItemFor = (date, mealType)
+        },
+        refreshTrigger: logRefreshTrigger
+      )
+      .navigationTitle(DateLabel.title(for: selectedDate, locale: languageManager.locale))
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .principal) {
+          DateNavigationBar(
+            selectedDate: $selectedDate,
+            locale: languageManager.locale,
+            onPickDate: { showingDatePicker = true }
+          )
+        }
+
+        ToolbarItem(placement: .topBarTrailing) {
+          Button {
+            showingSettings = true
+          } label: {
+            Label(
+              NSLocalizedString("Settings", comment: "Settings"), systemImage: "gearshape")
+          }
+        }
+      }
+      .offset(x: dragOffset)
+      .gesture(
+        DateSwipeGesture(
+          dragOffset: $dragOffset,
+          onDateChange: { goForward in
+            selectedDate = selectedDate.addingTimeInterval(goForward ? 86400 : -86400)
+          }
+        )
+      )
+      .sheet(
+        isPresented: Binding(
+          get: { showingAddItemFor != nil },
+          set: { if !$0 { showingAddItemFor = nil } }
+        ),
+        onDismiss: { logRefreshTrigger += 1 }
+      ) {
+        if let itemInfo = showingAddItemFor {
+          AddItemView(
+            preselectedMealType: itemInfo.mealType,
+            selectedDate: itemInfo.date,
+            selectedTab: $selectedTab
+          )
+          .presentationDetents([.medium, .large])
+        }
+      }
+      .sheet(isPresented: $showingDatePicker) {
+        DatePickerSheet(selectedDate: $selectedDate, isPresented: $showingDatePicker)
+      }
+      .sheet(isPresented: $showingSettings) {
+        SettingsView()
+      }
+    }
   }
 }
 
-/// ログ1件の行。タイトル + 補助情報 + 右端に数値、という iOS の一覧行の形に合わせる。
+/// ツールバー中央の日付ナビゲーション。
+///
+/// 前後の矢印は以前 Image そのままでタップ領域が 44pt に満たなかった。
+/// 日付は「今日」「昨日」と曜日付きの表記にして、いつを見ているかを一目で分かるようにする。
+struct DateNavigationBar: View {
+  @Binding var selectedDate: Date
+  let locale: Locale
+  let onPickDate: () -> Void
+
+  private var isToday: Bool { Calendar.current.isDateInToday(selectedDate) }
+
+  var body: some View {
+    HStack(spacing: 0) {
+      Button {
+        shift(by: -1)
+      } label: {
+        Image(systemName: "chevron.left")
+          .frame(width: 44, height: 44)
+          .contentShape(Rectangle())
+      }
+      .accessibilityLabel(NSLocalizedString("Previous day", comment: "Date navigation"))
+
+      Button(action: onPickDate) {
+        Text(DateLabel.title(for: selectedDate, locale: locale))
+          .font(.headline)
+          .frame(minHeight: 44)
+          .contentShape(Rectangle())
+      }
+      .accessibilityLabel(NSLocalizedString("Select Date", comment: "Date picker title"))
+      .accessibilityValue(DateLabel.title(for: selectedDate, locale: locale))
+
+      Button {
+        shift(by: 1)
+      } label: {
+        Image(systemName: "chevron.right")
+          .frame(width: 44, height: 44)
+          .contentShape(Rectangle())
+      }
+      .accessibilityLabel(NSLocalizedString("Next day", comment: "Date navigation"))
+      .disabled(isToday)
+    }
+  }
+
+  private func shift(by days: Int) {
+    guard let shifted = Calendar.current.date(byAdding: .day, value: days, to: selectedDate) else {
+      return
+    }
+    selectedDate = shifted
+  }
+}
+
+/// 日付をユーザーが位置を把握できる形にする。
+enum DateLabel {
+  /// 今日・昨日は相対表記、それ以外は曜日付き。
+  /// 「2026年9月24日」だけでは何曜日の記録かが分からず、食事記録では位置を見失いやすい。
+  static func title(for date: Date, locale: Locale) -> String {
+    let calendar = Calendar.current
+    if calendar.isDateInToday(date) {
+      return NSLocalizedString("Today", comment: "Relative date")
+    }
+    if calendar.isDateInYesterday(date) {
+      return NSLocalizedString("Yesterday", comment: "Relative date")
+    }
+
+    let formatter = DateFormatter()
+    formatter.locale = locale
+    formatter.setLocalizedDateFormatFromTemplate(
+      calendar.isDate(date, equalTo: Date(), toGranularity: .year) ? "MMMdEEE" : "yMMMdEEE")
+    return formatter.string(from: date)
+  }
+}
+
+/// ログ1件の行。
 struct ItemRowView: View {
   let item: LogItemDTO
   var onUpdate: ((LogItemDTO) -> Void)?
   @State private var showingEditSheet = false
 
-  private var displayName: String {
-    item.brandName.isEmpty ? item.productName : "\(item.brandName) \(item.productName)"
-  }
-
   var body: some View {
-    VStack(alignment: .leading, spacing: 6) {
-      HStack(alignment: .firstTextBaseline) {
-        VStack(alignment: .leading, spacing: 2) {
-          HStack(spacing: 4) {
-            Text(displayName)
-              .font(.subheadline.weight(.medium))
-              .foregroundStyle(item.isMasterDeleted ? .secondary : .primary)
-              .strikethrough(item.isMasterDeleted)
-              .lineLimit(2)
-
-            if item.isMasterDeleted {
-              Text(NSLocalizedString("(Deleted)", comment: "Deleted Food indicator"))
-                .font(.caption2)
-                .foregroundStyle(.red)
-                .padding(.horizontal, 4)
-                .padding(.vertical, 2)
-                .background(Color.red.opacity(0.12), in: RoundedRectangle(cornerRadius: 4))
-            }
-          }
-
-          Text("\(NutritionFormatter.formatNutrition(item.numberOfServings)) \(item.portionUnit)")
-            .font(.caption)
-            .monospacedDigit()
-            .foregroundStyle(.secondary)
-        }
-
-        Spacer(minLength: 8)
-
-        CalorieLabel(calories: item.calories)
-      }
-
-      NutrientChipRow(values: item.nutritionValues)
-    }
-    .padding(.vertical, 4)
+    FoodRow(
+      title: FoodRow.displayName(brand: item.brandName, product: item.productName),
+      subtitle: FoodRow.amountText(item.numberOfServings, unit: item.portionUnit),
+      values: item.nutritionValues,
+      isDeleted: item.isMasterDeleted
+    )
     .contentShape(Rectangle())
     .onTapGesture { showingEditSheet = true }
-    .accessibilityElement(children: .combine)
     .accessibilityAddTraits(.isButton)
     .sheet(isPresented: $showingEditSheet) {
       EditItemView(item: item, onSaved: onUpdate)

@@ -228,8 +228,8 @@ struct StatisticsView: View {
       .padding()
     }
     .background(Color(UIColor.systemGroupedBackground))
-    // 下部タブバーに「統計」ラベルがあり重複するため、上部ナビバーは隠して縦幅を確保。
-    .toolbar(.hidden, for: .navigationBar)
+    .navigationTitle(NSLocalizedString("Statistics", comment: "Tab name"))
+    .navigationBarTitleDisplayMode(.inline)
     .task(id: reloadKey) { await reload() }
     .onChange(of: period) { _, _ in
       // period を変えると使えない単位が出るので、対象外なら日次に戻す。

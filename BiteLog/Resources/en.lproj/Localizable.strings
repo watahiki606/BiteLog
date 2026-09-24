@@ -226,3 +226,9 @@
 "Unit.Kilocalories" = "kilocalories";
 "Unit.Grams" = "grams";
 "%@ of %@ goal" = "%1$@ of %2$@ goal";
+
+// Date navigation
+"Today" = "Today";
+"Yesterday" = "Yesterday";
+"Previous day" = "Previous day";
+"Next day" = "Next day";

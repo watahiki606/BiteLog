@@ -344,49 +344,19 @@ struct EmptyFoodMasterView: View {
   }
 }
 
-/// 食品マスタ1件の行。ログの行 (`ItemRowView`) と同じ形にして、
-/// 同じ食品が画面ごとに違う見た目で出ないようにする。
+/// 食品マスタ1件の行。表示する量は1食分 (portionSize)。
 struct FoodMasterRow: View {
   let foodMaster: FoodMasterDTO
 
-  private var displayName: String {
-    foodMaster.brandName.isEmpty
-      ? foodMaster.productName
-      : "\(foodMaster.brandName) \(foodMaster.productName)"
-  }
-
   var body: some View {
-    VStack(alignment: .leading, spacing: 6) {
-      HStack(alignment: .firstTextBaseline) {
-        VStack(alignment: .leading, spacing: 2) {
-          HStack(spacing: 4) {
-            if foodMaster.isMine == true {
-              Image(systemName: "person.fill")
-                .font(.caption2)
-                .foregroundStyle(.tint)
-                .accessibilityLabel(NSLocalizedString("My Items", comment: "My food items filter"))
-            }
-
-            Text(displayName)
-              .font(.subheadline.weight(.medium))
-              .lineLimit(2)
-          }
-
-          Text("\(NutritionFormatter.formatNutrition(foodMaster.portionSize)) \(foodMaster.portionUnit)")
-            .font(.caption)
-            .monospacedDigit()
-            .foregroundStyle(.secondary)
-        }
-
-        Spacer(minLength: 8)
-
-        CalorieLabel(calories: foodMaster.calories)
-      }
-
-      NutrientChipRow(values: foodMaster.portionNutritionValues)
-    }
-    .padding(.vertical, 4)
-    .accessibilityElement(children: .combine)
+    FoodRow(
+      title: FoodRow.displayName(
+        brand: foodMaster.brandName, product: foodMaster.productName),
+      subtitle: FoodRow.amountText(foodMaster.portionSize, unit: foodMaster.portionUnit),
+      values: foodMaster.portionNutritionValues,
+      leadingSymbol: foodMaster.isMine == true ? "person.fill" : nil,
+      leadingSymbolLabel: NSLocalizedString("My Items", comment: "My food items filter")
+    )
   }
 }
 

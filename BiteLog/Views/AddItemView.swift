@@ -2,7 +2,7 @@ import SwiftUI
 
 struct AddItemView: View {
   @Environment(\.dismiss) var dismiss
-  @Binding var selectedTab: Int
+  @Binding var selectedTab: AppTab
 
   let mealType: MealType
   var selectedDate: Date
@@ -36,7 +36,7 @@ struct AddItemView: View {
   @State private var showingAPIKeyError = false
   @State private var analysisError: String?
 
-  init(preselectedMealType: MealType, selectedDate: Date, selectedTab: Binding<Int>) {
+  init(preselectedMealType: MealType, selectedDate: Date, selectedTab: Binding<AppTab>) {
     self.mealType = preselectedMealType
     self.selectedDate = selectedDate
     _date = State(initialValue: selectedDate)
@@ -233,7 +233,7 @@ struct AddItemView: View {
         .font(.subheadline).foregroundColor(.secondary).multilineTextAlignment(.center).padding(.horizontal).lineLimit(nil)
       Button(NSLocalizedString("Go to Food Management", comment: "Go to food management button")) {
         dismiss()
-        selectedTab = 1
+        selectedTab = .food
       }
       .buttonStyle(.bordered)
       .controlSize(.large)
@@ -318,7 +318,7 @@ struct AddItemView: View {
 
 // マスターデータが0件の場合に表示するビュー
 struct EmptyFoodMasterPromptView: View {
-  @Binding var selectedTab: Int
+  @Binding var selectedTab: AppTab
   var dismiss: DismissAction
 
   var body: some View {
@@ -330,7 +330,7 @@ struct EmptyFoodMasterPromptView: View {
         .multilineTextAlignment(.center).foregroundColor(.secondary).padding(.horizontal, 40).lineLimit(nil)
       Button(NSLocalizedString("Go to Food Management", comment: "Go to food management button")) {
         dismiss()
-        selectedTab = 1
+        selectedTab = .food
       }
       .buttonStyle(.borderedProminent)
       .controlSize(.large)
@@ -341,44 +341,18 @@ struct EmptyFoodMasterPromptView: View {
   }
 }
 
-/// 検索結果の行。以前は影付きカードを List の中に入れていたため、
-/// 同じ食品が食品管理画面と別デザインで出ていた。`FoodMasterRow` に統一する。
-///
-/// ここだけは前回の摂取量 (`lastNumberOfServings`) 換算の値を出すので、
+/// 検索結果の行。ここだけは前回の摂取量 (`lastNumberOfServings`) 換算の値を出すので、
 /// 1食分を出す `FoodMasterRow` とは表示する数値が異なる。
 struct PastItemCard: View {
   let item: FoodMasterDTO
 
   private var servings: Double { item.lastNumberOfServings }
-  private var nutrition: NutritionValues { NutritionSnapshot.from(item).scaled(by: servings) }
-
-  private var displayName: String {
-    item.brandName.isEmpty ? item.productName : "\(item.brandName) \(item.productName)"
-  }
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 6) {
-      HStack(alignment: .firstTextBaseline) {
-        VStack(alignment: .leading, spacing: 2) {
-          Text(displayName)
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(.primary)
-            .lineLimit(2)
-
-          Text("\(NutritionFormatter.formatNutrition(servings)) \(item.portionUnit)")
-            .font(.caption)
-            .monospacedDigit()
-            .foregroundStyle(.secondary)
-        }
-
-        Spacer(minLength: 8)
-
-        CalorieLabel(calories: nutrition.calories)
-      }
-
-      NutrientChipRow(values: nutrition)
-    }
-    .padding(.vertical, 4)
-    .accessibilityElement(children: .combine)
+    FoodRow(
+      title: FoodRow.displayName(brand: item.brandName, product: item.productName),
+      subtitle: FoodRow.amountText(servings, unit: item.portionUnit),
+      values: NutritionSnapshot.from(item).scaled(by: servings)
+    )
   }
 }
