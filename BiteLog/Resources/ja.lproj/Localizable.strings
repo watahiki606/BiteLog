@@ -252,3 +252,7 @@
 "More nutrients" = "その他の栄養素";
 "Not logged yet" = "まだ記録していない食事";
 "More options for %@" = "%@ のその他の操作";
+
+// 編集画面・写真解析
+"Servings" = "摂取量";
+"Analyze photo" = "写真から解析";

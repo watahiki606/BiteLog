@@ -16,132 +16,23 @@ struct FoodMasterManagementView: View {
   @State private var isLoading = false
   @State private var hasMoreData = true
 
-  @FocusState private var searchFieldIsFocused: Bool
+  @FocusState private var isSearchFocused: Bool
   @State private var searchDebounceTimer: Timer?
 
   var body: some View {
-    VStack {
-      HStack(spacing: 8) {
-        HStack(spacing: 8) {
-          Image(systemName: "magnifyingglass")
-            .foregroundColor(.secondary)
-            .font(.system(size: 15, weight: .medium))
-
-          TextField(
-            NSLocalizedString("Search food items", comment: "Search food items"), text: $searchText
-          )
-          .focused($searchFieldIsFocused)
-          .onChange(of: searchText) { _, _ in
-            searchDebounceTimer?.invalidate()
-            searchDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
-              Task { await resetAndSearch() }
-            }
-          }
-
-          if !searchText.isEmpty {
-            Button(action: {
-              searchText = ""
-              Task { await resetAndSearch() }
-            }) {
-              Image(systemName: "xmark.circle.fill")
-                .foregroundColor(.secondary)
-            }
-          }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(Color(UIColor.tertiarySystemFill))
-        .cornerRadius(12)
-
-        if searchFieldIsFocused {
-          Button(NSLocalizedString("Cancel", comment: "Cancel search")) {
-            searchText = ""
-            searchFieldIsFocused = false
-            Task { await resetAndSearch() }
-          }
-          .transition(.move(edge: .trailing).combined(with: .opacity))
-        }
-      }
-      .padding(.horizontal)
-      .padding(.top, 8)
-      .animation(.easeInOut(duration: 0.2), value: searchFieldIsFocused)
-
-      HStack {
-        Button {
-          filterMyItems.toggle()
+    contentView
+      .searchable(
+        text: $searchText,
+        placement: .navigationBarDrawer(displayMode: .always),
+        prompt: Text(NSLocalizedString("Search food items", comment: "Search food items"))
+      )
+      .searchFocused($isSearchFocused)
+      .onChange(of: searchText) { _, _ in
+        searchDebounceTimer?.invalidate()
+        searchDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
           Task { await resetAndSearch() }
-        } label: {
-          Label(
-            NSLocalizedString("My Items", comment: "My food items filter"),
-            systemImage: "person.fill"
-          )
-          .font(.subheadline.weight(.medium))
-          .padding(.horizontal, 12)
-          .padding(.vertical, 6)
-          .background(filterMyItems ? Color.accentColor : Color(UIColor.tertiarySystemFill))
-          .foregroundStyle(filterMyItems ? Color.white : Color.primary)
-          .clipShape(Capsule())
-        }
-        Spacer()
-      }
-      .padding(.horizontal)
-      .padding(.bottom, 4)
-      .animation(.easeInOut(duration: 0.15), value: filterMyItems)
-
-      if isInitialLoading {
-        ProgressView()
-          .padding()
-      } else if foodMasters.isEmpty {
-        EmptyFoodMasterView(showAddForm: $showingAddForm)
-      } else {
-        List {
-          ForEach(foodMasters, id: \.id) { foodMaster in
-            FoodMasterRow(foodMaster: foodMaster)
-              .contentShape(Rectangle())
-              .onTapGesture {
-                searchFieldIsFocused = false
-                if canEdit(foodMaster) {
-                  selectedFoodMaster = foodMaster
-                } else {
-                  viewingFoodMaster = foodMaster
-                }
-              }
-              .onAppear {
-                if foodMaster.id == foodMasters.last?.id && hasMoreData && !isLoading {
-                  Task { await loadMoreContent() }
-                }
-              }
-              .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                if canEdit(foodMaster) {
-                  Button(role: .destructive) {
-                    deleteFoodMaster(foodMaster)
-                  } label: {
-                    Label("Delete", systemImage: "trash")
-                  }
-                }
-              }
-          }
-
-          if hasMoreData {
-            Section {
-              HStack {
-                Spacer()
-                if isLoading { ProgressView() }
-                Spacer()
-              }
-              .padding(.vertical, 8)
-              .id("loadingIndicator")
-            }
-          }
-        }
-        .listStyle(.insetGrouped)
-        .refreshable {
-          currentPage = 0
-          hasMoreData = true
-          await loadFoodMasters()
         }
       }
-    }
     .navigationTitle(NSLocalizedString("Manage food", comment: "Manage food"))
     .toolbar {
       ToolbarItem(placement: .primaryAction) {
@@ -177,6 +68,87 @@ struct FoodMasterManagementView: View {
       foodMasters = []
       isDataLoaded = false
     }
+  }
+
+  @ViewBuilder
+  private var contentView: some View {
+    if isInitialLoading {
+      ProgressView()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    } else if foodMasters.isEmpty {
+      if searchText.isEmpty {
+        EmptyFoodMasterView(showAddForm: $showingAddForm)
+      } else {
+        ContentUnavailableView.search(text: searchText)
+      }
+    } else {
+      List {
+        Section {
+          ForEach(foodMasters, id: \.id) { foodMaster in
+            Button {
+              isSearchFocused = false
+              if canEdit(foodMaster) {
+                selectedFoodMaster = foodMaster
+              } else {
+                viewingFoodMaster = foodMaster
+              }
+            } label: {
+              FoodMasterRow(foodMaster: foodMaster)
+            }
+            .buttonStyle(.plain)
+            .onAppear {
+              if foodMaster.id == foodMasters.last?.id && hasMoreData && !isLoading {
+                Task { await loadMoreContent() }
+              }
+            }
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+              if canEdit(foodMaster) {
+                Button(role: .destructive) {
+                  deleteFoodMaster(foodMaster)
+                } label: {
+                  Label(NSLocalizedString("Delete", comment: "Delete"), systemImage: "trash")
+                }
+              }
+            }
+          }
+        } header: {
+          // 絞り込みは検索欄の直下に置き、常に状態が見えるようにする。
+          Toggle(isOn: myItemsBinding) {
+            Label(
+              NSLocalizedString("My Items", comment: "My food items filter"),
+              systemImage: "person.fill")
+          }
+          .toggleStyle(.button)
+          .buttonStyle(.bordered)
+          .textCase(nil)
+        }
+
+        if hasMoreData {
+          HStack {
+            Spacer()
+            if isLoading { ProgressView() }
+            Spacer()
+          }
+          .listRowBackground(Color.clear)
+        }
+      }
+      .listStyle(.insetGrouped)
+      .refreshable {
+        currentPage = 0
+        hasMoreData = true
+        await loadFoodMasters()
+      }
+    }
+  }
+
+  private var myItemsBinding: Binding<Bool> {
+    Binding(
+      get: { filterMyItems },
+      set: { newValue in
+        filterMyItems = newValue
+        Task { await resetAndSearch() }
+      }
+    )
   }
 
   private func resetAndSearch() async {
@@ -306,41 +278,24 @@ struct FoodMasterDetailView: View {
   }
 }
 
-// フードが0件の場合に表示するビュー
+/// 食品マスタが1件も無いときの案内。
 struct EmptyFoodMasterView: View {
   @Binding var showAddForm: Bool
 
   var body: some View {
-    VStack(spacing: 20) {
-      Spacer()
-
-      Image(systemName: "fork.knife")
-        .font(.system(size: 70))
-        .foregroundColor(.secondary)
-
-      Text(NSLocalizedString("No Food Items", comment: "No food items"))
-        .font(.title2)
-        .fontWeight(.bold)
-
+    ContentUnavailableView {
+      Label(
+        NSLocalizedString("No Food Items", comment: "No food items"), systemImage: "fork.knife")
+    } description: {
       Text(
         NSLocalizedString(
-          "Add your first food item to start tracking your nutrition.", comment: "Add food prompt")
-      )
-      .multilineTextAlignment(.center)
-      .foregroundColor(.secondary)
-      .padding(.horizontal, 40)
-      .lineLimit(nil)
-
+          "Add your first food item to start tracking your nutrition.", comment: "Add food prompt"))
+    } actions: {
       Button(NSLocalizedString("Add Food Item", comment: "Add food item")) {
         showAddForm = true
       }
       .buttonStyle(.borderedProminent)
-      .controlSize(.large)
-      .padding(.top, 10)
-
-      Spacer()
     }
-    .padding()
   }
 }
 

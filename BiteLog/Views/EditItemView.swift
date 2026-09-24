@@ -48,111 +48,68 @@ struct EditItemView: View {
 
   var body: some View {
     NavigationStack {
-      ZStack {
-        Color(UIColor.systemGroupedBackground).ignoresSafeArea()
+      Form {
+        Section {
+          foodRow
 
-        ScrollView {
-          VStack(spacing: 24) {
-            CardView(title: NSLocalizedString("Food Item", comment: "Form section title")) {
-              VStack(spacing: 16) {
-                if let fm = foodMaster {
-                  HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                      Text("\(fm.brandName) \(fm.productName)")
-                        .font(.headline).lineLimit(2)
-                    }
-                    Spacer()
-                  }
-                  .padding(.vertical, 8).padding(.horizontal, 12)
-                  .background(Color(UIColor.secondarySystemBackground))
-                  .cornerRadius(10)
-                } else if item.isMasterDeleted {
-                  HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                      HStack {
-                        Text("\(item.brandName) \(item.productName)")
-                          .font(.headline).lineLimit(2)
-                          .foregroundColor(.secondary).strikethrough()
-                        Text(NSLocalizedString("(Deleted)", comment: "Deleted Food indicator"))
-                          .font(.caption).foregroundColor(.red)
-                          .padding(.horizontal, 4).padding(.vertical, 2)
-                          .background(Color.red.opacity(0.1)).cornerRadius(4)
-                      }
-                    }
-                    Spacer()
-                  }
-                  .padding(.vertical, 8).padding(.horizontal, 12)
-                  .background(Color(UIColor.secondarySystemBackground))
-                  .cornerRadius(10)
-                } else {
-                  Button(action: { showingFoodSearch = true }) {
-                    HStack {
-                      Image(systemName: "magnifyingglass")
-                      Text(NSLocalizedString("Search for food", comment: "Search for food"))
-                    }
-                    .frame(maxWidth: .infinity).padding(.vertical, 12)
-                    .background(Color(UIColor.secondarySystemBackground)).cornerRadius(10)
-                  }
-                }
-
-                HStack {
-                  Text(NSLocalizedString("Servings:", comment: "Servings label")).font(.body)
-                  TextField("1.0", text: $numberOfServings)
-                    .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
-                    .padding(8).background(Color(UIColor.tertiarySystemBackground))
-                    .cornerRadius(8).frame(width: 80)
-                  if let fm = foodMaster {
-                    Text(fm.portionUnit).font(.body).foregroundColor(.secondary)
-                  }
-                }
-                .padding(.vertical, 8).padding(.horizontal, 12)
-                .background(Color(UIColor.secondarySystemBackground)).cornerRadius(10)
-
-                Text(NSLocalizedString("Adjust the serving size to calculate the intake", comment: "Servings explanation"))
-                  .font(.caption).foregroundColor(.secondary).padding(.bottom, 4)
-              }
+          LabeledContent {
+            HStack(spacing: 6) {
+              TextField("1.0", text: $numberOfServings)
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .monospacedDigit()
+              Text(foodMaster?.portionUnit ?? item.portionUnit)
+                .foregroundStyle(.secondary)
             }
-
-            if foodMaster != nil || item.isMasterDeleted {
-              CardView(title: NSLocalizedString("Nutrition", comment: "Form section title")) {
-                VStack(spacing: 16) {
-                  Text(String(
-                    format: NSLocalizedString("Values shown as: per %@ %@ → total", comment: "Nutrition explanation"),
-                    NutritionFormatter.formatNutrition(portionSize),
-                    foodMaster?.portionUnit ?? item.portionUnit))
-                  .font(.caption).foregroundColor(.secondary).padding(.bottom, 4)
-
-                  EditNutrientRow(
-                    nutrient: .calories, perPortion: perPortionCalories, total: totalCalories)
-                  EditNutrientRow(
-                    nutrient: .protein, perPortion: perPortionProtein, total: totalProtein)
-                  EditNutrientRow(
-                    nutrient: .fat, perPortion: perPortionFat, total: totalFat)
-                  EditNutrientRow(
-                    nutrient: .netCarbs, perPortion: perPortionNetCarbs, total: totalNetCarbs)
-                  EditNutrientRow(
-                    nutrient: .fiber, perPortion: perPortionDietaryFiber, total: totalDietaryFiber)
-                  EditNutrientRow(
-                    nutrient: .carbs,
-                    perPortion: perPortionNetCarbs + perPortionDietaryFiber,
-                    total: totalCarbs)
-                }
-              }
-            }
+          } label: {
+            Text(NSLocalizedString("Servings", comment: "Servings label"))
           }
-          .padding()
+        } header: {
+          Text(NSLocalizedString("Food Item", comment: "Form section title"))
+        } footer: {
+          Text(
+            NSLocalizedString(
+              "Adjust the serving size to calculate the intake", comment: "Servings explanation"))
+        }
+
+        if foodMaster != nil || item.isMasterDeleted {
+          Section {
+            EditNutrientRow(
+              nutrient: .calories, perPortion: perPortionCalories, total: totalCalories)
+            EditNutrientRow(
+              nutrient: .protein, perPortion: perPortionProtein, total: totalProtein)
+            EditNutrientRow(nutrient: .fat, perPortion: perPortionFat, total: totalFat)
+            EditNutrientRow(
+              nutrient: .netCarbs, perPortion: perPortionNetCarbs, total: totalNetCarbs)
+            EditNutrientRow(
+              nutrient: .fiber, perPortion: perPortionDietaryFiber, total: totalDietaryFiber)
+            EditNutrientRow(
+              nutrient: .carbs,
+              perPortion: perPortionNetCarbs + perPortionDietaryFiber,
+              total: totalCarbs)
+          } header: {
+            Text(NSLocalizedString("Nutrition", comment: "Form section title"))
+          } footer: {
+            Text(
+              String(
+                format: NSLocalizedString(
+                  "Values shown as: per %@ %@ → total", comment: "Nutrition explanation"),
+                NutritionFormatter.formatNutrition(portionSize),
+                foodMaster?.portionUnit ?? item.portionUnit))
+          }
         }
       }
       .navigationTitle(NSLocalizedString("Edit Meal", comment: "Navigation title"))
+      .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
           Button(NSLocalizedString("Cancel", comment: "Button title")) { dismiss() }
         }
         ToolbarItem(placement: .confirmationAction) {
-          Button(action: saveLogItem) {
-            Text(NSLocalizedString("Save", comment: "Button title")).bold()
-          }
-          .disabled((foodMaster == nil && !item.isMasterDeleted) || numberOfServings.isEmpty || Double(numberOfServings) == 0)
+          Button(NSLocalizedString("Save", comment: "Button title"), action: saveLogItem)
+            .disabled(
+              (foodMaster == nil && !item.isMasterDeleted) || numberOfServings.isEmpty
+                || Double(numberOfServings) == 0)
         }
       }
       .sheet(isPresented: $showingFoodSearch) {
@@ -160,6 +117,36 @@ struct EditItemView: View {
           foodMaster = selected
           numberOfServings = NutritionFormatter.formatNutrition(selected.lastNumberOfServings)
         })
+      }
+    }
+  }
+
+  @ViewBuilder
+  private var foodRow: some View {
+    if let foodMaster {
+      Text(FoodRow.displayName(brand: foodMaster.brandName, product: foodMaster.productName))
+        .font(.headline)
+        .lineLimit(2)
+    } else if item.isMasterDeleted {
+      HStack(spacing: 4) {
+        Text(FoodRow.displayName(brand: item.brandName, product: item.productName))
+          .font(.headline)
+          .lineLimit(2)
+          .foregroundStyle(.secondary)
+          .strikethrough()
+
+        Text(NSLocalizedString("(Deleted)", comment: "Deleted Food indicator"))
+          .font(.caption)
+          .foregroundStyle(.red)
+          .fixedSize()
+      }
+    } else {
+      Button {
+        showingFoodSearch = true
+      } label: {
+        Label(
+          NSLocalizedString("Search for food", comment: "Search for food"),
+          systemImage: "magnifyingglass")
       }
     }
   }
@@ -236,53 +223,55 @@ struct FoodSearchView: View {
 
   var body: some View {
     NavigationStack {
-      VStack {
-        HStack {
-          Image(systemName: "magnifyingglass").foregroundColor(.secondary).padding(.leading, 8)
-          TextField(NSLocalizedString("Search food items", comment: "Search placeholder"), text: $searchText)
-            .padding(10).background(Color(UIColor.secondarySystemBackground)).cornerRadius(10)
-          if !searchText.isEmpty {
-            Button(action: { searchText = "" }) {
-              Image(systemName: "xmark.circle.fill").foregroundColor(.secondary).padding(.trailing, 8)
-            }
+      content
+        .navigationTitle(NSLocalizedString("Select food", comment: "Navigation title"))
+        .navigationBarTitleDisplayMode(.inline)
+        .searchable(
+          text: $searchText,
+          prompt: Text(NSLocalizedString("Search food items", comment: "Search placeholder"))
+        )
+        .toolbar {
+          ToolbarItem(placement: .cancellationAction) {
+            Button(NSLocalizedString("Cancel", comment: "Button title")) { dismiss() }
           }
         }
-        .padding(.horizontal).padding(.top, 8)
+        .onChange(of: searchText) { _, _ in
+          searchResults = []
+          currentOffset = 0
+          hasMoreData = true
+          Task { await loadMoreItems() }
+        }
+    }
+  }
 
-        if searchText.isEmpty {
-          VStack(spacing: 16) {
-            Image(systemName: "magnifyingglass").font(.system(size: 48)).foregroundColor(.secondary)
-            Text(NSLocalizedString("Search for food", comment: "Search for food")).font(.headline).foregroundColor(.secondary)
+  @ViewBuilder
+  private var content: some View {
+    if searchText.isEmpty {
+      ContentUnavailableView {
+        Label(
+          NSLocalizedString("Search for food", comment: "Search for food"),
+          systemImage: "magnifyingglass")
+      }
+    } else if searchResults.isEmpty {
+      ContentUnavailableView.search(text: searchText)
+    } else {
+      List {
+        ForEach(searchResults, id: \.id) { item in
+          Button {
+            onSelect(item)
+            dismiss()
+          } label: {
+            FoodMasterRow(foodMaster: item)
           }
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-          List {
-            ForEach(searchResults, id: \.id) { item in
-              Button { onSelect(item); dismiss() } label: { FoodMasterRow(foodMaster: item) }
-                .onAppear {
-                  if item.id == searchResults.last?.id && hasMoreData { Task { await loadMoreItems() } }
-                }
-            }
-            if searchResults.isEmpty {
-              VStack(spacing: 16) {
-                Image(systemName: "exclamationmark.magnifyingglass").font(.system(size: 48)).foregroundColor(.secondary)
-                Text(NSLocalizedString("No search results found", comment: "No search results message")).font(.headline).foregroundColor(.secondary)
-              }
-              .frame(maxWidth: .infinity).padding(.vertical, 40).listRowBackground(Color.clear)
+          .buttonStyle(.plain)
+          .onAppear {
+            if item.id == searchResults.last?.id && hasMoreData {
+              Task { await loadMoreItems() }
             }
           }
         }
       }
-      .navigationTitle(NSLocalizedString("Select food", comment: "Navigation title"))
-      .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          Button(NSLocalizedString("Cancel", comment: "Button title")) { dismiss() }
-        }
-      }
-      .onChange(of: searchText) { _, _ in
-        searchResults = []; currentOffset = 0; hasMoreData = true
-        Task { await loadMoreItems() }
-      }
+      .listStyle(.insetGrouped)
     }
   }
 

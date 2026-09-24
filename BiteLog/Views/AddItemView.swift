@@ -18,13 +18,10 @@ struct AddItemView: View {
   @State private var hasMoreData = true
   private let pageSize = 20
 
-  @FocusState private var searchFieldIsFocused: Bool
+  @FocusState private var isSearchFocused: Bool
   @State private var searchDebounceTimer: Timer?
 
-  @State private var showAddedFeedback = false
-  @State private var lastAddedItem: String = ""
-  @State private var feedbackQueue: [String] = []
-  @State private var isProcessingFeedback = false
+  @State private var addedCount = 0
 
   @State private var showQuickCreationSheet = false
 
@@ -45,11 +42,25 @@ struct AddItemView: View {
 
   var body: some View {
     NavigationStack {
-      ZStack {
-        Color(UIColor.systemGroupedBackground).ignoresSafeArea()
-        mainContentView
-      }
+      contentView
+        .background(Color(UIColor.systemGroupedBackground))
+        .searchable(
+          text: $searchText,
+          placement: .navigationBarDrawer(displayMode: .always),
+          prompt: Text(NSLocalizedString("Search food items", comment: "Search placeholder"))
+        )
+        .searchFocused($isSearchFocused)
+        .onChange(of: searchText) { _, _ in
+          searchDebounceTimer?.invalidate()
+          searchDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+            Task { await resetAndSearch() }
+          }
+        }
+        // 自前のバナーで 0.5 秒だけ「追加しました」と出していたが、
+        // 追加はリストから消えないので見て分かりにくい。触覚で返す。
+        .sensoryFeedback(.success, trigger: addedCount)
       .navigationTitle(NSLocalizedString("Add Meal", comment: "Navigation title"))
+      .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
           Button(NSLocalizedString("Cancel", comment: "Button title")) { dismiss() }
@@ -59,9 +70,10 @@ struct AddItemView: View {
             if AIFoodAnalyzer.shared.isAvailable() { showingPhotoPicker = true }
             else { showingAPIKeyError = true }
           } label: {
-            Image(systemName: "camera.viewfinder").font(.title3)
+            Label(
+              NSLocalizedString("Analyze photo", comment: "AI photo analysis"),
+              systemImage: "camera.viewfinder")
           }
-          .buttonStyle(PlainButtonStyle())
         }
       }
       .onAppear {
@@ -115,58 +127,27 @@ struct AddItemView: View {
     }
   }
 
-  private var mainContentView: some View {
-    VStack { searchBarView; feedbackView; contentView }
-  }
-
-  private var searchBarView: some View {
-    HStack {
-      Image(systemName: "magnifyingglass").foregroundColor(.secondary).padding(.leading, 8)
-      TextField(NSLocalizedString("Search food items", comment: "Search placeholder"), text: $searchText)
-        .padding(10).background(Color(UIColor.secondarySystemBackground)).cornerRadius(10)
-        .focused($searchFieldIsFocused)
-        .onChange(of: searchText) { _, _ in
-          searchDebounceTimer?.invalidate()
-          searchDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
-            Task { await resetAndSearch() }
-          }
-        }
-      if !searchText.isEmpty {
-        Button(action: { searchText = ""; Task { await resetAndSearch() } }) {
-          Image(systemName: "xmark.circle.fill").foregroundColor(.secondary).padding(.trailing, 8)
-        }
-      }
-      if searchFieldIsFocused {
-        Button(NSLocalizedString("Cancel", comment: "Cancel search")) {
-          searchText = ""; searchFieldIsFocused = false; Task { await resetAndSearch() }
-        }
-        .transition(.move(edge: .trailing).combined(with: .opacity))
-      }
-    }
-    .padding(.horizontal).padding(.top, 8)
-  }
-
-  private var feedbackView: some View {
-    Group {
-      if showAddedFeedback {
-        HStack {
-          Image(systemName: "checkmark.circle.fill").foregroundColor(.green)
-          Text(String(format: NSLocalizedString("%@ added to %@", comment: "Added food feedback"), lastAddedItem, mealType.localizedName))
-            .font(.subheadline)
-          Spacer()
-        }
-        .padding().background(Color.green.opacity(0.1)).cornerRadius(10).padding(.horizontal)
-        .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .move(edge: .top).combined(with: .opacity)))
-      }
-    }
-  }
-
+  @ViewBuilder
   private var contentView: some View {
     Group {
-      if isInitialLoading { ProgressView().padding() }
-      else if searchResults.isEmpty && !isDataLoaded { EmptyFoodMasterPromptView(selectedTab: $selectedTab, dismiss: dismiss) }
-      else if searchResults.isEmpty && isDataLoaded { emptySearchResultsView }
-      else { searchResultsListView }
+      if isInitialLoading {
+        ProgressView()
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+      } else if searchResults.isEmpty && !isDataLoaded {
+        EmptyFoodMasterPromptView(selectedTab: $selectedTab, dismiss: dismiss)
+      } else if searchResults.isEmpty {
+        emptySearchResultsView
+      } else {
+        searchResultsListView
+      }
+    }
+    .sheet(isPresented: $showQuickCreationSheet) {
+      FoodMasterFormView(mode: .quickAdd(initialProductName: searchText)) { createdFood in
+        Task {
+          await addFoodItem(createdFood)
+          dismiss()
+        }
+      }
     }
   }
 
@@ -181,67 +162,78 @@ struct AddItemView: View {
             }
           }
       }
+
       if !searchText.isEmpty && !hasMoreData {
-        Section {
-          Button { showQuickCreationSheet = true } label: {
-            HStack {
-              Image(systemName: "plus.circle.fill").font(.title2).foregroundStyle(.tint)
-              VStack(alignment: .leading, spacing: 4) {
-                Text(String(format: NSLocalizedString("Create and add \"%@\"", comment: "Create and add button"), searchText)).font(.headline)
-                Text(NSLocalizedString("Quickly add a new food item", comment: "Quick add description")).font(.caption).foregroundColor(.secondary)
-              }
-              Spacer()
-              Image(systemName: "chevron.right").font(.caption).foregroundColor(.secondary)
+        Button { showQuickCreationSheet = true } label: {
+          Label {
+            VStack(alignment: .leading, spacing: 2) {
+              Text(
+                String(
+                  format: NSLocalizedString(
+                    "Create and add \"%@\"", comment: "Create and add button"), searchText))
+              Text(NSLocalizedString("Quickly add a new food item", comment: "Quick add description"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
-            .padding(.vertical, 8)
+          } icon: {
+            Image(systemName: "plus.circle.fill")
           }
-          .buttonStyle(PlainButtonStyle())
         }
       }
+
       if hasMoreData {
-        Section {
-          HStack { Spacer(); if isLoading { ProgressView() }; Spacer() }.padding(.vertical, 8).id("loadingIndicator")
+        HStack {
+          Spacer()
+          if isLoading { ProgressView() }
+          Spacer()
         }
+        .listRowBackground(Color.clear)
       }
     }
     .listStyle(.insetGrouped)
-    .sheet(isPresented: $showQuickCreationSheet) {
-      FoodMasterFormView(mode: .quickAdd(initialProductName: searchText)) { createdFood in
-        Task { await addFoodItem(createdFood); DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { dismiss() } }
-      }
-    }
   }
 
+  @ViewBuilder
   private var emptySearchResultsView: some View {
-    VStack(spacing: 16) {
-      Image(systemName: "exclamationmark.magnifyingglass").font(.system(size: 48)).foregroundColor(.secondary)
-      Text(NSLocalizedString("No search results found", comment: "No search results message")).font(.headline).foregroundColor(.secondary)
-      if !searchText.isEmpty {
-        Button { showQuickCreationSheet = true } label: {
-          Label(
-            String(
-              format: NSLocalizedString("Create and add \"%@\"", comment: "Create and add button"),
-              searchText),
-            systemImage: "plus.circle.fill")
+    if searchText.isEmpty {
+      ContentUnavailableView {
+        Label(
+          NSLocalizedString("No Food Items", comment: "No food items"), systemImage: "fork.knife")
+      } description: {
+        Text(
+          NSLocalizedString(
+            "Register new food items in the food tab", comment: "No search results message"))
+      } actions: {
+        Button(NSLocalizedString("Go to Food Management", comment: "Go to food management button")) {
+          dismiss()
+          selectedTab = .food
         }
         .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .padding(.top, 10)
-        Text(NSLocalizedString("or", comment: "Or text")).font(.subheadline).foregroundColor(.secondary)
       }
-      Text(NSLocalizedString("Register new food items in the food tab", comment: "No search results message"))
-        .font(.subheadline).foregroundColor(.secondary).multilineTextAlignment(.center).padding(.horizontal).lineLimit(nil)
-      Button(NSLocalizedString("Go to Food Management", comment: "Go to food management button")) {
-        dismiss()
-        selectedTab = .food
-      }
-      .buttonStyle(.bordered)
-      .controlSize(.large)
-    }
-    .frame(maxWidth: .infinity).padding(.vertical, 40)
-    .sheet(isPresented: $showQuickCreationSheet) {
-      FoodMasterFormView(mode: .quickAdd(initialProductName: searchText)) { createdFood in
-        Task { await addFoodItem(createdFood); DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { dismiss() } }
+    } else {
+      ContentUnavailableView {
+        Label(
+          NSLocalizedString("No search results found", comment: "No search results message"),
+          systemImage: "magnifyingglass")
+      } description: {
+        Text(
+          NSLocalizedString(
+            "Register new food items in the food tab", comment: "No search results message"))
+      } actions: {
+        Button {
+          showQuickCreationSheet = true
+        } label: {
+          Text(
+            String(
+              format: NSLocalizedString("Create and add \"%@\"", comment: "Create and add button"),
+              searchText))
+        }
+        .buttonStyle(.borderedProminent)
+
+        Button(NSLocalizedString("Go to Food Management", comment: "Go to food management button")) {
+          dismiss()
+          selectedTab = .food
+        }
       }
     }
   }
@@ -262,28 +254,10 @@ struct AddItemView: View {
       print("AddItemView addFoodItem error: \(error)")
     }
 
-    let feedbackText = "\(foodMaster.brandName) \(foodMaster.productName)"
-    feedbackQueue.append(feedbackText)
-    processFeedbackQueue()
-
+    addedCount += 1
     searchText = ""
     await resetAndSearch()
-    searchFieldIsFocused = true
-  }
-
-  private func processFeedbackQueue() {
-    guard !isProcessingFeedback, let nextItem = feedbackQueue.first else { return }
-    isProcessingFeedback = true
-    feedbackQueue.removeFirst()
-    lastAddedItem = nextItem
-    withAnimation(.easeIn(duration: 0.2)) { showAddedFeedback = true }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-      withAnimation(.easeOut(duration: 0.2)) { showAddedFeedback = false }
-      DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-        isProcessingFeedback = false
-        processFeedbackQueue()
-      }
-    }
+    isSearchFocused = true
   }
 
   private func resetAndSearch() async {
@@ -316,28 +290,28 @@ struct AddItemView: View {
   }
 }
 
-// マスターデータが0件の場合に表示するビュー
+/// 食品マスタが1件も無いときの案内。
 struct EmptyFoodMasterPromptView: View {
   @Binding var selectedTab: AppTab
   var dismiss: DismissAction
 
   var body: some View {
-    VStack(spacing: 10) {
-      Spacer()
-      Image(systemName: "fork.knife").font(.system(size: 48)).foregroundColor(.secondary)
-      Text(NSLocalizedString("No Food Items Registered", comment: "No food items")).font(.title2).fontWeight(.bold)
-      Text(NSLocalizedString("You need to register food items before you can add meals.", comment: "Register food prompt"))
-        .multilineTextAlignment(.center).foregroundColor(.secondary).padding(.horizontal, 40).lineLimit(nil)
+    ContentUnavailableView {
+      Label(
+        NSLocalizedString("No Food Items Registered", comment: "No food items"),
+        systemImage: "fork.knife")
+    } description: {
+      Text(
+        NSLocalizedString(
+          "You need to register food items before you can add meals.",
+          comment: "Register food prompt"))
+    } actions: {
       Button(NSLocalizedString("Go to Food Management", comment: "Go to food management button")) {
         dismiss()
         selectedTab = .food
       }
       .buttonStyle(.borderedProminent)
-      .controlSize(.large)
-      .padding(.top, 10)
-      Spacer()
     }
-    .padding()
   }
 }
 

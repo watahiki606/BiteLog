@@ -15,6 +15,7 @@ struct DayContentView: View {
   @State private var showsAllNutrients = false
 
   @State private var deleteAllTrigger = 0
+  @State private var deletedCount = 0
 
   private var logDateString: String { LogItemDTO.formatLogDate(date) }
   private var taskID: String { "\(logDateString)-\(refreshTrigger)-\(deleteAllTrigger)" }
@@ -34,6 +35,7 @@ struct DayContentView: View {
     .refreshable {
       await loadLogItems()
     }
+    .sensoryFeedback(.impact, trigger: deletedCount)
     .overlay {
       if isLoading && dayLogItems.isEmpty {
         ProgressView()
@@ -289,6 +291,7 @@ struct DayContentView: View {
       do {
         try await APIClient.shared.deleteLogItem(id: item.id)
         dayLogItems.removeAll { $0.id == item.id }
+        deletedCount += 1
       } catch {
         print("deleteItems error: \(error)")
       }
