@@ -235,12 +235,19 @@ struct StatisticsView: View {
     .toolbar {
       // セグメントが3段重なって選択肢だらけだったので、期間だけツールバーに逃がす。
       ToolbarItem(placement: .topBarTrailing) {
-        Picker(NSLocalizedString("Period", comment: "Statistics period"), selection: $period) {
-          ForEach(StatPeriod.allCases) { p in
-            Text(p.localizedName).tag(p)
+        // Picker をそのまま置くとナビゲーションバー幅いっぱいに伸びるので Menu に包む。
+        Menu {
+          Picker(NSLocalizedString("Period", comment: "Statistics period"), selection: $period) {
+            ForEach(StatPeriod.allCases) { p in
+              Text(p.localizedName).tag(p)
+            }
           }
+        } label: {
+          // systemImage を付けるとツールバーではアイコンだけになり、
+          // 今どの期間を見ているのかが分からなくなるので文字だけにする。
+          Text(period.localizedName)
         }
-        .pickerStyle(.menu)
+        .accessibilityLabel(NSLocalizedString("Period", comment: "Statistics period"))
       }
     }
     .task(id: reloadKey) { await reload() }
@@ -366,13 +373,16 @@ struct StatisticsView: View {
         }
         .pickerStyle(.segmented)
 
+        // 選択肢が1つしかないときのセグメントは選べるものが無く場所を取るだけなので出さない。
         HStack(spacing: 8) {
-          Picker("", selection: $bucket) {
-            ForEach(availableBuckets) { b in
-              Text(b.localizedName).tag(b)
+          if availableBuckets.count > 1 {
+            Picker("", selection: $bucket) {
+              ForEach(availableBuckets) { b in
+                Text(b.localizedName).tag(b)
+              }
             }
+            .pickerStyle(.segmented)
           }
-          .pickerStyle(.segmented)
 
           if bucket != .day {
             Picker("", selection: $aggregation) {

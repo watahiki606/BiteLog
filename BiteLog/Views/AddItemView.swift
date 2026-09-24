@@ -65,7 +65,9 @@ struct AddItemView: View {
         ToolbarItem(placement: .cancellationAction) {
           Button(NSLocalizedString("Cancel", comment: "Button title")) { dismiss() }
         }
-        ToolbarItem(placement: .confirmationAction) {
+        // 写真解析はこのシートの確定操作ではない。.confirmationAction に置くと
+        // 塗りつぶしの「完了」ボタンに見えてしまうので通常配置にする。
+        ToolbarItem(placement: .topBarTrailing) {
           Button {
             if AIFoodAnalyzer.shared.isAvailable() { showingPhotoPicker = true }
             else { showingAPIKeyError = true }
