@@ -14,7 +14,8 @@ struct LoginView: View {
       VStack(spacing: 12) {
         Image(systemName: "fork.knife.circle.fill")
           .font(.system(size: 80))
-          .foregroundColor(.accentColor)
+          .foregroundStyle(.tint)
+          .accessibilityHidden(true)
 
         Text("BiteLog")
           .font(.largeTitle.bold())

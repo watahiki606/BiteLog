@@ -21,7 +21,8 @@ struct ImportCSVView: View {
               VStack(spacing: 12) {
                 Image(systemName: "checkmark.circle.fill")
                   .font(.system(size: 50))
-                  .foregroundColor(.green)
+                  .foregroundStyle(.green)
+                  .accessibilityHidden(true)
 
                 Text(NSLocalizedString("Import Complete", comment: "CSV import status"))
                   .font(.headline)

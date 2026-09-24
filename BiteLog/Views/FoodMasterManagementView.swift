@@ -41,6 +41,7 @@ struct FoodMasterManagementView: View {
         } label: {
           Image(systemName: "plus")
         }
+        .accessibilityLabel(NSLocalizedString("Add Food Item", comment: "Add food item"))
       }
     }
     .sheet(
@@ -471,9 +472,12 @@ struct FoodMasterFormView: View {
           Button(action: { focusPreviousField() }) {
             Image(systemName: "chevron.up")
           }
+          .accessibilityLabel(NSLocalizedString("Previous field", comment: "Keyboard toolbar"))
+
           Button(action: { focusNextField() }) {
             Image(systemName: "chevron.down")
           }
+          .accessibilityLabel(NSLocalizedString("Next field", comment: "Keyboard toolbar"))
           Spacer()
           Button(NSLocalizedString("Done", comment: "Done")) { focusedField = nil }
         }

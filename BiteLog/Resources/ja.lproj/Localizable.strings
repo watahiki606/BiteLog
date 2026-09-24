@@ -256,3 +256,12 @@
 // 編集画面・写真解析
 "Servings" = "摂取量";
 "Analyze photo" = "写真から解析";
+
+// 統計画面
+"Period" = "期間";
+"Previous period" = "前の期間";
+"Next period" = "次の期間";
+
+// キーボードツールバー
+"Previous field" = "前の入力欄";
+"Next field" = "次の入力欄";

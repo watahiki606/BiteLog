@@ -207,7 +207,9 @@ struct StatisticsView: View {
   var body: some View {
     ScrollView {
       VStack(spacing: 10) {
-        periodSelector
+        if period == .custom {
+          customRangePicker
+        }
 
         if isLoading {
           ProgressView()
@@ -230,6 +232,17 @@ struct StatisticsView: View {
     .background(Color(UIColor.systemGroupedBackground))
     .navigationTitle(NSLocalizedString("Statistics", comment: "Tab name"))
     .navigationBarTitleDisplayMode(.inline)
+    .toolbar {
+      // セグメントが3段重なって選択肢だらけだったので、期間だけツールバーに逃がす。
+      ToolbarItem(placement: .topBarTrailing) {
+        Picker(NSLocalizedString("Period", comment: "Statistics period"), selection: $period) {
+          ForEach(StatPeriod.allCases) { p in
+            Text(p.localizedName).tag(p)
+          }
+        }
+        .pickerStyle(.menu)
+      }
+    }
     .task(id: reloadKey) { await reload() }
     .onChange(of: period) { _, _ in
       // period を変えると使えない単位が出るので、対象外なら日次に戻す。
@@ -244,32 +257,23 @@ struct StatisticsView: View {
 
   // MARK: - 期間セレクタ
 
-  private var periodSelector: some View {
-    VStack(spacing: 8) {
-      Picker("", selection: $period) {
-        ForEach(StatPeriod.allCases) { p in
-          Text(p.localizedName).tag(p)
-        }
-      }
-      .pickerStyle(.segmented)
+  private var customRangePicker: some View {
+    HStack {
+      DatePicker(
+        NSLocalizedString("From", comment: "Custom period start"),
+        selection: $customFrom, in: ...customTo, displayedComponents: .date
+      )
+      .labelsHidden()
 
-      if period == .custom {
-        HStack {
-          DatePicker(
-            NSLocalizedString("From", comment: "Custom period start"),
-            selection: $customFrom, in: ...customTo, displayedComponents: .date
-          )
-          .labelsHidden()
-          Text("–").foregroundColor(.secondary)
-          DatePicker(
-            NSLocalizedString("To", comment: "Custom period end"),
-            selection: $customTo, in: customFrom...Date(), displayedComponents: .date
-          )
-          .labelsHidden()
-        }
-        .frame(maxWidth: .infinity)
-      }
+      Text("–").foregroundStyle(.secondary)
+
+      DatePicker(
+        NSLocalizedString("To", comment: "Custom period end"),
+        selection: $customTo, in: customFrom...Date(), displayedComponents: .date
+      )
+      .labelsHidden()
     }
+    .frame(maxWidth: .infinity)
   }
 
   /// 期間ラベルの両サイドに前後ページ送りの矢印を備えたナビゲーションバー。
@@ -286,20 +290,28 @@ struct StatisticsView: View {
 
     return HStack {
       Button { page(by: -visibleDays) } label: {
-        Image(systemName: "chevron.left").font(.body.weight(.semibold))
+        Image(systemName: "chevron.left")
+          .font(.body.weight(.semibold))
+          .frame(width: 44, height: 44)
+          .contentShape(Rectangle())
       }
       .disabled(period == .custom)
+      .accessibilityLabel(NSLocalizedString("Previous period", comment: "Statistics paging"))
 
       Spacer()
       Text(text)
         .font(.subheadline.weight(.medium))
-        .foregroundColor(.secondary)
+        .foregroundStyle(.secondary)
       Spacer()
 
       Button { page(by: visibleDays) } label: {
-        Image(systemName: "chevron.right").font(.body.weight(.semibold))
+        Image(systemName: "chevron.right")
+          .font(.body.weight(.semibold))
+          .frame(width: 44, height: 44)
+          .contentShape(Rectangle())
       }
       .disabled(period == .custom || atLatest)
+      .accessibilityLabel(NSLocalizedString("Next period", comment: "Statistics paging"))
     }
     .frame(maxWidth: .infinity)
   }
@@ -331,7 +343,8 @@ struct StatisticsView: View {
     VStack(spacing: 8) {
       Image(systemName: "exclamationmark.triangle")
         .font(.largeTitle)
-        .foregroundColor(.secondary)
+        .foregroundStyle(.secondary)
+        .accessibilityHidden(true)
       Text(NSLocalizedString("Failed to load statistics", comment: "Statistics error"))
         .foregroundColor(.secondary)
       Button(NSLocalizedString("Retry", comment: "Retry button")) {

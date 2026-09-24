@@ -412,8 +412,9 @@ struct ResultRow: View {
   var body: some View {
     HStack {
       Image(systemName: icon)
-        .foregroundColor(color)
+        .foregroundStyle(color)
         .frame(width: 24)
+        .accessibilityHidden(true)
       
       Text(label)
         .foregroundColor(.primary)
@@ -440,8 +441,9 @@ struct EditableField: View {
   var body: some View {
     HStack {
       Image(systemName: icon)
-        .foregroundColor(color)
+        .foregroundStyle(color)
         .frame(width: 24)
+        .accessibilityHidden(true)
       
       Text(label)
         .foregroundColor(.primary)

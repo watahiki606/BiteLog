@@ -177,6 +177,7 @@ struct AddItemView: View {
             }
           } icon: {
             Image(systemName: "plus.circle.fill")
+              .accessibilityHidden(true)
           }
         }
       }
