@@ -84,3 +84,17 @@
   実データは同じ値の重複、空欄、欠けた日が普通にある。
   最低限、**空の日・欠けた期間・同じ値の重複**はモックに混ぜる。
   そのうえで実データでの確認を省かない。
+
+## fastlane の setup_ci は keychain を空パスワードで開く
+
+- **症状**: TestFlight デプロイが `setup_ci`（Fastfile 冒頭）で
+  `Shell command exited with exit status 51` で落ちる。
+  直前のログは「Found keychain ... creation skipped」。
+- **原因**: ワークフロー側で `security create-keychain -p "match" fastlane_tmp_keychain`
+  としていたが、`setup_ci` は同じ名前の keychain を**空パスワード**で開こうとする。
+  既存を見つけて作成はスキップするが、そのあとの解錠でパスワードが合わず落ちる。
+  `MATCH_KEYCHAIN_PASSWORD` を渡しても効かない。setup_ci が内部で上書きするため。
+- **修正**: ワークフロー側の作成パスワードを空にして揃える。
+- **検証のしかた**: workflow_dispatch が有効なら
+  `gh workflow run <file> --ref <branch>` でブランチのまま実行できる。
+  main にマージする前に本番相当の検証ができる。
