@@ -491,38 +491,50 @@ struct StatisticsView: View {
 
   private var pfcBalanceCard: some View {
     let balance = StatisticsCalculator.pfcBalance(settledItems)
+    // 色と名前は Nutrient を唯一の出典にする。ここで直書きすると、
+    // 同じ栄養素がこの画面だけ別の色になる。
+    let segments: [(nutrient: Nutrient, percent: Double)] = [
+      (.protein, balance.protein), (.fat, balance.fat), (.carbs, balance.carbs),
+    ]
 
     return CardView {
       VStack(spacing: 12) {
         GeometryReader { geo in
-          HStack(spacing: 0) {
-            balanceSegment(width: geo.size.width * balance.protein / 100, color: .blue)
-            balanceSegment(width: geo.size.width * balance.fat / 100, color: .yellow)
-            balanceSegment(width: geo.size.width * balance.carbs / 100, color: .green)
+          // 区切りを隙間で表す。色だけで境目を示すと、色を区別しない設定で
+          // どこまでが何の割合なのか分からなくなる。
+          HStack(spacing: 2) {
+            ForEach(segments, id: \.nutrient) { segment in
+              RoundedRectangle(cornerRadius: 3)
+                .fill(segment.nutrient.color)
+                .frame(width: max(geo.size.width * segment.percent / 100 - 2, 0))
+            }
           }
-          .clipShape(RoundedRectangle(cornerRadius: 6))
         }
         .frame(height: 24)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(NSLocalizedString("PFC Balance", comment: "Statistics section"))
+        .accessibilityValue(
+          segments
+            .map { "\($0.nutrient.localizedName) \(Int($0.percent.rounded()))%" }
+            .joined(separator: ", "))
 
         HStack(spacing: 16) {
-          pfcLegend(NSLocalizedString("Protein", comment: "Nutrient"), balance.protein, .blue)
-          pfcLegend(NSLocalizedString("Fat", comment: "Nutrient"), balance.fat, .yellow)
-          pfcLegend(NSLocalizedString("Carbs", comment: "Nutrient"), balance.carbs, .green)
+          ForEach(segments, id: \.nutrient) { segment in
+            pfcLegend(segment.nutrient, segment.percent)
+          }
         }
       }
     }
   }
 
-  private func balanceSegment(width: CGFloat, color: Color) -> some View {
-    Rectangle().fill(color).frame(width: max(width, 0))
-  }
-
-  private func pfcLegend(_ name: String, _ pct: Double, _ color: Color) -> some View {
+  private func pfcLegend(_ nutrient: Nutrient, _ pct: Double) -> some View {
     HStack(spacing: 4) {
-      Circle().fill(color).frame(width: 8, height: 8)
-      Text(name).font(.caption).foregroundColor(.secondary)
-      Text("\(pct, specifier: "%.0f")%").font(.caption.weight(.semibold))
+      Circle().fill(nutrient.color).frame(width: 8, height: 8)
+        .accessibilityHidden(true)
+      Text(nutrient.localizedName).font(.caption).foregroundColor(.secondary)
+      Text("\(pct, specifier: "%.0f")%").font(.caption.weight(.semibold)).monospacedDigit()
     }
+    .accessibilityElement(children: .combine)
   }
 
   // MARK: - ④ 食事タイプ別内訳
@@ -591,12 +603,15 @@ struct StatisticsView: View {
           }
       }
       .frame(height: 6)
+      // 棒が示すカロリーは同じ行に数値で出ているので、読み上げでは重ねない。
+      .accessibilityHidden(true)
       HStack(spacing: 6) {
         NutrientChip(nutrient: .protein, value: values.protein)
         NutrientChip(nutrient: .fat, value: values.fat)
         NutrientChip(nutrient: .carbs, value: values.carbs)
       }
     }
+    .accessibilityElement(children: .combine)
   }
 
   // MARK: - データ読み込み
@@ -690,6 +705,8 @@ private struct TrendChartView: View {
 
   @State private var scrollX: Date
   @State private var settleTask: Task<Void, Never>?
+  /// タップで選んだ位置。軸からの目測では特定の日の値が読めない。
+  @State private var selectedX: Date?
 
   init(
     series: [DailyNutrition], xDomain: ClosedRange<Date>, metric: TrendMetric,
@@ -747,6 +764,33 @@ private struct TrendChartView: View {
     }
   }
 
+  /// 選んだ位置にいちばん近い点。棒や折れ線の間をタップしても値を出せるようにする。
+  private var selectedPoint: (date: Date, value: Double)? {
+    guard let selectedX else { return nil }
+    let points = series.compactMap { day -> (date: Date, value: Double)? in
+      guard let date = StatDate.date(day.date) else { return nil }
+      return (date, metric.value(day.values))
+    }
+    return points.min {
+      abs($0.date.timeIntervalSince(selectedX)) < abs($1.date.timeIntervalSince(selectedX))
+    }
+  }
+
+  private func selectionCallout(_ point: (date: Date, value: Double)) -> some View {
+    VStack(alignment: .leading, spacing: 1) {
+      Text(point.date, format: axisLabelFormat)
+        .font(.caption2)
+        .foregroundStyle(.secondary)
+      Text("\(metric.nutrient.format(point.value))\(metric.unit)")
+        .font(.caption.weight(.semibold))
+        .monospacedDigit()
+        .foregroundStyle(metric.color)
+    }
+    .padding(.horizontal, 8)
+    .padding(.vertical, 5)
+    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+  }
+
   var body: some View {
     Chart {
       ForEach(series) { day in
@@ -781,7 +825,20 @@ private struct TrendChartView: View {
           .foregroundStyle(.secondary.opacity(0.6))
           .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
       }
+
+      if let selected = selectedPoint {
+        RuleMark(x: .value("Date", selected.date, unit: barUnit))
+          .foregroundStyle(.secondary.opacity(0.4))
+          .lineStyle(StrokeStyle(lineWidth: 1))
+          .annotation(
+            position: .top, spacing: 2,
+            overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
+          ) {
+            selectionCallout(selected)
+          }
+      }
     }
+    .chartXSelection(value: $selectedX)
     .chartScrollableAxes(.horizontal)
     .chartXScale(domain: xDomain)
     .chartXVisibleDomain(length: visibleSeconds)
