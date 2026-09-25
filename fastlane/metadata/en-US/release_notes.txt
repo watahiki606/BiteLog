@@ -1,0 +1,8 @@
+A full pass over every screen.
+
+- Text now scales with your text size setting
+- Better contrast in dark mode
+- Meals you haven't logged are grouped together, so the daily view is shorter
+- Nutrient display is consistent across every screen
+- VoiceOver support
+- Adding a meal now shows what you added

@@ -1,0 +1,60 @@
+name: App Store Release
+
+# 申請は毎回の push で走らせず、手で起こす。
+# TestFlight に上がっているビルドをそのまま出すので、ここではビルドしない。
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "申請せず内容の検証だけ行う"
+        type: boolean
+        default: true
+      submit:
+        description: "審査に提出する（false なら下書きのまま置く）"
+        type: boolean
+        default: true
+      auto_release:
+        description: "審査通過後に自動で公開する"
+        type: boolean
+        default: false
+      build_number:
+        description: "出すビルド番号（空ならそのバージョンの最新）"
+        type: string
+        default: ""
+
+jobs:
+  release:
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.1'
+          bundler: 'latest'
+          bundler-cache: true
+
+      - name: Submit to App Store
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          SUBMIT: ${{ inputs.submit }}
+          AUTO_RELEASE: ${{ inputs.auto_release }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          args=""
+          if [ -n "$BUILD_NUMBER" ]; then
+            args="build_number:$BUILD_NUMBER"
+          fi
+
+          if [ "$DRY_RUN" = "true" ]; then
+            bundle exec fastlane release_check $args
+          else
+            bundle exec fastlane release \
+              submit:"$SUBMIT" auto_release:"$AUTO_RELEASE" $args
+          fi
