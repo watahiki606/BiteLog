@@ -156,6 +156,10 @@ platform :ios do
       # ファイルの無い項目は App Store Connect の内容がそのまま残る。
       skip_metadata: false,
 
+      # 著作権表記は今年でないと審査前の確認に引っかかる。
+      # 固定値を置くと毎年直す手間が残るので、申請時の年を使う。
+      copyright: "© #{Time.now.year} ShinyaWatahiki",
+
       # CI では確認用の HTML プレビューを開けない。
       force: true,
       # アプリ内課金が無いので precheck の対象から外す。
