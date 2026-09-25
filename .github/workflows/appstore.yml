@@ -5,16 +5,16 @@ name: App Store Release
 on:
   workflow_dispatch:
     inputs:
-      dry_run:
-        description: "申請せず内容の検証だけ行う"
-        type: boolean
-        default: true
-      submit:
-        description: "審査に提出する（false なら下書きのまま置く）"
-        type: boolean
-        default: true
+      mode:
+        description: "何をするか"
+        type: choice
+        default: check
+        options:
+          - check   # 審査規則に反していないか調べるだけ。何も書き換えない
+          - draft   # App Store Connect に下書きを作る。審査には出さない
+          - submit  # 下書きを作り、審査に提出する
       auto_release:
-        description: "審査通過後に自動で公開する"
+        description: "審査通過後に自動で公開する（submit のときだけ効く）"
         type: boolean
         default: false
       build_number:
@@ -37,13 +37,12 @@ jobs:
           bundler: 'latest'
           bundler-cache: true
 
-      - name: Submit to App Store
+      - name: Run fastlane
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
-          DRY_RUN: ${{ inputs.dry_run }}
-          SUBMIT: ${{ inputs.submit }}
+          MODE: ${{ inputs.mode }}
           AUTO_RELEASE: ${{ inputs.auto_release }}
           BUILD_NUMBER: ${{ inputs.build_number }}
         run: |
@@ -52,9 +51,19 @@ jobs:
             args="build_number:$BUILD_NUMBER"
           fi
 
-          if [ "$DRY_RUN" = "true" ]; then
-            bundle exec fastlane release_check $args
-          else
-            bundle exec fastlane release \
-              submit:"$SUBMIT" auto_release:"$AUTO_RELEASE" $args
-          fi
+          case "$MODE" in
+            check)
+              bundle exec fastlane release_check
+              ;;
+            draft)
+              bundle exec fastlane release submit:false $args
+              ;;
+            submit)
+              bundle exec fastlane release \
+                submit:true auto_release:"$AUTO_RELEASE" $args
+              ;;
+            *)
+              echo "不明な mode: $MODE" >&2
+              exit 1
+              ;;
+          esac
