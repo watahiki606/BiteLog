@@ -21,7 +21,10 @@ struct AddItemView: View {
   @FocusState private var isSearchFocused: Bool
   @State private var searchDebounceTimer: Timer?
 
-  @State private var addedCount = 0
+  /// このシートで追加できたもの。閉じるまで残し、何を追加したか見て分かるようにする。
+  @State private var addedEntries: [AddedEntry] = []
+  /// 送信中の件数。タップ直後に反応を出すために通信完了を待たずに増やす。
+  @State private var pendingCount = 0
   @State private var addFailureCount = 0
   @State private var showingAddFailure = false
 
@@ -58,9 +61,10 @@ struct AddItemView: View {
             Task { await resetAndSearch() }
           }
         }
-        // 自前のバナーで 0.5 秒だけ「追加しました」と出していたが、
-        // 追加はリストから消えないので見て分かりにくい。触覚で返す。
-        .sensoryFeedback(.success, trigger: addedCount)
+        // 追加しても一覧からは消えないので、タップの結果は自分で示す必要がある。
+        // 0.5 秒だけ出るバナーは見逃せるため、閉じるまで残る下部バーにする。
+        .safeAreaInset(edge: .bottom) { addedSummaryBar }
+        .sensoryFeedback(.success, trigger: addedEntries.count)
         .sensoryFeedback(.error, trigger: addFailureCount)
         .alert(
           NSLocalizedString("Couldn't add", comment: "Add failure alert title"),
@@ -77,7 +81,15 @@ struct AddItemView: View {
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
-          Button(NSLocalizedString("Cancel", comment: "Button title")) { dismiss() }
+          // 追加は即座に保存されるので、1件でも追加したあとに「キャンセル」と
+          // 出すと取り消せるように読めてしまう。完了に切り替える。
+          Button(
+            addedEntries.isEmpty
+              ? NSLocalizedString("Cancel", comment: "Button title")
+              : NSLocalizedString("Done", comment: "Button title")
+          ) {
+            dismiss()
+          }
         }
         // 写真解析はこのシートの確定操作ではない。.confirmationAction に置くと
         // 塗りつぶしの「完了」ボタンに見えてしまうので通常配置にする。
@@ -143,6 +155,70 @@ struct AddItemView: View {
     }
   }
 
+  /// 追加したものを示す下部バー。送信中は即座に出し、完了後は内容に切り替える。
+  @ViewBuilder
+  private var addedSummaryBar: some View {
+    if pendingCount > 0 || !addedEntries.isEmpty {
+      HStack(spacing: 10) {
+        if pendingCount > 0 {
+          ProgressView()
+            .controlSize(.small)
+
+          Text(NSLocalizedString("Adding…", comment: "Add in progress"))
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+        } else if let latest = addedEntries.last {
+          Image(systemName: "checkmark.circle.fill")
+            .foregroundStyle(.green)
+            .accessibilityHidden(true)
+
+          VStack(alignment: .leading, spacing: 1) {
+            Text(
+              String(
+                format: NSLocalizedString("Added %@", comment: "Added food confirmation"),
+                latest.name)
+            )
+            .font(.subheadline.weight(.medium))
+            .lineLimit(1)
+
+            Text(addedTotalsText)
+              .font(.caption)
+              .monospacedDigit()
+              .foregroundStyle(.secondary)
+          }
+        }
+
+        Spacer(minLength: 0)
+
+        // 追加後は検索欄に戻るためキーボードが出たままで、
+        // ナビゲーションバーの閉じるボタンに手が届かない。ここにも置く。
+        if !addedEntries.isEmpty {
+          Button(NSLocalizedString("Done", comment: "Button title")) { dismiss() }
+            .font(.subheadline.weight(.semibold))
+        }
+      }
+      .padding(.horizontal)
+      .padding(.vertical, 10)
+      .frame(maxWidth: .infinity)
+      .background(.bar)
+      .overlay(alignment: .top) {
+        Divider()
+      }
+      .animation(.easeInOut(duration: 0.2), value: pendingCount)
+      .animation(.easeInOut(duration: 0.2), value: addedEntries.count)
+      .accessibilityElement(children: .combine)
+    }
+  }
+
+  /// 「計2品 · 150 kcal」。1品でも合計を出して、何が積み上がったかを示す。
+  /// 英語は 1 と複数で語形が変わるので stringsdict 側で出し分ける。
+  private var addedTotalsText: String {
+    return String.localizedStringWithFormat(
+      NSLocalizedString("AddedSummary", comment: "Added items summary"),
+      addedEntries.count,
+      NutritionFormatter.formatCalories(addedEntries.totalCalories))
+  }
+
   @ViewBuilder
   private var contentView: some View {
     Group {
@@ -170,9 +246,8 @@ struct AddItemView: View {
   private var searchResultsListView: some View {
     List {
       ForEach(searchResults, id: \.id) { item in
-        // 独自スタイルだと押し込みが 2% 縮むだけで手応えが分かりにくい。
-        // List 標準の行ハイライトに任せる。.plain にしないと
-        // 食品名と数値までアクセント色に着色されて読みにくくなる。
+        // .plain にしないと食品名と数値まで着色されて読みにくくなる。
+        // タップの受け付けは List 標準の行ハイライトが示す。
         Button { Task { await addFoodItem(item) } } label: { PastItemCard(item: item) }
           .buttonStyle(.plain)
           .onAppear {
@@ -270,6 +345,12 @@ struct AddItemView: View {
       foodMasterId: foodMaster.id.uuidString,
       nutritionSnapshot: NutritionSnapshot.from(foodMaster)
     )
+
+    // 通信の完了を待つと、回線によっては数秒のあいだ画面が無反応になる。
+    // タップを受け付けたことは先に示す。
+    pendingCount += 1
+    defer { pendingCount -= 1 }
+
     do {
       _ = try await APIClient.shared.createLogItem(dto)
     } catch {
@@ -281,11 +362,28 @@ struct AddItemView: View {
       return false
     }
 
-    addedCount += 1
+    let nutrition = NutritionSnapshot.from(foodMaster)
+      .scaled(by: foodMaster.lastNumberOfServings)
+    addedEntries.append(
+      AddedEntry(
+        name: FoodRow.displayName(
+          brand: foodMaster.brandName, product: foodMaster.productName),
+        calories: nutrition.calories))
+
+    announceAdded()
+
     searchText = ""
     await resetAndSearch()
     isSearchFocused = true
     return true
+  }
+
+  /// VoiceOver は画面の下部バーが変わっても読まないので、追加できたことを明示的に伝える。
+  private func announceAdded() {
+    guard let latest = addedEntries.last else { return }
+    let message = String(
+      format: NSLocalizedString("Added %@", comment: "Added food confirmation"), latest.name)
+    AccessibilityNotification.Announcement(message).post()
   }
 
   private func resetAndSearch() async {
@@ -356,5 +454,19 @@ struct PastItemCard: View {
       subtitle: FoodRow.amountText(servings, unit: item.portionUnit),
       values: NutritionSnapshot.from(item).scaled(by: servings)
     )
+  }
+}
+
+/// このシートで追加できた1件。確認バーに出すぶんだけを持つ。
+struct AddedEntry: Identifiable {
+  let id = UUID()
+  let name: String
+  let calories: Double
+}
+
+extension Array where Element == AddedEntry {
+  /// 確認バーに出す累計カロリー。
+  var totalCalories: Double {
+    reduce(0) { $0 + $1.calories }
   }
 }
