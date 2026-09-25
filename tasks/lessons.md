@@ -98,3 +98,37 @@
 - **検証のしかた**: workflow_dispatch が有効なら
   `gh workflow run <file> --ref <branch>` でブランチのまま実行できる。
   main にマージする前に本番相当の検証ができる。
+
+## fastlane で App Store 申請まで自動化するときに詰まる点
+
+TestFlight のビルドをそのまま出す構成にした（`skip_binary_upload: true`）。
+ビルドし直さないのでテストした物と出す物が一致し、署名も要らない。
+
+- **`verify_only` は使えない**: アップロードする IPA を検証するオプションで、
+  既存ビルドを指定する使い方だと検証対象が無く `TypeError` で落ちる。
+  申請前の確認は `precheck` を使う。何も書き換えない。
+- **`precheck` の既定は単体だと `error`、`deliver` 経由だと `warn`**:
+  同じ指摘でも `mode: check` は落ちるのに申請は通る、という食い違いが起きる。
+- **`other_platforms` ルールは「google」を拾う**: Google サインインの案内でも
+  他プラットフォームへの言及と見なされる。`fastlane/Precheckfile` で
+  `other_platforms(level: :skip)` と書いて外す。
+- **著作権表記は今年でないと落ちる**: 固定値を置くと毎年直す手間が残るので
+  `copyright: "© #{Time.now.year} ..."` と申請時の年を使う。
+- **metadata はファイルを置いた項目だけ上書きされる**: `release_notes.txt` だけ
+  置けば、説明文やスクリーンショットは App Store Connect の内容が残る。
+- **`workflow_dispatch` は default ブランチに無いと起動できない**:
+  ワークフロー自体の検証は、先に main へ入れてから実行するしかない。
+  push トリガが無ければマージしても何も走らないので、入れること自体は安全。
+
+## App Store Connect の状態は spaceship で直接読める
+
+`fastlane run` で使い捨てのレーンを書けば、申請せずに状態を確認できる。
+
+```ruby
+app = Spaceship::ConnectAPI::App.find("com.watahiki.BiteLog")
+app.get_live_app_store_version   # 公開中
+app.get_edit_app_store_version   # 編集中/審査待ち
+```
+
+対応言語・著作権表記・添付ビルド・リリースノートが取れる。
+実装する前にこれで実物を見ておくと、当て推量で書かずに済む。
