@@ -156,8 +156,11 @@ struct AddItemView: View {
   private var searchResultsListView: some View {
     List {
       ForEach(searchResults, id: \.id) { item in
+        // 独自スタイルだと押し込みが 2% 縮むだけで手応えが分かりにくい。
+        // List 標準の行ハイライトに任せる。.plain にしないと
+        // 食品名と数値までアクセント色に着色されて読みにくくなる。
         Button { Task { await addFoodItem(item) } } label: { PastItemCard(item: item) }
-          .buttonStyle(ScaleButtonStyle())
+          .buttonStyle(.plain)
           .onAppear {
             if item.id == searchResults.last?.id && hasMoreData && !isLoading {
               Task { await loadMoreContent() }
