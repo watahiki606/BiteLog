@@ -10,6 +10,10 @@ struct DayContentView: View {
 
   @State private var dayLogItems: [LogItemDTO] = []
   @State private var isLoading = false
+  /// 読み込めなかった状態。0件と区別する。同じ見た目で出すと、
+  /// 記録が残っているのにもう一度記録し直す操作を誘発する。
+  @State private var loadFailed = false
+  @State private var failure: OperationFailure?
   @State private var editMode: EditMode = .inactive
   @State private var selectedItemIDs: Set<UUID> = []
   @State private var showsAllNutrients = false
@@ -21,33 +25,23 @@ struct DayContentView: View {
   private var taskID: String { "\(logDateString)-\(refreshTrigger)-\(deleteAllTrigger)" }
 
   var body: some View {
-    List(selection: editMode == .active ? $selectedItemIDs : .constant(Set<UUID>())) {
-      summarySection
-
-      ForEach(loggedMealTypes, id: \.self) { mealType in
-        mealSection(for: mealType)
-      }
-
-      unloggedMealsSection
-    }
-    .listStyle(.insetGrouped)
-    .environment(\.editMode, $editMode)
-    .refreshable {
-      await loadLogItems()
-    }
-    .sensoryFeedback(.impact, trigger: deletedCount)
-    .overlay {
-      if isLoading && dayLogItems.isEmpty {
-        ProgressView()
+    Group {
+      // 読み込めず手元に何も無いときだけ画面を差し替える。
+      // 既に出せている内容があるなら残し、失敗はアラートで伝える。
+      if loadFailed && dayLogItems.isEmpty {
+        LoadFailureView { await loadLogItems() }
+      } else {
+        logList
       }
     }
     // 広告はスクロール内容に混ぜず画面下端に固定する。
+    // 高さは AdaptiveBannerView が幅に合わせて決めるので、ここで固定しない。
+    // 固定すると画面幅によっては広告の下端が切れる。
     .safeAreaInset(edge: .bottom) {
       AdaptiveBannerView()
-        .frame(height: 50)
         .frame(maxWidth: .infinity)
-        .background(.bar)
     }
+    .operationFailureAlert($failure)
     .toolbar {
       ToolbarItem(placement: .topBarTrailing) {
         if !dayLogItems.isEmpty {
@@ -78,6 +72,29 @@ struct DayContentView: View {
     .onReceive(NotificationCenter.default.publisher(for: .allDataDeleted)) { _ in
       dayLogItems = []
       deleteAllTrigger += 1
+    }
+  }
+
+  private var logList: some View {
+    List(selection: editMode == .active ? $selectedItemIDs : .constant(Set<UUID>())) {
+      summarySection
+
+      ForEach(loggedMealTypes, id: \.self) { mealType in
+        mealSection(for: mealType)
+      }
+
+      unloggedMealsSection
+    }
+    .listStyle(.insetGrouped)
+    .environment(\.editMode, $editMode)
+    .refreshable {
+      await loadLogItems()
+    }
+    .sensoryFeedback(.impact, trigger: deletedCount)
+    .overlay {
+      if isLoading && dayLogItems.isEmpty {
+        ProgressView()
+      }
     }
   }
 
@@ -249,8 +266,14 @@ struct DayContentView: View {
     defer { isLoading = false }
     do {
       dayLogItems = try await APIClient.shared.fetchLogItems(logDate: logDateString)
+      loadFailed = false
     } catch {
-      print("DayContentView loadLogItems error: \(error)")
+      // 握りつぶすと、その日が「何も食べていない日」に見えて二重記録を招く。
+      if dayLogItems.isEmpty {
+        loadFailed = true
+      } else {
+        failure = .refreshing(error)
+      }
     }
   }
 
@@ -262,7 +285,16 @@ struct DayContentView: View {
     do {
       let previousItems = try await APIClient.shared.fetchLogItems(logDate: previousDayString)
       let filtered = previousItems.filter { $0.mealType == mealType }
-      guard !filtered.isEmpty else { return }
+      // 前日に記録が無いと何も起きない。押しても無反応だと壊れたように見えるので伝える。
+      guard !filtered.isEmpty else {
+        failure = OperationFailure(
+          title: NSLocalizedString("Nothing to copy", comment: "Copy previous day empty title"),
+          message: String(
+            format: NSLocalizedString(
+              "There is no %@ logged for yesterday.", comment: "Copy previous day empty message"),
+            mealType.localizedName))
+        return
+      }
 
       let now = Date()
       let dtos = filtered.map { prev in
@@ -276,11 +308,10 @@ struct DayContentView: View {
           nutritionSnapshot: prev.nutritionSnapshot
         )
       }
-      let result = try await APIClient.shared.batchCreateLogItems(dtos)
-      print("Copied \(result.created) meals from previous day")
+      _ = try await APIClient.shared.batchCreateLogItems(dtos)
       await loadLogItems()
     } catch {
-      print("copyPreviousDayMeals error: \(error)")
+      failure = .saving(error)
     }
   }
 
@@ -291,7 +322,10 @@ struct DayContentView: View {
         dayLogItems.removeAll { $0.id == item.id }
         deletedCount += 1
       } catch {
-        print("deleteItems error: \(error)")
+        // 消えたように見えて消えていない状態を残さない。
+        // 行は手元に残したまま、削除できなかったことを伝える。
+        failure = .deleting(error)
+        return
       }
     }
   }

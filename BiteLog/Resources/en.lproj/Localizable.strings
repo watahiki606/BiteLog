@@ -256,3 +256,25 @@
 "Added %@" = "Added %@";
 "Couldn't add" = "Couldn't add";
 "The meal was not saved. Check your connection and try again." = "The meal was not saved. Check your connection and try again.";
+
+// Network errors
+"Your session has expired. Please sign in again." = "Your session has expired. Please sign in again.";
+"The data could not be found." = "The data could not be found.";
+"The server returned an error (%d)." = "The server returned an error (%d).";
+"Couldn't reach the server. Check your connection." = "Couldn't reach the server. Check your connection.";
+"The response couldn't be read." = "The response couldn't be read.";
+"The request address is invalid." = "The request address is invalid.";
+
+// Failure feedback
+"Couldn't load" = "Couldn't load";
+"Check your connection and try again." = "Check your connection and try again.";
+"Couldn't save" = "Couldn't save";
+"Couldn't delete" = "Couldn't delete";
+"Couldn't refresh" = "Couldn't refresh";
+
+// Copy previous day
+"Nothing to copy" = "Nothing to copy";
+"There is no %@ logged for yesterday." = "There is no %@ logged for yesterday.";
+
+// Goal input
+"Enter a number greater than 0. Fields left as they are keep their current goal." = "Enter a number greater than 0. Fields left as they are keep their current goal.";

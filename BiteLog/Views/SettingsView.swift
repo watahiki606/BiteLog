@@ -7,6 +7,7 @@ extension Notification.Name {
 struct SettingsView: View {
   @Environment(\.dismiss) private var dismiss
   @EnvironmentObject private var languageManager: LanguageManager
+  @EnvironmentObject private var nutritionGoalsManager: NutritionGoalsManager
   @State private var showingRestartAlert = false
   @State private var selectedNewLanguage: AppLanguage?
   @State private var showingDeleteConfirmation = false
@@ -69,6 +70,9 @@ struct SettingsView: View {
           Button(NSLocalizedString("Done", comment: "Button title")) { dismiss() }
         }
       }
+      // 目標の編集は画面を離れたときに保存するので、失敗を伝える頃には
+      // その画面が無い。まだ出ている設定画面から出す。
+      .operationFailureAlert($nutritionGoalsManager.saveFailure)
       .alert(
         NSLocalizedString("Language Changed", comment: "Alert title"),
         isPresented: $showingRestartAlert
