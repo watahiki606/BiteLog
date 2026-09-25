@@ -125,28 +125,21 @@ platform :ios do
     )
   end
 
-  desc "申請せずに metadata と対象ビルドだけ検証する"
-  lane :release_check do |options|
+  desc "App Store Connect の内容が審査の規則に反していないか調べる"
+  desc ""
+  desc "何も書き換えない。申請で落ちる要因を先に潰すためのもの。"
+  lane :release_check do
     api_key = asc_api_key
-    version = app_version
 
-    build_number = options[:build_number] || latest_testflight_build_number(
+    precheck(
       api_key: api_key,
       app_identifier: "com.watahiki.BiteLog",
-      version: version
-    )
-
-    UI.important("#{version} (#{build_number}) を検証します。送信はしません")
-
-    upload_to_app_store(
-      **app_store_options(api_key, version, build_number),
-      submit_for_review: false,
-      # 送信せず内容の検証だけ行う。
-      verify_only: true
+      # アプリ内課金が無いので対象から外す。
+      include_in_app_purchases: false
     )
   end
 
-  # release と release_check で共通の指定。
+  # release で使う共通の指定。
   def app_store_options(api_key, version, build_number)
     {
       api_key: api_key,
