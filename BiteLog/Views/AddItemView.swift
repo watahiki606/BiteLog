@@ -22,6 +22,8 @@ struct AddItemView: View {
   @State private var searchDebounceTimer: Timer?
 
   @State private var addedCount = 0
+  @State private var addFailureCount = 0
+  @State private var showingAddFailure = false
 
   @State private var showQuickCreationSheet = false
 
@@ -59,6 +61,18 @@ struct AddItemView: View {
         // 自前のバナーで 0.5 秒だけ「追加しました」と出していたが、
         // 追加はリストから消えないので見て分かりにくい。触覚で返す。
         .sensoryFeedback(.success, trigger: addedCount)
+        .sensoryFeedback(.error, trigger: addFailureCount)
+        .alert(
+          NSLocalizedString("Couldn't add", comment: "Add failure alert title"),
+          isPresented: $showingAddFailure
+        ) {
+          Button(NSLocalizedString("OK", comment: "Button title"), role: .cancel) {}
+        } message: {
+          Text(
+            NSLocalizedString(
+              "The meal was not saved. Check your connection and try again.",
+              comment: "Add failure alert message"))
+        }
       .navigationTitle(NSLocalizedString("Add Meal", comment: "Navigation title"))
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
@@ -146,8 +160,8 @@ struct AddItemView: View {
     .sheet(isPresented: $showQuickCreationSheet) {
       FoodMasterFormView(mode: .quickAdd(initialProductName: searchText)) { createdFood in
         Task {
-          await addFoodItem(createdFood)
-          dismiss()
+          // 失敗したときに閉じるとエラーを見せられないので、成功時だけ閉じる。
+          if await addFoodItem(createdFood) { dismiss() }
         }
       }
     }
@@ -244,7 +258,9 @@ struct AddItemView: View {
     }
   }
 
-  private func addFoodItem(_ foodMaster: FoodMasterDTO) async {
+  /// - Returns: 保存できたら true。失敗したら false を返し、呼び出し側が画面を閉じないようにする。
+  @discardableResult
+  private func addFoodItem(_ foodMaster: FoodMasterDTO) async -> Bool {
     let dto = LogItemCreateDTO(
       id: UUID().uuidString,
       timestamp: ISO8601DateFormatter().string(from: date),
@@ -257,13 +273,19 @@ struct AddItemView: View {
     do {
       _ = try await APIClient.shared.createLogItem(dto)
     } catch {
+      // 以前は失敗しても追加できたことにしていたため、保存されていないのに
+      // 記録したつもりになれてしまった。失敗は失敗として出す。
       print("AddItemView addFoodItem error: \(error)")
+      addFailureCount += 1
+      showingAddFailure = true
+      return false
     }
 
     addedCount += 1
     searchText = ""
     await resetAndSearch()
     isSearchFocused = true
+    return true
   }
 
   private func resetAndSearch() async {

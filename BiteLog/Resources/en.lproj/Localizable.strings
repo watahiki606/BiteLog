@@ -250,3 +250,7 @@
 // Keyboard toolbar
 "Previous field" = "Previous field";
 "Next field" = "Next field";
+
+// Meal add failure
+"Couldn't add" = "Couldn't add";
+"The meal was not saved. Check your connection and try again." = "The meal was not saved. Check your connection and try again.";
