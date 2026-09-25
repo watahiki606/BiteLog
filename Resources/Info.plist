@@ -12,6 +12,8 @@
     <string>202606271000</string>
     <key>CFBundleShortVersionString</key>
     <string>2.5</string>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleInfoDictionaryVersion</key>

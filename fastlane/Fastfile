@@ -1,28 +1,37 @@
 default_platform(:ios)
 
+# CI と手元で鍵の渡し方が違うだけなので1箇所にまとめる。
+def asc_api_key
+  if ENV["CI"]
+    app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_content: ENV["ASC_KEY_CONTENT"],
+      duration: 1200,
+      in_house: false,
+      is_key_content_base64: true
+    )
+  else
+    app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_filepath: ENV["ASC_KEY_FILEPATH"],
+      duration: 1200,
+      in_house: false
+    )
+  end
+end
+
+def app_version
+  get_info_plist_value(path: "Resources/Info.plist", key: "CFBundleShortVersionString")
+end
+
 platform :ios do
   desc "Build and upload to TestFlight"
   lane :beta do
     setup_ci if ENV["CI"]
 
-    api_key = if ENV["CI"]
-      app_store_connect_api_key(
-        key_id: ENV["ASC_KEY_ID"],
-        issuer_id: ENV["ASC_ISSUER_ID"],
-        key_content: ENV["ASC_KEY_CONTENT"],
-        duration: 1200,
-        in_house: false,
-        is_key_content_base64: true
-      )
-    else
-      app_store_connect_api_key(
-        key_id: ENV["ASC_KEY_ID"],
-        issuer_id: ENV["ASC_ISSUER_ID"],
-        key_filepath: ENV["ASC_KEY_FILEPATH"],
-        duration: 1200,
-        in_house: false
-      )
-    end
+    api_key = asc_api_key
 
     build_number = Time.now.strftime("%Y%m%d%H%M")
     increment_build_number(build_number: build_number)
@@ -69,5 +78,95 @@ platform :ios do
       api_key: api_key,
       skip_waiting_for_build_processing: true
     )
+  end
+
+  desc "TestFlight のビルドを App Store に申請する"
+  desc ""
+  desc "ビルドし直さず、TestFlight に上がっている同じバイナリを出す。"
+  desc "テストした物と出す物を一致させるため。"
+  desc ""
+  desc "オプション:"
+  desc "  build_number  出すビルド番号。省略時はそのバージョンの最新"
+  desc "  submit        false で申請せず下書きのまま置く（既定 true）"
+  desc "  auto_release  true で審査通過後に自動公開（既定 false）"
+  lane :release do |options|
+    api_key = asc_api_key
+    version = app_version
+
+    build_number = options[:build_number] || latest_testflight_build_number(
+      api_key: api_key,
+      app_identifier: "com.watahiki.BiteLog",
+      version: version
+    )
+
+    submit = options[:submit].to_s != "false"
+    auto_release = options[:auto_release].to_s == "true"
+
+    UI.important("#{version} (#{build_number}) を App Store に出します")
+    UI.important("審査に提出: #{submit} / 通過後に自動公開: #{auto_release}")
+
+    upload_to_app_store(
+      **app_store_options(api_key, version, build_number),
+      submit_for_review: submit,
+      automatic_release: auto_release,
+
+      submission_information: {
+        # 通信は HTTPS のみで独自の暗号を持たない。
+        # Info.plist の ITSAppUsesNonExemptEncryption と同じ内容。
+        export_compliance_uses_encryption: false,
+        content_rights_contains_third_party_content: false,
+        # AdMob で広告を出すため IDFA を使う。許可は ATT で取る。
+        add_id_info_uses_idfa: true,
+        add_id_info_serves_ads: true,
+        add_id_info_tracks_install: false,
+        add_id_info_tracks_action: false,
+        add_id_info_limits_tracking: true
+      }
+    )
+  end
+
+  desc "申請せずに metadata と対象ビルドだけ検証する"
+  lane :release_check do |options|
+    api_key = asc_api_key
+    version = app_version
+
+    build_number = options[:build_number] || latest_testflight_build_number(
+      api_key: api_key,
+      app_identifier: "com.watahiki.BiteLog",
+      version: version
+    )
+
+    UI.important("#{version} (#{build_number}) を検証します。送信はしません")
+
+    upload_to_app_store(
+      **app_store_options(api_key, version, build_number),
+      submit_for_review: false,
+      # 送信せず内容の検証だけ行う。
+      verify_only: true
+    )
+  end
+
+  # release と release_check で共通の指定。
+  def app_store_options(api_key, version, build_number)
+    {
+      api_key: api_key,
+      app_identifier: "com.watahiki.BiteLog",
+      app_version: version,
+      build_number: build_number.to_s,
+
+      # ビルドは TestFlight に上がっているものを使う。
+      skip_binary_upload: true,
+      # スクリーンショットは App Store Connect にあるものを引き継ぐ。
+      # リポジトリで管理していないので、消さないよう触らない。
+      skip_screenshots: true,
+      # metadata は release_notes だけ置いてある。
+      # ファイルの無い項目は App Store Connect の内容がそのまま残る。
+      skip_metadata: false,
+
+      # CI では確認用の HTML プレビューを開けない。
+      force: true,
+      # アプリ内課金が無いので precheck の対象から外す。
+      precheck_include_in_app_purchases: false
+    }
   end
 end
