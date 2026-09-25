@@ -1,34 +1,64 @@
-# 体組成計測データ（body_measurements）機能
+# iOS アプリの UI/UX 改善
 
-HealthPlanet 由来の体組成計測データ（体重・体脂肪率・筋肉量など17列）を
-ユーザーに紐づけて保存し、web画面から CSV一括 + 手動1件追加で登録できるようにする。
+「より見やすく、使いやすくしたい」という要望。コードを読んだ結果、見た目の好みの
+問題ではなく、iOS の標準UIを自前実装で置き換えたことによる実害が主因だった。
 
 ## 方針（ユーザー確認済み）
-- 登録方法: CSV一括アップロード + 手動1件追加フォーム
-- 保存カラム: CSV全17カラム
-- 重複防止: UNIQUE(user_id, measured_at)
+- スコープ: アプリ全体を通しで
+- 方向性: iOS標準に寄せる
+- 画面構成・操作の変更も可
+- アクセントカラー: 無彩色から有彩色（ティール）へ変更
+- 「フード」タブはタブのまま残す
+- 日付の横スワイプは廃止し、標準 List を優先
 
 ## タスク
-- [x] schema.sql に body_measurements テーブル追加
-- [x] types.ts に BodyMeasurementRow + bodyMeasurementToResponse
-- [x] routes/bodyMeasurements.ts (GET / POST / DELETE /:id / POST /import)
-- [x] index.ts にルート登録
-- [x] routes/bodyMeasurements.test.ts（10件パス）
-- [x] hooks/useBodyMeasurements.ts (SWR)
-- [x] pages/BodyMeasurementPage.tsx (一覧 + 手動追加 + CSVアップロード)
-- [x] Sidebar.tsx / App.tsx に BODY タブ追加
-- [x] npm test（52件パス）/ bun run build（成功）で検証
-- [x] ローカルD1へスキーマ適用済み（npx wrangler d1 execute bitelog --local --file=schema.sql）
+- [x] 栄養素の表示を `Nutrient` 型に集約し、表示コンポーネントを6種→4種に統合
+- [x] 栄養素カラーを Asset Catalog でライト/ダーク別に定義
+- [x] 固定フォントサイズ39箇所を Dynamic Type 追随のフォントへ
+- [x] カードの境界を影から背景階層へ（ダークモードで輪郭が消える問題）
+- [x] 自作タブバーを標準 TabView + Tab へ
+- [x] 日付ナビゲーションを「今日/昨日/曜日付き」表記 + 44pt タップ領域に
+- [x] ログ画面を1つの List(.insetGrouped) に再構成
+- [x] 未記録の食事を末尾の1セクションに集約、追加動線を一本化
+- [x] 1日の合計を `DailyTotalsView` に切り出し、主要3栄養素に絞る
+- [x] 検索バー3箇所を `.searchable` に置換
+- [x] 空の状態を `ContentUnavailableView` に統一
+- [x] 編集画面と食品選択を標準 Form / List へ
+- [x] 追加・削除をハプティクスで返す
+- [x] 統計画面の期間選択をツールバーへ逃がす
+- [x] アイコンのみのボタンに VoiceOver ラベルを追加
+- [x] `DesignSystemGalleryTests` で ライト/ダーク × 標準/AX5 を描画して確認
+- [x] サインインした状態でシミュレータの実画面をライト/ダーク両方で確認
 
 ## レビュー
-- `body_measurements` テーブルを新設。CSV全17列 + id + user_id を保存し、
-  UNIQUE(user_id, measured_at) で再インポート/手動追加の重複を防止。
-- API: GET一覧（measured_at降順）/ POST手動1件 / DELETE 1件 / POST import（CSV一括・
-  バッチ100件・INSERT OR IGNORE）。すべて authMiddleware でユーザー分離。
-- Web: BODY タブを追加。一覧テーブル + 手動追加モーダル + CSVアップロード。
-- 既存パターン（Hono RPC, SWR, FoodMasterPage のモーダル/テーブル）に踏襲。
 
-## 残作業（デプロイ時・ユーザー操作）
-- 本番D1へのスキーマ適用: cd cloudflare && npx wrangler d1 execute bitelog --remote --file=schema.sql
-- Worker デプロイ: cd cloudflare && npm run deploy
-- Web Pages デプロイ: bun run build → npx wrangler pages deploy ../apps/web/dist --project-name bitelog-web --branch main
+コミットは5本。土台 → 構造 → 画面の順に積んだ。
+
+1. `7d134e4` 栄養素の表示を1箇所に集約しデザインの土台を整える
+2. `21a66cf` タブバーを標準の TabView に戻し日付ナビゲーションを読めるようにする
+3. `7d1297f` ログ画面を1つの List にして未記録の食事を畳む
+4. `6077170` 検索とフォームを標準コンポーネントに戻す
+5. `d93d921` 統計画面の選択肢を減らしアクセシビリティ指定を追加する
+
+直した実害:
+- `ScrollView` 内に `List` を入れ高さを行数×66pt で固定していたため、
+  文字を大きくすると行が切れていた
+- 固定フォントサイズ39箇所が文字サイズ設定に追随していなかった
+- アクセシビリティ指定が0件で、リングやバーが数値の羅列として読まれていた
+- カード境界を黒の影で表しており、ダークモードで輪郭が消えていた
+- アプリのアクセントが無彩色なのにコード側で `.blue` を20箇所直書きしていた
+- 略号 `S`(糖質) / `Fb`(食物繊維) が推測できなかった
+
+実画面の確認:
+- ローカルのモックAPIとダミートークンでサインイン済みの状態を作り、
+  ログ・フード・統計・追加・設定をライト/ダーク両方で確認した。手順は lessons.md。
+- この確認でしか出ない問題が3件見つかり `d5debe9` で修正した。
+
+実機・実データの確認:
+- iPhone 17 Pro (iOS 26.7) に入れ、本番データでログ・フード・統計を確認した。
+- 実データでしか出ない問題が2件見つかり `d6f93c7` で修正した。
+  食品名の重複表示と、統計のラベルと軸の1日ずれ。
+
+残っている確認:
+- 文字サイズ AX5 の実画面確認は部品単位のみ（`DesignSystemGalleryTests`）。
+- 実機はダークモードのみ。ライトモードはシミュレータで確認済み。

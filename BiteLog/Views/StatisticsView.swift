@@ -33,34 +33,23 @@ enum TrendMetric: String, CaseIterable, Identifiable {
   case calories, protein, fat, carbs
   var id: String { rawValue }
 
-  var localizedName: String {
+  /// 表示名・色・単位は `Nutrient` を唯一の出典にする。
+  var nutrient: Nutrient {
     switch self {
-    case .calories: return NSLocalizedString("Calories", comment: "Nutrient")
-    case .protein: return NSLocalizedString("Protein", comment: "Nutrient")
-    case .fat: return NSLocalizedString("Fat", comment: "Nutrient")
-    case .carbs: return NSLocalizedString("Carbs", comment: "Nutrient")
+    case .calories: return .calories
+    case .protein: return .protein
+    case .fat: return .fat
+    case .carbs: return .carbs
     }
   }
 
-  var color: Color {
-    switch self {
-    case .calories: return .orange
-    case .protein: return .blue
-    case .fat: return .yellow
-    case .carbs: return .green
-    }
-  }
+  var localizedName: String { nutrient.localizedName }
 
-  var unit: String { self == .calories ? "kcal" : "g" }
+  var color: Color { nutrient.color }
 
-  func value(_ v: NutritionValues) -> Double {
-    switch self {
-    case .calories: return v.calories
-    case .protein: return v.protein
-    case .fat: return v.fat
-    case .carbs: return v.carbs
-    }
-  }
+  var unit: String { nutrient.unit }
+
+  func value(_ v: NutritionValues) -> Double { nutrient.value(of: v) }
 }
 
 /// トレンドの下でセグメント切替する詳細セクション。選択中のカードのみ描画する。
@@ -218,7 +207,9 @@ struct StatisticsView: View {
   var body: some View {
     ScrollView {
       VStack(spacing: 10) {
-        periodSelector
+        if period == .custom {
+          customRangePicker
+        }
 
         if isLoading {
           ProgressView()
@@ -239,8 +230,27 @@ struct StatisticsView: View {
       .padding()
     }
     .background(Color(UIColor.systemGroupedBackground))
-    // 下部タブバーに「統計」ラベルがあり重複するため、上部ナビバーは隠して縦幅を確保。
-    .toolbar(.hidden, for: .navigationBar)
+    .navigationTitle(NSLocalizedString("Statistics", comment: "Tab name"))
+    .navigationBarTitleDisplayMode(.inline)
+    .toolbar {
+      // 期間・指標・セクションのセグメントが縦に3段重なるとグラフより操作部品が
+      // 目立つので、期間だけツールバーに逃がす。
+      ToolbarItem(placement: .topBarTrailing) {
+        // Picker をそのまま置くとナビゲーションバー幅いっぱいに伸びるので Menu に包む。
+        Menu {
+          Picker(NSLocalizedString("Period", comment: "Statistics period"), selection: $period) {
+            ForEach(StatPeriod.allCases) { p in
+              Text(p.localizedName).tag(p)
+            }
+          }
+        } label: {
+          // systemImage を付けるとツールバーではアイコンだけになり、
+          // 今どの期間を見ているのかが分からなくなるので文字だけにする。
+          Text(period.localizedName)
+        }
+        .accessibilityLabel(NSLocalizedString("Period", comment: "Statistics period"))
+      }
+    }
     .task(id: reloadKey) { await reload() }
     .onChange(of: period) { _, _ in
       // period を変えると使えない単位が出るので、対象外なら日次に戻す。
@@ -255,32 +265,23 @@ struct StatisticsView: View {
 
   // MARK: - 期間セレクタ
 
-  private var periodSelector: some View {
-    VStack(spacing: 8) {
-      Picker("", selection: $period) {
-        ForEach(StatPeriod.allCases) { p in
-          Text(p.localizedName).tag(p)
-        }
-      }
-      .pickerStyle(.segmented)
+  private var customRangePicker: some View {
+    HStack {
+      DatePicker(
+        NSLocalizedString("From", comment: "Custom period start"),
+        selection: $customFrom, in: ...customTo, displayedComponents: .date
+      )
+      .labelsHidden()
 
-      if period == .custom {
-        HStack {
-          DatePicker(
-            NSLocalizedString("From", comment: "Custom period start"),
-            selection: $customFrom, in: ...customTo, displayedComponents: .date
-          )
-          .labelsHidden()
-          Text("–").foregroundColor(.secondary)
-          DatePicker(
-            NSLocalizedString("To", comment: "Custom period end"),
-            selection: $customTo, in: customFrom...Date(), displayedComponents: .date
-          )
-          .labelsHidden()
-        }
-        .frame(maxWidth: .infinity)
-      }
+      Text("–").foregroundStyle(.secondary)
+
+      DatePicker(
+        NSLocalizedString("To", comment: "Custom period end"),
+        selection: $customTo, in: customFrom...Date(), displayedComponents: .date
+      )
+      .labelsHidden()
     }
+    .frame(maxWidth: .infinity)
   }
 
   /// 期間ラベルの両サイドに前後ページ送りの矢印を備えたナビゲーションバー。
@@ -297,20 +298,28 @@ struct StatisticsView: View {
 
     return HStack {
       Button { page(by: -visibleDays) } label: {
-        Image(systemName: "chevron.left").font(.body.weight(.semibold))
+        Image(systemName: "chevron.left")
+          .font(.body.weight(.semibold))
+          .frame(width: 44, height: 44)
+          .contentShape(Rectangle())
       }
       .disabled(period == .custom)
+      .accessibilityLabel(NSLocalizedString("Previous period", comment: "Statistics paging"))
 
       Spacer()
       Text(text)
         .font(.subheadline.weight(.medium))
-        .foregroundColor(.secondary)
+        .foregroundStyle(.secondary)
       Spacer()
 
       Button { page(by: visibleDays) } label: {
-        Image(systemName: "chevron.right").font(.body.weight(.semibold))
+        Image(systemName: "chevron.right")
+          .font(.body.weight(.semibold))
+          .frame(width: 44, height: 44)
+          .contentShape(Rectangle())
       }
       .disabled(period == .custom || atLatest)
+      .accessibilityLabel(NSLocalizedString("Next period", comment: "Statistics paging"))
     }
     .frame(maxWidth: .infinity)
   }
@@ -342,7 +351,8 @@ struct StatisticsView: View {
     VStack(spacing: 8) {
       Image(systemName: "exclamationmark.triangle")
         .font(.largeTitle)
-        .foregroundColor(.secondary)
+        .foregroundStyle(.secondary)
+        .accessibilityHidden(true)
       Text(NSLocalizedString("Failed to load statistics", comment: "Statistics error"))
         .foregroundColor(.secondary)
       Button(NSLocalizedString("Retry", comment: "Retry button")) {
@@ -364,13 +374,16 @@ struct StatisticsView: View {
         }
         .pickerStyle(.segmented)
 
+        // 選択肢が1つしかないときのセグメントは選べるものが無く場所を取るだけなので出さない。
         HStack(spacing: 8) {
-          Picker("", selection: $bucket) {
-            ForEach(availableBuckets) { b in
-              Text(b.localizedName).tag(b)
+          if availableBuckets.count > 1 {
+            Picker("", selection: $bucket) {
+              ForEach(availableBuckets) { b in
+                Text(b.localizedName).tag(b)
+              }
             }
+            .pickerStyle(.segmented)
           }
-          .pickerStyle(.segmented)
 
           if bucket != .day {
             Picker("", selection: $aggregation) {
@@ -385,6 +398,7 @@ struct StatisticsView: View {
 
         TrendChartView(
           series: displayTrendSeries,
+          xDomain: trendDomain,
           metric: metric,
           bucket: bucket,
           visibleDays: visibleDays,
@@ -404,6 +418,17 @@ struct StatisticsView: View {
         .id(reloadKey)
       }
     }
+  }
+
+  /// グラフの X 軸が覆う範囲。取得済みバッファの全体を明示的に指定する。
+  ///
+  /// 指定しないとドメインが実データの範囲から決まるため、直近の日に記録が無いと
+  /// グラフがその日まで進めず、上の期間ラベルと軸の日付がずれる。
+  private var trendDomain: ClosedRange<Date> {
+    let end = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: bufferTo))
+      ?? bufferTo
+    let start = min(cal.startOfDay(for: bufferFrom), end)
+    return start...end
   }
 
   private var xAxisStride: Int {
@@ -434,8 +459,8 @@ struct StatisticsView: View {
               .foregroundColor(.secondary)
             HStack(alignment: .firstTextBaseline, spacing: 2) {
               Text("\(achieved)")
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundColor(.primary)
+                .font(.system(.title, design: .rounded, weight: .bold))
+                .monospacedDigit()
               Text("/ \(visibleDays) " + NSLocalizedString("days", comment: "days unit"))
                 .font(.subheadline)
                 .foregroundColor(.secondary)
@@ -448,16 +473,15 @@ struct StatisticsView: View {
         }
 
         VStack(spacing: 8) {
-          MacroBarView(
-            label: NSLocalizedString("Protein", comment: "Nutrient"), value: avg.protein,
-            maxValue: nutritionGoalsManager.targetProtein, color: .blue, icon: "p.circle")
-          MacroBarView(
-            label: NSLocalizedString("Fat", comment: "Nutrient"), value: avg.fat,
-            maxValue: nutritionGoalsManager.targetFat, color: .yellow, icon: "f.circle")
-          MacroBarView(
-            label: NSLocalizedString("Carbs", comment: "Nutrient"), value: avg.carbs,
-            maxValue: nutritionGoalsManager.targetNetCarbs + nutritionGoalsManager.targetFiber,
-            color: .green, icon: "c.circle")
+          NutrientBar(
+            nutrient: .protein, value: avg.protein,
+            target: nutritionGoalsManager.targetProtein)
+          NutrientBar(
+            nutrient: .fat, value: avg.fat,
+            target: nutritionGoalsManager.targetFat)
+          NutrientBar(
+            nutrient: .carbs, value: avg.carbs,
+            target: nutritionGoalsManager.targetNetCarbs + nutritionGoalsManager.targetFiber)
         }
       }
     }
@@ -520,14 +544,12 @@ struct StatisticsView: View {
             Text(NSLocalizedString("Period Total", comment: "Statistics metric"))
               .font(.caption).foregroundColor(.secondary)
             Spacer()
-            Text(NutritionFormatter.formatNutrition(total.calories))
-              .font(.system(size: 20, weight: .bold, design: .rounded))
-            Text("kcal").font(.subheadline).foregroundColor(.secondary)
+            CalorieLabel(calories: total.calories, textStyle: .title3)
           }
           HStack(spacing: 6) {
-            MacroChip(label: "P", value: total.protein, color: .blue)
-            MacroChip(label: "F", value: total.fat, color: .yellow)
-            MacroChip(label: "C", value: total.carbs, color: .green)
+            NutrientChip(nutrient: .protein, value: total.protein)
+            NutrientChip(nutrient: .fat, value: total.fat)
+            NutrientChip(nutrient: .carbs, value: total.carbs)
           }
         }
 
@@ -551,14 +573,13 @@ struct StatisticsView: View {
     VStack(alignment: .leading, spacing: 4) {
       HStack {
         Image(systemName: type.iconName)
-          .font(.system(size: 12))
-          .foregroundColor(type.accentColor)
-          .frame(width: 16)
+          .font(.caption2)
+          .foregroundStyle(type.accentColor)
+          .accessibilityHidden(true)
         Text(type.localizedName)
-          .font(.system(size: 13, weight: .medium))
+          .font(.caption.weight(.medium))
         Spacer()
-        Text("\(NutritionFormatter.formatNutrition(values.calories)) kcal")
-          .font(.system(size: 13, weight: .semibold, design: .rounded))
+        CalorieLabel(calories: values.calories, textStyle: .caption)
       }
       GeometryReader { geo in
         RoundedRectangle(cornerRadius: 3)
@@ -571,9 +592,9 @@ struct StatisticsView: View {
       }
       .frame(height: 6)
       HStack(spacing: 6) {
-        MacroChip(label: "P", value: values.protein, color: .blue)
-        MacroChip(label: "F", value: values.fat, color: .yellow)
-        MacroChip(label: "C", value: values.carbs, color: .green)
+        NutrientChip(nutrient: .protein, value: values.protein)
+        NutrientChip(nutrient: .fat, value: values.fat)
+        NutrientChip(nutrient: .carbs, value: values.carbs)
       }
     }
   }
@@ -654,6 +675,7 @@ struct StatisticsView: View {
 /// 親（カード群）はスクロール停止時（`onScrollSettled`）にのみ再評価される。
 private struct TrendChartView: View {
   let series: [DailyNutrition]
+  let xDomain: ClosedRange<Date>
   let metric: TrendMetric
   let bucket: StatBucket
   let visibleDays: Int
@@ -670,11 +692,13 @@ private struct TrendChartView: View {
   @State private var settleTask: Task<Void, Never>?
 
   init(
-    series: [DailyNutrition], metric: TrendMetric, bucket: StatBucket, visibleDays: Int,
+    series: [DailyNutrition], xDomain: ClosedRange<Date>, metric: TrendMetric,
+    bucket: StatBucket, visibleDays: Int,
     visibleSeconds: TimeInterval, goalLine: Double?, xAxisStride: Int, initialScrollX: Date,
     scrollTarget: Date, onScroll: @escaping (Date) -> Void, onScrollSettled: @escaping (Date) -> Void
   ) {
     self.series = series
+    self.xDomain = xDomain
     self.metric = metric
     self.bucket = bucket
     self.visibleDays = visibleDays
@@ -759,6 +783,7 @@ private struct TrendChartView: View {
       }
     }
     .chartScrollableAxes(.horizontal)
+    .chartXScale(domain: xDomain)
     .chartXVisibleDomain(length: visibleSeconds)
     .chartScrollPosition(x: $scrollX)
     .chartXAxis {

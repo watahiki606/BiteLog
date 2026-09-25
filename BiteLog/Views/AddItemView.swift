@@ -2,7 +2,7 @@ import SwiftUI
 
 struct AddItemView: View {
   @Environment(\.dismiss) var dismiss
-  @Binding var selectedTab: Int
+  @Binding var selectedTab: AppTab
 
   let mealType: MealType
   var selectedDate: Date
@@ -18,13 +18,15 @@ struct AddItemView: View {
   @State private var hasMoreData = true
   private let pageSize = 20
 
-  @FocusState private var searchFieldIsFocused: Bool
+  @FocusState private var isSearchFocused: Bool
   @State private var searchDebounceTimer: Timer?
 
-  @State private var showAddedFeedback = false
-  @State private var lastAddedItem: String = ""
-  @State private var feedbackQueue: [String] = []
-  @State private var isProcessingFeedback = false
+  /// このシートで追加できたもの。閉じるまで残し、何を追加したか見て分かるようにする。
+  @State private var addedEntries: [AddedEntry] = []
+  /// 送信中の件数。タップ直後に反応を出すために通信完了を待たずに増やす。
+  @State private var pendingCount = 0
+  @State private var addFailureCount = 0
+  @State private var showingAddFailure = false
 
   @State private var showQuickCreationSheet = false
 
@@ -36,7 +38,7 @@ struct AddItemView: View {
   @State private var showingAPIKeyError = false
   @State private var analysisError: String?
 
-  init(preselectedMealType: MealType, selectedDate: Date, selectedTab: Binding<Int>) {
+  init(preselectedMealType: MealType, selectedDate: Date, selectedTab: Binding<AppTab>) {
     self.mealType = preselectedMealType
     self.selectedDate = selectedDate
     _date = State(initialValue: selectedDate)
@@ -45,23 +47,61 @@ struct AddItemView: View {
 
   var body: some View {
     NavigationStack {
-      ZStack {
-        Color(UIColor.systemGroupedBackground).ignoresSafeArea()
-        mainContentView
-      }
+      contentView
+        .background(Color(UIColor.systemGroupedBackground))
+        .searchable(
+          text: $searchText,
+          placement: .navigationBarDrawer(displayMode: .always),
+          prompt: Text(NSLocalizedString("Search food items", comment: "Search placeholder"))
+        )
+        .searchFocused($isSearchFocused)
+        .onChange(of: searchText) { _, _ in
+          searchDebounceTimer?.invalidate()
+          searchDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+            Task { await resetAndSearch() }
+          }
+        }
+        // 追加しても一覧からは消えないので、タップの結果は自分で示す必要がある。
+        // 一瞬で消える表示は見逃せるため、シートを閉じるまで残す。
+        .safeAreaInset(edge: .bottom) { addedSummaryBar }
+        .sensoryFeedback(.success, trigger: addedEntries.count)
+        .sensoryFeedback(.error, trigger: addFailureCount)
+        .alert(
+          NSLocalizedString("Couldn't add", comment: "Add failure alert title"),
+          isPresented: $showingAddFailure
+        ) {
+          Button(NSLocalizedString("OK", comment: "Button title"), role: .cancel) {}
+        } message: {
+          Text(
+            NSLocalizedString(
+              "The meal was not saved. Check your connection and try again.",
+              comment: "Add failure alert message"))
+        }
       .navigationTitle(NSLocalizedString("Add Meal", comment: "Navigation title"))
+      .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
-          Button(NSLocalizedString("Cancel", comment: "Button title")) { dismiss() }
+          // 追加は即座に保存されるので、1件でも追加したあとに「キャンセル」と
+          // 出すと取り消せるように読めてしまう。完了に切り替える。
+          Button(
+            addedEntries.isEmpty
+              ? NSLocalizedString("Cancel", comment: "Button title")
+              : NSLocalizedString("Done", comment: "Button title")
+          ) {
+            dismiss()
+          }
         }
-        ToolbarItem(placement: .confirmationAction) {
+        // .confirmationAction に置くと塗りつぶしの確定ボタンとして描かれる。
+        // 写真解析はこのシートの確定操作ではないので通常配置にする。
+        ToolbarItem(placement: .topBarTrailing) {
           Button {
             if AIFoodAnalyzer.shared.isAvailable() { showingPhotoPicker = true }
             else { showingAPIKeyError = true }
           } label: {
-            Image(systemName: "camera.viewfinder").font(.title3)
+            Label(
+              NSLocalizedString("Analyze photo", comment: "AI photo analysis"),
+              systemImage: "camera.viewfinder")
           }
-          .buttonStyle(PlainButtonStyle())
         }
       }
       .onAppear {
@@ -115,136 +155,187 @@ struct AddItemView: View {
     }
   }
 
-  private var mainContentView: some View {
-    VStack { searchBarView; feedbackView; contentView }
-  }
+  /// 追加したものを示す下部バー。送信中は即座に出し、完了後は内容に切り替える。
+  @ViewBuilder
+  private var addedSummaryBar: some View {
+    if pendingCount > 0 || !addedEntries.isEmpty {
+      HStack(spacing: 10) {
+        if pendingCount > 0 {
+          ProgressView()
+            .controlSize(.small)
 
-  private var searchBarView: some View {
-    HStack {
-      Image(systemName: "magnifyingglass").foregroundColor(.secondary).padding(.leading, 8)
-      TextField(NSLocalizedString("Search food items", comment: "Search placeholder"), text: $searchText)
-        .padding(10).background(Color(UIColor.secondarySystemBackground)).cornerRadius(10)
-        .focused($searchFieldIsFocused)
-        .onChange(of: searchText) { _, _ in
-          searchDebounceTimer?.invalidate()
-          searchDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
-            Task { await resetAndSearch() }
+          Text(NSLocalizedString("Adding…", comment: "Add in progress"))
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+        } else if let latest = addedEntries.last {
+          Image(systemName: "checkmark.circle.fill")
+            .foregroundStyle(.green)
+            .accessibilityHidden(true)
+
+          VStack(alignment: .leading, spacing: 1) {
+            Text(
+              String(
+                format: NSLocalizedString("Added %@", comment: "Added food confirmation"),
+                latest.name)
+            )
+            .font(.subheadline.weight(.medium))
+            .lineLimit(1)
+
+            Text(addedTotalsText)
+              .font(.caption)
+              .monospacedDigit()
+              .foregroundStyle(.secondary)
           }
         }
-      if !searchText.isEmpty {
-        Button(action: { searchText = ""; Task { await resetAndSearch() } }) {
-          Image(systemName: "xmark.circle.fill").foregroundColor(.secondary).padding(.trailing, 8)
-        }
-      }
-      if searchFieldIsFocused {
-        Button(NSLocalizedString("Cancel", comment: "Cancel search")) {
-          searchText = ""; searchFieldIsFocused = false; Task { await resetAndSearch() }
-        }
-        .transition(.move(edge: .trailing).combined(with: .opacity))
-      }
-    }
-    .padding(.horizontal).padding(.top, 8)
-  }
 
-  private var feedbackView: some View {
-    Group {
-      if showAddedFeedback {
-        HStack {
-          Image(systemName: "checkmark.circle.fill").foregroundColor(.green)
-          Text(String(format: NSLocalizedString("%@ added to %@", comment: "Added food feedback"), lastAddedItem, mealType.localizedName))
-            .font(.subheadline)
-          Spacer()
+        Spacer(minLength: 0)
+
+        // 追加後は検索欄に戻るためキーボードが出たままで、
+        // ナビゲーションバーの閉じるボタンに手が届かない。ここにも置く。
+        if !addedEntries.isEmpty {
+          Button(NSLocalizedString("Done", comment: "Button title")) { dismiss() }
+            .font(.subheadline.weight(.semibold))
         }
-        .padding().background(Color.green.opacity(0.1)).cornerRadius(10).padding(.horizontal)
-        .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .move(edge: .top).combined(with: .opacity)))
       }
+      .padding(.horizontal)
+      .padding(.vertical, 10)
+      .frame(maxWidth: .infinity)
+      .background(.bar)
+      .overlay(alignment: .top) {
+        Divider()
+      }
+      .animation(.easeInOut(duration: 0.2), value: pendingCount)
+      .animation(.easeInOut(duration: 0.2), value: addedEntries.count)
+      .accessibilityElement(children: .combine)
     }
   }
 
+  /// 「計2品 · 150 kcal」。1品でも合計を出して、何が積み上がったかを示す。
+  /// 英語は 1 と複数で語形が変わるので stringsdict 側で出し分ける。
+  private var addedTotalsText: String {
+    return String.localizedStringWithFormat(
+      NSLocalizedString("AddedSummary", comment: "Added items summary"),
+      addedEntries.count,
+      NutritionFormatter.formatCalories(addedEntries.totalCalories))
+  }
+
+  @ViewBuilder
   private var contentView: some View {
     Group {
-      if isInitialLoading { ProgressView().padding() }
-      else if searchResults.isEmpty && !isDataLoaded { EmptyFoodMasterPromptView(selectedTab: $selectedTab, dismiss: dismiss) }
-      else if searchResults.isEmpty && isDataLoaded { emptySearchResultsView }
-      else { searchResultsListView }
+      if isInitialLoading {
+        ProgressView()
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+      } else if searchResults.isEmpty && !isDataLoaded {
+        EmptyFoodMasterPromptView(selectedTab: $selectedTab, dismiss: dismiss)
+      } else if searchResults.isEmpty {
+        emptySearchResultsView
+      } else {
+        searchResultsListView
+      }
+    }
+    .sheet(isPresented: $showQuickCreationSheet) {
+      FoodMasterFormView(mode: .quickAdd(initialProductName: searchText)) { createdFood in
+        Task {
+          // 失敗したときに閉じるとエラーを見せられないので、成功時だけ閉じる。
+          if await addFoodItem(createdFood) { dismiss() }
+        }
+      }
     }
   }
 
   private var searchResultsListView: some View {
     List {
       ForEach(searchResults, id: \.id) { item in
+        // .plain にしないと食品名と数値まで着色されて読みにくくなる。
+        // タップの受け付けは List 標準の行ハイライトが示す。
         Button { Task { await addFoodItem(item) } } label: { PastItemCard(item: item) }
-          .buttonStyle(ScaleButtonStyle())
+          .buttonStyle(.plain)
           .onAppear {
             if item.id == searchResults.last?.id && hasMoreData && !isLoading {
               Task { await loadMoreContent() }
             }
           }
       }
+
       if !searchText.isEmpty && !hasMoreData {
-        Section {
-          Button { showQuickCreationSheet = true } label: {
-            HStack {
-              Image(systemName: "plus.circle.fill").font(.title2).foregroundColor(.blue)
-              VStack(alignment: .leading, spacing: 4) {
-                Text(String(format: NSLocalizedString("Create and add \"%@\"", comment: "Create and add button"), searchText)).font(.headline)
-                Text(NSLocalizedString("Quickly add a new food item", comment: "Quick add description")).font(.caption).foregroundColor(.secondary)
-              }
-              Spacer()
-              Image(systemName: "chevron.right").font(.caption).foregroundColor(.secondary)
+        Button { showQuickCreationSheet = true } label: {
+          Label {
+            VStack(alignment: .leading, spacing: 2) {
+              Text(
+                String(
+                  format: NSLocalizedString(
+                    "Create and add \"%@\"", comment: "Create and add button"), searchText))
+              Text(NSLocalizedString("Quickly add a new food item", comment: "Quick add description"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
-            .padding(.vertical, 8)
+          } icon: {
+            Image(systemName: "plus.circle.fill")
+              .accessibilityHidden(true)
           }
-          .buttonStyle(PlainButtonStyle())
         }
       }
+
       if hasMoreData {
-        Section {
-          HStack { Spacer(); if isLoading { ProgressView() }; Spacer() }.padding(.vertical, 8).id("loadingIndicator")
+        HStack {
+          Spacer()
+          if isLoading { ProgressView() }
+          Spacer()
         }
+        .listRowBackground(Color.clear)
       }
     }
     .listStyle(.insetGrouped)
-    .sheet(isPresented: $showQuickCreationSheet) {
-      FoodMasterFormView(mode: .quickAdd(initialProductName: searchText)) { createdFood in
-        Task { await addFoodItem(createdFood); DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { dismiss() } }
-      }
-    }
   }
 
+  @ViewBuilder
   private var emptySearchResultsView: some View {
-    VStack(spacing: 16) {
-      Image(systemName: "exclamationmark.magnifyingglass").font(.system(size: 48)).foregroundColor(.secondary)
-      Text(NSLocalizedString("No search results found", comment: "No search results message")).font(.headline).foregroundColor(.secondary)
-      if !searchText.isEmpty {
-        Button { showQuickCreationSheet = true } label: {
-          HStack {
-            Image(systemName: "plus.circle.fill").font(.title2)
-            Text(String(format: NSLocalizedString("Create and add \"%@\"", comment: "Create and add button"), searchText)).fontWeight(.semibold)
-          }
-          .padding(.horizontal, 20).padding(.vertical, 10)
-          .background(Color.blue).foregroundColor(.white).cornerRadius(10)
+    if searchText.isEmpty {
+      ContentUnavailableView {
+        Label(
+          NSLocalizedString("No Food Items", comment: "No food items"), systemImage: "fork.knife")
+      } description: {
+        Text(
+          NSLocalizedString(
+            "Register new food items in the food tab", comment: "No search results message"))
+      } actions: {
+        Button(NSLocalizedString("Go to Food Management", comment: "Go to food management button")) {
+          dismiss()
+          selectedTab = .food
         }
-        .padding(.top, 10)
-        Text(NSLocalizedString("or", comment: "Or text")).font(.subheadline).foregroundColor(.secondary)
+        .buttonStyle(.borderedProminent)
       }
-      Text(NSLocalizedString("Register new food items in the food tab", comment: "No search results message"))
-        .font(.subheadline).foregroundColor(.secondary).multilineTextAlignment(.center).padding(.horizontal).lineLimit(nil)
-      Button { dismiss(); selectedTab = 1 } label: {
-        Text(NSLocalizedString("Go to Food Management", comment: "Go to food management button"))
-          .fontWeight(.semibold).padding(.horizontal, 20).padding(.vertical, 10)
-          .background(Color(UIColor.systemGray5)).foregroundColor(.primary).cornerRadius(10)
-      }
-    }
-    .frame(maxWidth: .infinity).padding(.vertical, 40)
-    .sheet(isPresented: $showQuickCreationSheet) {
-      FoodMasterFormView(mode: .quickAdd(initialProductName: searchText)) { createdFood in
-        Task { await addFoodItem(createdFood); DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { dismiss() } }
+    } else {
+      ContentUnavailableView {
+        Label(
+          NSLocalizedString("No search results found", comment: "No search results message"),
+          systemImage: "magnifyingglass")
+      } description: {
+        Text(
+          NSLocalizedString(
+            "Register new food items in the food tab", comment: "No search results message"))
+      } actions: {
+        Button {
+          showQuickCreationSheet = true
+        } label: {
+          Text(
+            String(
+              format: NSLocalizedString("Create and add \"%@\"", comment: "Create and add button"),
+              searchText))
+        }
+        .buttonStyle(.borderedProminent)
+
+        Button(NSLocalizedString("Go to Food Management", comment: "Go to food management button")) {
+          dismiss()
+          selectedTab = .food
+        }
       }
     }
   }
 
-  private func addFoodItem(_ foodMaster: FoodMasterDTO) async {
+  /// - Returns: 保存できたら true。失敗したら false を返し、呼び出し側が画面を閉じないようにする。
+  @discardableResult
+  private func addFoodItem(_ foodMaster: FoodMasterDTO) async -> Bool {
     let dto = LogItemCreateDTO(
       id: UUID().uuidString,
       timestamp: ISO8601DateFormatter().string(from: date),
@@ -254,34 +345,44 @@ struct AddItemView: View {
       foodMasterId: foodMaster.id.uuidString,
       nutritionSnapshot: NutritionSnapshot.from(foodMaster)
     )
+
+    // 通信の完了を待つと、回線によっては数秒のあいだ画面が無反応になる。
+    // タップを受け付けたことは先に示す。
+    pendingCount += 1
+    defer { pendingCount -= 1 }
+
     do {
       _ = try await APIClient.shared.createLogItem(dto)
     } catch {
+      // 握りつぶすと、保存されていないのに記録したつもりになれてしまう。
       print("AddItemView addFoodItem error: \(error)")
+      addFailureCount += 1
+      showingAddFailure = true
+      return false
     }
 
-    let feedbackText = "\(foodMaster.brandName) \(foodMaster.productName)"
-    feedbackQueue.append(feedbackText)
-    processFeedbackQueue()
+    let nutrition = NutritionSnapshot.from(foodMaster)
+      .scaled(by: foodMaster.lastNumberOfServings)
+    addedEntries.append(
+      AddedEntry(
+        name: FoodRow.displayName(
+          brand: foodMaster.brandName, product: foodMaster.productName),
+        calories: nutrition.calories))
+
+    announceAdded()
 
     searchText = ""
     await resetAndSearch()
-    searchFieldIsFocused = true
+    isSearchFocused = true
+    return true
   }
 
-  private func processFeedbackQueue() {
-    guard !isProcessingFeedback, let nextItem = feedbackQueue.first else { return }
-    isProcessingFeedback = true
-    feedbackQueue.removeFirst()
-    lastAddedItem = nextItem
-    withAnimation(.easeIn(duration: 0.2)) { showAddedFeedback = true }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-      withAnimation(.easeOut(duration: 0.2)) { showAddedFeedback = false }
-      DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-        isProcessingFeedback = false
-        processFeedbackQueue()
-      }
-    }
+  /// VoiceOver は画面の下部バーが変わっても読まないので、追加できたことを明示的に伝える。
+  private func announceAdded() {
+    guard let latest = addedEntries.last else { return }
+    let message = String(
+      format: NSLocalizedString("Added %@", comment: "Added food confirmation"), latest.name)
+    AccessibilityNotification.Announcement(message).post()
   }
 
   private func resetAndSearch() async {
@@ -314,62 +415,57 @@ struct AddItemView: View {
   }
 }
 
-// マスターデータが0件の場合に表示するビュー
+/// 食品マスタが1件も無いときの案内。
 struct EmptyFoodMasterPromptView: View {
-  @Binding var selectedTab: Int
+  @Binding var selectedTab: AppTab
   var dismiss: DismissAction
 
   var body: some View {
-    VStack(spacing: 10) {
-      Spacer()
-      Image(systemName: "fork.knife").font(.system(size: 48)).foregroundColor(.secondary)
-      Text(NSLocalizedString("No Food Items Registered", comment: "No food items")).font(.title2).fontWeight(.bold)
-      Text(NSLocalizedString("You need to register food items before you can add meals.", comment: "Register food prompt"))
-        .multilineTextAlignment(.center).foregroundColor(.secondary).padding(.horizontal, 40).lineLimit(nil)
-      Button { dismiss(); selectedTab = 1 } label: {
-        Text(NSLocalizedString("Go to Food Management", comment: "Go to food management button"))
-          .fontWeight(.semibold).padding(.horizontal, 20).padding(.vertical, 10)
-          .background(Color.blue).foregroundColor(.white).cornerRadius(10)
+    ContentUnavailableView {
+      Label(
+        NSLocalizedString("No Food Items Registered", comment: "No food items"),
+        systemImage: "fork.knife")
+    } description: {
+      Text(
+        NSLocalizedString(
+          "You need to register food items before you can add meals.",
+          comment: "Register food prompt"))
+    } actions: {
+      Button(NSLocalizedString("Go to Food Management", comment: "Go to food management button")) {
+        dismiss()
+        selectedTab = .food
       }
-      .padding(.top, 10)
-      Spacer()
+      .buttonStyle(.borderedProminent)
     }
-    .padding()
   }
 }
 
-// 過去の食事アイテムカード
+/// 検索結果の行。ここだけは前回の摂取量 (`lastNumberOfServings`) 換算の値を出すので、
+/// 1食分を出す `FoodMasterRow` とは表示する数値が異なる。
 struct PastItemCard: View {
   let item: FoodMasterDTO
 
   private var servings: Double { item.lastNumberOfServings }
-  private var nutrition: NutritionValues { NutritionSnapshot.from(item).scaled(by: servings) }
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      HStack {
-        VStack(alignment: .leading, spacing: 4) {
-          Text("\(item.brandName) \(item.productName)").font(.headline)
-        }
-        Spacer()
-        Text("\(nutrition.calories, specifier: "%.0f")").font(.title3.bold())
-          + Text(" kcal").font(.subheadline).foregroundColor(.secondary)
-      }
-      HStack(spacing: 8) {
-        MacroNutrientBadge(label: "P", value: nutrition.protein, color: .blue)
-        MacroNutrientBadge(label: "F", value: nutrition.fat, color: .yellow)
-        MacroNutrientBadge(label: "S", value: nutrition.netCarbs, color: .green)
-        MacroNutrientBadge(label: "Fiber", value: nutrition.dietaryFiber, color: .brown)
-      }
-      HStack {
-        Text(NSLocalizedString("Servings:", comment: "Servings label")).font(.subheadline).foregroundColor(.secondary)
-        Text("\(NutritionFormatter.formatNutrition(servings)) \(item.portionUnit)").font(.subheadline)
-        Spacer()
-      }
-    }
-    .padding()
-    .background(Color(UIColor.systemBackground))
-    .cornerRadius(12)
-    .shadow(color: Color.black.opacity(0.05), radius: 3, x: 0, y: 2)
+    FoodRow(
+      title: FoodRow.displayName(brand: item.brandName, product: item.productName),
+      subtitle: FoodRow.amountText(servings, unit: item.portionUnit),
+      values: NutritionSnapshot.from(item).scaled(by: servings)
+    )
+  }
+}
+
+/// このシートで追加できた1件。確認バーに出すぶんだけを持つ。
+struct AddedEntry: Identifiable {
+  let id = UUID()
+  let name: String
+  let calories: Double
+}
+
+extension Array where Element == AddedEntry {
+  /// 確認バーに出す累計カロリー。
+  var totalCalories: Double {
+    reduce(0) { $0 + $1.calories }
   }
 }

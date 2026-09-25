@@ -213,3 +213,46 @@
 "No records in this period" = "No records in this period";
 "Failed to load statistics" = "Failed to load statistics";
 "Retry" = "Retry";
+
+// Design System - short nutrient labels for narrow places such as list chips
+"Nutrient.Short.Calories" = "Cal";
+"Nutrient.Short.Protein" = "P";
+"Nutrient.Short.Fat" = "F";
+"Nutrient.Short.NetCarbs" = "Sugar";
+"Nutrient.Short.Fiber" = "Fiber";
+"Nutrient.Short.Carbs" = "Carbs";
+
+// Design System - VoiceOver
+"Unit.Kilocalories" = "kilocalories";
+"Unit.Grams" = "grams";
+"%@ of %@ goal" = "%1$@ of %2$@ goal";
+
+// Date navigation
+"Today" = "Today";
+"Yesterday" = "Yesterday";
+"Previous day" = "Previous day";
+"Next day" = "Next day";
+
+// Log screen
+"More nutrients" = "More nutrients";
+"Not logged yet" = "Not logged yet";
+"More options for %@" = "More options for %@";
+
+// Edit screen / photo analysis
+"Servings" = "Servings";
+"Analyze photo" = "Analyze photo";
+
+// Statistics screen
+"Period" = "Period";
+"Previous period" = "Previous period";
+"Next period" = "Next period";
+
+// Keyboard toolbar
+"Previous field" = "Previous field";
+"Next field" = "Next field";
+
+// Meal add feedback
+"Adding…" = "Adding…";
+"Added %@" = "Added %@";
+"Couldn't add" = "Couldn't add";
+"The meal was not saved. Check your connection and try again." = "The meal was not saved. Check your connection and try again.";
