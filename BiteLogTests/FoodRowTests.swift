@@ -15,8 +15,7 @@ struct FoodRowDisplayNameTests {
     #expect(FoodRow.displayName(brand: "", product: "ごはん") == "ごはん")
   }
 
-  /// 実データにはブランド名へ商品名と同じ語を入れている行が多く、
-  /// そのまま連結すると「ゆで卵 ゆで卵」と同じ語が2回出ていた。
+  /// 実データにはブランド名へ商品名と同じ語を入れている行が多い。
   @Test func ブランド名が商品名と同じなら重ねない() {
     #expect(FoodRow.displayName(brand: "ゆで卵", product: "ゆで卵") == "ゆで卵")
   }

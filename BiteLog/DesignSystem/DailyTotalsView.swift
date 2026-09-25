@@ -3,7 +3,7 @@ import SwiftUI
 /// 1日の摂取量を目標と並べて示す要約。
 ///
 /// リング1つと主要3栄養素を主役にし、毎日は追わない食物繊維と炭水化物は畳んでおく。
-/// 以前は4本のバーと炭水化物行が常に開いていて、要約だけで画面の3分の1を使っていた。
+/// 全部を開いたままにすると要約だけで画面の3分の1を使う。
 struct DailyTotalsView: View {
   let totals: NutritionValues
   let goals: NutritionGoalsTargets

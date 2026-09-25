@@ -2,9 +2,8 @@ import SwiftUI
 
 /// アプリで扱う栄養素。表示名・色・単位・短縮ラベルをここに集約する。
 ///
-/// 以前は同じ栄養素の色と略号が ContentView / DayContentView / CommonComponents /
-/// StatisticsView に別々に直書きされており、同じ食品が画面ごとに違う見た目で出ていた。
-/// 栄養素の見た目は必ずこの型を経由させる。
+/// 栄養素の見た目は必ずこの型を経由させる。View 側で色や略号を直書きすると、
+/// 同じ食品が画面ごとに違う見た目になる。
 enum Nutrient: String, CaseIterable, Identifiable {
   case calories
   case protein
@@ -32,8 +31,7 @@ enum Nutrient: String, CaseIterable, Identifiable {
   }
 
   /// 横幅が取れない場所で使う短い名前。
-  /// 以前は "S"(糖質) / "Fb"(食物繊維) という推測不能な略号だったため、
-  /// 1文字略号ではなく言語ごとに読める語を用意する。
+  /// 1文字に詰めると糖質と食物繊維が区別できないので、言語ごとに読める語を置く。
   var shortLabel: String {
     switch self {
     case .calories: return NSLocalizedString("Nutrient.Short.Calories", comment: "Short nutrient label")

@@ -233,7 +233,8 @@ struct StatisticsView: View {
     .navigationTitle(NSLocalizedString("Statistics", comment: "Tab name"))
     .navigationBarTitleDisplayMode(.inline)
     .toolbar {
-      // セグメントが3段重なって選択肢だらけだったので、期間だけツールバーに逃がす。
+      // 期間・指標・セクションのセグメントが縦に3段重なるとグラフより操作部品が
+      // 目立つので、期間だけツールバーに逃がす。
       ToolbarItem(placement: .topBarTrailing) {
         // Picker をそのまま置くとナビゲーションバー幅いっぱいに伸びるので Menu に包む。
         Menu {

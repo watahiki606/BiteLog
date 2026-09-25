@@ -42,7 +42,6 @@ struct DayContentView: View {
       }
     }
     // 広告はスクロール内容に混ぜず画面下端に固定する。
-    // 以前は負のパディングでスクロール内に押し込んでいて、余白が崩れやすかった。
     .safeAreaInset(edge: .bottom) {
       AdaptiveBannerView()
         .frame(height: 50)
@@ -174,8 +173,7 @@ struct DayContentView: View {
 
   /// 未記録の食事をまとめた1セクション。
   ///
-  /// 以前は未記録でも5つの食事が「昨日をコピー」「◯◯を追加」の2ボタン付きで
-  /// 並んでいて、何も食べていない日ほど画面が縦に長くなっていた。
+  /// 食事ごとに空のセクションを立てると、何も食べていない日ほど画面が縦に長くなる。
   @ViewBuilder
   private var unloggedMealsSection: some View {
     let types = unloggedMealTypes

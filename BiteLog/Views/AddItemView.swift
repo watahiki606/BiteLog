@@ -62,7 +62,7 @@ struct AddItemView: View {
           }
         }
         // 追加しても一覧からは消えないので、タップの結果は自分で示す必要がある。
-        // 0.5 秒だけ出るバナーは見逃せるため、閉じるまで残る下部バーにする。
+        // 一瞬で消える表示は見逃せるため、シートを閉じるまで残す。
         .safeAreaInset(edge: .bottom) { addedSummaryBar }
         .sensoryFeedback(.success, trigger: addedEntries.count)
         .sensoryFeedback(.error, trigger: addFailureCount)
@@ -91,8 +91,8 @@ struct AddItemView: View {
             dismiss()
           }
         }
-        // 写真解析はこのシートの確定操作ではない。.confirmationAction に置くと
-        // 塗りつぶしの「完了」ボタンに見えてしまうので通常配置にする。
+        // .confirmationAction に置くと塗りつぶしの確定ボタンとして描かれる。
+        // 写真解析はこのシートの確定操作ではないので通常配置にする。
         ToolbarItem(placement: .topBarTrailing) {
           Button {
             if AIFoodAnalyzer.shared.isAvailable() { showingPhotoPicker = true }
@@ -354,8 +354,7 @@ struct AddItemView: View {
     do {
       _ = try await APIClient.shared.createLogItem(dto)
     } catch {
-      // 以前は失敗しても追加できたことにしていたため、保存されていないのに
-      // 記録したつもりになれてしまった。失敗は失敗として出す。
+      // 握りつぶすと、保存されていないのに記録したつもりになれてしまう。
       print("AddItemView addFoodItem error: \(error)")
       addFailureCount += 1
       showingAddFailure = true

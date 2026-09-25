@@ -44,7 +44,7 @@ struct ContentView: View {
   }
 
   /// 選択中のログタブをもう一度タップしたら今日に戻す。
-  /// タブバー自作をやめた代わりに、この挙動だけ Binding の set 側で拾う。
+  /// TabView は同じタブの再選択を通知しないので、Binding の set 側で拾う。
   private var tabSelection: Binding<AppTab> {
     Binding(
       get: { selectedTab },
@@ -118,7 +118,6 @@ struct ContentView: View {
 
 /// ツールバー中央の日付ナビゲーション。
 ///
-/// 前後の矢印は以前 Image そのままでタップ領域が 44pt に満たなかった。
 /// 日付は「今日」「昨日」と曜日付きの表記にして、いつを見ているかを一目で分かるようにする。
 struct DateNavigationBar: View {
   @Binding var selectedDate: Date

@@ -3,7 +3,6 @@ import SwiftUI
 // MARK: - チップ
 
 /// 一覧の行に並べる栄養素の小さな表示。
-/// 旧 MacroChip / MacroNutrientBadge / MacroView / NutrientBadge をこれ1つに統合した。
 struct NutrientChip: View {
   let nutrient: Nutrient
   let value: Double
