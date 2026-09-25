@@ -397,6 +397,7 @@ struct StatisticsView: View {
 
         TrendChartView(
           series: displayTrendSeries,
+          xDomain: trendDomain,
           metric: metric,
           bucket: bucket,
           visibleDays: visibleDays,
@@ -416,6 +417,17 @@ struct StatisticsView: View {
         .id(reloadKey)
       }
     }
+  }
+
+  /// グラフの X 軸が覆う範囲。取得済みバッファの全体を明示的に指定する。
+  ///
+  /// 指定しないとドメインが実データの範囲から決まるため、直近の日に記録が無いと
+  /// グラフがその日まで進めず、上の期間ラベルと軸の日付がずれる。
+  private var trendDomain: ClosedRange<Date> {
+    let end = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: bufferTo))
+      ?? bufferTo
+    let start = min(cal.startOfDay(for: bufferFrom), end)
+    return start...end
   }
 
   private var xAxisStride: Int {
@@ -662,6 +674,7 @@ struct StatisticsView: View {
 /// 親（カード群）はスクロール停止時（`onScrollSettled`）にのみ再評価される。
 private struct TrendChartView: View {
   let series: [DailyNutrition]
+  let xDomain: ClosedRange<Date>
   let metric: TrendMetric
   let bucket: StatBucket
   let visibleDays: Int
@@ -678,11 +691,13 @@ private struct TrendChartView: View {
   @State private var settleTask: Task<Void, Never>?
 
   init(
-    series: [DailyNutrition], metric: TrendMetric, bucket: StatBucket, visibleDays: Int,
+    series: [DailyNutrition], xDomain: ClosedRange<Date>, metric: TrendMetric,
+    bucket: StatBucket, visibleDays: Int,
     visibleSeconds: TimeInterval, goalLine: Double?, xAxisStride: Int, initialScrollX: Date,
     scrollTarget: Date, onScroll: @escaping (Date) -> Void, onScrollSettled: @escaping (Date) -> Void
   ) {
     self.series = series
+    self.xDomain = xDomain
     self.metric = metric
     self.bucket = bucket
     self.visibleDays = visibleDays
@@ -767,6 +782,7 @@ private struct TrendChartView: View {
       }
     }
     .chartScrollableAxes(.horizontal)
+    .chartXScale(domain: xDomain)
     .chartXVisibleDomain(length: visibleSeconds)
     .chartScrollPosition(x: $scrollX)
     .chartXAxis {

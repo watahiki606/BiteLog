@@ -88,9 +88,16 @@ struct FoodRow: View {
 }
 
 extension FoodRow {
-  /// 「ブランド名 商品名」の組み立て。ブランド名が空のときに先頭の空白が残らないようにする。
+  /// 「ブランド名 商品名」の組み立て。
+  ///
+  /// 実データではブランド名を使わず商品名と同じ語を入れている行が多く、
+  /// そのまま連結すると「ゆで卵 ゆで卵」のように同じ語が2回出る。
+  /// ブランド名が空か商品名と同じときは商品名だけにする。
   static func displayName(brand: String, product: String) -> String {
-    brand.isEmpty ? product : "\(brand) \(product)"
+    let trimmedBrand = brand.trimmingCharacters(in: .whitespaces)
+    let trimmedProduct = product.trimmingCharacters(in: .whitespaces)
+    if trimmedBrand.isEmpty || trimmedBrand == trimmedProduct { return trimmedProduct }
+    return "\(trimmedBrand) \(trimmedProduct)"
   }
 
   /// 「2 個」「100 g」のような量の表記。
