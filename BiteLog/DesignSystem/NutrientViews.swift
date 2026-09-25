@@ -7,6 +7,8 @@ struct NutrientChip: View {
   let nutrient: Nutrient
   let value: Double
 
+  @Environment(\.colorSchemeContrast) private var contrast
+
   var body: some View {
     HStack(spacing: 3) {
       Text(nutrient.shortLabel)
@@ -21,7 +23,18 @@ struct NutrientChip: View {
     .lineLimit(1)
     .padding(.vertical, 3)
     .padding(.horizontal, 6)
-    .background(nutrient.color.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+    // コントラストを上げる設定では、地に溶ける薄い面をそのまま出さない。
+    // 濃さを足したうえで輪郭を描き、チップの範囲が分かるようにする。
+    .background(
+      nutrient.color.opacity(contrast == .increased ? 0.24 : 0.12),
+      in: RoundedRectangle(cornerRadius: 6)
+    )
+    .overlay {
+      if contrast == .increased {
+        RoundedRectangle(cornerRadius: 6)
+          .strokeBorder(nutrient.color, lineWidth: 1)
+      }
+    }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(nutrient.accessibilityLabel(for: value))
   }
@@ -70,6 +83,9 @@ struct NutrientBar: View {
   let value: Double
   let target: Double
 
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.colorSchemeContrast) private var contrast
+
   /// 超過時に表示する最大倍率。目標の150%でバーが埋まる。
   private let maxDisplayRatio: Double = 1.5
 
@@ -114,13 +130,14 @@ struct NutrientBar: View {
       GeometryReader { geometry in
         ZStack(alignment: .leading) {
           Capsule()
-            .fill(barColor.opacity(0.15))
+            .fill(barColor.opacity(contrast == .increased ? 0.3 : 0.15))
             .frame(height: 5)
 
           Capsule()
             .fill(barColor)
             .frame(width: geometry.size.width * barWidth, height: 5)
-            .animation(.easeInOut(duration: 0.5), value: barWidth)
+            // 視差効果を減らす設定では伸び縮みさせず、新しい長さで直接描く。
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.5), value: barWidth)
 
           if isOverTarget {
             Rectangle()
@@ -155,6 +172,9 @@ struct CalorieRingView: View {
   let calories: Double
   let targetCalories: Double
 
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.colorSchemeContrast) private var contrast
+
   /// 文字サイズに追随させる。固定 90pt のままだと大きい文字で数字が枠からはみ出す。
   @ScaledMetric(relativeTo: .title2) private var scaledDiameter: CGFloat = 92
   @ScaledMetric(relativeTo: .title2) private var scaledLineWidth: CGFloat = 10
@@ -181,13 +201,14 @@ struct CalorieRingView: View {
   var body: some View {
     ZStack {
       Circle()
-        .stroke(ringColor.opacity(0.15), lineWidth: lineWidth)
+        .stroke(ringColor.opacity(contrast == .increased ? 0.3 : 0.15), lineWidth: lineWidth)
 
       Circle()
         .trim(from: 0, to: progress)
         .stroke(ringColor, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
         .rotationEffect(.degrees(-90))
-        .animation(.easeInOut(duration: 0.6), value: progress)
+        // 視差効果を減らす設定では円弧を伸ばさず、新しい位置で直接描く。
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.6), value: progress)
 
       VStack(spacing: 0) {
         Text(NutritionFormatter.formatCalories(calories))

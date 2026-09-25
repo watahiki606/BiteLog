@@ -9,15 +9,24 @@ struct DailyTotalsView: View {
   let goals: NutritionGoalsTargets
   @Binding var showsAllNutrients: Bool
 
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
   var body: some View {
     Group {
-      HStack(alignment: .center, spacing: 16) {
-        CalorieRingView(calories: totals.calories, targetCalories: goals.calories)
+      // 大きな文字ではリングの横に残る幅が栄養素名だけで埋まり、
+      // バーの数値が折り返して読めなくなる。行と同じく縦積みに切り替える。
+      if dynamicTypeSize.isAccessibilitySize {
+        VStack(alignment: .leading, spacing: 12) {
+          CalorieRingView(calories: totals.calories, targetCalories: goals.calories)
+            .frame(maxWidth: .infinity, alignment: .center)
 
-        VStack(spacing: 8) {
-          NutrientBar(nutrient: .protein, value: totals.protein, target: goals.protein)
-          NutrientBar(nutrient: .fat, value: totals.fat, target: goals.fat)
-          NutrientBar(nutrient: .netCarbs, value: totals.netCarbs, target: goals.netCarbs)
+          macroBars
+        }
+      } else {
+        HStack(alignment: .center, spacing: 16) {
+          CalorieRingView(calories: totals.calories, targetCalories: goals.calories)
+
+          macroBars
         }
       }
 
@@ -34,6 +43,14 @@ struct DailyTotalsView: View {
         Text(NSLocalizedString("More nutrients", comment: "Disclosure title"))
       }
       .font(.subheadline)
+    }
+  }
+
+  private var macroBars: some View {
+    VStack(spacing: 8) {
+      NutrientBar(nutrient: .protein, value: totals.protein, target: goals.protein)
+      NutrientBar(nutrient: .fat, value: totals.fat, target: goals.fat)
+      NutrientBar(nutrient: .netCarbs, value: totals.netCarbs, target: goals.netCarbs)
     }
   }
 }

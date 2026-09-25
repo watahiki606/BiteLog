@@ -27,6 +27,8 @@ struct AddItemView: View {
   @State private var pendingCount = 0
   @State private var addFailureCount = 0
   @State private var showingAddFailure = false
+  @State private var isUndoing = false
+  @State private var undoFailure: OperationFailure?
 
   @State private var showQuickCreationSheet = false
 
@@ -77,6 +79,7 @@ struct AddItemView: View {
               "The meal was not saved. Check your connection and try again.",
               comment: "Add failure alert message"))
         }
+        .operationFailureAlert($undoFailure)
       .navigationTitle(NSLocalizedString("Add Meal", comment: "Navigation title"))
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
@@ -189,6 +192,16 @@ struct AddItemView: View {
         }
 
         Spacer(minLength: 0)
+
+        // 行をタップした時点で保存されるので、誤タップの戻し方がここにしか無い。
+        // 無いとログのタブへ移動して消しに行くことになる。
+        if !addedEntries.isEmpty {
+          Button(NSLocalizedString("Undo", comment: "Undo last add")) {
+            Task { await undoLastAdd() }
+          }
+          .font(.subheadline)
+          .disabled(isUndoing)
+        }
 
         // 追加後は検索欄に戻るためキーボードが出たままで、
         // ナビゲーションバーの閉じるボタンに手が届かない。ここにも置く。
@@ -336,8 +349,9 @@ struct AddItemView: View {
   /// - Returns: 保存できたら true。失敗したら false を返し、呼び出し側が画面を閉じないようにする。
   @discardableResult
   private func addFoodItem(_ foodMaster: FoodMasterDTO) async -> Bool {
+    let logItemID = UUID()
     let dto = LogItemCreateDTO(
-      id: UUID().uuidString,
+      id: logItemID.uuidString,
       timestamp: ISO8601DateFormatter().string(from: date),
       logDate: LogItemDTO.formatLogDate(date),
       mealType: mealType.rawValue,
@@ -365,6 +379,7 @@ struct AddItemView: View {
       .scaled(by: foodMaster.lastNumberOfServings)
     addedEntries.append(
       AddedEntry(
+        logItemID: logItemID,
         name: FoodRow.displayName(
           brand: foodMaster.brandName, product: foodMaster.productName),
         calories: nutrition.calories))
@@ -375,6 +390,26 @@ struct AddItemView: View {
     await resetAndSearch()
     isSearchFocused = true
     return true
+  }
+
+  /// 直前に追加した1件を取り消す。
+  private func undoLastAdd() async {
+    guard let latest = addedEntries.last, !isUndoing else { return }
+    isUndoing = true
+    defer { isUndoing = false }
+
+    do {
+      try await APIClient.shared.deleteLogItem(id: latest.logItemID)
+    } catch {
+      undoFailure = .deleting(error)
+      return
+    }
+
+    addedEntries.removeLast()
+    AccessibilityNotification.Announcement(
+      String(
+        format: NSLocalizedString("Removed %@", comment: "Undo confirmation"), latest.name)
+    ).post()
   }
 
   /// VoiceOver は画面の下部バーが変わっても読まないので、追加できたことを明示的に伝える。
@@ -456,9 +491,11 @@ struct PastItemCard: View {
   }
 }
 
-/// このシートで追加できた1件。確認バーに出すぶんだけを持つ。
+/// このシートで追加できた1件。確認バーに出すぶんと、取り消しに要る記録の ID を持つ。
 struct AddedEntry: Identifiable {
   let id = UUID()
+  /// 作成した記録の ID。取り消すときにこれを消す。
+  let logItemID: UUID
   let name: String
   let calories: Double
 }

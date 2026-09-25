@@ -6,10 +6,6 @@
 "Delete" = "Delete";
 "Add" = "Add";
 "Language" = "Language";
-"System Default" = "System Default";
-"Language Changed" = "Language Changed";
-"Apply" = "Apply";
-"The app needs to restart to apply the language change. Restart now?" = "The app needs to restart to apply the language change. Restart now?";
 
 // Meal Types
 "Breakfast" = "Breakfast";
@@ -278,3 +274,10 @@
 
 // Goal input
 "Enter a number greater than 0. Fields left as they are keep their current goal." = "Enter a number greater than 0. Fields left as they are keep their current goal.";
+
+// Undo add
+"Undo" = "Undo";
+"Removed %@" = "Removed %@";
+
+// Language settings
+"Change the language in the Settings app, under Preferred Language." = "Change the language in the Settings app, under Preferred Language.";

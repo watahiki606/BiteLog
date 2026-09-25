@@ -5,10 +5,6 @@
 "Delete" = "削除";
 "Add" = "追加";
 "Language" = "言語";
-"System Default" = "システム設定に従う";
-"Language Changed" = "言語が変更されました";
-"Apply" = "適用";
-"The app needs to restart to apply the language change. Restart now?" = "言語変更を適用するにはアプリを再起動する必要があります。今すぐ再起動しますか？";
 
 // Meal Types
 "Breakfast" = "朝食";
@@ -293,3 +289,10 @@
 
 // 目標の入力
 "Enter a number greater than 0. Fields left as they are keep their current goal." = "0 より大きい数値を入力してください。そのままの欄は今の目標を保ちます。";
+
+// 追加の取り消し
+"Undo" = "取り消す";
+"Removed %@" = "%@ を取り消しました";
+
+// 言語設定
+"Change the language in the Settings app, under Preferred Language." = "言語は設定アプリの「優先する言語」で変更できます。";
