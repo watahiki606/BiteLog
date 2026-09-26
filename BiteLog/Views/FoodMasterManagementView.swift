@@ -319,6 +319,8 @@ struct EmptyFoodMasterView: View {
 /// 食品マスタ1件の行。表示する量は1食分 (portionSize)。
 struct FoodMasterRow: View {
   let foodMaster: FoodMasterDTO
+  /// 一覧では2行に抑える。似た名前から1つ選ばせる場面では nil を渡す。
+  var titleLineLimit: Int? = 2
 
   var body: some View {
     FoodRow(
@@ -327,7 +329,8 @@ struct FoodMasterRow: View {
       subtitle: FoodRow.amountText(foodMaster.portionSize, unit: foodMaster.portionUnit),
       values: foodMaster.portionNutritionValues,
       leadingSymbol: foodMaster.isMine == true ? "person.fill" : nil,
-      leadingSymbolLabel: NSLocalizedString("My Items", comment: "My food items filter")
+      leadingSymbolLabel: NSLocalizedString("My Items", comment: "My food items filter"),
+      titleLineLimit: titleLineLimit
     )
   }
 }

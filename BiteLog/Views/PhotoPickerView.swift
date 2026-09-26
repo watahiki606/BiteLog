@@ -383,7 +383,8 @@ struct AIAnalysisResultView: View {
           Button {
             Task { await logExisting(foodMaster) }
           } label: {
-            FoodMasterRow(foodMaster: foodMaster)
+            // 似た名前から1つ選ばせる場面なので、名前は途中で切らない。
+            FoodMasterRow(foodMaster: foodMaster, titleLineLimit: nil)
               .padding(12)
               .frame(maxWidth: .infinity, alignment: .leading)
               .background(

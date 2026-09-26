@@ -13,6 +13,9 @@ struct FoodRow: View {
   /// 行頭に出す SF Symbol。自分で登録した食品を示す場合などに使う。
   var leadingSymbol: String?
   var leadingSymbolLabel: String?
+  /// 名前の行数。一覧では2行に抑えるが、似た名前から1つ選ばせる場面では
+  /// 途中で切ると見分けがつかなくなるので nil を渡して全部出す。
+  var titleLineLimit: Int? = 2
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -52,7 +55,10 @@ struct FoodRow: View {
           .font(.subheadline.weight(.medium))
           .foregroundStyle(isDeleted ? .secondary : .primary)
           .strikethrough(isDeleted)
-          .lineLimit(2)
+          .lineLimit(titleLineLimit)
+          // 行数を制限しない場合だけ、必要な高さを確保させる。
+          // これが無いと親の提案した高さに収まるよう2行で切られる。
+          .fixedSize(horizontal: false, vertical: titleLineLimit == nil)
 
         if isDeleted && !dynamicTypeSize.isAccessibilitySize {
           deletedBadge
