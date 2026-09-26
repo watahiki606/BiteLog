@@ -63,15 +63,15 @@ struct AddedEntrySummaryTests {
 struct AISearchTermTests {
 
   @Test func 空白の手前までを使う() {
-    #expect(AIFoodAnalyzer.searchTerm(for: "おにぎり 国産もち麦入り枝豆と塩昆布") == "おにぎり")
+    #expect(AIFoodAnalyzer.searchTerm(for: "おにぎり 昆布") == "おにぎり")
   }
 
   @Test func 全角括弧の手前までを使う() {
-    #expect(AIFoodAnalyzer.searchTerm(for: "アロエヨーグルト（プレーン、約110g カップ）") == "アロエヨーグルト")
+    #expect(AIFoodAnalyzer.searchTerm(for: "カフェオレ（微糖、200ml）") == "カフェオレ")
   }
 
   @Test func 連結記号の手前までを使う() {
-    #expect(AIFoodAnalyzer.searchTerm(for: "冷やし中華（市販の容器）＋から揚げ数個") == "冷やし中華")
+    #expect(AIFoodAnalyzer.searchTerm(for: "パスタ（大盛）＋サラダ") == "パスタ")
   }
 
   @Test func 区切りが無ければそのまま使う() {
@@ -79,7 +79,7 @@ struct AISearchTermTests {
   }
 
   @Test func 先頭の空白は落とす() {
-    #expect(AIFoodAnalyzer.searchTerm(for: "  和定食（丼＋小鉢）") == "和定食")
+    #expect(AIFoodAnalyzer.searchTerm(for: "  定食（ご飯＋汁物）") == "定食")
   }
 }
 
