@@ -132,3 +132,74 @@ app.get_edit_app_store_version   # 編集中/審査待ち
 
 対応言語・著作権表記・添付ビルド・リリースノートが取れる。
 実装する前にこれで実物を見ておくと、当て推量で書かずに済む。
+
+## ImageRenderer では Increase Contrast を再現できない
+
+- **やろうとしたこと**: `DesignSystemGalleryTests` に
+  `.environment(\.colorSchemeContrast, .increased)` のケースを足して、
+  コントラストを上げた設定の見た目を PNG で確認する。
+- **できない理由**: `colorSchemeContrast` は読み取り専用の環境値で
+  `WritableKeyPath` ではない。`accessibilityReduceMotion` も同様に
+  書き込めず、そもそも静止画にアニメーションは写らない。
+- **代わりの手段**: シミュレータ側で設定する。
+  ```
+  xcrun simctl ui <device> increase_contrast enabled
+  xcrun simctl ui <device> content_size accessibility-extra-extra-extra-large
+  xcrun simctl ui <device> appearance light
+  ```
+  この状態で UI テストを流せば実画面のまま確認できる。
+- **教訓**: 描画ギャラリーで確認できるのは「ライト/ダーク × 文字サイズ」まで。
+  アクセシビリティ設定はシミュレータ側で切り替える。
+
+## スクロールできる Swift Charts ではタップ選択が効かない
+
+- **症状**: `.chartXSelection(value:)` を付けてもタップで何も選択されない。
+- **原因**: `.chartScrollableAxes(.horizontal)` があると、標準のタップ判定が
+  スクロールビューのジェスチャに吸われる。
+- **修正**: `.chartGesture` でタップを明示的に選択へつなぐ。
+  ```swift
+  .chartGesture { proxy in
+    SpatialTapGesture().onEnded { proxy.selectXValue(at: $0.location.x) }
+  }
+  ```
+- **もう1つ詰まった点**: 吹き出しを `RuleMark` の `.annotation(position: .top)`
+  に付けると、縦線の上端＝描画領域の外に置かれて表示されない。
+  値の位置に `PointMark` を重ねてそこに付ける。
+  `overflowResolution` は x・y とも `.fit(to: .chart)` にする。
+- **見た目**: 吹き出しの地に `.regularMaterial` を使うと下の折れ線の色を
+  拾って濁る。`tertiarySystemGroupedBackground` のような不透明な階層を敷く。
+
+## 大きな文字ではグラフの軸ラベルに上限を置く
+
+- **症状**: AX5 で統計画面の Y 軸の目盛りが互いに重なり、グラフの幅の半分を
+  数字が占めて折れ線が見えない。X 軸の日付は「Sep…」と切れる。
+- **原因**: Swift Charts の軸ラベルは Dynamic Type に上限なく追随する。
+- **修正**: `Chart` に `.dynamicTypeSize(...DynamicTypeSize.xLarge)` を付けて
+  軸ラベルの拡大に上限を置く。カードの中の数値は従来どおり最大まで大きくする。
+  あわせて、大きな文字のときは目盛りの本数を間引く（stride を3倍にした）。
+- **同じ話**: 「Sep 20, 2026 – Sep 26, 2026」のような期間の表記も
+  AX5 では3行に折り返して前後の矢印を画面の端へ押しやる。
+  短い日付書式に切り替え、`.dynamicTypeSize(...DynamicTypeSize.accessibility1)`
+  で上限を置いた。
+- **教訓**: リングの `@ScaledMetric` を `min()` で頭打ちにしているのと同じ判断を、
+  グラフの軸と補助的なラベルにも当てる。
+
+## `safeAreaInset` に置く帯は画面の下端まで地を伸ばす
+
+- **症状**: 広告バナーを `safeAreaInset(edge: .bottom)` に置き、
+  `.background(.bar)` をバナーの高さぶんだけ敷いていたら、
+  iOS 26 の浮いたタブバーの裏で一覧の行が見切れて残った。
+- **修正**: 地を `ignoresSafeArea(edges: .bottom)` で画面の下端まで伸ばす。
+  ```swift
+  .background { Rectangle().fill(.bar).ignoresSafeArea(edges: .bottom) }
+  ```
+- **あわせて**: `AdaptiveBannerView` は幅に応じて自分で高さを決めるので、
+  外から `.frame(height: 50)` で固定すると画面幅によっては下端が切れる。
+
+## PlistBuddy で Info.plist を編集すると全行が差分になる
+
+- **症状**: `/usr/libexec/PlistBuddy -c "Add ..."` で1項目足しただけなのに、
+  キーがアルファベット順に並べ替えられインデントがタブに変わり、
+  ファイル全体が差分になる。
+- **回避**: 一時的な書き換えなら `git restore` で戻せるが、
+  コミットに残す変更はエディタで手で足す。
