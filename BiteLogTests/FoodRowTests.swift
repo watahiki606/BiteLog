@@ -58,3 +58,27 @@ struct AddedEntrySummaryTests {
     #expect(entries.totalCalories == 71)
   }
 }
+
+/// AI が付けた名前から、既存の食品を探すための語を取り出す。
+struct AISearchTermTests {
+
+  @Test func 空白の手前までを使う() {
+    #expect(AIFoodAnalyzer.searchTerm(for: "おにぎり 国産もち麦入り枝豆と塩昆布") == "おにぎり")
+  }
+
+  @Test func 全角括弧の手前までを使う() {
+    #expect(AIFoodAnalyzer.searchTerm(for: "アロエヨーグルト（プレーン、約110g カップ）") == "アロエヨーグルト")
+  }
+
+  @Test func 連結記号の手前までを使う() {
+    #expect(AIFoodAnalyzer.searchTerm(for: "冷やし中華（市販の容器）＋から揚げ数個") == "冷やし中華")
+  }
+
+  @Test func 区切りが無ければそのまま使う() {
+    #expect(AIFoodAnalyzer.searchTerm(for: "トマトジュース") == "トマトジュース")
+  }
+
+  @Test func 先頭の空白は落とす() {
+    #expect(AIFoodAnalyzer.searchTerm(for: "  和定食（丼＋小鉢）") == "和定食")
+  }
+}

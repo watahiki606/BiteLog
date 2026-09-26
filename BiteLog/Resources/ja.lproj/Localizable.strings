@@ -299,3 +299,7 @@
 
 // 目標までの残り
 "Remaining %@" = "あと %@";
+
+// 写真解析の候補
+"You've logged this before" = "前にも記録しています";
+"Pick one to log it without adding a new food. The ones you eat often then rise to the top of search." = "選ぶと新しい食品を作らずに記録できます。よく食べるものほど検索の上に出るようになります。";

@@ -284,3 +284,7 @@
 
 // Amount left to reach the goal
 "Remaining %@" = "%@ left";
+
+// AI analysis candidates
+"You've logged this before" = "You've logged this before";
+"Pick one to log it without adding a new food. The ones you eat often then rise to the top of search." = "Pick one to log it without adding a new food. The ones you eat often then rise to the top of search.";
