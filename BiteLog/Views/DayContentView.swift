@@ -303,11 +303,10 @@ struct DayContentView: View {
         return
       }
 
-      let now = Date()
       let dtos = filtered.map { prev in
         LogItemCreateDTO(
           id: UUID().uuidString,
-          timestamp: ISO8601DateFormatter().string(from: now),
+          timestamp: ISO8601DateFormatter().string(from: LogItemDTO.timestamp(for: date)),
           logDate: logDateString,
           mealType: mealType.rawValue,
           numberOfServings: prev.numberOfServings,
@@ -352,5 +351,21 @@ extension LogItemDTO {
     let formatter = DateFormatter()
     formatter.dateFormat = "yyyy-MM-dd"
     return formatter.string(from: date)
+  }
+
+  /// 記録の時刻。対象の日に、いま記録している時刻を合わせる。
+  ///
+  /// 画面が持っている日付をそのまま使うと、時刻が画面の状態の副産物になる。
+  /// ログのタブをもう一度タップすると `startOfDay` で 00:00 に固定され、
+  /// 日付を前後に動かすとアプリ起動時の時刻を引きずる。
+  /// 実際、2026年の記録の47%が00時台に集まっていた。
+  ///
+  /// 日内の並び順は timestamp の昇順なので、同着だと順序が決まらない。
+  static func timestamp(for day: Date, now: Date = Date()) -> Date {
+    let calendar = Calendar.current
+    let time = calendar.dateComponents([.hour, .minute, .second], from: now)
+    return calendar.date(
+      bySettingHour: time.hour ?? 0, minute: time.minute ?? 0, second: time.second ?? 0,
+      of: day) ?? day
   }
 }

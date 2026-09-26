@@ -419,7 +419,7 @@ struct AIAnalysisResultView: View {
 
     let dto = LogItemCreateDTO(
       id: UUID().uuidString,
-      timestamp: ISO8601DateFormatter().string(from: date),
+      timestamp: ISO8601DateFormatter().string(from: LogItemDTO.timestamp(for: date)),
       logDate: LogItemDTO.formatLogDate(date),
       mealType: mealType.rawValue,
       numberOfServings: foodMaster.lastNumberOfServings,
@@ -463,7 +463,7 @@ struct AIAnalysisResultView: View {
 
         let logDTO = LogItemCreateDTO(
           id: UUID().uuidString,
-          timestamp: ISO8601DateFormatter().string(from: date),
+          timestamp: ISO8601DateFormatter().string(from: LogItemDTO.timestamp(for: date)),
           logDate: LogItemDTO.formatLogDate(date),
           mealType: mealType.rawValue,
           numberOfServings: portionAmountValue,

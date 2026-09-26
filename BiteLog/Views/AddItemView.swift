@@ -357,7 +357,7 @@ struct AddItemView: View {
     let logItemID = UUID()
     let dto = LogItemCreateDTO(
       id: logItemID.uuidString,
-      timestamp: ISO8601DateFormatter().string(from: date),
+      timestamp: ISO8601DateFormatter().string(from: LogItemDTO.timestamp(for: date)),
       logDate: LogItemDTO.formatLogDate(date),
       mealType: mealType.rawValue,
       numberOfServings: foodMaster.lastNumberOfServings,
