@@ -7,8 +7,7 @@ extension Notification.Name {
 struct SettingsView: View {
   @Environment(\.dismiss) private var dismiss
   @EnvironmentObject private var languageManager: LanguageManager
-  @State private var showingRestartAlert = false
-  @State private var selectedNewLanguage: AppLanguage?
+  @EnvironmentObject private var nutritionGoalsManager: NutritionGoalsManager
   @State private var showingDeleteConfirmation = false
   @State private var isDeleting = false
   @State private var showDeleteSuccessAlert = false
@@ -19,24 +18,28 @@ struct SettingsView: View {
   var body: some View {
     NavigationStack {
       Form {
-        Section(header: Text(NSLocalizedString("Language", comment: "Settings section"))) {
-          ForEach(AppLanguage.allCases, id: \.self) { language in
-            Button(action: {
-              if languageManager.selectedLanguage != language {
-                selectedNewLanguage = language
-                showingRestartAlert = true
+        Section {
+          Button(action: { languageManager.openSystemSettings() }) {
+            LabeledContent {
+              HStack(spacing: 6) {
+                Text(languageManager.currentLanguageName)
+                Image(systemName: "arrow.up.forward.app")
+                  .font(.footnote)
+                  .accessibilityHidden(true)
               }
-            }) {
-              HStack {
-                Text(language.displayName)
-                Spacer()
-                if languageManager.selectedLanguage == language {
-                  Image(systemName: "checkmark").foregroundStyle(.tint)
-                }
-              }
+              .foregroundStyle(.secondary)
+            } label: {
+              Text(NSLocalizedString("Language", comment: "Settings section"))
             }
-            .foregroundColor(.primary)
           }
+          // 既定のままだと行のラベルまで着色され、同じ Form の中で
+          // 遷移する他の行と見た目が揃わない。外に出ることは末尾の記号で示す。
+          .buttonStyle(.plain)
+        } footer: {
+          Text(
+            NSLocalizedString(
+              "Change the language in the Settings app, under Preferred Language.",
+              comment: "Language settings footer"))
         }
 
         Section(header: Text(NSLocalizedString("Nutrition Goals", comment: "Nutrition goals section"))) {
@@ -69,33 +72,21 @@ struct SettingsView: View {
           Button(NSLocalizedString("Done", comment: "Button title")) { dismiss() }
         }
       }
+      // 目標の編集は画面を離れたときに保存するので、失敗を伝える頃には
+      // その画面が無い。まだ出ている設定画面から出す。
+      .operationFailureAlert($nutritionGoalsManager.saveFailure)
       .alert(
-        NSLocalizedString("Language Changed", comment: "Alert title"),
-        isPresented: $showingRestartAlert
+        NSLocalizedString("Delete All Data?", comment: "Delete confirmation title"),
+        isPresented: $showingDeleteConfirmation
       ) {
-        Button(NSLocalizedString("Apply", comment: "Button title")) {
-          if let language = selectedNewLanguage { languageManager.selectedLanguage = language }
-          exit(0)
+        Button(NSLocalizedString("Delete", comment: "Delete button"), role: .destructive) {
+          Task { await deleteAllData() }
         }
-        Button(NSLocalizedString("Cancel", comment: "Button title"), role: .cancel) {
-          selectedNewLanguage = nil
-        }
+        Button(NSLocalizedString("Cancel", comment: "Cancel button"), role: .cancel) {}
       } message: {
         Text(NSLocalizedString(
-          "The app needs to restart to apply the language change. Restart now?",
-          comment: "Alert message"))
-      }
-      .alert(isPresented: $showingDeleteConfirmation) {
-        Alert(
-          title: Text(NSLocalizedString("Delete All Data?", comment: "Delete confirmation title")),
-          message: Text(NSLocalizedString(
-            "Are you sure you want to delete all data? This action cannot be undone.",
-            comment: "Delete confirmation message")),
-          primaryButton: .destructive(Text(NSLocalizedString("Delete", comment: "Delete button"))) {
-            Task { await deleteAllData() }
-          },
-          secondaryButton: .cancel(Text(NSLocalizedString("Cancel", comment: "Cancel button")))
-        )
+          "Are you sure you want to delete all data? This action cannot be undone.",
+          comment: "Delete confirmation message"))
       }
       .alert(
         NSLocalizedString("Success", comment: "Success alert title"),

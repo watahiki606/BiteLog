@@ -181,7 +181,15 @@ struct AIAnalysisResultView: View {
   
   @State private var showingSaveConfirmation = false
   @State private var saveError: String?
-  
+
+  /// 同じものを前にも記録していないか。
+  ///
+  /// 写真から作った食品は名前が毎回変わるので、放っておくと同じおにぎりが
+  /// 「NL…」「国産…」と別々に積まれ、使用回数が1のまま育たない。育たないから
+  /// 検索の上位にも出ず、次もまた写真を撮ることになる。その輪をここで切る。
+  @State private var candidates: [FoodMasterDTO] = []
+  @State private var isSaving = false
+
   // 編集可能なフィールド
   @State private var productName: String
   @State private var calories: String
@@ -224,7 +232,9 @@ struct AIAnalysisResultView: View {
           
           // 信頼度表示
           confidenceBadge
-          
+
+          candidatesSection
+
           // 分析結果
           VStack(spacing: 16) {
             Text(NSLocalizedString("Analysis Result", comment: "Title"))
@@ -291,6 +301,7 @@ struct AIAnalysisResultView: View {
       }
       .navigationTitle(NSLocalizedString("Analysis Complete", comment: "Navigation title"))
       .navigationBarTitleDisplayMode(.inline)
+      .task { await findCandidates() }
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
           Button(NSLocalizedString("Cancel", comment: "Button title")) {
@@ -352,6 +363,78 @@ struct AIAnalysisResultView: View {
     }
   }
   
+  /// 前に記録した同じものを出す。選べば写真から作り直さずに済む。
+  @ViewBuilder
+  private var candidatesSection: some View {
+    if !candidates.isEmpty {
+      VStack(alignment: .leading, spacing: 10) {
+        Text(NSLocalizedString("You've logged this before", comment: "AI candidate section title"))
+          .font(.headline)
+
+        Text(
+          NSLocalizedString(
+            "Pick one to log it without adding a new food. The ones you eat often then rise to the top of search.",
+            comment: "AI candidate section description")
+        )
+        .font(.caption)
+        .foregroundStyle(.secondary)
+
+        ForEach(candidates) { foodMaster in
+          Button {
+            Task { await logExisting(foodMaster) }
+          } label: {
+            // 似た名前から1つ選ばせる場面なので、名前は途中で切らない。
+            FoodMasterRow(foodMaster: foodMaster, titleLineLimit: nil)
+              .padding(12)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .background(
+                Color(UIColor.secondarySystemBackground),
+                in: RoundedRectangle(cornerRadius: 12))
+          }
+          .buttonStyle(.plain)
+          .disabled(isSaving)
+        }
+      }
+      .padding(.horizontal)
+    }
+  }
+
+  private func findCandidates() async {
+    let term = AIFoodAnalyzer.searchTerm(for: result.productName)
+    guard term.count >= 2 else { return }
+    do {
+      let response = try await APIClient.shared.fetchFoodMasters(query: term, limit: 5)
+      // 自分が使ったことのあるものだけを出す。使ったことが無いものを
+      // 「前にも記録しています」とは言えない。
+      candidates = response.items.filter { $0.usageCount > 0 }
+    } catch {
+      candidates = []
+    }
+  }
+
+  /// 既存の食品として記録する。マスタを増やさず、その食品の使用回数が育つ。
+  private func logExisting(_ foodMaster: FoodMasterDTO) async {
+    isSaving = true
+    defer { isSaving = false }
+
+    let dto = LogItemCreateDTO(
+      id: UUID().uuidString,
+      timestamp: ISO8601DateFormatter().string(from: LogItemDTO.timestamp(for: date)),
+      logDate: LogItemDTO.formatLogDate(date),
+      mealType: mealType.rawValue,
+      numberOfServings: foodMaster.lastNumberOfServings,
+      foodMasterId: foodMaster.id.uuidString,
+      nutritionSnapshot: NutritionSnapshot.from(foodMaster)
+    )
+    do {
+      _ = try await APIClient.shared.createLogItem(dto)
+      onSave()
+      dismiss()
+    } catch {
+      saveError = error.localizedDescription
+    }
+  }
+
   private func saveFoodItem() {
     let caloriesValue = Double(calories) ?? 0
     let proteinValue = Double(protein) ?? 0
@@ -380,7 +463,7 @@ struct AIAnalysisResultView: View {
 
         let logDTO = LogItemCreateDTO(
           id: UUID().uuidString,
-          timestamp: ISO8601DateFormatter().string(from: date),
+          timestamp: ISO8601DateFormatter().string(from: LogItemDTO.timestamp(for: date)),
           logDate: LogItemDTO.formatLogDate(date),
           mealType: mealType.rawValue,
           numberOfServings: portionAmountValue,

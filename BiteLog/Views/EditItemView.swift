@@ -12,6 +12,8 @@ struct EditItemView: View {
   @State private var searchResults: [FoodMasterDTO] = []
   @State private var currentOffset = 0
   @State private var hasMoreData = true
+  @State private var isSaving = false
+  @State private var failure: OperationFailure?
   private let pageSize = 100
 
   private var perPortionCalories: Double { foodMaster?.calories ?? item.nutritionSnapshot?.calories ?? 0 }
@@ -108,10 +110,11 @@ struct EditItemView: View {
         ToolbarItem(placement: .confirmationAction) {
           Button(NSLocalizedString("Save", comment: "Button title"), action: saveLogItem)
             .disabled(
-              (foodMaster == nil && !item.isMasterDeleted) || numberOfServings.isEmpty
-                || Double(numberOfServings) == 0)
+              isSaving || (foodMaster == nil && !item.isMasterDeleted)
+                || numberOfServings.isEmpty || Double(numberOfServings) == 0)
         }
       }
+      .operationFailureAlert($failure)
       .sheet(isPresented: $showingFoodSearch) {
         FoodSearchView(onSelect: { selected in
           foodMaster = selected
@@ -158,13 +161,16 @@ struct EditItemView: View {
       timestamp: nil
     )
     Task {
+      isSaving = true
+      defer { isSaving = false }
       do {
         let updated = try await APIClient.shared.updateLogItem(id: item.id, dto)
         onSaved?(updated)
         dismiss()
       } catch {
-        print("EditItemView saveLogItem error: \(error)")
-        dismiss()
+        // 失敗しても閉じると、保存できていないのに保存したつもりになる。
+        // 入力を残したまま伝え、もう一度試せるようにする。
+        failure = .saving(error)
       }
     }
   }
@@ -219,6 +225,9 @@ struct FoodSearchView: View {
   @State private var searchResults: [FoodMasterDTO] = []
   @State private var currentOffset = 0
   @State private var hasMoreData = true
+  /// 検索できなかった状態。0件と区別しないと、登録済みの食品を
+  /// 「無い」と思って作り直すことになる。
+  @State private var loadFailed = false
   private let pageSize = 50
 
   var body: some View {
@@ -239,6 +248,7 @@ struct FoodSearchView: View {
           searchResults = []
           currentOffset = 0
           hasMoreData = true
+          loadFailed = false
           Task { await loadMoreItems() }
         }
     }
@@ -252,6 +262,8 @@ struct FoodSearchView: View {
           NSLocalizedString("Search for food", comment: "Search for food"),
           systemImage: "magnifyingglass")
       }
+    } else if loadFailed && searchResults.isEmpty {
+      LoadFailureView { await loadMoreItems() }
     } else if searchResults.isEmpty {
       ContentUnavailableView.search(text: searchText)
     } else {
@@ -284,8 +296,9 @@ struct FoodSearchView: View {
       if currentOffset == 0 { searchResults = resp.items } else { searchResults.append(contentsOf: resp.items) }
       currentOffset += resp.items.count
       hasMoreData = resp.hasMore
+      loadFailed = false
     } catch {
-      print("FoodSearchView loadMoreItems error: \(error)")
+      loadFailed = true
     }
   }
 }
