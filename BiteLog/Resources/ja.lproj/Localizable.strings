@@ -296,3 +296,6 @@
 
 // 言語設定
 "Change the language in the Settings app, under Preferred Language." = "言語は設定アプリの「優先する言語」で変更できます。";
+
+// 目標までの残り
+"Remaining %@" = "あと %@";

@@ -281,3 +281,6 @@
 
 // Language settings
 "Change the language in the Settings app, under Preferred Language." = "Change the language in the Settings app, under Preferred Language.";
+
+// Amount left to reach the goal
+"Remaining %@" = "%@ left";
