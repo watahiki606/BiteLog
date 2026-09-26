@@ -37,9 +37,16 @@ struct DayContentView: View {
     // 広告はスクロール内容に混ぜず画面下端に固定する。
     // 高さは AdaptiveBannerView が幅に合わせて決めるので、ここで固定しない。
     // 固定すると画面幅によっては広告の下端が切れる。
-    .safeAreaInset(edge: .bottom) {
+    .safeAreaInset(edge: .bottom, spacing: 0) {
       AdaptiveBannerView()
         .frame(maxWidth: .infinity)
+        // 地を画面の下端まで伸ばす。広告の高さぶんしか塗らないと、
+        // 浮いたタブバーの裏で記録の行が見切れたまま残る。
+        .background {
+          Rectangle()
+            .fill(.bar)
+            .ignoresSafeArea(edges: .bottom)
+        }
     }
     .operationFailureAlert($failure)
     .toolbar {

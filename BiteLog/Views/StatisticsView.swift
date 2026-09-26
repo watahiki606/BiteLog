@@ -123,6 +123,7 @@ private enum StatDate {
 struct StatisticsView: View {
   @EnvironmentObject private var nutritionGoalsManager: NutritionGoalsManager
   @EnvironmentObject private var languageManager: LanguageManager
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   @State private var period: StatPeriod = .week
   @State private var metric: TrendMetric = .calories
@@ -288,7 +289,9 @@ struct StatisticsView: View {
   private var dateNavigationBar: some View {
     let f = DateFormatter()
     f.locale = languageManager.locale
-    f.dateStyle = .medium
+    // 大きな文字では「Sep 20, 2026 – Sep 26, 2026」が3行に折り返し、
+    // 前後へ送る矢印を画面の端まで押しのける。短い表記に切り替える。
+    f.dateStyle = dynamicTypeSize.isAccessibilitySize ? .short : .medium
     f.timeStyle = .none
     let text = "\(f.string(from: settledRange.from)) – \(f.string(from: settledRange.to))"
     // 進む側は最新の可視期間（左端が today-(visibleDays-1)）に達したら無効化
@@ -310,6 +313,10 @@ struct StatisticsView: View {
       Text(text)
         .font(.subheadline.weight(.medium))
         .foregroundStyle(.secondary)
+        // 期間の表示は画面の位置を示す補助。最大まで大きくすると
+        // 3行に折り返して前後の矢印を画面の端へ押しやる。
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+        .multilineTextAlignment(.center)
       Spacer()
 
       Button { page(by: visibleDays) } label: {
@@ -432,12 +439,16 @@ struct StatisticsView: View {
   }
 
   private var xAxisStride: Int {
+    let base: Int
     switch period {
-    case .week: return 1
-    case .month: return 5
-    case .year: return 1
-    case .custom: return max(visibleDays / 6, 1)
+    case .week: base = 1
+    case .month: base = 5
+    case .year: base = 1
+    case .custom: base = max(visibleDays / 6, 1)
     }
+    // 大きな文字では日付1つぶんの幅が広がり、目盛りが「Sep…」と切れて読めない。
+    // 本数を間引いて1つずつを読める幅にする。
+    return dynamicTypeSize.isAccessibilitySize ? base * 3 : base
   }
 
   // MARK: - ② 1日平均と目標達成日数
@@ -449,27 +460,22 @@ struct StatisticsView: View {
 
     return CardView {
       VStack(spacing: 16) {
-        HStack(alignment: .center, spacing: 20) {
-          CalorieRingView(
-            calories: avg.calories, targetCalories: nutritionGoalsManager.targetCalories)
-
-          VStack(alignment: .leading, spacing: 6) {
-            Text(NSLocalizedString("Goal Achieved Days", comment: "Statistics metric"))
-              .font(.caption)
-              .foregroundColor(.secondary)
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
-              Text("\(achieved)")
-                .font(.system(.title, design: .rounded, weight: .bold))
-                .monospacedDigit()
-              Text("/ \(visibleDays) " + NSLocalizedString("days", comment: "days unit"))
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            }
-            Text(NSLocalizedString("Calories within ±10% of goal", comment: "Achievement rule"))
-              .font(.caption2)
-              .foregroundColor(.secondary)
+        // 大きな文字ではリングの横に残る幅で「Goal Achieved Days」が
+        // 単語の途中で折り返す。1日の合計と同じく縦積みに切り替える。
+        if dynamicTypeSize.isAccessibilitySize {
+          VStack(alignment: .leading, spacing: 12) {
+            CalorieRingView(
+              calories: avg.calories, targetCalories: nutritionGoalsManager.targetCalories)
+              .frame(maxWidth: .infinity, alignment: .center)
+            goalAchievedBlock(achieved)
           }
-          Spacer()
+        } else {
+          HStack(alignment: .center, spacing: 20) {
+            CalorieRingView(
+              calories: avg.calories, targetCalories: nutritionGoalsManager.targetCalories)
+            goalAchievedBlock(achieved)
+            Spacer()
+          }
         }
 
         VStack(spacing: 8) {
@@ -484,6 +490,25 @@ struct StatisticsView: View {
             target: nutritionGoalsManager.targetNetCarbs + nutritionGoalsManager.targetFiber)
         }
       }
+    }
+  }
+
+  private func goalAchievedBlock(_ achieved: Int) -> some View {
+    VStack(alignment: .leading, spacing: 6) {
+      Text(NSLocalizedString("Goal Achieved Days", comment: "Statistics metric"))
+        .font(.caption)
+        .foregroundColor(.secondary)
+      HStack(alignment: .firstTextBaseline, spacing: 2) {
+        Text("\(achieved)")
+          .font(.system(.title, design: .rounded, weight: .bold))
+          .monospacedDigit()
+        Text("/ \(visibleDays) " + NSLocalizedString("days", comment: "days unit"))
+          .font(.subheadline)
+          .foregroundColor(.secondary)
+      }
+      Text(NSLocalizedString("Calories within ±10% of goal", comment: "Achievement rule"))
+        .font(.caption2)
+        .foregroundColor(.secondary)
     }
   }
 
@@ -788,7 +813,16 @@ private struct TrendChartView: View {
     }
     .padding(.horizontal, 8)
     .padding(.vertical, 5)
-    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+    // 半透明の材質だと下の折れ線の色を拾って濁る。カードの上に重ねる面と
+    // 同じ階層の不透明な地を敷く。
+    .background(
+      Color(UIColor.tertiarySystemGroupedBackground),
+      in: RoundedRectangle(cornerRadius: 8)
+    )
+    .overlay {
+      RoundedRectangle(cornerRadius: 8)
+        .strokeBorder(.quaternary, lineWidth: 0.5)
+    }
   }
 
   var body: some View {
@@ -830,15 +864,29 @@ private struct TrendChartView: View {
         RuleMark(x: .value("Date", selected.date, unit: barUnit))
           .foregroundStyle(.secondary.opacity(0.4))
           .lineStyle(StrokeStyle(lineWidth: 1))
-          .annotation(
-            position: .top, spacing: 2,
-            overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
-          ) {
-            selectionCallout(selected)
-          }
+
+        // 吹き出しは点に付ける。縦線に付けると描画領域の外側に置かれて消える。
+        PointMark(
+          x: .value("Date", selected.date, unit: barUnit),
+          y: .value(metric.localizedName, selected.value)
+        )
+        .foregroundStyle(metric.color)
+        .symbolSize(90)
+        .annotation(
+          position: .top, spacing: 6,
+          overflowResolution: .init(x: .fit(to: .chart), y: .fit(to: .chart))
+        ) {
+          selectionCallout(selected)
+        }
       }
     }
     .chartXSelection(value: $selectedX)
+    // 横スクロールできるグラフでは標準のタップ選択がスクロールに吸われて
+    // 何も起きない。タップを明示的に選択へつなぐ。
+    .chartGesture { proxy in
+      SpatialTapGesture()
+        .onEnded { value in proxy.selectXValue(at: value.location.x) }
+    }
     .chartScrollableAxes(.horizontal)
     .chartXScale(domain: xDomain)
     .chartXVisibleDomain(length: visibleSeconds)
@@ -851,7 +899,13 @@ private struct TrendChartView: View {
       }
     }
     .frame(height: 170)
+    // 軸ラベルだけは文字サイズの追随に上限を置く。際限なく大きくすると
+    // 目盛りが互いに重なり、グラフの幅の半分を数字が占めて線が読めなくなる。
+    // カードの中の数値は従来どおり最大まで大きくなる。
+    .dynamicTypeSize(...DynamicTypeSize.xLarge)
     .onChange(of: scrollX) { _, x in
+      // 選んだ点が画面外へ流れたまま吹き出しだけ残らないようにする。
+      selectedX = nil
       onScroll(x)  // 同期・軽量（境界近傍のみ追加取得を起動）
       // デバウンス: 停止後にのみカード集計を更新する
       settleTask?.cancel()

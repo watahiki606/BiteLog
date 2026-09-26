@@ -30,9 +30,11 @@ struct SettingsView: View {
               .foregroundStyle(.secondary)
             } label: {
               Text(NSLocalizedString("Language", comment: "Settings section"))
-                .foregroundStyle(.primary)
             }
           }
+          // 既定のままだと行のラベルまで着色され、同じ Form の中で
+          // 遷移する他の行と見た目が揃わない。外に出ることは末尾の記号で示す。
+          .buttonStyle(.plain)
         } footer: {
           Text(
             NSLocalizedString(

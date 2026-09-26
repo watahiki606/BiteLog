@@ -12,6 +12,9 @@ struct AddItemView: View {
   @State private var searchResults: [FoodMasterDTO] = []
   @State private var isDataLoaded = false
   @State private var isInitialLoading = true
+  /// 読み込めなかった状態。0件と区別しないと、登録済みの食品を
+  /// 「無い」と思って作り直すことになる。
+  @State private var loadFailed = false
 
   @State private var currentPage = 0
   @State private var isLoading = false
@@ -238,6 +241,8 @@ struct AddItemView: View {
       if isInitialLoading {
         ProgressView()
           .frame(maxWidth: .infinity, maxHeight: .infinity)
+      } else if loadFailed {
+        LoadFailureView { await resetAndSearch() }
       } else if searchResults.isEmpty && !isDataLoaded {
         EmptyFoodMasterPromptView(selectedTab: $selectedTab, dismiss: dismiss)
       } else if searchResults.isEmpty {
@@ -437,9 +442,16 @@ struct AddItemView: View {
         hasMoreData = resp.hasMore
         isDataLoaded = true
         isInitialLoading = false
+        loadFailed = false
       }
     } catch {
-      await MainActor.run { isLoading = false; isDataLoaded = true; isInitialLoading = false }
+      // 握りつぶすと「食品が1件も登録されていません」と出る。
+      // 登録済みの食品を作り直す操作に直結する。
+      await MainActor.run {
+        isDataLoaded = true
+        isInitialLoading = false
+        loadFailed = searchResults.isEmpty
+      }
     }
   }
 
