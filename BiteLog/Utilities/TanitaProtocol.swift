@@ -289,3 +289,53 @@ struct TanitaBodyMeasurement: Equatable {
     return byte & 0x80 != 0 ? -Int(byte & 0x7F) : Int(byte)
   }
 }
+
+// MARK: - 送信するメッセージの組み立て
+
+extension TanitaField {
+  var encoded: Data {
+    var bytes = Data([UInt8(tag >> 8), UInt8(tag & 0xFF)])
+    bytes.append(value)
+    return bytes
+  }
+
+  /// 体重計の時計合わせに送る日付と時刻。
+  /// 測定日時はこの時計で記録されるので、接続のたびに合わせる。
+  static func clock(at date: Date, timeZone: TimeZone) -> [TanitaField] {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = timeZone
+    guard let epoch = calendar.date(from: DateComponents(year: 2000, month: 1, day: 1)),
+      let midnight = calendar.dateInterval(of: .day, for: date)?.start
+    else { return [] }
+
+    let days = calendar.dateComponents([.day], from: epoch, to: midnight).day ?? 0
+    let halfSeconds = Int(date.timeIntervalSince(midnight) * 2)
+
+    return [
+      TanitaField(tag: TanitaTag.date, value: Data([UInt8(days >> 8), UInt8(days & 0xFF)])),
+      TanitaField(
+        tag: TanitaTag.time,
+        value: Data([
+          UInt8((halfSeconds >> 16) & 0xFF), UInt8((halfSeconds >> 8) & 0xFF),
+          UInt8(halfSeconds & 0xFF),
+        ])
+      ),
+    ]
+  }
+}
+
+extension TanitaMessage {
+  /// 引数が1バイトのコマンド。体重計はほとんどのコマンドをこの形で受ける。
+  init(_ command: TanitaCommand, argument: UInt8 = 0x00) {
+    self.init(command: command.rawValue, payload: Data([argument]))
+  }
+
+  init(_ command: TanitaCommand, fields: [TanitaField]) {
+    let payload = fields.reduce(into: Data()) { $0.append($1.encoded) }
+    self.init(command: command.rawValue, payload: payload)
+  }
+
+  init(_ command: TanitaCommand, text: String) {
+    self.init(command: command.rawValue, payload: Data(text.utf8))
+  }
+}
