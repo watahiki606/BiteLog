@@ -55,6 +55,9 @@ struct SettingsView: View {
           NavigationLink(destination: ExportCSVView()) {
             Text(NSLocalizedString("Export CSV", comment: "Export CSV"))
           }
+          NavigationLink(destination: ScaleImportView()) {
+            Text(NSLocalizedString("Import from Scale", comment: "Scale import title"))
+          }
           Button(role: .destructive, action: { showingDeleteConfirmation = true }) {
             Text(NSLocalizedString("Delete All Data", comment: "Delete all data"))
           }
