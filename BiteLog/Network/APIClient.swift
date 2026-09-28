@@ -219,6 +219,14 @@ final class APIClient {
     try await requestVoid(path: "/api/user-data/all", method: "DELETE")
   }
 
+  // MARK: - BodyMeasurement
+
+  /// 測定1件を登録する。同じ計測時刻の記録が既にあるとサーバーは 409 を返す。
+  /// 体重計は引き取り済みのデータも送ってくることがあるので、呼ぶ側で重複として扱う。
+  func createBodyMeasurement(_ dto: BodyMeasurementCreateDTO) async throws {
+    try await requestVoid(path: "/api/body-measurements", method: "POST", body: dto)
+  }
+
   // MARK: - NutritionGoals
 
   func fetchNutritionGoals() async throws -> NutritionGoalsDTO {

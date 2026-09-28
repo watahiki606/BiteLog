@@ -233,3 +233,81 @@ struct AIAnalyzeResponse: Codable {
   var confidence: String
   var productName: String
 }
+
+// MARK: - BodyMeasurement DTO
+
+/// 体組成計の測定1件。サーバーの17列に合わせる。
+///
+/// `measurementDateRaw` / `measurementTimeRaw` / `pageUrl` は HealthPlanet の
+/// ページから取り込んだときに何が表示されていたかを残す列なので、直接受信では送らない。
+struct BodyMeasurementCreateDTO: Codable, Equatable {
+  var sourceDate: String
+  var measuredAt: String
+  var measurementIndex: Int
+  var itemCount: Int
+  var inputMethod: String
+  var weightKg: Double?
+  var bodyFatPercent: Double?
+  var muscleMassKg: Double?
+  var muscleScore: Double?
+  var visceralFatLevel: Double?
+  var basalMetabolismKcal: Double?
+  var metabolicAge: Int?
+  var boneMassKg: Double?
+  var bodyWaterPercent: Double?
+}
+
+extension BodyMeasurementCreateDTO {
+  /// 体組成計から Bluetooth で直接受け取ったことを示す。
+  /// CSV 取り込みの「対応機器データ」や手動入力と区別できるようにしている。
+  static let bluetoothInputMethod = "体組成計から直接"
+
+  private static let measuredAtFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.timeZone = TimeZone(identifier: "UTC")
+    formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+    return formatter
+  }()
+
+  /// 体重計から受け取った測定を、そのまま送れる形にする。
+  /// 計測時刻が取れていない測定は、同一性を判定する手がかりが無いので送らない。
+  init?(_ measurement: TanitaBodyMeasurement, timeZone: TimeZone = .current) {
+    guard let measuredAt = measurement.measuredAt else { return nil }
+
+    // 秒は切り捨てる。HealthPlanet のページから取り込む経路は分までしか持たないため、
+    // 秒を残すと同じ測定が別の行として二重に入る
+    let atMinute = Date(
+      timeIntervalSince1970: (measuredAt.timeIntervalSince1970 / 60).rounded(.down) * 60)
+
+    let sourceDateFormatter = DateFormatter()
+    sourceDateFormatter.locale = Locale(identifier: "en_US_POSIX")
+    sourceDateFormatter.timeZone = timeZone
+    sourceDateFormatter.dateFormat = "yyyy-MM-dd"
+
+    let values: [Double?] = [
+      measurement.weightKg, measurement.bodyFatPercent, measurement.muscleMassKg,
+      measurement.muscleScore.map(Double.init), measurement.visceralFatLevel,
+      measurement.basalMetabolismKcal.map(Double.init),
+      measurement.metabolicAge.map(Double.init), measurement.boneMassKg,
+      measurement.bodyWaterPercent,
+    ]
+
+    self.init(
+      sourceDate: sourceDateFormatter.string(from: atMinute),
+      measuredAt: Self.measuredAtFormatter.string(from: atMinute),
+      measurementIndex: 0,
+      itemCount: values.compactMap { $0 }.count,
+      inputMethod: Self.bluetoothInputMethod,
+      weightKg: measurement.weightKg,
+      bodyFatPercent: measurement.bodyFatPercent,
+      muscleMassKg: measurement.muscleMassKg,
+      muscleScore: measurement.muscleScore.map(Double.init),
+      visceralFatLevel: measurement.visceralFatLevel,
+      basalMetabolismKcal: measurement.basalMetabolismKcal.map(Double.init),
+      metabolicAge: measurement.metabolicAge,
+      boneMassKg: measurement.boneMassKg,
+      bodyWaterPercent: measurement.bodyWaterPercent
+    )
+  }
+}

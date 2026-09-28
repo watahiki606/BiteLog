@@ -235,6 +235,9 @@ struct TanitaBodyMeasurement: Equatable {
   /// 日付の起点。タグ 0x6A32 はここからの日数
   private static let epoch = DateComponents(year: 2000, month: 1, day: 1)
 
+  /// 何も入っていない測定。受信以外の経路から組み立てるときに使う
+  init() {}
+
   /// `0x3010` の応答のデータ部から組み立てる。先頭2バイトはステータスと連番。
   init(measurementPayload: Data, timeZone: TimeZone) throws {
     guard measurementPayload.count >= 2 else { throw TanitaProtocolError.tooShort }
