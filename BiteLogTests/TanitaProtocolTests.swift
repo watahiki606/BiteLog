@@ -100,15 +100,23 @@ struct TanitaProtocolTests {
   @Test func メッセージを20バイトのフレームに分割する() {
     let message = Data(repeating: 0xAA, count: 40)
 
-    let frames = TanitaFraming.frames(for: message, sequence: 0x07)
+    let frames = TanitaFraming.frames(for: message)
 
     #expect(frames.count == 3)
-    // 00 <offset> <seq> <このフレームのペイロード長>
-    #expect(frames[0].prefix(4) == Data([0x00, 0x00, 0x07, 0x10]))
-    #expect(frames[1].prefix(4) == Data([0x00, 0x10, 0x07, 0x10]))
-    #expect(frames[2].prefix(4) == Data([0x00, 0x20, 0x07, 0x08]))
+    // 00 <offset> <最後のフレームの位置> <このフレームのペイロード長>
+    #expect(frames[0].prefix(4) == Data([0x00, 0x00, 0x02, 0x10]))
+    #expect(frames[1].prefix(4) == Data([0x00, 0x10, 0x02, 0x10]))
+    #expect(frames[2].prefix(4) == Data([0x00, 0x20, 0x02, 0x08]))
     #expect(frames[0].count == 20)
     #expect(frames[2].count == 12)
+  }
+
+  @Test func 単一フレームのメッセージは最後の位置が0になる() {
+    // ここを通し番号にすると、体重計は来ないフレームを待ち続けて切断する
+    let frames = TanitaFraming.frames(for: Data(repeating: 0xAA, count: 6))
+
+    #expect(frames.count == 1)
+    #expect(frames[0].prefix(4) == Data([0x00, 0x00, 0x00, 0x06]))
   }
 
   @Test func フレームを組み直すと元のメッセージに戻る() {
@@ -116,7 +124,7 @@ struct TanitaProtocolTests {
     var assembler = TanitaFraming.Assembler()
 
     var assembled: Data?
-    for frame in TanitaFraming.frames(for: message, sequence: 0x03) {
+    for frame in TanitaFraming.frames(for: message) {
       assembled = assembler.append(frame)
     }
 
@@ -125,7 +133,7 @@ struct TanitaProtocolTests {
 
   @Test func 最後のフレームが来るまでは組み立てない() {
     let message = TanitaMessage(command: 0xB010, payload: Data(repeating: 0x5A, count: 60)).encoded
-    let frames = TanitaFraming.frames(for: message, sequence: 0x03)
+    let frames = TanitaFraming.frames(for: message)
     var assembler = TanitaFraming.Assembler()
 
     #expect(assembler.append(frames[0]) == nil)
@@ -137,8 +145,8 @@ struct TanitaProtocolTests {
     let second = TanitaMessage(command: 0x8003, payload: Data([0x00, 0x00])).encoded
     var assembler = TanitaFraming.Assembler()
 
-    _ = assembler.append(TanitaFraming.frames(for: first, sequence: 0x03)[0])
-    let assembled = assembler.append(TanitaFraming.frames(for: second, sequence: 0x00)[0])
+    _ = assembler.append(TanitaFraming.frames(for: first)[0])
+    let assembled = assembler.append(TanitaFraming.frames(for: second)[0])
 
     #expect(assembled == second)
   }

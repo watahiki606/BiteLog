@@ -161,19 +161,25 @@ enum TanitaTag {
 
 /// メッセージを20バイトのフレームに分割して送り、受け取った断片を組み直す。
 ///
-/// `00 <offset> <seq> <このフレームのペイロード長> <ペイロード 最大16バイト>`
+/// `00 <offset> <最後のフレームの位置> <このフレームのペイロード長> <ペイロード 最大16バイト>`
+///
+/// 3バイト目は通し番号ではなく、そのメッセージの最後のフレームの位置。
+/// 1フレームで収まるなら 0、3フレームなら 2 になる。受け手はこれで何枚来るかを知る。
+/// ここを通し番号だと誤解して送ると、体重計は残りのフレームを待ち続けて切断する。
 enum TanitaFraming {
   static let frameSize = 20
   static let payloadPerFrame = 16
 
-  static func frames(for message: Data, sequence: UInt8) -> [Data] {
+  static func frames(for message: Data) -> [Data] {
     let raw = [UInt8](message)
+    let frameCount = max(1, (raw.count + payloadPerFrame - 1) / payloadPerFrame)
+    let lastIndex = UInt8(frameCount - 1)
     var frames: [Data] = []
     var offset = 0
 
     while offset < raw.count {
       let length = min(payloadPerFrame, raw.count - offset)
-      var frame = Data([0x00, UInt8(offset & 0xFF), sequence, UInt8(length)])
+      var frame = Data([0x00, UInt8(offset & 0xFF), lastIndex, UInt8(length)])
       frame.append(Data(raw[offset..<(offset + length)]))
       frames.append(frame)
       offset += length

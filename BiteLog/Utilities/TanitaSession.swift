@@ -3,6 +3,10 @@ import Foundation
 enum TanitaSessionError: Error, Equatable {
   /// 待っているコマンドと違う応答が来た
   case unexpectedResponse(expected: UInt16, actual: UInt16)
+  /// 体重計がエラーを返した。応答の先頭1バイトが状態で、0 以外は受け付けられていない
+  case rejected(command: UInt16, status: UInt8)
+  /// 名乗った識別子が体重計に登録されていない。体重計の表示は Err UUID になる
+  case unregisteredIdentifier(code: UInt8)
   case measurementDecodeFailed
 }
 
@@ -56,6 +60,10 @@ struct TanitaSession {
             .unexpectedResponse(expected: awaiting?.responseCommand ?? 0, actual: message.command))
         ]
       }
+      // 応答の先頭1バイトは状態。0 以外はこちらの要求が通っていない
+      if let status = message.payload.first, status != 0 {
+        return [.failed(.rejected(command: message.command, status: status))]
+      }
       return advance(message)
     }
   }
@@ -63,6 +71,11 @@ struct TanitaSession {
   private mutating func advance(_ message: TanitaMessage) -> [Action] {
     switch awaiting {
     case .identify:
+      // 名乗りの応答は2バイト。登録済みなら 00 00 で、2バイト目が 0 以外だと
+      // その識別子を知らないという意味になる（体重計の表示は Err UUID）
+      if let code = message.payload.dropFirst().first, code != 0 {
+        return [.failed(.unregisteredIdentifier(code: code))]
+      }
       let clock = TanitaField.clock(at: now(), timeZone: timeZone)
       return [send(.setClock, TanitaMessage(.setClock, fields: clock))]
 

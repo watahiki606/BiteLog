@@ -6,6 +6,8 @@ import SwiftUI
 /// 受け取った順にサーバーへ送り、既に持っている計測時刻のものは重複として数える。
 struct ScaleImportView: View {
   @StateObject private var connection = TanitaScaleConnection()
+  @AppStorage("TanitaAppIdentifier") private var appIdentifier = ""
+
   @State private var received: [TanitaBodyMeasurement] = []
   @State private var savedCount = 0
   @State private var duplicateCount = 0
@@ -51,6 +53,31 @@ struct ScaleImportView: View {
           }
         }
       }
+
+      if !connection.log.isEmpty {
+        Section(
+          header: Text(NSLocalizedString("Connection Log", comment: "Scale import section"))
+        ) {
+          ForEach(Array(connection.log.enumerated()), id: \.offset) { _, line in
+            Text(line)
+              .font(.system(.caption, design: .monospaced))
+              .foregroundColor(.secondary)
+              .textSelection(.enabled)
+          }
+        }
+      }
+
+      #if DEBUG
+        Section(
+          header: Text("識別子（開発用）"),
+          footer: Text("体組成計は登録済みの識別子しか受け付けない。未登録だと Err UUID が出る")
+        ) {
+          TextField("UUID", text: $appIdentifier)
+            .font(.system(.caption, design: .monospaced))
+            .textInputAutocapitalization(.characters)
+            .autocorrectionDisabled()
+        }
+      #endif
 
       Section {
         if isRunning {
