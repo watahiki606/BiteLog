@@ -43,6 +43,8 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
   static let measurementTimeout: TimeInterval = 180
 
   @Published private(set) var state: State = .idle
+  /// どこまで進んだかの記録。うまくいかなかったときに、どの段階で切れたかを見るために出す
+  @Published private(set) var log: [String] = []
   /// 引き取った測定データ。1回の接続で本体に溜まっている分すべてが流れてくる
   var onMeasurement: ((TanitaBodyMeasurement) -> Void)?
 
@@ -50,15 +52,18 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
   private var peripheral: CBPeripheral?
   private var writeCharacteristic: CBCharacteristic?
   private var subscribedCount = 0
+  private let identifierProvider: () -> String
   private var session: TanitaSession
   private var assembler = TanitaFraming.Assembler()
-  private var sequence: UInt8 = 0
   /// 書き込みは応答を伴わないため、送れるようになるまで自前で溜める
   private var writeQueue: [Data] = []
   private var timeoutWork: DispatchWorkItem?
 
-  init(appIdentifier: String = TanitaScaleConnection.storedAppIdentifier()) {
-    self.session = TanitaSession(appIdentifier: appIdentifier)
+  init(
+    identifierProvider: @escaping () -> String = { TanitaScaleConnection.storedAppIdentifier() }
+  ) {
+    self.identifierProvider = identifierProvider
+    self.session = TanitaSession(appIdentifier: identifierProvider())
     super.init()
   }
 
@@ -73,6 +78,14 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
   }
 
   func start() {
+    // 前回の接続の残りを持ち越すと、2回目以降が噛み合わなくなる
+    log = []
+    session = TanitaSession(appIdentifier: identifierProvider())
+    assembler = TanitaFraming.Assembler()
+    writeQueue = []
+    writeCharacteristic = nil
+    subscribedCount = 0
+    peripheral = nil
     state = .scanning
     central = CBCentralManager(delegate: self, queue: .main)
   }
@@ -98,6 +111,12 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
         timeoutWork?.cancel()
         state = .finished
         if let peripheral { central?.cancelPeripheralConnection(peripheral) }
+      case .failed(.unregisteredIdentifier(let code)):
+        fail(
+          String(
+            format: "この識別子は体組成計に登録されていません（%02x）。体組成計を登録するか、登録済みの識別子を入れてください", code))
+      case .failed(.rejected(let command, let status)):
+        fail(String(format: "体重計が受け付けませんでした（コマンド %04x / 状態 %02x）", command, status))
       case .failed(let error):
         fail("やり取りが噛み合いませんでした: \(error)")
       }
@@ -109,8 +128,8 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
       state = .waitingForStep
       scheduleTimeout()
     }
-    sequence = sequence &+ 2
-    writeQueue += TanitaFraming.frames(for: message.encoded, sequence: sequence)
+    note(String(format: "送信 %04x (%dバイト)", message.command, message.encoded.count))
+    writeQueue += TanitaFraming.frames(for: message.encoded)
     drainWriteQueue()
   }
 
@@ -136,7 +155,26 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
     DispatchQueue.main.asyncAfter(deadline: .now() + Self.measurementTimeout, execute: work)
   }
 
+  /// いま何をしていたか。切断の原因を切り分けるために失敗の文面へ入れる
+  private var phaseName: String {
+    switch state {
+    case .idle: return "待機中"
+    case .scanning: return "探索中"
+    case .connecting: return "接続中"
+    case .preparing: return "準備中"
+    case .waitingForStep: return "測定待ち"
+    case .reading: return "受け取り中"
+    case .finished: return "完了後"
+    case .failed: return "エラー後"
+    }
+  }
+
+  private func note(_ line: String) {
+    log.append(line)
+  }
+
   private func fail(_ message: String) {
+    note("失敗: \(message)")
     timeoutWork?.cancel()
     state = .failed(message)
     central?.stopScan()
@@ -150,6 +188,7 @@ extension TanitaScaleConnection: CBCentralManagerDelegate {
   func centralManagerDidUpdateState(_ central: CBCentralManager) {
     switch central.state {
     case .poweredOn:
+      note("探索開始")
       state = .scanning
       central.scanForPeripherals(withServices: [Self.serviceUUID])
     case .unauthorized:
@@ -166,6 +205,7 @@ extension TanitaScaleConnection: CBCentralManagerDelegate {
     advertisementData: [String: Any], rssi rssiValue: NSNumber
   ) {
     guard self.peripheral == nil else { return }
+    note("発見: \(peripheral.name ?? "名前なし") rssi=\(rssiValue)")
     self.peripheral = peripheral
     peripheral.delegate = self
     central.stopScan()
@@ -174,6 +214,7 @@ extension TanitaScaleConnection: CBCentralManagerDelegate {
   }
 
   func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
+    note("接続完了")
     state = .preparing
     peripheral.discoverServices([Self.serviceUUID])
   }
@@ -189,7 +230,7 @@ extension TanitaScaleConnection: CBCentralManagerDelegate {
   ) {
     // 引き取り終えてこちらから切った場合は成功のまま残す
     guard state != .finished else { return }
-    fail("通信中に切断されました: \(error?.localizedDescription ?? "原因不明")")
+    fail("通信中に切断されました（\(phaseName)）: \(error?.localizedDescription ?? "理由なし")")
   }
 }
 
@@ -218,6 +259,9 @@ extension TanitaScaleConnection: CBPeripheralDelegate {
       fail("体組成計のキャラクタリスティックが揃っていません")
       return
     }
+    note(
+      "特性: 書き込み=\(writeCharacteristic.map { String($0.uuid.uuidString.prefix(8)) } ?? "なし") "
+        + "通知=\(notifying.map { String($0.uuid.uuidString.prefix(8)) }.joined(separator: ","))")
     subscribedCount = 0
     for characteristic in notifying {
       peripheral.setNotifyValue(true, for: characteristic)
@@ -236,6 +280,7 @@ extension TanitaScaleConnection: CBPeripheralDelegate {
       return
     }
     subscribedCount += 1
+    note("購読成功 \(characteristic.uuid.uuidString.prefix(8))")
     // 購読が1本通れば応答は受け取れる。最初の1本で手順を始める
     guard subscribedCount == 1 else { return }
     perform(session.handle(.connected))
@@ -247,6 +292,12 @@ extension TanitaScaleConnection: CBPeripheralDelegate {
     guard error == nil, let frame = characteristic.value else { return }
     guard let raw = assembler.append(frame) else { return }
     do {
+      if raw.count >= 4 {
+        let payload = raw.dropFirst(4).dropLast()
+        note(
+          String(format: "受信 %02x%02x", raw[raw.startIndex + 2], raw[raw.startIndex + 3])
+            + " [\(payload.map { String(format: "%02x", $0) }.joined(separator: " "))]")
+      }
       perform(session.handle(.received(try TanitaMessage(decoding: raw))))
     } catch {
       fail("応答を読めませんでした: \(error)")
