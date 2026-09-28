@@ -57,6 +57,8 @@
     <string>料理の写真を撮影してAIで栄養素を分析するためにカメラへのアクセスが必要です。</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>料理の写真を選択してAIで栄養素を分析するためにフォトライブラリへのアクセスが必要です。</string>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>体組成計から体重や体脂肪率などの測定データを受け取るためにBluetoothへのアクセスが必要です。</string>
     <key>UIApplicationSupportsIndirectInputEvents</key>
     <true/>
     <key>NSAccentColorName</key>
