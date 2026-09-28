@@ -202,6 +202,19 @@ struct TanitaSessionTests {
       ])
   }
 
+  @Test func 体重計が受け付けなければ止める() {
+    var session = Self.makeSession()
+    _ = session.handle(.connected)
+
+    // 応答の先頭1バイトが状態。0 以外はこちらの要求が通っていない
+    let actions = session.handle(Self.response(to: .identify, data: [0x01, 0x00]))
+
+    #expect(
+      actions == [
+        .failed(.rejected(command: TanitaCommand.identify.responseCommand, status: 0x01))
+      ])
+  }
+
   @Test func 測定データが読めなければ止める() {
     var session = Self.makeSession()
     Self.advanceToMeasurement(&session)
