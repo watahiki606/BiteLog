@@ -17,7 +17,17 @@ struct ContentView: View {
   @State private var selectedTab: AppTab = .log
   @State private var logRefreshTrigger = 0
 
+  @ViewBuilder
   var body: some View {
+    if #available(iOS 26.0, *) {
+      // 下へスクロールしている間はタブバーを畳み、内容に画面を明け渡す。
+      tabView.tabBarMinimizeBehavior(.onScrollDown)
+    } else {
+      tabView
+    }
+  }
+
+  private var tabView: some View {
     TabView(selection: tabSelection) {
       Tab(NSLocalizedString("Log", comment: "Log"), systemImage: "book", value: AppTab.log) {
         logTab

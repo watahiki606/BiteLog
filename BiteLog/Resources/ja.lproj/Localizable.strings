@@ -5,10 +5,6 @@
 "Delete" = "削除";
 "Add" = "追加";
 "Language" = "言語";
-"System Default" = "システム設定に従う";
-"Language Changed" = "言語が変更されました";
-"Apply" = "適用";
-"The app needs to restart to apply the language change. Restart now?" = "言語変更を適用するにはアプリを再起動する必要があります。今すぐ再起動しますか？";
 
 // Meal Types
 "Breakfast" = "朝食";
@@ -271,3 +267,39 @@
 "Added %@" = "%@ を追加しました";
 "Couldn't add" = "追加できませんでした";
 "The meal was not saved. Check your connection and try again." = "記録は保存されていません。通信状況を確認してもう一度お試しください。";
+
+// 通信エラー
+"Your session has expired. Please sign in again." = "サインインの有効期限が切れました。もう一度サインインしてください。";
+"The data could not be found." = "データが見つかりませんでした。";
+"The server returned an error (%d)." = "サーバーがエラーを返しました（%d）。";
+"Couldn't reach the server. Check your connection." = "サーバーに接続できませんでした。通信状況を確認してください。";
+"The response couldn't be read." = "受け取ったデータを読み取れませんでした。";
+"The request address is invalid." = "接続先が不正です。";
+
+// 失敗の伝達
+"Couldn't load" = "読み込めませんでした";
+"Check your connection and try again." = "通信状況を確認して、もう一度お試しください。";
+"Couldn't save" = "保存できませんでした";
+"Couldn't delete" = "削除できませんでした";
+"Couldn't refresh" = "最新の状態にできませんでした";
+
+// 前日のコピー
+"Nothing to copy" = "コピーするものがありません";
+"There is no %@ logged for yesterday." = "昨日の%@は記録されていません。";
+
+// 目標の入力
+"Enter a number greater than 0. Fields left as they are keep their current goal." = "0 より大きい数値を入力してください。そのままの欄は今の目標を保ちます。";
+
+// 追加の取り消し
+"Undo" = "取り消す";
+"Removed %@" = "%@ を取り消しました";
+
+// 言語設定
+"Change the language in the Settings app, under Preferred Language." = "言語は設定アプリの「優先する言語」で変更できます。";
+
+// 目標までの残り
+"Remaining %@" = "あと %@";
+
+// 写真解析の候補
+"You've logged this before" = "前にも記録しています";
+"Pick one to log it without adding a new food. The ones you eat often then rise to the top of search." = "選ぶと新しい食品を作らずに記録できます。よく食べるものほど検索の上に出るようになります。";

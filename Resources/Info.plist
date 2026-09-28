@@ -22,6 +22,12 @@
     <string>BiteLog</string>
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
+    <!-- 設定アプリに「優先する言語」を出すために、対応言語を明示する。 -->
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>en</string>
+        <string>ja</string>
+    </array>
     <key>CFBundleURLTypes</key>
     <array>
         <dict>

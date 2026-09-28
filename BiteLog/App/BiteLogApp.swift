@@ -26,7 +26,6 @@ struct BiteLogApp: App {
       }
       .tint(Color.accentColor)
       .environment(\.locale, languageManager.locale)
-      .id(languageManager.selectedLanguage)
       .onOpenURL { url in
         _ = AuthManager.handleGoogleSignInCallback(url)
       }

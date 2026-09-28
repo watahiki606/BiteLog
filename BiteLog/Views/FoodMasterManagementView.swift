@@ -15,6 +15,10 @@ struct FoodMasterManagementView: View {
   private let pageSize = 20
   @State private var isLoading = false
   @State private var hasMoreData = true
+  /// 読み込めなかった状態。0件と区別する。同じ見た目で出すと、
+  /// 既に登録済みの食品をもう一度登録する操作を誘発する。
+  @State private var loadFailed = false
+  @State private var failure: OperationFailure?
 
   @FocusState private var isSearchFocused: Bool
   @State private var searchDebounceTimer: Timer?
@@ -69,6 +73,7 @@ struct FoodMasterManagementView: View {
       foodMasters = []
       isDataLoaded = false
     }
+    .operationFailureAlert($failure)
   }
 
   @ViewBuilder
@@ -76,6 +81,8 @@ struct FoodMasterManagementView: View {
     if isInitialLoading {
       ProgressView()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    } else if loadFailed && foodMasters.isEmpty {
+      LoadFailureView { await resetAndSearch() }
     } else if foodMasters.isEmpty {
       if searchText.isEmpty {
         EmptyFoodMasterView(showAddForm: $showingAddForm)
@@ -178,13 +185,18 @@ struct FoodMasterManagementView: View {
         hasMoreData = resp.hasMore
         isDataLoaded = true
         isInitialLoading = false
+        loadFailed = false
       }
     } catch {
       await MainActor.run {
         isDataLoaded = true
         isInitialLoading = false
+        if foodMasters.isEmpty {
+          loadFailed = true
+        } else {
+          failure = .refreshing(error)
+        }
       }
-      print("FoodMasterManagementView loadFoodMasters error: \(error)")
     }
   }
 
@@ -198,13 +210,17 @@ struct FoodMasterManagementView: View {
     AuthManager.shared.isAdmin || foodMaster.isMine == true
   }
 
+  /// 反応を待たせないよう先に行を消し、失敗したら元の位置へ戻す。
+  /// 戻さないと、消えたように見えて消えていない行が次の読み込みで蘇る。
   private func deleteFoodMaster(_ foodMaster: FoodMasterDTO) {
-    foodMasters.removeAll { $0.id == foodMaster.id }
+    guard let index = foodMasters.firstIndex(where: { $0.id == foodMaster.id }) else { return }
+    foodMasters.remove(at: index)
     Task {
       do {
         try await APIClient.shared.deleteFoodMaster(id: foodMaster.id)
       } catch {
-        print("deleteFoodMaster error: \(error)")
+        foodMasters.insert(foodMaster, at: min(index, foodMasters.count))
+        failure = .deleting(error)
       }
     }
   }
@@ -303,6 +319,8 @@ struct EmptyFoodMasterView: View {
 /// 食品マスタ1件の行。表示する量は1食分 (portionSize)。
 struct FoodMasterRow: View {
   let foodMaster: FoodMasterDTO
+  /// 一覧では2行に抑える。似た名前から1つ選ばせる場面では nil を渡す。
+  var titleLineLimit: Int? = 2
 
   var body: some View {
     FoodRow(
@@ -311,7 +329,8 @@ struct FoodMasterRow: View {
       subtitle: FoodRow.amountText(foodMaster.portionSize, unit: foodMaster.portionUnit),
       values: foodMaster.portionNutritionValues,
       leadingSymbol: foodMaster.isMine == true ? "person.fill" : nil,
-      leadingSymbolLabel: NSLocalizedString("My Items", comment: "My food items filter")
+      leadingSymbolLabel: NSLocalizedString("My Items", comment: "My food items filter"),
+      titleLineLimit: titleLineLimit
     )
   }
 }
@@ -338,6 +357,7 @@ struct FoodMasterFormView: View {
   @State private var portionSize = ""
   @State private var portionUnit = ""
   @State private var isSaving = false
+  @State private var failure: OperationFailure?
 
   @FocusState private var focusedField: FocusedField?
 
@@ -493,6 +513,7 @@ struct FoodMasterFormView: View {
           .disabled(brandName.isEmpty || productName.isEmpty || portionUnit.isEmpty || isSaving)
         }
       }
+      .operationFailureAlert($failure)
       .onAppear { loadState() }
       .onDisappear { saveState() }
       .onChange(of: brandName) { _, _ in saveState() }
@@ -573,8 +594,8 @@ struct FoodMasterFormView: View {
       onSaved?(saved)
       dismiss()
     } catch {
-      print("FoodMasterFormView saveAndDismiss error: \(error)")
-      dismiss()
+      // 失敗しても閉じると、入力した内容ごと消えたうえに登録できたつもりになる。
+      failure = .saving(error)
     }
   }
 

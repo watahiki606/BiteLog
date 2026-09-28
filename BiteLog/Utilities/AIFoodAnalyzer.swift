@@ -108,3 +108,23 @@ class AIFoodAnalyzer {
     }
   }
 }
+
+extension AIFoodAnalyzer {
+  /// AI が付けた長い名前から、既存の食品を探すための短い語を取り出す。
+  ///
+  ///     「おにぎり 昆布」                → 「おにぎり」
+  ///     「カフェオレ（微糖、200ml）」       → 「カフェオレ」
+  ///     「定食（ご飯＋汁物）」              → 「定食」
+  ///
+  /// 名前をそのまま検索語にすると当たらない。AI は写真ごとに違う言い回しを返すので、
+  /// 同じおにぎりでも「NL」と「国産」で別物になる。区切りの手前までを使う。
+  static func searchTerm(for productName: String) -> String {
+    let separators = CharacterSet(charactersIn: " 　（(【[｛{、，,・/＋+&")
+    let head =
+      productName
+      .components(separatedBy: separators)
+      .first { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+      ?? productName
+    return head.trimmingCharacters(in: .whitespaces)
+  }
+}

@@ -19,6 +19,7 @@ struct NutritionGoalsEditView: View {
           Text(NSLocalizedString("Calories", comment: "Nutrient label"))
           Spacer()
           Text("\(Int(calculatedCalories)) kcal")
+            .monospacedDigit()
             .foregroundColor(.secondary)
         }
 
@@ -27,9 +28,7 @@ struct NutritionGoalsEditView: View {
           .foregroundColor(.secondary)
       }
 
-      Section(
-        header: Text(NSLocalizedString("Macronutrients", comment: "Section header"))
-      ) {
+      Section {
         nutrientInputRow(
           label: NSLocalizedString("Protein", comment: "Nutrient label"),
           text: $proteinText,
@@ -53,6 +52,18 @@ struct NutritionGoalsEditView: View {
           text: $fiberText,
           unit: "g"
         )
+      } header: {
+        Text(NSLocalizedString("Macronutrients", comment: "Section header"))
+      } footer: {
+        // 0 や空欄を黙って捨てていると、入れたつもりの値が反映されない理由が分からない。
+        if hasInvalidInput {
+          Text(
+            NSLocalizedString(
+              "Enter a number greater than 0. Fields left as they are keep their current goal.",
+              comment: "Goal validation message")
+          )
+          .foregroundStyle(.red)
+        }
       }
 
       Section {
@@ -76,16 +87,31 @@ struct NutritionGoalsEditView: View {
 
   @ViewBuilder
   private func nutrientInputRow(label: String, text: Binding<String>, unit: String) -> some View {
+    let isInvalid = !text.wrappedValue.isEmpty && positiveValue(text.wrappedValue) == nil
+
     HStack {
       Text(label)
       Spacer()
       TextField("0", text: text)
         .keyboardType(.decimalPad)
         .multilineTextAlignment(.trailing)
+        .monospacedDigit()
+        .foregroundStyle(isInvalid ? Color.red : Color.primary)
         .frame(width: 80)
       Text(unit)
         .foregroundColor(.secondary)
     }
+  }
+
+  /// 0 より大きい数値として読めたときだけ値を返す。
+  private func positiveValue(_ text: String) -> Double? {
+    guard let value = Double(text), value > 0 else { return nil }
+    return value
+  }
+
+  private var hasInvalidInput: Bool {
+    [proteinText, fatText, netCarbsText, fiberText]
+      .contains { !$0.isEmpty && positiveValue($0) == nil }
   }
 
   private var calculatedCalories: Double {
@@ -103,24 +129,29 @@ struct NutritionGoalsEditView: View {
     fiberText = formatValue(nutritionGoalsManager.targetFiber)
   }
 
+  /// 4値をまとめて1回だけ保存する。
+  /// 値ごとに保存すると PUT が並走し、最後に返った応答で他の値が巻き戻る。
   private func saveValues() {
-    if let protein = Double(proteinText), protein > 0 {
-      nutritionGoalsManager.targetProtein = protein
-    }
-    if let fat = Double(fatText), fat > 0 {
-      nutritionGoalsManager.targetFat = fat
-    }
-    if let netCarbs = Double(netCarbsText), netCarbs > 0 {
-      nutritionGoalsManager.targetNetCarbs = netCarbs
-    }
-    if let fiber = Double(fiberText), fiber > 0 {
-      nutritionGoalsManager.targetFiber = fiber
+    let manager = nutritionGoalsManager
+    let protein = positiveValue(proteinText) ?? manager.targetProtein
+    let fat = positiveValue(fatText) ?? manager.targetFat
+    let netCarbs = positiveValue(netCarbsText) ?? manager.targetNetCarbs
+    let fiber = positiveValue(fiberText) ?? manager.targetFiber
+
+    guard protein != manager.targetProtein || fat != manager.targetFat
+      || netCarbs != manager.targetNetCarbs || fiber != manager.targetFiber
+    else { return }
+
+    Task {
+      await manager.update(protein: protein, fat: fat, netCarbs: netCarbs, fiber: fiber)
     }
   }
 
   private func resetToDefaults() {
-    nutritionGoalsManager.resetToDefaults()
-    loadCurrentValues()
+    Task {
+      await nutritionGoalsManager.resetToDefaults()
+      loadCurrentValues()
+    }
   }
 
   private func formatValue(_ value: Double) -> String {

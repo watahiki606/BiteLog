@@ -132,3 +132,120 @@ app.get_edit_app_store_version   # 編集中/審査待ち
 
 対応言語・著作権表記・添付ビルド・リリースノートが取れる。
 実装する前にこれで実物を見ておくと、当て推量で書かずに済む。
+
+## ImageRenderer では Increase Contrast を再現できない
+
+- **やろうとしたこと**: `DesignSystemGalleryTests` に
+  `.environment(\.colorSchemeContrast, .increased)` のケースを足して、
+  コントラストを上げた設定の見た目を PNG で確認する。
+- **できない理由**: `colorSchemeContrast` は読み取り専用の環境値で
+  `WritableKeyPath` ではない。`accessibilityReduceMotion` も同様に
+  書き込めず、そもそも静止画にアニメーションは写らない。
+- **代わりの手段**: シミュレータ側で設定する。
+  ```
+  xcrun simctl ui <device> increase_contrast enabled
+  xcrun simctl ui <device> content_size accessibility-extra-extra-extra-large
+  xcrun simctl ui <device> appearance light
+  ```
+  この状態で UI テストを流せば実画面のまま確認できる。
+- **教訓**: 描画ギャラリーで確認できるのは「ライト/ダーク × 文字サイズ」まで。
+  アクセシビリティ設定はシミュレータ側で切り替える。
+
+## スクロールできる Swift Charts ではタップ選択が効かない
+
+- **症状**: `.chartXSelection(value:)` を付けてもタップで何も選択されない。
+- **原因**: `.chartScrollableAxes(.horizontal)` があると、標準のタップ判定が
+  スクロールビューのジェスチャに吸われる。
+- **修正**: `.chartGesture` でタップを明示的に選択へつなぐ。
+  ```swift
+  .chartGesture { proxy in
+    SpatialTapGesture().onEnded { proxy.selectXValue(at: $0.location.x) }
+  }
+  ```
+- **もう1つ詰まった点**: 吹き出しを `RuleMark` の `.annotation(position: .top)`
+  に付けると、縦線の上端＝描画領域の外に置かれて表示されない。
+  値の位置に `PointMark` を重ねてそこに付ける。
+  `overflowResolution` は x・y とも `.fit(to: .chart)` にする。
+- **見た目**: 吹き出しの地に `.regularMaterial` を使うと下の折れ線の色を
+  拾って濁る。`tertiarySystemGroupedBackground` のような不透明な階層を敷く。
+
+## 大きな文字ではグラフの軸ラベルに上限を置く
+
+- **症状**: AX5 で統計画面の Y 軸の目盛りが互いに重なり、グラフの幅の半分を
+  数字が占めて折れ線が見えない。X 軸の日付は「Sep…」と切れる。
+- **原因**: Swift Charts の軸ラベルは Dynamic Type に上限なく追随する。
+- **修正**: `Chart` に `.dynamicTypeSize(...DynamicTypeSize.xLarge)` を付けて
+  軸ラベルの拡大に上限を置く。カードの中の数値は従来どおり最大まで大きくする。
+  あわせて、大きな文字のときは目盛りの本数を間引く（stride を3倍にした）。
+- **同じ話**: 「Sep 20, 2026 – Sep 26, 2026」のような期間の表記も
+  AX5 では3行に折り返して前後の矢印を画面の端へ押しやる。
+  短い日付書式に切り替え、`.dynamicTypeSize(...DynamicTypeSize.accessibility1)`
+  で上限を置いた。
+- **教訓**: リングの `@ScaledMetric` を `min()` で頭打ちにしているのと同じ判断を、
+  グラフの軸と補助的なラベルにも当てる。
+
+## `safeAreaInset` に置く帯は画面の下端まで地を伸ばす
+
+- **症状**: 広告バナーを `safeAreaInset(edge: .bottom)` に置き、
+  `.background(.bar)` をバナーの高さぶんだけ敷いていたら、
+  iOS 26 の浮いたタブバーの裏で一覧の行が見切れて残った。
+- **修正**: 地を `ignoresSafeArea(edges: .bottom)` で画面の下端まで伸ばす。
+  ```swift
+  .background { Rectangle().fill(.bar).ignoresSafeArea(edges: .bottom) }
+  ```
+- **あわせて**: `AdaptiveBannerView` は幅に応じて自分で高さを決めるので、
+  外から `.frame(height: 50)` で固定すると画面幅によっては下端が切れる。
+
+## PlistBuddy で Info.plist を編集すると全行が差分になる
+
+- **症状**: `/usr/libexec/PlistBuddy -c "Add ..."` で1項目足しただけなのに、
+  キーがアルファベット順に並べ替えられインデントがタブに変わり、
+  ファイル全体が差分になる。
+- **回避**: 一時的な書き換えなら `git restore` で戻せるが、
+  コミットに残す変更はエディタで手で足す。
+
+## lineLimit(nil) だけでは Text の切り詰めは止まらない
+
+- **症状**: `FoodRow` の名前に `lineLimit(nil)` を渡しても、大きな文字で
+  「タンパク質が取れるオムライス…」と2行で切られたままになる。
+- **原因**: 親が提案した高さに収まるよう縮められる。`lineLimit` は
+  上限を外すだけで、必要な高さを主張するわけではない。
+- **修正**: `.fixedSize(horizontal: false, vertical: true)` を足す。
+  これで必要な行数ぶんの高さを確保する。
+  全体に効かせたくない場合は `vertical: titleLineLimit == nil` のように
+  Bool を条件式にできる。
+- **どこで効くか**: 一覧を眺める場面では2行で切ってよいが、
+  似た名前から1つ選ばせる場面では切ると選べない。用途で分ける。
+
+## 描画ギャラリーは -parallel-testing-enabled NO を毎回付ける
+
+lessons に既に書いてあるのに、また忘れてクローン側に書き出し、
+前日の古い PNG を見て「変更が反映されていない」と誤認した。
+`DESIGN_GALLERY_DIR=` の出力を毎回確認し、
+`ls -ld` でディレクトリの時刻を見てから開く。
+
+## 本番データを分析したら、出力先ごとに線を引く
+
+- **やった間違い**: 本番 D1 を集計して設計診断を書くとき、他人のアカウントが
+  記録した食品名と日付を、公開アーティファクト・公開リポジトリの issue・
+  テストコードの入力・ドキュメントコメントに、そのまま書いた。
+- **なぜ間違いか**: 食事の記録は名前が付いていなくても機微情報で、飲酒・
+  信仰上の制限・体調・妊娠などが読み取れる。「名前が無いから匿名」は
+  匿名化の基準として成立しない。
+- **線の引き方**: DB を読むこと自体は分析に必要。出すときに分ける。
+  - 件数・割合・分布・パターン → 外に出してよい
+  - 個票（誰が何をいつ食べたか） → ターミナルの中だけ
+  - テストやコメントの例示に実在の記録を使わない。架空で足りる
+- **もう1つの失敗**: 指摘されて目の前のアーティファクトだけ直し、
+  「issue と PR には書いていないことは確認しました」と**確認せずに**書いた。
+  実際には issue・PR・コミットメッセージ・ソース・テストの全部に入っていた。
+  確認していないことを断定で書くと、相手が確認する動機まで奪う。
+- **手順**: 同種の誤りを見つけたら、直す前に全出力先を grep する。
+  ```
+  git grep -n "<語>" -- .
+  git log origin/main..HEAD --format="%h %s%n%b" | grep -n "<語>"
+  gh issue view <n> --json body -q .body | grep -n "<語>"
+  gh repo view --json visibility   # 公開かどうかを先に見る
+  ```
+- **消せないもの**: GitHub の issue は編集しても「edited」から元の本文が
+  誰でも見られる。push 済みのコミットメッセージも同様。書く前に止めるしかない。
