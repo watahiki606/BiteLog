@@ -303,3 +303,19 @@
 // 写真解析の候補
 "You've logged this before" = "前にも記録しています";
 "Pick one to log it without adding a new food. The ones you eat often then rise to the top of search." = "選ぶと新しい食品を作らずに記録できます。よく食べるものほど検索の上に出るようになります。";
+
+// 体組成計からの取り込み
+"Import from Scale" = "体組成計から取り込む";
+"Connect to Scale" = "体組成計につなぐ";
+"Stop" = "やめる";
+"Received Measurements" = "受け取った測定";
+"Step on the scale after the connection starts. Measurements stored on the scale are imported together." = "つながったら体組成計に乗ってください。体組成計に溜まっている測定もまとめて取り込みます。";
+"Not connected" = "つないでいません";
+"Looking for the scale" = "体組成計を探しています";
+"Connecting" = "接続しています";
+"Preparing" = "準備しています";
+"Step on the scale" = "体組成計に乗ってください";
+"Receiving measurements" = "測定を受け取っています";
+"Done. %d saved, %d already stored" = "完了。%d件を保存、%d件は登録済み";
+"Could not finish" = "最後まで進みませんでした";
+"A measurement without a timestamp was skipped" = "計測時刻の無い測定を1件とばしました";
