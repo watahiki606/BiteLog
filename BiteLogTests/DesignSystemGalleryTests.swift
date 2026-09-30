@@ -31,6 +31,8 @@ struct DesignSystemGalleryTests {
     for (name, scheme, typeSize) in cases {
       try render(GalleryView(), to: base, name: name, scheme: scheme, typeSize: typeSize)
       try render(RowGalleryView(), to: base, name: "rows-\(name)", scheme: scheme, typeSize: typeSize)
+      // 体組成は別の絵にする。1枚にまとめると AX5 で PNG に書き出せない高さになる
+      try render(BodyGalleryView(), to: base, name: "body-\(name)", scheme: scheme, typeSize: typeSize)
     }
   }
 
@@ -149,6 +151,48 @@ private struct GalleryView: View {
         }
       }
 
+    }
+    .padding()
+  }
+
+  private func group<Content: View>(
+    _ title: String, @ViewBuilder content: () -> Content
+  ) -> some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text(title)
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(.secondary)
+      content()
+    }
+  }
+}
+
+/// 要約ビューは Binding を持つので、確認用に State を持つ入れ物を挟む。
+private struct DailyTotalsSample: View {
+  @State private var showsAllNutrients = true
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      DailyTotalsView(
+        totals: NutritionValues(
+          calories: 1642, netCarbs: 186.3, dietaryFiber: 14.2, fat: 52.8, protein: 94.5),
+        goals: NutritionGoalsTargets(
+          calories: 2000, protein: 120, fat: 60, netCarbs: 250, fiber: 20),
+        showsAllNutrients: $showsAllNutrients)
+    }
+  }
+}
+
+/// 体組成まわりの部品。栄養と重ねた二軸グラフと、記録の画面に置くカード。
+private struct BodyGalleryView: View {
+  var body: some View {
+    VStack(alignment: .leading, spacing: 20) {
+      group("Body Correlation") {
+        BodyCorrelationChart(
+          points: Self.correlationPoints, nutrient: .calories, metric: .weightKg,
+          bucket: .day, xAxisStride: 2)
+      }
+
       group("Body Composition") {
         VStack(alignment: .leading, spacing: 16) {
           ForEach(Array(Self.bodyCompositionCases.enumerated()), id: \.offset) { _, item in
@@ -160,6 +204,28 @@ private struct GalleryView: View {
       }
     }
     .padding()
+  }
+
+  /// 二軸グラフの見え方。値は架空で、同じ日に何度も乗った日と、
+  /// 測らなかった日と、記録の無い日を混ぜてある。
+  static var correlationPoints: [BodyCorrelation.Point] {
+    let start = Calendar.current.startOfDay(for: Date())
+    let rows: [(nutrient: Double, body: Double?, low: Double?, high: Double?, count: Int)] = [
+      (2180, 61.2, 60.9, 61.9, 3),
+      (1740, 61.0, 61.0, 61.0, 1),
+      (0, nil, nil, nil, 0),
+      (2460, 61.4, 61.1, 62.3, 2),
+      (1980, 61.1, 61.1, 61.1, 1),
+      (2050, nil, nil, nil, 0),
+      (1620, 60.8, 60.4, 61.5, 4),
+      (2310, 60.9, 60.9, 60.9, 1),
+    ]
+    return rows.enumerated().map { index, row in
+      BodyCorrelation.Point(
+        date: Calendar.current.date(byAdding: .day, value: index, to: start)!,
+        nutrient: row.nutrient, body: row.body, low: row.low, high: row.high,
+        measurementCount: row.count)
+    }
   }
 
   /// カードが取りうる状態。値は架空。
@@ -192,22 +258,6 @@ private struct GalleryView: View {
         .font(.caption.weight(.semibold))
         .foregroundStyle(.secondary)
       content()
-    }
-  }
-}
-
-/// 要約ビューは Binding を持つので、確認用に State を持つ入れ物を挟む。
-private struct DailyTotalsSample: View {
-  @State private var showsAllNutrients = true
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 8) {
-      DailyTotalsView(
-        totals: NutritionValues(
-          calories: 1642, netCarbs: 186.3, dietaryFiber: 14.2, fat: 52.8, protein: 94.5),
-        goals: NutritionGoalsTargets(
-          calories: 2000, protein: 120, fat: 60, netCarbs: 250, fiber: 20),
-        showsAllNutrients: $showsAllNutrients)
     }
   }
 }

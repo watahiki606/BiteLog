@@ -359,3 +359,30 @@ extension BodyMeasurementDTO {
     return formatter.string(from: date)
   }
 }
+
+// MARK: - 日次統計 DTO
+
+/// `GET /api/statistics/daily` が返す1日ぶん。栄養の合計と体組成の平均が
+/// サーバー側でマージ済み。
+///
+/// 栄養は記録の無い日を 0 で返すが、体組成は測っていない日を `nil` で返す。
+/// この違いは意図したもので、0 で埋めると「その日は体重が 0 だった」になる。
+struct DailyStatDTO: Codable, Identifiable, Equatable {
+  let date: String
+  let calories: Double
+  let protein: Double
+  let fat: Double
+  let netCarbs: Double
+  let dietaryFiber: Double
+  let weightKg: Double?
+  let bodyFatPercent: Double?
+  let muscleMassKg: Double?
+  let muscleScore: Double?
+  let visceralFatLevel: Double?
+  let basalMetabolismKcal: Double?
+  let metabolicAge: Double?
+  let boneMassKg: Double?
+  let bodyWaterPercent: Double?
+
+  var id: String { date }
+}
