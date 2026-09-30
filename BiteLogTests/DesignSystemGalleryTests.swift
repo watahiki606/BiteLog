@@ -148,8 +148,40 @@ private struct GalleryView: View {
           NutrientChipRow(values: overSample)
         }
       }
+
+      group("Body Composition") {
+        VStack(alignment: .leading, spacing: 16) {
+          ForEach(Array(Self.bodyCompositionCases.enumerated()), id: \.offset) { _, item in
+            BodyCompositionCardView(
+              measurement: item.measurement, activity: item.activity, canMeasure: true,
+              failure: item.failure, onMeasure: {}, onStop: {})
+          }
+        }
+      }
     }
     .padding()
+  }
+
+  /// カードが取りうる状態。値は架空。
+  ///
+  /// 探している間の表示はここに並べられない。`ProgressView` は `ImageRenderer` で
+  /// 描けず、AX5 では書き出し自体が失敗する。実機で見るしかない。
+  static var bodyCompositionCases:
+    [(measurement: BodyMeasurementDTO?, activity: BodyCompositionModel.Activity, failure: String?)]
+  {
+    [
+      (nil, .idle, nil),
+      (measured, .idle, nil),
+      (nil, .idle, "体組成計が見つかりませんでした。電源が入っていない状態で通信ボタンを押してから、もう一度試してください"),
+    ]
+  }
+
+  static var measured: BodyMeasurementDTO {
+    BodyMeasurementDTO(
+      id: "sample", sourceDate: "2026-09-24", measuredAt: "2026-09-24T22:10:00.000Z",
+      weightKg: 61.25, bodyFatPercent: 18.4, muscleMassKg: 47.6, muscleScore: 2,
+      visceralFatLevel: 6.5, basalMetabolismKcal: 1480, metabolicAge: 34, boneMassKg: 2.7,
+      bodyWaterPercent: 57.3)
   }
 
   private func group<Content: View>(

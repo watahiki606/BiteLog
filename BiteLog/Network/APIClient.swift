@@ -227,6 +227,14 @@ final class APIClient {
     try await requestVoid(path: "/api/body-measurements", method: "POST", body: dto)
   }
 
+  /// 新しい順に測定を取る。件数で切るのは、記録の画面が見るのが直近の数日ぶんだけで、
+  /// 全件だと10年ぶん 6,000 行以上が流れてくるため。
+  func fetchBodyMeasurements(limit: Int) async throws -> [BodyMeasurementDTO] {
+    struct Response: Decodable { let items: [BodyMeasurementDTO] }
+    let response: Response = try await request(path: "/api/body-measurements?limit=\(limit)")
+    return response.items
+  }
+
   // MARK: - NutritionGoals
 
   func fetchNutritionGoals() async throws -> NutritionGoalsDTO {

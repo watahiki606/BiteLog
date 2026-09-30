@@ -7,6 +7,7 @@ struct DayContentView: View {
   var refreshTrigger: Int = 0
 
   @EnvironmentObject private var nutritionGoalsManager: NutritionGoalsManager
+  @StateObject private var bodyComposition = BodyCompositionModel()
 
   @State private var dayLogItems: [LogItemDTO] = []
   @State private var isLoading = false
@@ -76,6 +77,14 @@ struct DayContentView: View {
     .task(id: taskID) {
       await loadLogItems()
     }
+    // 記録の読み込みとは別に走らせる。体組成が取れなくても記録の表示は待たせない
+    .task(id: taskID) {
+      await bodyComposition.load(date: date)
+    }
+    .onDisappear {
+      // 画面を離れたら探すのをやめる。つないだまま残すと Bluetooth を掴み続ける
+      bodyComposition.stop()
+    }
     .onReceive(NotificationCenter.default.publisher(for: .allDataDeleted)) { _ in
       dayLogItems = []
       deleteAllTrigger += 1
@@ -85,6 +94,8 @@ struct DayContentView: View {
   private var logList: some View {
     List(selection: editMode == .active ? $selectedItemIDs : .constant(Set<UUID>())) {
       summarySection
+
+      bodyCompositionSection
 
       ForEach(loggedMealTypes, id: \.self) { mealType in
         mealSection(for: mealType)
@@ -125,6 +136,28 @@ struct DayContentView: View {
       Text(NSLocalizedString("Daily Total", comment: "Daily nutrition summary"))
     }
     .headerProminence(.increased)
+  }
+
+  // MARK: - 体組成
+
+  /// 体組成計を登録していない人には出さない。測る導線も置かない。
+  @ViewBuilder
+  private var bodyCompositionSection: some View {
+    if bodyComposition.isVisible {
+      Section {
+        BodyCompositionCardView(
+          measurement: bodyComposition.dayMeasurement,
+          activity: bodyComposition.activity,
+          canMeasure: bodyComposition.canMeasure,
+          failure: bodyComposition.manualFailure,
+          onMeasure: { bodyComposition.measureByHand() },
+          onStop: { bodyComposition.stop() }
+        )
+      } header: {
+        Text(NSLocalizedString("Body Composition", comment: "Body composition section"))
+      }
+      .headerProminence(.increased)
+    }
   }
 
   // MARK: - 食事セクション

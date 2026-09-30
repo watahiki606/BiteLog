@@ -39,8 +39,18 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
     CBUUID(string: "273E510F-6B90-4779-83B8-B8BF1DADAC35"),
   ]
 
-  /// 測定を待つ時間。体重計に乗って測り終わるまで応答が返らない
-  static let measurementTimeout: TimeInterval = 180
+  /// どこまで待つか。どちらの段階も、待ち続けると Bluetooth をつないだまま放置になる。
+  struct Timeouts: Equatable {
+    /// 体重計が見つかるまで待つ時間。常時アドバタイズしていないので、見つからないこともある
+    var discovery: TimeInterval
+    /// 乗って測り終わるまで待つ時間。応答はここだけ人を待つ
+    var measurement: TimeInterval
+
+    /// 設定から手で始めるとき。乗るつもりで画面を開いているので長く待つ
+    static let manual = Timeouts(discovery: 30, measurement: 180)
+    /// 記録の画面が自動で始めるとき。測る気が無いまま開いていることもあるので短く切る
+    static let automatic = Timeouts(discovery: 15, measurement: 60)
+  }
 
   @Published private(set) var state: State = .idle
   /// どこまで進んだかの記録。うまくいかなかったときに、どの段階で切れたかを見るために出す
@@ -58,11 +68,15 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
   /// 書き込みは応答を伴わないため、送れるようになるまで自前で溜める
   private var writeQueue: [Data] = []
   private var timeoutWork: DispatchWorkItem?
+  private var timeouts: Timeouts = .manual
+  private let defaults: UserDefaults
 
   init(
-    identifierProvider: @escaping () -> String = { TanitaScaleConnection.storedAppIdentifier() }
+    identifierProvider: @escaping () -> String = { TanitaScaleConnection.storedAppIdentifier() },
+    defaults: UserDefaults = .standard
   ) {
     self.identifierProvider = identifierProvider
+    self.defaults = defaults
     self.session = TanitaSession(appIdentifier: identifierProvider())
     super.init()
   }
@@ -77,7 +91,18 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
     return generated
   }
 
-  func start() {
+  static let pairedKey = "TanitaScalePaired"
+
+  /// この端末が体組成計に登録できているか。
+  ///
+  /// 識別子は登録されていなくても作られるので、識別子があること自体は登録の証拠にならない。
+  /// 最後まで通したことだけが確かな手がかりなので、通ったときに立てる。
+  static func isPaired(defaults: UserDefaults = .standard, key: String = pairedKey) -> Bool {
+    defaults.bool(forKey: key)
+  }
+
+  func start(timeouts: Timeouts = .manual) {
+    self.timeouts = timeouts
     // 前回の接続の残りを持ち越すと、2回目以降が噛み合わなくなる
     log = []
     session = TanitaSession(appIdentifier: identifierProvider())
@@ -110,6 +135,9 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
       case .finished:
         timeoutWork?.cancel()
         state = .finished
+        // 最後まで通ったということは、名乗った識別子が体組成計に登録されている。
+        // 以降は記録の画面から自動で探してよい
+        defaults.set(true, forKey: Self.pairedKey)
         if let peripheral { central?.cancelPeripheralConnection(peripheral) }
       case .failed(.unregisteredIdentifier(let code)):
         fail(
@@ -126,7 +154,7 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
   private func send(_ message: TanitaMessage) {
     if message.command == TanitaCommand.startMeasurement.rawValue {
       state = .waitingForStep
-      scheduleTimeout()
+      scheduleTimeout(timeouts.measurement, "測定の応答がありませんでした。体重計に乗ってからもう一度試してください")
     }
     note(String(format: "送信 %04x (%dバイト)", message.command, message.encoded.count))
     writeQueue += TanitaFraming.frames(for: message.encoded)
@@ -146,13 +174,12 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
     }
   }
 
-  private func scheduleTimeout() {
+  /// 段階ごとの待ち時間を仕掛ける。段階は重ならないので1つで足りる。
+  private func scheduleTimeout(_ seconds: TimeInterval, _ message: String) {
     timeoutWork?.cancel()
-    let work = DispatchWorkItem { [weak self] in
-      self?.fail("測定の応答がありませんでした。体重計に乗ってからもう一度試してください")
-    }
+    let work = DispatchWorkItem { [weak self] in self?.fail(message) }
     timeoutWork = work
-    DispatchQueue.main.asyncAfter(deadline: .now() + Self.measurementTimeout, execute: work)
+    DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: work)
   }
 
   /// いま何をしていたか。切断の原因を切り分けるために失敗の文面へ入れる
@@ -191,6 +218,8 @@ extension TanitaScaleConnection: CBCentralManagerDelegate {
       note("探索開始")
       state = .scanning
       central.scanForPeripherals(withServices: [Self.serviceUUID])
+      // 見つからないまま探し続けると Bluetooth を使ったまま放置になる
+      scheduleTimeout(timeouts.discovery, "体組成計が見つかりませんでした。電源が入っていない状態で通信ボタンを押してから、もう一度試してください")
     case .unauthorized:
       fail("Bluetooth の使用が許可されていません")
     case .poweredOff:
@@ -205,6 +234,7 @@ extension TanitaScaleConnection: CBCentralManagerDelegate {
     advertisementData: [String: Any], rssi rssiValue: NSNumber
   ) {
     guard self.peripheral == nil else { return }
+    timeoutWork?.cancel()
     note("発見: \(peripheral.name ?? "名前なし") rssi=\(rssiValue)")
     self.peripheral = peripheral
     peripheral.delegate = self
