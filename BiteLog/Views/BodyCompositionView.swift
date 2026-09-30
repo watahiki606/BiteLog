@@ -180,6 +180,8 @@ struct BodyCompositionView: View {
         }
         .pickerStyle(.segmented)
 
+        // 折れ線が何を指すかを決める2つ。どちらも折れ線の形が変わるので隣に置く。
+        // 選ぶものが増えるほど窮屈になるので、1行に2つまでにしている
         HStack(spacing: 8) {
           Picker("", selection: $bodyMetric) {
             ForEach(BodyMetric.allCases) { metric in
@@ -191,6 +193,17 @@ struct BodyCompositionView: View {
 
           Spacer()
 
+          // 同じ日に何度も乗るので、その日をどれで代表させるかで折れ線が変わる
+          Picker("", selection: $pick) {
+            ForEach(DailyPick.allCases) { option in
+              Text(option.localizedName).tag(option)
+            }
+          }
+          .pickerStyle(.menu)
+          .labelsHidden()
+        }
+
+        HStack(spacing: 8) {
           if availableBuckets.count > 1 {
             Picker("", selection: $bucket) {
               ForEach(availableBuckets) { b in
@@ -198,18 +211,17 @@ struct BodyCompositionView: View {
               }
             }
             .pickerStyle(.segmented)
-            .fixedSize()
           }
-        }
 
-        // 日ごとに見ているときは、合計も平均も同じ1日ぶんなので選ばせない
-        if bucket != .day {
-          Picker("", selection: $aggregation) {
-            ForEach(StatAggregation.allCases) { option in
-              Text(option.localizedName).tag(option)
+          // 日ごとに見ているときは、合計も平均も同じ1日ぶんなので選ばせない
+          if bucket != .day {
+            Picker("", selection: $aggregation) {
+              ForEach(StatAggregation.allCases) { option in
+                Text(option.localizedName).tag(option)
+              }
             }
+            .pickerStyle(.segmented)
           }
-          .pickerStyle(.segmented)
         }
 
         BodyCorrelationChart(
@@ -218,36 +230,27 @@ struct BodyCompositionView: View {
 
         legend
 
-        dailyPickPicker
+        dailyPickNote
       }
     }
   }
 
-  /// その日をどれで代表させるか。同じ日に何度も乗る日が無ければ出さない。
+  /// 折れ線が何を指しているかの説明。同じ日に何度も乗った日があるときだけ出す。
   ///
-  /// 体重は1日のうちに1kg以上動くので、朝いちばんと夜では別の数字になる。
-  /// 黙って平均にすると、乗った回数で日ごとの値が変わってしまう。
+  /// 体重は1日のうちに1kg以上動く。何回乗った日があるのかが分かってはじめて、
+  /// 上の「朝いちばん／その日の平均／その日の最後」を選ぶ意味が伝わる。
   @ViewBuilder
-  private var dailyPickPicker: some View {
+  private var dailyPickNote: some View {
     if multiMeasurementDays > 0 {
-      VStack(alignment: .leading, spacing: 4) {
-        Picker("", selection: $pick) {
-          ForEach(DailyPick.allCases) { option in
-            Text(option.localizedName).tag(option)
-          }
-        }
-        .pickerStyle(.segmented)
-
-        Text(
-          String(
-            format: NSLocalizedString(
-              "%d days have more than one measurement. The band shows how much they moved that day.",
-              comment: "Daily pick help"),
-            multiMeasurementDays)
-        )
-        .font(.caption2)
-        .foregroundStyle(.secondary)
-      }
+      Text(
+        String(
+          format: NSLocalizedString(
+            "%1$d days have more than one measurement. The line follows %2$@; the band shows how much that day moved.",
+            comment: "Daily pick help"),
+          multiMeasurementDays, pick.localizedName)
+      )
+      .font(.caption2)
+      .foregroundStyle(.secondary)
     }
   }
 

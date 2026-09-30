@@ -3,16 +3,9 @@ import Foundation
 
 /// 記録の画面が体組成計を自動で探し始めてよいかを決める。
 ///
-/// 自動で探すと、記録をつけたいだけで開いたときにも Bluetooth の接続が走る。
-/// かといって「その日もう測ったから」で止めると、朝に乗って夜にまた乗る使い方で
-/// 2回目以降が拾えない。時間で間隔を空ける形にする。
+/// 探すのは2つの場面だけ。アプリを開いて記録の画面が出たときと、
+/// 新しい測定が入った直後。時計で間隔を計ったりはしない。
 enum ScaleAutoStart {
-  /// 自動で探し直すまでの間隔。
-  ///
-  /// タブを行き来するたびに探すと Bluetooth を使い続けることになる。
-  /// 逆に1日1回に絞ると、同じ日に何度も乗る使い方で2回目以降が拾えない。
-  static let retryInterval: TimeInterval = 30 * 60
-
   struct Conditions: Equatable {
     /// 見ているのが今日か。過去の日を開いて測り始めるのは筋が通らない
     var isToday: Bool
@@ -20,14 +13,27 @@ enum ScaleAutoStart {
     var isPaired: Bool
     /// もう探している途中か
     var isRunning: Bool
-    /// 最後に自動で探してからの経過。まだ一度も探していなければ nil
-    var sinceLastAttempt: TimeInterval?
+    /// アプリが前面に戻ってから、もう自動で試したか。
+    /// タブを行き来するたびに探し始めないための歯止め
+    var attemptedSinceForeground: Bool
   }
 
   static func shouldStart(_ conditions: Conditions) -> Bool {
-    guard conditions.isToday, conditions.isPaired, !conditions.isRunning else { return false }
-    guard let since = conditions.sinceLastAttempt else { return true }
-    return since >= retryInterval
+    conditions.isToday
+      && conditions.isPaired
+      && !conditions.isRunning
+      && !conditions.attemptedSinceForeground
+  }
+
+  /// 測定を受け取ったあと、続けてもう一度待つか。
+  ///
+  /// 体重計には連続で数回乗ることがある。1回受け取って終わると、2回目以降は
+  /// 本体に溜まるだけでその場に出てこない。乗ったらすぐ結果が出る形にならない。
+  ///
+  /// 待ち直すのは新しく保存できたときだけ。体重計は引き取り済みのぶんも送ってくるので、
+  /// 同じ測定が返ってくるだけのときに待ち直しても、何も増えないまま繰り返す。
+  static func shouldRearm(savedNewMeasurement: Bool, isToday: Bool) -> Bool {
+    savedNewMeasurement && isToday
   }
 }
 
@@ -62,8 +68,10 @@ final class BodyCompositionModel: ObservableObject {
   private let timeZone: TimeZone
   private let calendar: Calendar
   private var cancellables: Set<AnyCancellable> = []
-  /// 最後に自動で探し始めた時刻。間を空けるために持つ
-  private var lastAutoAttempt: Date?
+  /// アプリが前面に戻ってから自動で試したか
+  private var attemptedSinceForeground = false
+  /// 新しい測定を保存できた。引き取りが終わったら、続けてもう一度待つ
+  private var pendingRearm = false
   /// 手で始めたかどうか。空振りを伝えるかどうかがここで変わる
   private var startedByHand = false
   private var day: String?
@@ -102,26 +110,41 @@ final class BodyCompositionModel: ObservableObject {
 
   var isRunning: Bool { activity != .idle }
 
-  /// 見ている日が変わったときに呼ぶ。測定を取り直し、条件が揃えば自動で探し始める。
+  /// 見ている日が変わったときに呼ぶ。測定を取り直すだけで、探しはしない。
+  ///
+  /// 記録を1つ足すたびにこの画面は読み直される。そこで探し始めると、
+  /// 食事をつけるたびに Bluetooth の接続が走る。
   func load(date: Date, now: Date = Date()) async {
     let day = BodyMeasurementDTO.formatDay(date, timeZone: timeZone)
-    // 別の日へ移ったのに探し続けると、返ってきた結果が画面と噛み合わない
-    if let previous = self.day, previous != day, isRunning { connection.stop() }
+    if let previous = self.day, previous != day {
+      // 別の日へ移ったのに探し続けると、返ってきた結果が画面と噛み合わない
+      if isRunning { connection.stop() }
+      attemptedSinceForeground = false
+    }
     self.day = day
     isPaired = TanitaScaleConnection.isPaired(defaults: defaults)
     isToday = day == BodyMeasurementDTO.formatDay(now, timeZone: timeZone)
     await reload(day: day)
+  }
 
+  /// 記録の画面が出たときに呼ぶ。条件が揃えば自動で探し始める。
+  func autoMeasureIfNeeded() {
     let conditions = ScaleAutoStart.Conditions(
-      isToday: isToday,
-      isPaired: isPaired,
-      isRunning: isRunning,
-      sinceLastAttempt: lastAutoAttempt.map { now.timeIntervalSince($0) }
-    )
+      isToday: isToday, isPaired: isPaired, isRunning: isRunning,
+      attemptedSinceForeground: attemptedSinceForeground)
     guard ScaleAutoStart.shouldStart(conditions) else { return }
-    lastAutoAttempt = now
+    attemptedSinceForeground = true
     startedByHand = false
     connection.start(timeouts: .automatic)
+  }
+
+  /// アプリが前面に戻ったときに呼ぶ。もう一度だけ探す。
+  ///
+  /// 測ろうとして開いたのかどうかは分からないが、開いたことだけが分かる手がかり。
+  /// 朝に乗って夜にまた乗る使い方は、たいていアプリを開き直す。
+  func foregrounded() {
+    attemptedSinceForeground = false
+    autoMeasureIfNeeded()
   }
 
   /// カードの「測る」から始める。自動で空振りしたあとでも押せる
@@ -163,17 +186,34 @@ final class BodyCompositionModel: ObservableObject {
       activity = .reading
     case .idle, .finished:
       activity = .idle
+      rearmIfNeeded()
     case .failed(let message):
       activity = .idle
       // 自動で探して見つからなかっただけのことをエラーとして出さない
       manualFailure = startedByHand ? message : nil
+      pendingRearm = false
     }
+  }
+
+  /// 続けて乗るかもしれないので、もう一度待ちに入る。
+  ///
+  /// 引き取りが終わったあとと、保存が終わったあとの両方から呼ぶ。どちらが先になるかは
+  /// 通信と通信の速さ次第で決まらない。印を1つ持たせて、先に揃ったほうで動かす。
+  private func rearmIfNeeded() {
+    guard ScaleAutoStart.shouldRearm(savedNewMeasurement: pendingRearm, isToday: isToday),
+      !isRunning
+    else { return }
+    pendingRearm = false
+    startedByHand = false
+    connection.start(timeouts: .automatic)
   }
 
   private func store(_ measurement: TanitaBodyMeasurement) async {
     guard let dto = BodyMeasurementCreateDTO(measurement, timeZone: timeZone) else { return }
     do {
       try await api.createBodyMeasurement(dto)
+      // 新しく入ったので、続けて乗るかもしれない
+      pendingRearm = true
     } catch APIError.serverError(409) {
       // 体重計は引き取り済みのぶんも送ってくる。既にある測定は数えない
     } catch {
@@ -181,6 +221,7 @@ final class BodyCompositionModel: ObservableObject {
     }
     isPaired = TanitaScaleConnection.isPaired(defaults: defaults)
     if let day { await reload(day: day) }
+    rearmIfNeeded()
   }
 }
 

@@ -12,10 +12,10 @@ struct ScaleAutoStartTests {
   /// 揃っている状態。個々の条件を1つずつ崩して確かめる
   private static func ready() -> ScaleAutoStart.Conditions {
     ScaleAutoStart.Conditions(
-      isToday: true, isPaired: true, isRunning: false, sinceLastAttempt: nil)
+      isToday: true, isPaired: true, isRunning: false, attemptedSinceForeground: false)
   }
 
-  @Test func 今日を開いてまだ探していなければ自動で探す() {
+  @Test func アプリを開いて今日の画面が出たら探す() {
     #expect(ScaleAutoStart.shouldStart(Self.ready()))
   }
 
@@ -37,18 +37,25 @@ struct ScaleAutoStartTests {
     #expect(!ScaleAutoStart.shouldStart(conditions))
   }
 
-  @Test func 探した直後にもう一度は探さない() {
-    // タブを行き来するたびに Bluetooth を使い始めることになる
+  @Test func 開いてから一度試したらもう探さない() {
+    // タブを行き来したり食事を記録するたびに Bluetooth を使い始めない
     var conditions = Self.ready()
-    conditions.sinceLastAttempt = 60
+    conditions.attemptedSinceForeground = true
     #expect(!ScaleAutoStart.shouldStart(conditions))
   }
 
-  @Test func 間が空けばその日のうちでも探し直す() {
-    // 朝に乗って夜にまた乗る。「その日もう測ったから」で止めると2回目が拾えない
-    var conditions = Self.ready()
-    conditions.sinceLastAttempt = ScaleAutoStart.retryInterval
-    #expect(ScaleAutoStart.shouldStart(conditions))
+  @Test func 新しい測定が入ったら続けてもう一度待つ() {
+    // 連続で数回乗ることがある。1回で終わると2回目以降が本体に溜まるだけになる
+    #expect(ScaleAutoStart.shouldRearm(savedNewMeasurement: true, isToday: true))
+  }
+
+  @Test func 引き取り済みの測定が返ってきただけなら待ち直さない() {
+    // 体重計は引き取り済みのぶんも送ってくる。待ち直しても何も増えない
+    #expect(!ScaleAutoStart.shouldRearm(savedNewMeasurement: false, isToday: true))
+  }
+
+  @Test func 過去の日を見ているときは待ち直さない() {
+    #expect(!ScaleAutoStart.shouldRearm(savedNewMeasurement: true, isToday: false))
   }
 }
 
@@ -92,7 +99,12 @@ struct BodyCompositionModelTests {
       return stored.filter { ($0.sourceDate ?? "") >= from && ($0.sourceDate ?? "") <= to }
     }
 
+    var createError: Error?
+    var createAttempts = 0
+
     func createBodyMeasurement(_ dto: BodyMeasurementCreateDTO) async throws {
+      createAttempts += 1
+      if let createError { throw createError }
       created.append(dto)
     }
   }
@@ -100,6 +112,15 @@ struct BodyCompositionModelTests {
   private static let jst = TimeZone(identifier: "Asia/Tokyo")!
   /// 2026-01-02 07:30 JST
   private static let now = Date(timeIntervalSince1970: 1_767_306_600)
+
+  /// 体重計から受け取った測定1件
+  private static func received(weight: Double) -> TanitaBodyMeasurement {
+    var measurement = TanitaBodyMeasurement()
+    measurement.measuredAt = now
+    measurement.weightKg = weight
+    measurement.bodyFatPercent = 20.0
+    return measurement
+  }
 
   private static func measurement(
     day: String, at time: String = "00:00", weight: Double
@@ -125,11 +146,19 @@ struct BodyCompositionModelTests {
       connection: scale, api: store, defaults: defaults(paired: paired), timeZone: jst)
   }
 
+  /// 記録の画面が出たときの流れ。読み込んでから探す
+  private static func appear(
+    _ model: BodyCompositionModel, date: Date = now, now: Date = now
+  ) async {
+    await model.load(date: date, now: now)
+    model.autoMeasureIfNeeded()
+  }
+
   @Test func 体組成計を登録していなければカードを出さず探しもしない() async {
     let scale = FakeScale()
     let model = Self.model(scale: scale, store: FakeStore(), paired: false)
 
-    await model.load(date: Self.now, now: Self.now)
+    await Self.appear(model)
 
     #expect(!model.isVisible)
     #expect(scale.startedWith.isEmpty)
@@ -139,7 +168,7 @@ struct BodyCompositionModelTests {
     let scale = FakeScale()
     let model = Self.model(scale: scale, store: FakeStore(), paired: true)
 
-    await model.load(date: Self.now, now: Self.now)
+    await Self.appear(model)
 
     #expect(model.isVisible)
     #expect(scale.startedWith == [.automatic])
@@ -152,7 +181,7 @@ struct BodyCompositionModelTests {
     let store = FakeStore(stored: [Self.measurement(day: "2026-01-02", weight: 61.2)])
     let model = Self.model(scale: scale, store: store, paired: true)
 
-    await model.load(date: Self.now, now: Self.now)
+    await Self.appear(model)
 
     #expect(model.summary?.weight?.latest == 61.2)
     #expect(scale.startedWith == [.automatic])
@@ -166,7 +195,7 @@ struct BodyCompositionModelTests {
     ])
     let model = Self.model(scale: scale, store: store, paired: true)
 
-    await model.load(date: Self.now, now: Self.now)
+    await Self.appear(model)
 
     #expect(model.summary?.measurements.count == 2)
     #expect(model.summary?.todayRange == 60.9...61.9)
@@ -178,7 +207,7 @@ struct BodyCompositionModelTests {
     // 2026-01-01 JST
     let yesterday = Self.now.addingTimeInterval(-86400)
 
-    await model.load(date: yesterday, now: Self.now)
+    await Self.appear(model, date: yesterday)
 
     #expect(scale.startedWith.isEmpty)
   }
@@ -186,7 +215,7 @@ struct BodyCompositionModelTests {
   @Test func 別の日へ移ったら探すのをやめる() async {
     let scale = FakeScale()
     let model = Self.model(scale: scale, store: FakeStore(), paired: true)
-    await model.load(date: Self.now, now: Self.now)
+    await Self.appear(model)
     #expect(model.activity == .searching)
 
     await model.load(date: Self.now.addingTimeInterval(-86400), now: Self.now)
@@ -200,7 +229,7 @@ struct BodyCompositionModelTests {
     let model = Self.model(scale: scale, store: FakeStore(), paired: true)
     let yesterday = Self.now.addingTimeInterval(-86400)
 
-    await model.load(date: yesterday, now: Self.now)
+    await Self.appear(model, date: yesterday)
 
     // 体組成計は今の時刻を刻むので、過去の日に「測る」を出しても押せる意味が無い
     #expect(!model.isVisible)
@@ -213,34 +242,73 @@ struct BodyCompositionModelTests {
     let model = Self.model(scale: scale, store: store, paired: true)
     let yesterday = Self.now.addingTimeInterval(-86400)
 
-    await model.load(date: yesterday, now: Self.now)
+    await Self.appear(model, date: yesterday)
 
     #expect(model.isVisible)
     #expect(!model.canMeasure)
     #expect(model.summary?.weight?.latest == 60.8)
   }
 
-  @Test func 続けて開き直しても探し直さない() async {
+  @Test func 食事を記録するたびに探し直さない() async {
+    // 記録を1つ足すたびにこの画面は読み直される
     let scale = FakeScale()
     let model = Self.model(scale: scale, store: FakeStore(), paired: true)
 
-    await model.load(date: Self.now, now: Self.now)
+    await Self.appear(model)
     scale.stop()
-    await model.load(date: Self.now, now: Self.now)
+    await Self.appear(model)
 
     #expect(scale.startedWith == [.automatic])
   }
 
-  @Test func 間が空けば同じ日でも探し直す() async {
+  @Test func アプリを開き直したら探し直す() async {
     let scale = FakeScale()
     let model = Self.model(scale: scale, store: FakeStore(), paired: true)
 
-    await model.load(date: Self.now, now: Self.now)
+    await Self.appear(model)
     scale.stop()
-    let later = Self.now.addingTimeInterval(ScaleAutoStart.retryInterval + 1)
-    await model.load(date: Self.now, now: later)
+    model.foregrounded()
 
     #expect(scale.startedWith == [.automatic, .automatic])
+  }
+
+  @Test func 続けて乗るかもしれないので測定のあともう一度待つ() async {
+    // 連続で数回乗ることがある。1回受け取って終わると2回目以降が本体に溜まるだけになる
+    let scale = FakeScale()
+    let store = FakeStore()
+    let model = Self.model(scale: scale, store: store, paired: true)
+    await Self.appear(model)
+
+    scale.onMeasurement?(Self.received(weight: 61.2))
+    try? await Self.settle { store.created.count == 1 }
+    scale.subject.send(.finished)
+
+    #expect(scale.startedWith == [.automatic, .automatic])
+  }
+
+  @Test func 引き取り済みの測定が返ってきただけなら待ち直さない() async {
+    // 体重計は引き取り済みのぶんも送ってくる。待ち直しても何も増えないまま繰り返す
+    let scale = FakeScale()
+    let store = FakeStore()
+    store.createError = APIError.serverError(409)
+    let model = Self.model(scale: scale, store: store, paired: true)
+    await Self.appear(model)
+
+    scale.onMeasurement?(Self.received(weight: 61.2))
+    try? await Self.settle { store.createAttempts == 1 }
+    scale.subject.send(.finished)
+
+    #expect(scale.startedWith == [.automatic])
+  }
+
+  @Test func 誰も乗らなければ待ち直さない() async {
+    let scale = FakeScale()
+    let model = Self.model(scale: scale, store: FakeStore(), paired: true)
+    await Self.appear(model)
+
+    scale.subject.send(.failed("体組成計が見つかりませんでした"))
+
+    #expect(scale.startedWith == [.automatic])
   }
 
   @Test func 傾向を出せるだけの範囲を取りに行く() async {
@@ -248,7 +316,7 @@ struct BodyCompositionModelTests {
     let store = FakeStore()
     let model = Self.model(scale: scale, store: store, paired: true)
 
-    await model.load(date: Self.now, now: Self.now)
+    await Self.appear(model)
 
     // 傾向は窓2つぶんを比べるので、その日の1件だけでは足りない
     #expect(store.requestedRanges.first?.to == "2026-01-02")
@@ -259,7 +327,7 @@ struct BodyCompositionModelTests {
     let scale = FakeScale()
     let model = Self.model(scale: scale, store: FakeStore(), paired: true)
 
-    await model.load(date: Self.now, now: Self.now)
+    await Self.appear(model)
     scale.subject.send(.failed("体組成計が見つかりませんでした"))
 
     #expect(model.activity == .idle)
@@ -271,7 +339,7 @@ struct BodyCompositionModelTests {
     let store = FakeStore(stored: [Self.measurement(day: "2026-01-02", weight: 61.2)])
     let model = Self.model(scale: scale, store: store, paired: true)
     // 自動の探索が終わったあと、自分で「測る」を押す
-    await model.load(date: Self.now, now: Self.now)
+    await Self.appear(model)
     scale.stop()
     scale.startedWith = []
     model.measureByHand()
@@ -284,7 +352,7 @@ struct BodyCompositionModelTests {
   @Test func 乗るのを待っている間はそのことが分かる() async {
     let scale = FakeScale()
     let model = Self.model(scale: scale, store: FakeStore(), paired: true)
-    await model.load(date: Self.now, now: Self.now)
+    await Self.appear(model)
 
     scale.subject.send(.waitingForStep)
     #expect(model.activity == .waitingForStep)
@@ -297,7 +365,7 @@ struct BodyCompositionModelTests {
     let scale = FakeScale()
     let store = FakeStore()
     let model = Self.model(scale: scale, store: store, paired: true)
-    await model.load(date: Self.now, now: Self.now)
+    await Self.appear(model)
 
     // 受け取ったら保存され、取り直した結果がカードに出る
     store.stored = [Self.measurement(day: "2026-01-02", weight: 61.2)]
@@ -319,7 +387,7 @@ struct BodyCompositionModelTests {
     store.fetchError = APIError.serverError(500)
     let model = Self.model(scale: scale, store: store, paired: false)
 
-    await model.load(date: Self.now, now: Self.now)
+    await Self.appear(model)
 
     #expect(!model.isVisible)
     #expect(model.manualFailure == nil)

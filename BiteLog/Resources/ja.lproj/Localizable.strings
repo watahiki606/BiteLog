@@ -350,7 +350,7 @@
 "First of day" = "朝いちばん";
 "Day average" = "その日の平均";
 "Last of day" = "その日の最後";
-"%d days have more than one measurement. The band shows how much they moved that day." = "%d日は2回以上乗っています。帯はその日どれだけ動いたかです。";
+"%1$d days have more than one measurement. The line follows %2$@; the band shows how much that day moved." = "%1$d日は2回以上乗っています。折れ線は%2$@、帯はその日どれだけ動いたかです。";
 
 // 記録の画面の体組成カード（同じ日に何度も乗る前提）
 "%d times today" = "今日%d回";

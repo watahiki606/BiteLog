@@ -8,6 +8,7 @@ struct DayContentView: View {
 
   @EnvironmentObject private var nutritionGoalsManager: NutritionGoalsManager
   @StateObject private var bodyComposition = BodyCompositionModel()
+  @Environment(\.scenePhase) private var scenePhase
 
   @State private var dayLogItems: [LogItemDTO] = []
   @State private var isLoading = false
@@ -80,6 +81,14 @@ struct DayContentView: View {
     // 記録の読み込みとは別に走らせる。体組成が取れなくても記録の表示は待たせない
     .task(id: taskID) {
       await bodyComposition.load(date: date)
+      // この画面は記録を1つ足すたびに読み直される。探し始めるのは
+      // アプリを開いてから最初の1回だけで、あとはモデル側で止まる
+      bodyComposition.autoMeasureIfNeeded()
+    }
+    .onChange(of: scenePhase) { _, phase in
+      // アプリを開き直したら、もう一度だけ探す。朝に乗って夜にまた乗る使い方は、
+      // たいていアプリを開き直す
+      if phase == .active { bodyComposition.foregrounded() }
     }
     .onDisappear {
       // 画面を離れたら探すのをやめる。つないだまま残すと Bluetooth を掴み続ける
