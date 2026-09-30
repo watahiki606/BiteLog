@@ -311,3 +311,51 @@ extension BodyMeasurementCreateDTO {
     )
   }
 }
+
+/// サーバーが持っている測定1件。
+///
+/// 暦日は `measuredAt` から切り出さない。`measuredAt` は UTC で持っているので、
+/// 朝に測ると前日の日付になる。測ったその地域の暦日は `sourceDate` の側にある。
+///
+/// `measuredAt` を文字列のまま持つのは、書き込んだ経路によって小数秒の有無が
+/// 揃っていないため。`JSONDecoder` の `.iso8601` は小数秒付きを読めない。
+struct BodyMeasurementDTO: Codable, Identifiable, Equatable {
+  let id: String
+  let sourceDate: String?
+  let measuredAt: String
+  let weightKg: Double?
+  let bodyFatPercent: Double?
+  let muscleMassKg: Double?
+  let muscleScore: Double?
+  let visceralFatLevel: Double?
+  let basalMetabolismKcal: Double?
+  let metabolicAge: Int?
+  let boneMassKg: Double?
+  let bodyWaterPercent: Double?
+}
+
+extension BodyMeasurementDTO {
+  /// 測定を暦日ごとに1件へまとめる。同じ日に複数回測った日は最後のものを残す。
+  ///
+  /// 日中の変動より「その日どうだったか」を見たいので、直近の1件で代表させる。
+  /// `sourceDate` が無い行は、どの暦日のものか決められないので落とす。
+  static func latestByDay(_ measurements: [BodyMeasurementDTO]) -> [String: BodyMeasurementDTO] {
+    var byDay: [String: BodyMeasurementDTO] = [:]
+    for measurement in measurements {
+      guard let day = measurement.sourceDate else { continue }
+      // ISO 8601 は桁が揃っているので、文字列の大小がそのまま時刻の前後になる
+      if let existing = byDay[day], existing.measuredAt >= measurement.measuredAt { continue }
+      byDay[day] = measurement
+    }
+    return byDay
+  }
+
+  /// 暦日の文字列。体組成の `sourceDate` と同じ形にする。
+  static func formatDay(_ date: Date, timeZone: TimeZone = .current) -> String {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.timeZone = timeZone
+    formatter.dateFormat = "yyyy-MM-dd"
+    return formatter.string(from: date)
+  }
+}
