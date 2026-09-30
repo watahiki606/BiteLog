@@ -235,14 +235,17 @@ enum BodyCorrelation {
   }
 
   /// 期間の始めから終わりまでで、各項目がどう動いたか。
+  ///
+  /// いまいくつかは持たない。最新の値は期間を変えても動かないので、
+  /// 「この期間の変化」と書いた場所に置くと、期間を変えても数字が変わらないように見える。
+  /// いまの値は記録の画面にある。
   struct Delta: Equatable, Identifiable {
     let metric: BodyMetric
-    /// 期間内で最後に測った日の代表値
-    let latest: Double?
-    /// 最後の日の代表値 − 最初の日の代表値。測った日が1日だけなら出せない
+    /// 最後に測った日の代表値 − 最初に測った日の代表値。
+    /// 測った日が1日だけなら比べる相手が無いので出せない
     let change: Double?
-    /// 期間内に測った回数
-    let measurementCount: Int
+    /// 期間内にその項目を測った日数
+    let measuredDays: Int
 
     var id: String { metric.rawValue }
   }
@@ -258,13 +261,10 @@ enum BodyCorrelation {
       let representatives = days.compactMap { day -> Double? in
         pick.apply((byDay[day] ?? []).compactMap { metric.value(of: $0) })
       }
-      let count = measurements.filter { metric.value(of: $0) != nil }.count
-      guard let latest = representatives.last else {
-        return Delta(metric: metric, latest: nil, change: nil, measurementCount: count)
-      }
       // 1日分しか無ければ比べる相手が無い。0 と書くと「変わらなかった」になる
-      let change = representatives.count > 1 ? latest - representatives[0] : nil
-      return Delta(metric: metric, latest: latest, change: change, measurementCount: count)
+      let change =
+        representatives.count > 1 ? representatives.last! - representatives[0] : nil
+      return Delta(metric: metric, change: change, measuredDays: representatives.count)
     }
   }
 

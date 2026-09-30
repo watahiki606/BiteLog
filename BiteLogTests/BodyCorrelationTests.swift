@@ -268,16 +268,31 @@ struct BodyCorrelationTests {
 
   // MARK: - 期間の変化
 
-  @Test func 最後に測った日と最初に測った日の差を出す() {
+  @Test func 期間の端から端までの差を出す() {
     let deltas = BodyCorrelation.deltas(
       [
         Self.measurement("2026-01-01", at: "03:00", weight: 62.0),
         Self.measurement("2026-01-05", at: "03:00", weight: 60.5),
       ], pick: .first)
-    let weight = deltas.first { $0.metric == .weightKg }
 
-    #expect(weight?.latest == 60.5)
-    #expect(weight?.change == -1.5)
+    #expect(deltas.first { $0.metric == .weightKg }?.change == -1.5)
+  }
+
+  @Test func 期間を広げると差も変わる() {
+    // 「この期間の変化」が期間に連動していること。
+    // 最新の値だけを出していたころは、期間を変えても数字が動かなかった
+    let measurements = [
+      Self.measurement("2026-01-01", at: "03:00", weight: 63.0),
+      Self.measurement("2026-01-20", at: "03:00", weight: 61.5),
+      Self.measurement("2026-01-31", at: "03:00", weight: 61.0),
+    ]
+    let narrow = Array(measurements.dropFirst())
+
+    let wide = BodyCorrelation.deltas(measurements, pick: .first)
+    let short = BodyCorrelation.deltas(narrow, pick: .first)
+
+    #expect(wide.first { $0.metric == .weightKg }?.change == -2.0)
+    #expect(short.first { $0.metric == .weightKg }?.change == -0.5)
   }
 
   @Test func 日をまたいだ差は代表どうしで比べる() {
@@ -291,6 +306,21 @@ struct BodyCorrelationTests {
       ], pick: .first)
 
     #expect(abs(deltas.first { $0.metric == .weightKg }!.change! - 0.2) < 0.0001)
+  }
+
+  @Test func 代表の選び方を変えると差も変わる() {
+    let measurements = [
+      Self.measurement("2026-01-01", at: "03:00", weight: 60.0),
+      Self.measurement("2026-01-01", at: "12:00", weight: 61.5),
+      Self.measurement("2026-01-02", at: "03:00", weight: 60.2),
+      Self.measurement("2026-01-02", at: "12:00", weight: 61.0),
+    ]
+
+    let byFirst = BodyCorrelation.deltas(measurements, pick: .first)
+    let byLast = BodyCorrelation.deltas(measurements, pick: .last)
+
+    #expect(abs(byFirst.first { $0.metric == .weightKg }!.change! - 0.2) < 0.0001)
+    #expect(abs(byLast.first { $0.metric == .weightKg }!.change! - (-0.5)) < 0.0001)
   }
 
   @Test func 並びが前後していても期間の始めから見る() {
@@ -312,20 +342,18 @@ struct BodyCorrelationTests {
       ], pick: .first)
     let weight = deltas.first { $0.metric == .weightKg }
 
-    #expect(weight?.latest == 62.0)
     // 0 と書くと「変わらなかった」に読める
     #expect(weight?.change == nil)
-    #expect(weight?.measurementCount == 2)
+    #expect(weight?.measuredDays == 1)
   }
 
-  @Test func 一度も測っていない項目は値も差も出さない() {
+  @Test func 一度も測っていない項目は差も日数も出さない() {
     let deltas = BodyCorrelation.deltas(
       [Self.measurement("2026-01-01", at: "03:00", weight: 62.0)], pick: .first)
     let bodyFat = deltas.first { $0.metric == .bodyFatPercent }
 
-    #expect(bodyFat?.latest == nil)
     #expect(bodyFat?.change == nil)
-    #expect(bodyFat?.measurementCount == 0)
+    #expect(bodyFat?.measuredDays == 0)
   }
 
   @Test func どの項目も同じ並びで返す() {

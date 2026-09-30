@@ -287,12 +287,22 @@ struct BodyCompositionView: View {
 
   // MARK: - 9項目の推移
 
+  /// 期間の始めから終わりまでの変化。
+  ///
+  /// 集計間隔を変えても動かない。集計間隔はグラフの点をどうまとめるかの話で、
+  /// 期間の端から端までの差には関わらない。
   private var trendCard: some View {
     let deltas = BodyCorrelation.deltas(measurements, pick: pick)
     return CardView {
       VStack(alignment: .leading, spacing: 12) {
-        Text(NSLocalizedString("Change over this period", comment: "Body composition section"))
-          .font(.subheadline.weight(.semibold))
+        VStack(alignment: .leading, spacing: 2) {
+          Text(NSLocalizedString("Change over this period", comment: "Body composition section"))
+            .font(.subheadline.weight(.semibold))
+          // どこからどこまでの差なのかを出す。期間を変えたときに数字が動く理由になる
+          Text(periodRangeText)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
 
         ForEach(deltas) { delta in
           deltaRow(delta)
@@ -302,25 +312,33 @@ struct BodyCompositionView: View {
     }
   }
 
+  private var periodRangeText: String {
+    let formatter = DateFormatter()
+    formatter.locale = languageManager.locale
+    formatter.dateStyle = .medium
+    formatter.timeStyle = .none
+    return "\(formatter.string(from: range.from)) – \(formatter.string(from: range.to))"
+  }
+
   private func deltaRow(_ delta: BodyCorrelation.Delta) -> some View {
     HStack(alignment: .firstTextBaseline) {
       Text(delta.metric.localizedName)
         .font(.subheadline)
       Spacer()
-      if let latest = delta.latest {
+      if let change = delta.change {
         HStack(alignment: .firstTextBaseline, spacing: 2) {
-          Text(delta.metric.format(latest))
-            .font(.subheadline.weight(.semibold))
+          Text(signed(change, digits: delta.metric.fractionDigits))
+            .font(.title3.weight(.semibold))
             .monospacedDigit()
+            .foregroundStyle(changeColor(delta.metric, change))
           if !delta.metric.unit.isEmpty {
             Text(delta.metric.unit)
               .font(.caption)
               .foregroundStyle(.secondary)
           }
         }
-        changeLabel(delta)
       } else {
-        // 期間内に1度も測っていない項目。0 と書くと測った日があるように読める
+        // 期間内に測った日が1日以下。0 と書くと「変わらなかった」に読める
         Text("–")
           .font(.subheadline)
           .foregroundStyle(.secondary)
@@ -329,21 +347,12 @@ struct BodyCompositionView: View {
     .accessibilityElement(children: .combine)
   }
 
-  /// 期間の始めからの差。1日しか測っていない期間では出さない。
-  @ViewBuilder
-  private func changeLabel(_ delta: BodyCorrelation.Delta) -> some View {
-    if let change = delta.change {
-      let sign = change > 0 ? "+" : change < 0 ? "−" : "±"
-      Text("\(sign)\(delta.metric.format(abs(change)))")
-        .font(.caption.weight(.medium))
-        .monospacedDigit()
-        .foregroundStyle(changeColor(delta.metric, change))
-        .frame(minWidth: 52, alignment: .trailing)
-    } else {
-      Text(" ")
-        .font(.caption)
-        .frame(minWidth: 52, alignment: .trailing)
-    }
+  /// 増減の向きが一目で分かる形にする。マイナス記号は全角の −
+  private func signed(_ value: Double, digits: Int) -> String {
+    let scale = pow(10, Double(digits))
+    let rounded = (value * scale).rounded() / scale
+    let sign = rounded > 0 ? "+" : rounded < 0 ? "−" : "±"
+    return sign + String(format: "%.\(digits)f", abs(rounded))
   }
 
   /// 良し悪しが決まる項目だけ色を付ける。
