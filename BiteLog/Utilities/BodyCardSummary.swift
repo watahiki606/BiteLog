@@ -44,8 +44,8 @@ enum BodyCardSummary {
     /// 期間内に測ったものが1件でもあるか。無い人にはカードを出さない
     let hasAnyData: Bool
 
-    /// その日に2回以上乗ったときだけ、どれだけ動いたかを出す
-    var todayRange: ClosedRange<Double>? {
+    /// その日に2回以上乗ったときだけ、最小から最大までを出す
+    var dayRange: ClosedRange<Double>? {
       let weights = measurements.compactMap(\.weightKg)
       guard let low = weights.min(), let high = weights.max(), high > low else { return nil }
       return low...high

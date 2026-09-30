@@ -69,13 +69,13 @@ struct BodyCardSummaryTests {
       Self.measurement("2026-02-15", at: "21:00", weight: 61.9),
     ])
 
-    #expect(summary.todayRange == 60.9...61.9)
+    #expect(summary.dayRange == 60.9...61.9)
   }
 
   @Test func 一度しか乗っていない日に幅を出さない() {
     let summary = Self.make([Self.measurement("2026-02-15", at: "07:00", weight: 60.9)])
 
-    #expect(summary.todayRange == nil)
+    #expect(summary.dayRange == nil)
   }
 
   @Test func 同じ値で二回乗っても幅は出さない() {
@@ -84,7 +84,7 @@ struct BodyCardSummaryTests {
       Self.measurement("2026-02-15", at: "21:00", weight: 60.9),
     ])
 
-    #expect(summary.todayRange == nil)
+    #expect(summary.dayRange == nil)
   }
 
   // MARK: - 前日との差

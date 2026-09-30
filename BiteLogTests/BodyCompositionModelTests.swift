@@ -198,7 +198,7 @@ struct BodyCompositionModelTests {
     await Self.appear(model)
 
     #expect(model.summary?.measurements.count == 2)
-    #expect(model.summary?.todayRange == 60.9...61.9)
+    #expect(model.summary?.dayRange == 60.9...61.9)
   }
 
   @Test func 過去の日を開いたときは探さない() async {

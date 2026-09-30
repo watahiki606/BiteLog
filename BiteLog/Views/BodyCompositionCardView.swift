@@ -10,10 +10,12 @@ import SwiftUI
 struct BodyCompositionValuesView: View {
   let summary: BodyCardSummary.Summary
 
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
       if summary.weight != nil || summary.bodyFat != nil {
-        measuredToday
+        measuredDay
       } else if let last = summary.lastMeasured {
         // その日に測っていない。空欄を出さずに、前回いつ何だったかを出す
         previously(last)
@@ -22,57 +24,83 @@ struct BodyCompositionValuesView: View {
     .frame(maxWidth: .infinity, alignment: .leading)
   }
 
-  private var measuredToday: some View {
-    VStack(alignment: .leading, spacing: 6) {
-      HStack(alignment: .firstTextBaseline, spacing: 24) {
-        if let weight = summary.weight {
-          value(
-            BodyMetric.weightKg.localizedName, weight, unit: "kg",
-            metric: .weightKg)
-        }
-        if let bodyFat = summary.bodyFat {
-          value(
-            BodyMetric.bodyFatPercent.localizedName, bodyFat, unit: "%",
-            metric: .bodyFatPercent)
-        }
+  /// 体重・体脂肪率・傾向を横に並べる。
+  ///
+  /// 傾向も数値の1つとして同じ高さに置く。1日ごとの差は食事と水分で振れるので、
+  /// 向きが読めるのは傾向のほう。小さな注釈にすると読まれない。
+  private var measuredDay: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      // 大きな文字では3つを横に並べると数字が折り返して読めなくなる
+      if dynamicTypeSize.isAccessibilitySize {
+        VStack(alignment: .leading, spacing: 12) { columns }
+      } else {
+        HStack(alignment: .firstTextBaseline, spacing: 8) { columns }
       }
 
-      if let detail = todayDetail {
+      if let detail = dayDetail {
         Text(detail)
-          .font(.caption)
-          .foregroundStyle(.secondary)
-      }
-
-      if let trend = summary.weightTrend {
-        Text(trendText(trend))
           .font(.caption)
           .foregroundStyle(.secondary)
       }
     }
   }
 
+  @ViewBuilder
+  private var columns: some View {
+    if let weight = summary.weight {
+      value(BodyMetric.weightKg.localizedName, weight, unit: "kg", metric: .weightKg)
+    }
+    if let bodyFat = summary.bodyFat {
+      value(
+        BodyMetric.bodyFatPercent.localizedName, bodyFat, unit: "%", metric: .bodyFatPercent)
+    }
+    if let trend = summary.weightTrend {
+      trendColumn(trend)
+    }
+  }
+
+  /// ならした傾向。窓2つぶんの平均の差なので、前日との差とは別の数字。
+  private func trendColumn(_ trend: BodyCardSummary.Trend) -> some View {
+    VStack(alignment: .leading, spacing: 2) {
+      Text(
+        String(
+          format: NSLocalizedString("%d-day trend", comment: "Body card trend label"),
+          trend.windowDays)
+      )
+      .font(.caption)
+      .foregroundStyle(.secondary)
+      HStack(alignment: .firstTextBaseline, spacing: 2) {
+        Text(signed(trend.change, digits: 1))
+          .font(.title3)
+          .fontWeight(.semibold)
+          .monospacedDigit()
+        Text("kg")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .accessibilityElement(children: .combine)
+  }
+
   /// 何時に測ったか。2回以上乗った日は回数とその日の幅も添える。
-  private var todayDetail: String? {
+  ///
+  /// 「今日」とは書かない。このカードは見ている日のものを出すので、
+  /// 過去の日を開いているときに「今日」と書くと嘘になる。
+  private var dayDetail: String? {
     let times = summary.measurements.compactMap(\.measuredAtDate)
     guard let latest = times.last else { return nil }
     let clock = latest.formatted(date: .omitted, time: .shortened)
 
     guard summary.measurements.count > 1 else { return clock }
     let count = String(
-      format: NSLocalizedString("%d times today", comment: "Body card measurement count"),
+      format: NSLocalizedString("%d measurements", comment: "Body card measurement count"),
       summary.measurements.count)
-    guard let range = summary.todayRange else { return "\(clock) · \(count)" }
+    guard let range = summary.dayRange else { return "\(clock) · \(count)" }
     let spread =
       "\(BodyMetric.weightKg.format(range.lowerBound))–"
       + "\(BodyMetric.weightKg.format(range.upperBound)) kg"
     return "\(clock) · \(count) · \(spread)"
-  }
-
-  private func trendText(_ trend: BodyCardSummary.Trend) -> String {
-    String(
-      format: NSLocalizedString(
-        "%1$d-day trend %2$@ kg", comment: "Body card trend"),
-      trend.windowDays, signed(trend.change, digits: 1))
   }
 
   private func value(
@@ -84,7 +112,7 @@ struct BodyCompositionValuesView: View {
         .foregroundStyle(.secondary)
       HStack(alignment: .firstTextBaseline, spacing: 2) {
         Text(metric.format(value.latest))
-          .font(.title2)
+          .font(.title3)
           .fontWeight(.semibold)
           .monospacedDigit()
         Text(unit)
@@ -99,6 +127,8 @@ struct BodyCompositionValuesView: View {
         }
       }
     }
+    // 3つで幅を分け合う。左に寄せると右半分が空いたままになる
+    .frame(maxWidth: .infinity, alignment: .leading)
     .accessibilityElement(children: .combine)
   }
 

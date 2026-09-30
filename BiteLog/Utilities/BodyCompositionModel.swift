@@ -108,6 +108,12 @@ final class BodyCompositionModel: ObservableObject {
   /// いまから測れるか。過去の日には出さない
   var canMeasure: Bool { isPaired && isToday }
 
+  /// カードの下段に出すものがあるか。
+  ///
+  /// 過去の日を開くと測る導線が消える。それでも行を作ると、区切り線の下に
+  /// 何も無い高さだけが残る。
+  var showsAction: Bool { canMeasure || isRunning || manualFailure != nil }
+
   var isRunning: Bool { activity != .idle }
 
   /// 見ている日が変わったときに呼ぶ。測定を取り直すだけで、探しはしない。

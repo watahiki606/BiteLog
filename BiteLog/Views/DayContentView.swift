@@ -163,14 +163,16 @@ struct DayContentView: View {
           }
         }
 
-        BodyCompositionActionView(
-          hasMeasurementToday: !(bodyComposition.summary?.measurements.isEmpty ?? true),
-          activity: bodyComposition.activity,
-          canMeasure: bodyComposition.canMeasure,
-          failure: bodyComposition.manualFailure,
-          onMeasure: { bodyComposition.measureByHand() },
-          onStop: { bodyComposition.stop() }
-        )
+        if bodyComposition.showsAction {
+          BodyCompositionActionView(
+            hasMeasurementToday: !(bodyComposition.summary?.measurements.isEmpty ?? true),
+            activity: bodyComposition.activity,
+            canMeasure: bodyComposition.canMeasure,
+            failure: bodyComposition.manualFailure,
+            onMeasure: { bodyComposition.measureByHand() },
+            onStop: { bodyComposition.stop() }
+          )
+        }
       } header: {
         Text(NSLocalizedString("Body Composition", comment: "Body composition section"))
       }

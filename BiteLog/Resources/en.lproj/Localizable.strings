@@ -338,6 +338,6 @@
 "%1$d days have more than one measurement. The line follows %2$@; the vertical line spans the lowest and highest of that day." = "%1$d days have more than one measurement. The line follows %2$@; the vertical line spans the lowest and highest of that day.";
 
 // The body composition card, for people who step on the scale several times a day
-"%d times today" = "%d times today";
-"%1$d-day trend %2$@ kg" = "%1$d-day trend %2$@ kg";
+"%d measurements" = "%d measurements";
+"%d-day trend" = "%d-day trend";
 "Last measured %d days ago" = "Last measured %d days ago";
