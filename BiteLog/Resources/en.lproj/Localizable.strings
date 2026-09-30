@@ -335,7 +335,7 @@
 "First of day" = "First of day";
 "Day average" = "Day average";
 "Last of day" = "Last of day";
-"%1$d days have more than one measurement. The line follows %2$@; the band shows how much that day moved." = "%1$d days have more than one measurement. The line follows %2$@; the band shows how much that day moved.";
+"%1$d days have more than one measurement. The line follows %2$@; the vertical line spans the lowest and highest of that day." = "%1$d days have more than one measurement. The line follows %2$@; the vertical line spans the lowest and highest of that day.";
 
 // The body composition card, for people who step on the scale several times a day
 "%d times today" = "%d times today";

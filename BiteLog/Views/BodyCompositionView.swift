@@ -245,7 +245,7 @@ struct BodyCompositionView: View {
       Text(
         String(
           format: NSLocalizedString(
-            "%1$d days have more than one measurement. The line follows %2$@; the band shows how much that day moved.",
+            "%1$d days have more than one measurement. The line follows %2$@; the vertical line spans the lowest and highest of that day.",
             comment: "Daily pick help"),
           multiMeasurementDays, pick.localizedName)
       )
@@ -394,7 +394,7 @@ struct BodyCorrelationChart: View {
     max((points.map(\.nutrient).max() ?? 0) * 1.1, 1)
   }
 
-  /// 折れ線だけでなく幅の上下も収める。代表値だけで範囲を決めると帯が枠から出る。
+  /// 折れ線だけでなく縦線の上下も収める。代表値だけで範囲を決めると縦線が枠から出る。
   private var scale: BodyAxisScale? {
     let values = points.compactMap(\.body) + points.compactMap(\.low) + points.compactMap(\.high)
     return BodyAxisScale(bodyValues: values, plotMax: nutrientMax)
