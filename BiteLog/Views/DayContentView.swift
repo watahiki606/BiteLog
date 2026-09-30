@@ -77,7 +77,8 @@ struct DayContentView: View {
     .task(id: taskID) {
       await loadLogItems()
     }
-    .task(id: logDateString) {
+    // 記録の読み込みとは別に走らせる。体組成が取れなくても記録の表示は待たせない
+    .task(id: taskID) {
       await bodyComposition.load(date: date)
     }
     .onDisappear {

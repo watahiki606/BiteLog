@@ -119,7 +119,9 @@ struct ContentView: View {
       .sheet(isPresented: $showingDatePicker) {
         DatePickerSheet(selectedDate: $selectedDate, isPresented: $showingDatePicker)
       }
-      .sheet(isPresented: $showingSettings) {
+      // 設定で体組成計を登録して戻ってきたら、記録の画面に体組成のカードが出る。
+      // 読み直さないと、次に日付を動かすまで登録が反映されない。
+      .sheet(isPresented: $showingSettings, onDismiss: { logRefreshTrigger += 1 }) {
         SettingsView()
       }
     }
