@@ -220,6 +220,7 @@ struct StatisticsView: View {
         } else {
           dateNavigationBar
           trendCard
+          bodyCompositionLink
           sectionSelector
           switch section {
           case .average: averageCard
@@ -329,6 +330,28 @@ struct StatisticsView: View {
       .accessibilityLabel(NSLocalizedString("Next period", comment: "Statistics paging"))
     }
     .frame(maxWidth: .infinity)
+  }
+
+  /// 体組成を見る画面への入り口。
+  ///
+  /// 食事と体組成の関係はこの画面の栄養グラフだけでは読めないので、
+  /// 二軸のグラフと9項目の推移は別の画面に置いている。
+  private var bodyCompositionLink: some View {
+    NavigationLink(destination: BodyCompositionView()) {
+      HStack {
+        Label(
+          NSLocalizedString("Body Composition", comment: "Body composition section"),
+          systemImage: "figure.stand")
+        Spacer()
+        Image(systemName: "chevron.right")
+          .font(.footnote.weight(.semibold))
+          .foregroundStyle(.tertiary)
+      }
+      .padding()
+      .background(Color(UIColor.secondarySystemGroupedBackground))
+      .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+    .buttonStyle(.plain)
   }
 
   /// 表示するセクションを選ぶセグメント。選択中のカードだけを描画する。

@@ -315,3 +315,24 @@
 "Scale Setup" = "Scale Setup";
 "Once this works, the Log screen looks for the scale on its own." = "Once this works, the Log screen looks for the scale on its own.";
 "Measure again" = "Measure again";
+
+// The body composition screen
+"Muscle Mass" = "Muscle Mass";
+"Muscle Score" = "Muscle Score";
+"Visceral Fat" = "Visceral Fat";
+"BMR" = "BMR";
+"Metabolic Age" = "Metabolic Age";
+"Bone Mass" = "Bone Mass";
+"Body Water" = "Body Water";
+"Unit.Years" = "yr";
+"Change over this period" = "Change over this period";
+"No body composition yet" = "No body composition yet";
+"Measure once from the Log screen and your weight and body fat show up here." = "Measure once from the Log screen and your weight and body fat show up here.";
+"%@ and %@ over this period" = "%@ and %@ over this period";
+"Date" = "Date";
+
+// How a day with several measurements is represented
+"First of day" = "First of day";
+"Day average" = "Day average";
+"Last of day" = "Last of day";
+"%d days have more than one measurement. The band shows how much they moved that day." = "%d days have more than one measurement. The band shows how much they moved that day.";

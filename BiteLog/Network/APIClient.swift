@@ -188,6 +188,14 @@ final class APIClient {
 
   /// 統計タブの期間集計用。日付×食事タイプごとの栄養合計をサーバ側で集計して取得する。
   /// from/to はともに "yyyy-MM-dd"（両端含む）。
+  /// 日次の栄養合計と体組成平均。サーバー側でマージ済みのものを受け取る。
+  func fetchDailyStatistics(from: String, to: String) async throws -> [DailyStatDTO] {
+    struct Response: Decodable { let items: [DailyStatDTO] }
+    let response: Response = try await request(
+      path: "/api/statistics/daily?from=\(from)&to=\(to)")
+    return response.items
+  }
+
   func fetchDailySummary(from: String, to: String) async throws -> [DaySummaryDTO] {
     let resp: DaySummaryListResponse = try await request(
       path: "/api/log-items/summary?from=\(from)&to=\(to)")
@@ -232,6 +240,18 @@ final class APIClient {
   func fetchBodyMeasurements(limit: Int) async throws -> [BodyMeasurementDTO] {
     struct Response: Decodable { let items: [BodyMeasurementDTO] }
     let response: Response = try await request(path: "/api/body-measurements?limit=\(limit)")
+    return response.items
+  }
+
+  /// 期間内の測定を1回ずつ取る。
+  ///
+  /// 日次に集計したものではなく1回ずつ受け取るのは、同じ日に何度も乗るため。
+  /// 平均に潰すと、朝と夜で1kg以上違うことが見えなくなる。
+  /// 期間は計測した地域の暦日で、サーバーが `source_date` で絞る。
+  func fetchBodyMeasurements(from: String, to: String) async throws -> [BodyMeasurementDTO] {
+    struct Response: Decodable { let items: [BodyMeasurementDTO] }
+    let response: Response = try await request(
+      path: "/api/body-measurements?from=\(from)&to=\(to)&limit=5000")
     return response.items
   }
 

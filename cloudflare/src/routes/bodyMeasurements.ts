@@ -74,16 +74,28 @@ function insertStmt(db: D1Database, id: string, userId: string, values: (number 
 
 const bodyMeasurements = new Hono<{ Bindings: Bindings; Variables: Variables }>()
   .use('*', authMiddleware)
-  // GET / : ユーザーの計測データを measured_at 降順で返す
+  // GET /?from&to&limit : ユーザーの計測データを measured_at 降順で返す。
+  // from/to は計測した地域の暦日（source_date）で絞る。measured_at は UTC なので、
+  // そこから日付を切り出すと朝の計測が前日に入る。
   .get('/', async (c) => {
     const userId = c.get('userId');
     const limitParam = parseInt(c.req.query('limit') ?? '', 10);
     const limit = Number.isNaN(limitParam) ? DEFAULT_LIMIT : Math.min(Math.max(limitParam, 1), 5000);
+    const from = c.req.query('from');
+    const to = c.req.query('to');
+
+    // source_date が空の行は暦日が分からないので measured_at から補う。
+    const day = `COALESCE(source_date, substr(measured_at, 1, 10))`;
+    const where = ['user_id = ?'];
+    const binds: (string | number)[] = [userId];
+    if (from) { where.push(`${day} >= ?`); binds.push(from); }
+    if (to)   { where.push(`${day} <= ?`); binds.push(to);   }
 
     const { results } = await c.env.DB.prepare(
-      `SELECT * FROM body_measurements WHERE user_id = ? ORDER BY measured_at DESC LIMIT ?`
+      `SELECT * FROM body_measurements WHERE ${where.join(' AND ')}
+       ORDER BY measured_at DESC LIMIT ?`
     )
-      .bind(userId, limit)
+      .bind(...binds, limit)
       .all<BodyMeasurementRow>();
 
     return c.json({ items: results.map(bodyMeasurementToResponse) });

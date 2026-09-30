@@ -330,3 +330,24 @@
 "Scale Setup" = "体組成計の登録と確認";
 "Once this works, the Log screen looks for the scale on its own." = "ここで一度つながると、以降は記録の画面が自分で体組成計を探します。";
 "Measure again" = "もう一度測る";
+
+// 体組成を見る画面
+"Muscle Mass" = "筋肉量";
+"Muscle Score" = "筋肉スコア";
+"Visceral Fat" = "内臓脂肪レベル";
+"BMR" = "基礎代謝量";
+"Metabolic Age" = "体内年齢";
+"Bone Mass" = "推定骨量";
+"Body Water" = "体水分率";
+"Unit.Years" = "歳";
+"Change over this period" = "この期間の変化";
+"No body composition yet" = "体組成のデータがありません";
+"Measure once from the Log screen and your weight and body fat show up here." = "記録の画面から一度測ると、体重と体脂肪率がここに出ます。";
+"%@ and %@ over this period" = "この期間の%@と%@";
+"Date" = "日付";
+
+// 同じ日に何度も乗ったときの代表の選び方
+"First of day" = "朝いちばん";
+"Day average" = "その日の平均";
+"Last of day" = "その日の最後";
+"%d days have more than one measurement. The band shows how much they moved that day." = "%d日は2回以上乗っています。帯はその日どれだけ動いたかです。";
