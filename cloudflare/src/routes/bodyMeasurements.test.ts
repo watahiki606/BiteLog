@@ -117,6 +117,54 @@ describe('GET /api/body-measurements (一覧)', () => {
     expect(items[0].measuredAt).toBe('2025-01-02T00:00:00.000Z');
     expect(items[1].measuredAt).toBe('2025-01-01T00:00:00.000Z');
   });
+
+  it('from/to は計測した地域の暦日で絞る', async () => {
+    // 09:00 JST の計測は UTC では前日になる。measured_at から切り出すと1日ずれる
+    for (const [at, day, w] of [
+      ['2025-01-01T23:00:00.000Z', '2025-01-02', 50],
+      ['2025-01-02T23:00:00.000Z', '2025-01-03', 51],
+    ] as const) {
+      await authedFetch('user-a', '/api/body-measurements', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ measuredAt: at, sourceDate: day, weightKg: w }),
+      });
+    }
+
+    const res = await authedFetch('user-a', '/api/body-measurements?from=2025-01-02&to=2025-01-02');
+    const { items } = await res.json<{ items: { weightKg: number }[] }>();
+    expect(items).toHaveLength(1);
+    expect(items[0].weightKg).toBe(50);
+  });
+
+  it('sourceDate が無い行は measuredAt の日付で絞る', async () => {
+    await authedFetch('user-a', '/api/body-measurements', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ measuredAt: '2025-03-10T05:00:00.000Z', weightKg: 55 }),
+    });
+
+    const hit = await authedFetch('user-a', '/api/body-measurements?from=2025-03-10&to=2025-03-10');
+    expect((await hit.json<{ items: unknown[] }>()).items).toHaveLength(1);
+
+    const miss = await authedFetch('user-a', '/api/body-measurements?from=2025-03-11&to=2025-03-11');
+    expect((await miss.json<{ items: unknown[] }>()).items).toHaveLength(0);
+  });
+
+  it('同じ日に何度乗っても全部返す', async () => {
+    for (const [at, w] of [
+      ['2025-02-01T22:00:00.000Z', 60.8],
+      ['2025-02-02T03:00:00.000Z', 61.4],
+      ['2025-02-02T12:00:00.000Z', 61.9],
+    ] as const) {
+      await authedFetch('user-a', '/api/body-measurements', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ measuredAt: at, sourceDate: '2025-02-02', weightKg: w }),
+      });
+    }
+
+    const res = await authedFetch('user-a', '/api/body-measurements?from=2025-02-02&to=2025-02-02');
+    const { items } = await res.json<{ items: { weightKg: number }[] }>();
+    expect(items.map((item: { weightKg: number }) => item.weightKg)).toEqual([61.9, 61.4, 60.8]);
+  });
 });
 
 describe('DELETE /api/body-measurements/:id', () => {
