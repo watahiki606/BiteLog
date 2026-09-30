@@ -326,25 +326,22 @@
 "Body Water" = "Body Water";
 "Unit.Years" = "yr";
 "Change over this period" = "Change over this period";
-"No body composition yet" = "No body composition yet";
-"Measure once from the Log screen and your weight and body fat show up here." = "Measure once from the Log screen and your weight and body fat show up here.";
-"%@ and %@ over this period" = "%@ and %@ over this period";
 "Date" = "Date";
 
 // How a day with several measurements is represented
 "First of day" = "First of day";
 "Day average" = "Day average";
 "Last of day" = "Last of day";
-"%1$d days have more than one measurement. The line follows %2$@; the vertical line spans the lowest and highest of that day." = "%1$d days have more than one measurement. The line follows %2$@; the vertical line spans the lowest and highest of that day.";
 
 // The body composition card, for people who step on the scale several times a day
 "%d measurements" = "%d measurements";
-"%d-day trend" = "%d-day trend";
 "Last measured %d days ago" = "Last measured %d days ago";
 
 // The single-measurement screen
 "Change is against the last measurement of the day before." = "Change is against the last measurement of the day before.";
-"See the trend" = "See the trend";
 "Delete Measurement" = "Delete Measurement";
 "Delete this measurement?" = "Delete this measurement?";
 "The scale keeps its own copy, so it may come back the next time you connect." = "The scale keeps its own copy, so it may come back the next time you connect.";
+
+// The body composition line overlaid on the statistics chart
+"No overlay" = "No overlay";

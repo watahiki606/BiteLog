@@ -187,12 +187,6 @@ private struct DailyTotalsSample: View {
 private struct BodyGalleryView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 20) {
-      group("Body Correlation") {
-        BodyCorrelationChart(
-          points: Self.correlationPoints, nutrient: .calories, metric: .weightKg,
-          bucket: .day, xAxisStride: 2)
-      }
-
       group("Body Card") {
         VStack(alignment: .leading, spacing: 16) {
           // 同じ日に3回乗った日。乗った回数だけ行が並ぶ
@@ -215,28 +209,6 @@ private struct BodyGalleryView: View {
       }
     }
     .padding()
-  }
-
-  /// 二軸グラフの見え方。値は架空で、同じ日に何度も乗った日と、
-  /// 測らなかった日と、記録の無い日を混ぜてある。
-  static var correlationPoints: [BodyCorrelation.Point] {
-    let start = Calendar.current.startOfDay(for: Date())
-    let rows: [(nutrient: Double, body: Double?, low: Double?, high: Double?, count: Int)] = [
-      (2180, 61.2, 60.9, 61.9, 3),
-      (1740, 61.0, 61.0, 61.0, 1),
-      (0, nil, nil, nil, 0),
-      (2460, 61.4, 61.1, 62.3, 2),
-      (1980, 61.1, 61.1, 61.1, 1),
-      (2050, nil, nil, nil, 0),
-      (1620, 60.8, 60.4, 61.5, 4),
-      (2310, 60.9, 60.9, 60.9, 1),
-    ]
-    return rows.enumerated().map { index, row in
-      BodyCorrelation.Point(
-        date: Calendar.current.date(byAdding: .day, value: index, to: start)!,
-        nutrient: row.nutrient, body: row.body, low: row.low, high: row.high,
-        measurementCount: row.count)
-    }
   }
 
   /// 同じ日に3回乗った日。値は架空。

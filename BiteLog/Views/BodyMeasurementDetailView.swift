@@ -7,6 +7,9 @@ import SwiftUI
 ///
 /// 取り込みをやり直したいときや、他人が乗ったぶんが混ざったときのために、
 /// ここから消せるようにしている。
+///
+/// 推移は統計の画面にある。栄養のグラフに体組成の折れ線を重ねる形なので、
+/// 食べ方が体にどう出ているかはそこで見る。
 struct BodyMeasurementDetailView: View {
   let measurement: BodyMeasurementDTO
   let previousDayLast: BodyMeasurementDTO?
@@ -36,14 +39,6 @@ struct BodyMeasurementDetailView: View {
             NSLocalizedString(
               "Change is against the last measurement of the day before.",
               comment: "Body measurement detail footer"))
-        }
-      }
-
-      Section {
-        NavigationLink(destination: BodyCompositionView()) {
-          Label(
-            NSLocalizedString("See the trend", comment: "Body measurement detail link"),
-            systemImage: "chart.xyaxis.line")
         }
       }
 

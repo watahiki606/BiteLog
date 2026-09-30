@@ -341,25 +341,22 @@
 "Body Water" = "体水分率";
 "Unit.Years" = "歳";
 "Change over this period" = "この期間の変化";
-"No body composition yet" = "体組成のデータがありません";
-"Measure once from the Log screen and your weight and body fat show up here." = "記録の画面から一度測ると、体重と体脂肪率がここに出ます。";
-"%@ and %@ over this period" = "この期間の%@と%@";
 "Date" = "日付";
 
 // 同じ日に何度も乗ったときの代表の選び方
 "First of day" = "朝いちばん";
 "Day average" = "その日の平均";
 "Last of day" = "その日の最後";
-"%1$d days have more than one measurement. The line follows %2$@; the vertical line spans the lowest and highest of that day." = "%1$d日は2回以上乗っています。折れ線は%2$@の値、縦線はその日の最小から最大までです。";
 
 // 記録の画面の体組成カード（同じ日に何度も乗る前提）
 "%d measurements" = "%d回";
-"%d-day trend" = "%d日の傾向";
 "Last measured %d days ago" = "前回は%d日前";
 
 // 測定1件の画面
 "Change is against the last measurement of the day before." = "差は前日の最後に測ったものとの比較です。";
-"See the trend" = "グラフで見る";
 "Delete Measurement" = "この測定を削除";
 "Delete this measurement?" = "この測定を削除しますか？";
 "The scale keeps its own copy, so it may come back the next time you connect." = "体組成計にも同じ測定が残っているので、次につないだときに戻ってくることがあります。";
+
+// 統計のグラフに重ねる体組成
+"No overlay" = "体組成なし";

@@ -54,7 +54,7 @@ enum TrendMetric: String, CaseIterable, Identifiable {
 
 /// トレンドの下でセグメント切替する詳細セクション。選択中のカードのみ描画する。
 enum StatSection: String, CaseIterable, Identifiable {
-  case average, pfc, mealType
+  case average, pfc, mealType, body
   var id: String { rawValue }
 
   var localizedName: String {
@@ -62,6 +62,7 @@ enum StatSection: String, CaseIterable, Identifiable {
     case .average: return NSLocalizedString("Daily Average", comment: "Statistics section")
     case .pfc: return NSLocalizedString("PFC Balance", comment: "Statistics section")
     case .mealType: return NSLocalizedString("By Meal Type", comment: "Statistics section")
+    case .body: return NSLocalizedString("Body Composition", comment: "Body composition section")
     }
   }
 }
@@ -130,6 +131,11 @@ struct StatisticsView: View {
   @State private var section: StatSection = .average
   @State private var bucket: StatBucket = .day
   @State private var aggregation: StatAggregation = .total
+  /// グラフに重ねる体組成。nil は重ねない
+  @State private var bodyMetric: BodyMetric?
+  /// 同じ日に何度も乗った日をどれで代表させるか
+  @State private var bodyPick: DailyPick = .first
+  @State private var bodyMeasurements: [BodyMeasurementDTO] = []
 
   // カスタム期間
   @State private var customFrom: Date = Calendar.current.date(
@@ -220,12 +226,12 @@ struct StatisticsView: View {
         } else {
           dateNavigationBar
           trendCard
-          bodyCompositionLink
           sectionSelector
           switch section {
           case .average: averageCard
           case .pfc: pfcBalanceCard
           case .mealType: mealTypeCard
+          case .body: bodyChangeCard
           }
         }
       }
@@ -332,37 +338,23 @@ struct StatisticsView: View {
     .frame(maxWidth: .infinity)
   }
 
-  /// 体組成を見る画面への入り口。
-  ///
-  /// 食事と体組成の関係はこの画面の栄養グラフだけでは読めないので、
-  /// 二軸のグラフと9項目の推移は別の画面に置いている。
-  private var bodyCompositionLink: some View {
-    NavigationLink(destination: BodyCompositionView()) {
-      HStack {
-        Label(
-          NSLocalizedString("Body Composition", comment: "Body composition section"),
-          systemImage: "figure.stand")
-        Spacer()
-        Image(systemName: "chevron.right")
-          .font(.footnote.weight(.semibold))
-          .foregroundStyle(.tertiary)
-      }
-      .padding()
-      .background(Color(UIColor.secondarySystemGroupedBackground))
-      .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-    .buttonStyle(.plain)
-  }
-
   /// 表示するセクションを選ぶセグメント。選択中のカードだけを描画する。
   private var sectionSelector: some View {
     Picker("", selection: $section) {
-      ForEach(StatSection.allCases) { s in
+      ForEach(availableSections) { s in
         Text(s.localizedName).tag(s)
       }
     }
     .pickerStyle(.segmented)
   }
+
+  /// 体組成を1件も持っていない人に体組成の欄を出さない。
+  /// 中身が「–」だけの表になる。
+  private var availableSections: [StatSection] {
+    hasBodyData ? StatSection.allCases : StatSection.allCases.filter { $0 != .body }
+  }
+
+  private var hasBodyData: Bool { BodyCorrelation.hasBodyData(bodyMeasurements) }
 
   /// 可視期間を deltaDays 分ずらす。進む側は今日を超えないようクランプし、
   /// 戻る側は既存の無限スクロール機構でバッファを拡張する。custom は固定範囲のため無効。
@@ -426,8 +418,38 @@ struct StatisticsView: View {
           }
         }
 
+        // 体組成を持っている人にだけ、重ねる折れ線を選ばせる
+        if hasBodyData {
+          HStack(spacing: 8) {
+            Picker("", selection: $bodyMetric) {
+              Text(NSLocalizedString("No overlay", comment: "Body overlay off")).tag(
+                BodyMetric?.none)
+              ForEach(BodyMetric.allCases) { metric in
+                Text(metric.localizedName).tag(BodyMetric?.some(metric))
+              }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+
+            Spacer()
+
+            // 同じ日に何度も乗った日があるときだけ、代表の選び方を出す
+            if bodyMetric != nil && multiMeasurementDays > 0 {
+              Picker("", selection: $bodyPick) {
+                ForEach(DailyPick.allCases) { option in
+                  Text(option.localizedName).tag(option)
+                }
+              }
+              .pickerStyle(.menu)
+              .labelsHidden()
+            }
+          }
+        }
+
         TrendChartView(
           series: displayTrendSeries,
+          bodySeries: displayBodySeries,
+          bodyMetric: bodyMetric,
           xDomain: trendDomain,
           metric: metric,
           bucket: bucket,
@@ -448,6 +470,97 @@ struct StatisticsView: View {
         .id(reloadKey)
       }
     }
+  }
+
+  /// グラフに重ねる折れ線。栄養の棒と同じ単位でまとめ直す。
+  private var displayBodySeries: [BodyCorrelation.Point] {
+    guard let bodyMetric else { return [] }
+    return BodyCorrelation.bodySeries(
+      bodyMeasurements, from: bufferFrom, to: bufferTo, bucket: bucket, body: bodyMetric,
+      pick: bodyPick, calendar: cal)
+  }
+
+  /// 同じ日に2回以上乗った日がいくつあるか。代表を選ぶ意味があるかの目安にする。
+  private var multiMeasurementDays: Int {
+    BodyMeasurementDTO.byDay(settledBodyMeasurements).values.filter { $0.count > 1 }.count
+  }
+
+  /// カードが見ている期間に入る測定だけ。
+  ///
+  /// バッファには可視期間の外まで入っている。そのまま使うと、期間を変えても
+  /// 「この期間の変化」が動かない。
+  private var settledBodyMeasurements: [BodyMeasurementDTO] {
+    BodyMeasurementDTO.within(
+      bodyMeasurements, from: StatDate.string(settledRange.from),
+      to: StatDate.string(settledRange.to))
+  }
+
+  // MARK: - ⑤ 体組成の期間変化
+
+  /// 期間の始めから終わりまでの変化。
+  ///
+  /// 集計単位を変えても動かない。集計単位はグラフの点をどうまとめるかの話で、
+  /// 期間の端から端までの差には関わらない。
+  ///
+  /// いまいくつかは出さない。最新の値は期間を変えても動かないので、
+  /// 「この期間の変化」と書いた場所に置くと期間に連動していないように見える。
+  /// いまの値は記録の画面にある。
+  private var bodyChangeCard: some View {
+    let deltas = BodyCorrelation.deltas(settledBodyMeasurements, pick: bodyPick)
+    return CardView {
+      VStack(alignment: .leading, spacing: 12) {
+        Text(NSLocalizedString("Change over this period", comment: "Body composition section"))
+          .font(.caption)
+          .foregroundColor(.secondary)
+
+        ForEach(deltas) { delta in
+          bodyChangeRow(delta)
+          if delta.id != deltas.last?.id { Divider() }
+        }
+      }
+    }
+  }
+
+  private func bodyChangeRow(_ delta: BodyCorrelation.Delta) -> some View {
+    HStack(alignment: .firstTextBaseline) {
+      Text(delta.metric.localizedName)
+        .font(.subheadline)
+      Spacer()
+      if let change = delta.change {
+        HStack(alignment: .firstTextBaseline, spacing: 2) {
+          Text(signedChange(change, digits: delta.metric.fractionDigits))
+            .font(.title3.weight(.semibold))
+            .monospacedDigit()
+            .foregroundStyle(bodyChangeColor(delta.metric, change))
+          if !delta.metric.unit.isEmpty {
+            Text(delta.metric.unit)
+              .font(.caption)
+              .foregroundColor(.secondary)
+          }
+        }
+      } else {
+        // 期間内に測った日が1日以下。0 と書くと「変わらなかった」に読める
+        Text("–")
+          .font(.subheadline)
+          .foregroundColor(.secondary)
+      }
+    }
+    .accessibilityElement(children: .combine)
+  }
+
+  /// 良し悪しが決まる項目だけ色を付ける。
+  /// 体重の増減は目標次第で良くも悪くもなるので、色を付けない。
+  private func bodyChangeColor(_ metric: BodyMetric, _ change: Double) -> Color {
+    guard change != 0, let increaseIsGood = metric.increaseIsGood else { return .primary }
+    return (change > 0) == increaseIsGood ? .green : .orange
+  }
+
+  /// 増減の向きが一目で分かる形にする。マイナス記号は全角の −
+  private func signedChange(_ value: Double, digits: Int) -> String {
+    let scale = pow(10, Double(digits))
+    let rounded = (value * scale).rounded() / scale
+    let sign = rounded > 0 ? "+" : rounded < 0 ? "−" : "±"
+    return sign + String(format: "%.\(digits)f", abs(rounded))
   }
 
   /// グラフの X 軸が覆う範囲。取得済みバッファの全体を明示的に指定する。
@@ -668,6 +781,7 @@ struct StatisticsView: View {
   private func reload() async {
     guard AuthManager.shared.isSignedIn else {
       items = []
+      bodyMeasurements = []
       return
     }
     isLoading = true
@@ -685,9 +799,15 @@ struct StatisticsView: View {
     }
 
     do {
-      let fetched = try await APIClient.shared.fetchDailySummary(
+      // 体組成は日次に潰されたものではなく1回ずつ受け取る。
+      // 同じ日に何度も乗るので、平均にすると乗った回数で日ごとの値が変わる。
+      async let summary = APIClient.shared.fetchDailySummary(
         from: StatDate.string(from), to: StatDate.string(to))
+      async let body = APIClient.shared.fetchBodyMeasurements(
+        from: StatDate.string(from), to: StatDate.string(to))
+      let (fetched, fetchedBody) = try await (summary, body)
       items = fetched
+      bodyMeasurements = fetchedBody
       trendSeries = StatisticsCalculator.dailyTotals(items)
       bufferFrom = from
       bufferTo = to
@@ -718,12 +838,17 @@ struct StatisticsView: View {
     let newFrom = cal.date(byAdding: .day, value: -(visibleDays * 3), to: bufferFrom) ?? bufferFrom
     let oldFromMinus1 = cal.date(byAdding: .day, value: -1, to: bufferFrom) ?? bufferFrom
     do {
-      let older = try await APIClient.shared.fetchDailySummary(
+      async let summary = APIClient.shared.fetchDailySummary(
         from: StatDate.string(newFrom), to: StatDate.string(oldFromMinus1))
+      async let body = APIClient.shared.fetchBodyMeasurements(
+        from: StatDate.string(newFrom), to: StatDate.string(oldFromMinus1))
+      let (older, olderBody) = try await (summary, body)
       // 重複排除して前方に結合
       let existingIDs = Set(items.map(\.id))
       items = older.filter { !existingIDs.contains($0.id) } + items
       trendSeries = StatisticsCalculator.dailyTotals(items)
+      let existingBodyIDs = Set(bodyMeasurements.map(\.id))
+      bodyMeasurements = olderBody.filter { !existingBodyIDs.contains($0.id) } + bodyMeasurements
       bufferFrom = newFrom
     } catch {
       // 追加取得の失敗は致命的でないため握りつぶす（次のスクロールで再試行）
@@ -738,6 +863,9 @@ struct StatisticsView: View {
 /// 親（カード群）はスクロール停止時（`onScrollSettled`）にのみ再評価される。
 private struct TrendChartView: View {
   let series: [DailyNutrition]
+  /// 重ねる体組成。空なら重ねない
+  let bodySeries: [BodyCorrelation.Point]
+  let bodyMetric: BodyMetric?
   let xDomain: ClosedRange<Date>
   let metric: TrendMetric
   let bucket: StatBucket
@@ -757,12 +885,15 @@ private struct TrendChartView: View {
   @State private var selectedX: Date?
 
   init(
-    series: [DailyNutrition], xDomain: ClosedRange<Date>, metric: TrendMetric,
+    series: [DailyNutrition], bodySeries: [BodyCorrelation.Point], bodyMetric: BodyMetric?,
+    xDomain: ClosedRange<Date>, metric: TrendMetric,
     bucket: StatBucket, visibleDays: Int,
     visibleSeconds: TimeInterval, goalLine: Double?, xAxisStride: Int, initialScrollX: Date,
     scrollTarget: Date, onScroll: @escaping (Date) -> Void, onScrollSettled: @escaping (Date) -> Void
   ) {
     self.series = series
+    self.bodySeries = bodySeries
+    self.bodyMetric = bodyMetric
     self.xDomain = xDomain
     self.metric = metric
     self.bucket = bucket
@@ -848,6 +979,41 @@ private struct TrendChartView: View {
     }
   }
 
+  /// 棒が届く高さ。体組成を写す先にもなる。
+  ///
+  /// 自動の目盛りに任せると写す先が決まらないので、ここで決め打ちにする。
+  private var plotMax: Double {
+    let seriesMax = series.map { metric.value($0.values) }.max() ?? 0
+    return max(max(seriesMax, goalLine ?? 0) * 1.1, 1)
+  }
+
+  /// 体組成の値を棒と同じ高さへ写す対応付け。
+  ///
+  /// 60kg の体重を 2000kcal と同じ軸に置くと横一直線になる。
+  /// 幅の上下も収める。折れ線だけで範囲を決めると縦線が枠から出る。
+  private var bodyScale: BodyAxisScale? {
+    guard bodyMetric != nil else { return nil }
+    let values =
+      bodySeries.compactMap(\.body) + bodySeries.compactMap(\.low)
+      + bodySeries.compactMap(\.high)
+    return BodyAxisScale(bodyValues: values, plotMax: plotMax)
+  }
+
+  private func bodyLine(
+    _ point: BodyCorrelation.Point, metric bodyMetric: BodyMetric, scale: BodyAxisScale, run: Int
+  ) -> some ChartContent {
+    LineMark(
+      x: .value("Date", point.date, unit: barUnit),
+      y: .value(bodyMetric.localizedName, scale.project(point.body ?? 0)),
+      series: .value("body", run)
+    )
+    .foregroundStyle(Color("BodyMetric"))
+    .lineStyle(StrokeStyle(lineWidth: 2))
+    .interpolationMethod(simplified ? .linear : .monotone)
+    .symbol(.circle)
+    .symbolSize(simplified ? 0 : 20)
+  }
+
   var body: some View {
     Chart {
       ForEach(series) { day in
@@ -883,6 +1049,30 @@ private struct TrendChartView: View {
           .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
       }
 
+      if let bodyMetric, let scale = bodyScale {
+        // 同じ日に何度も乗った日の幅。折れ線1本だと、朝と夜で1kg以上違うことが消える
+        ForEach(bodySeries.filter(\.hasSpread)) { point in
+          if let low = point.low, let high = point.high {
+            RectangleMark(
+              x: .value("Date", point.date, unit: barUnit),
+              yStart: .value(bodyMetric.localizedName, scale.project(low)),
+              yEnd: .value(bodyMetric.localizedName, scale.project(high)),
+              width: .fixed(3)
+            )
+            .foregroundStyle(Color("BodyMetric").opacity(0.3))
+            .cornerRadius(1.5)
+          }
+        }
+
+        // 測っていない日をまたいでつながないように、ひとつづきごとに series を分ける
+        ForEach(Array(BodyCorrelation.measuredRuns(bodySeries).enumerated()), id: \.offset) {
+          index, run in
+          ForEach(run) { point in
+            bodyLine(point, metric: bodyMetric, scale: scale, run: index)
+          }
+        }
+      }
+
       if let selected = selectedPoint {
         RuleMark(x: .value("Date", selected.date, unit: barUnit))
           .foregroundStyle(.secondary.opacity(0.4))
@@ -900,6 +1090,22 @@ private struct TrendChartView: View {
           overflowResolution: .init(x: .fit(to: .chart), y: .fit(to: .chart))
         ) {
           selectionCallout(selected)
+        }
+      }
+    }
+    .chartYScale(domain: 0...plotMax)
+    .chartYAxis {
+      AxisMarks(position: .leading)
+
+      if let bodyMetric, let scale = bodyScale {
+        AxisMarks(position: .trailing, values: scale.tickPositions()) { mark in
+          AxisGridLine().foregroundStyle(.clear)
+          AxisValueLabel {
+            if let plotted = mark.as(Double.self) {
+              Text(bodyMetric.format(scale.unproject(plotted)))
+                .foregroundStyle(Color("BodyMetric"))
+            }
+          }
         }
       }
     }
