@@ -278,6 +278,32 @@ struct BodyCorrelationTests {
     #expect(deltas.first { $0.metric == .weightKg }?.change == -1.5)
   }
 
+  @Test func 期間の外の測定は差に混ぜない() {
+    // サーバーが期間の外まで返してくることがある。そのまま使うと、
+    // 期間を変えても「この期間の変化」が動かない
+    let all = [
+      Self.measurement("2025-06-01", at: "03:00", weight: 70.0),
+      Self.measurement("2026-01-20", at: "03:00", weight: 61.5),
+      Self.measurement("2026-01-31", at: "03:00", weight: 61.0),
+    ]
+
+    let inRange = BodyMeasurementDTO.within(all, from: "2026-01-01", to: "2026-01-31")
+
+    #expect(inRange.count == 2)
+    #expect(BodyCorrelation.deltas(inRange, pick: .first).first { $0.metric == .weightKg }?
+      .change == -0.5)
+  }
+
+  @Test func 期間の両端はどちらも含める() {
+    let all = [
+      Self.measurement("2026-01-01", at: "03:00", weight: 62.0),
+      Self.measurement("2026-01-31", at: "03:00", weight: 61.0),
+    ]
+
+    #expect(BodyMeasurementDTO.within(all, from: "2026-01-01", to: "2026-01-31").count == 2)
+    #expect(BodyMeasurementDTO.within(all, from: "2026-01-02", to: "2026-01-30").isEmpty)
+  }
+
   @Test func 期間を広げると差も変わる() {
     // 「この期間の変化」が期間に連動していること。
     // 最新の値だけを出していたころは、期間を変えても数字が動かなかった

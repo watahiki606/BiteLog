@@ -36,7 +36,7 @@ struct BodyCompositionView: View {
             .frame(maxWidth: .infinity, minHeight: 240)
         } else if loadFailed {
           LoadFailureView { await load() }
-        } else if !BodyCorrelation.hasBodyData(measurements) {
+        } else if !BodyCorrelation.hasBodyData(periodMeasurements) {
           emptyView
         } else {
           periodBar
@@ -160,14 +160,25 @@ struct BodyCompositionView: View {
 
   private var series: [BodyCorrelation.Point] {
     BodyCorrelation.series(
-      nutrition: nutrition, measurements: measurements, from: range.from, to: range.to,
+      nutrition: nutrition, measurements: periodMeasurements, from: range.from, to: range.to,
       bucket: bucket, average: aggregation == .average, nutrient: nutrient, body: bodyMetric,
       pick: pick, calendar: cal)
   }
 
+  /// 見ている期間に入る測定だけ。
+  ///
+  /// サーバーが期間の外まで返してくることがある。取ってきたものをそのまま使うと、
+  /// 期間を変えても「この期間の変化」が動かない。
+  private var periodMeasurements: [BodyMeasurementDTO] {
+    BodyMeasurementDTO.within(
+      measurements,
+      from: BodyCorrelation.dayFormatter.string(from: range.from),
+      to: BodyCorrelation.dayFormatter.string(from: range.to))
+  }
+
   /// 同じ日に2回以上乗った日がいくつあるか。代表を選ぶ意味があるかの目安にする。
   private var multiMeasurementDays: Int {
-    BodyMeasurementDTO.byDay(measurements).values.filter { $0.count > 1 }.count
+    BodyMeasurementDTO.byDay(periodMeasurements).values.filter { $0.count > 1 }.count
   }
 
   private var correlationCard: some View {
@@ -292,7 +303,7 @@ struct BodyCompositionView: View {
   /// 集計間隔を変えても動かない。集計間隔はグラフの点をどうまとめるかの話で、
   /// 期間の端から端までの差には関わらない。
   private var trendCard: some View {
-    let deltas = BodyCorrelation.deltas(measurements, pick: pick)
+    let deltas = BodyCorrelation.deltas(periodMeasurements, pick: pick)
     return CardView {
       VStack(alignment: .leading, spacing: 12) {
         VStack(alignment: .leading, spacing: 2) {

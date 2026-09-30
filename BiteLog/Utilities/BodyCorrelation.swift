@@ -120,6 +120,19 @@ enum DailyPick: String, CaseIterable, Identifiable {
 }
 
 extension BodyMeasurementDTO {
+  /// 期間の中に入るものだけを残す。
+  ///
+  /// サーバーが何を返してきたかに関わらず、画面が見ている期間で切る。
+  /// 期間の外の測定が混ざると、「この期間の変化」が期間を変えても動かなくなる。
+  static func within(_ measurements: [BodyMeasurementDTO], from: String, to: String)
+    -> [BodyMeasurementDTO]
+  {
+    measurements.filter { measurement in
+      guard let day = measurement.sourceDate else { return false }
+      return day >= from && day <= to
+    }
+  }
+
   /// 暦日ごとにまとめる。同じ日に何度も乗るので1件には潰さない。
   ///
   /// 各日の中は測った順に並べる。サーバーは新しい順で返すので、ここで向きを揃える。
