@@ -12,11 +12,10 @@ struct ScaleAutoStartTests {
   /// 揃っている状態。個々の条件を1つずつ崩して確かめる
   private static func ready() -> ScaleAutoStart.Conditions {
     ScaleAutoStart.Conditions(
-      isToday: true, isPaired: true, alreadyMeasured: false, isRunning: false,
-      attemptedToday: false)
+      isToday: true, isPaired: true, isRunning: false, sinceLastAttempt: nil)
   }
 
-  @Test func 今日でまだ測っていなければ自動で探す() {
+  @Test func 今日を開いてまだ探していなければ自動で探す() {
     #expect(ScaleAutoStart.shouldStart(Self.ready()))
   }
 
@@ -32,81 +31,24 @@ struct ScaleAutoStartTests {
     #expect(!ScaleAutoStart.shouldStart(conditions))
   }
 
-  @Test func その日もう測っていれば探さない() {
-    var conditions = Self.ready()
-    conditions.alreadyMeasured = true
-    #expect(!ScaleAutoStart.shouldStart(conditions))
-  }
-
   @Test func すでに探している途中なら重ねて始めない() {
     var conditions = Self.ready()
     conditions.isRunning = true
     #expect(!ScaleAutoStart.shouldStart(conditions))
   }
 
-  @Test func 同じ日に自動で二度目は探さない() {
+  @Test func 探した直後にもう一度は探さない() {
+    // タブを行き来するたびに Bluetooth を使い始めることになる
     var conditions = Self.ready()
-    conditions.attemptedToday = true
+    conditions.sinceLastAttempt = 60
     #expect(!ScaleAutoStart.shouldStart(conditions))
   }
-}
 
-/// 暦日ごとの代表値の選び方。
-struct BodyMeasurementDTODayTests {
-
-  private static func measurement(
-    id: String, day: String?, at measuredAt: String, weight: Double
-  ) -> BodyMeasurementDTO {
-    BodyMeasurementDTO(
-      id: id, sourceDate: day, measuredAt: measuredAt, weightKg: weight, bodyFatPercent: nil,
-      muscleMassKg: nil, muscleScore: nil, visceralFatLevel: nil, basalMetabolismKcal: nil,
-      metabolicAge: nil, boneMassKg: nil, bodyWaterPercent: nil)
-  }
-
-  @Test func 同じ日に複数回測ったら最後のものを残す() {
-    let byDay = BodyMeasurementDTO.latestByDay([
-      Self.measurement(id: "a", day: "2026-01-02", at: "2026-01-01T22:00:00.000Z", weight: 60),
-      Self.measurement(id: "b", day: "2026-01-02", at: "2026-01-02T12:00:00.000Z", weight: 61),
-    ])
-
-    #expect(byDay["2026-01-02"]?.id == "b")
-  }
-
-  @Test func 渡す順番で結果が変わらない() {
-    let items = [
-      Self.measurement(id: "a", day: "2026-01-02", at: "2026-01-02T12:00:00.000Z", weight: 61),
-      Self.measurement(id: "b", day: "2026-01-02", at: "2026-01-01T22:00:00.000Z", weight: 60),
-    ]
-
-    #expect(BodyMeasurementDTO.latestByDay(items)["2026-01-02"]?.id == "a")
-    #expect(BodyMeasurementDTO.latestByDay(items.reversed())["2026-01-02"]?.id == "a")
-  }
-
-  @Test func 小数秒の有無が混ざっていても前後を見分ける() {
-    // 体組成計から直接入れた行は小数秒付き、手で入れた行は無しになりうる
-    let byDay = BodyMeasurementDTO.latestByDay([
-      Self.measurement(id: "written-by-hand", day: "2026-01-02", at: "2026-01-02T07:00:00Z", weight: 60),
-      Self.measurement(id: "from-scale", day: "2026-01-02", at: "2026-01-02T08:00:00.000Z", weight: 61),
-    ])
-
-    #expect(byDay["2026-01-02"]?.id == "from-scale")
-  }
-
-  @Test func 暦日が分からない行は落とす() {
-    let byDay = BodyMeasurementDTO.latestByDay([
-      Self.measurement(id: "a", day: nil, at: "2026-01-02T12:00:00.000Z", weight: 60)
-    ])
-
-    #expect(byDay.isEmpty)
-  }
-
-  @Test func 暦日は測った地域の日付にする() {
-    // 2026-01-02 07:30 JST。UTC では前日の 22:30 なので、UTC で切ると1日ずれる
-    let morning = Date(timeIntervalSince1970: 1_767_306_600)
-
-    #expect(
-      BodyMeasurementDTO.formatDay(morning, timeZone: TimeZone(identifier: "Asia/Tokyo")!)
-        == "2026-01-02")
+  @Test func 間が空けばその日のうちでも探し直す() {
+    // 朝に乗って夜にまた乗る。「その日もう測ったから」で止めると2回目が拾えない
+    var conditions = Self.ready()
+    conditions.sinceLastAttempt = ScaleAutoStart.retryInterval
+    #expect(ScaleAutoStart.shouldStart(conditions))
   }
 }
 
@@ -142,9 +84,12 @@ struct BodyCompositionModelTests {
 
     init(stored: [BodyMeasurementDTO] = []) { self.stored = stored }
 
-    func fetchBodyMeasurements(limit: Int) async throws -> [BodyMeasurementDTO] {
+    var requestedRanges: [(from: String, to: String)] = []
+
+    func fetchBodyMeasurements(from: String, to: String) async throws -> [BodyMeasurementDTO] {
+      requestedRanges.append((from, to))
       if let fetchError { throw fetchError }
-      return stored
+      return stored.filter { ($0.sourceDate ?? "") >= from && ($0.sourceDate ?? "") <= to }
     }
 
     func createBodyMeasurement(_ dto: BodyMeasurementCreateDTO) async throws {
@@ -156,9 +101,11 @@ struct BodyCompositionModelTests {
   /// 2026-01-02 07:30 JST
   private static let now = Date(timeIntervalSince1970: 1_767_306_600)
 
-  private static func measurement(day: String, weight: Double) -> BodyMeasurementDTO {
+  private static func measurement(
+    day: String, at time: String = "00:00", weight: Double
+  ) -> BodyMeasurementDTO {
     BodyMeasurementDTO(
-      id: UUID().uuidString, sourceDate: day, measuredAt: "\(day)T00:00:00.000Z",
+      id: "\(day)T\(time)", sourceDate: day, measuredAt: "\(day)T\(time):00.000Z",
       weightKg: weight, bodyFatPercent: 20, muscleMassKg: nil, muscleScore: nil,
       visceralFatLevel: nil, basalMetabolismKcal: nil, metabolicAge: nil, boneMassKg: nil,
       bodyWaterPercent: nil)
@@ -188,7 +135,7 @@ struct BodyCompositionModelTests {
     #expect(scale.startedWith.isEmpty)
   }
 
-  @Test func 登録済みでその日まだ測っていなければ自動で探し始める() async {
+  @Test func 登録済みの今日を開いたら自動で探し始める() async {
     let scale = FakeScale()
     let model = Self.model(scale: scale, store: FakeStore(), paired: true)
 
@@ -199,15 +146,30 @@ struct BodyCompositionModelTests {
     #expect(model.activity == .searching)
   }
 
-  @Test func その日もう測っていれば探さずに値だけ出す() async {
+  @Test func その日もう測っていても自動で探す() async {
+    // 朝に乗って夜にまた乗る。1回目で打ち切ると2回目以降が拾えない
     let scale = FakeScale()
     let store = FakeStore(stored: [Self.measurement(day: "2026-01-02", weight: 61.2)])
     let model = Self.model(scale: scale, store: store, paired: true)
 
     await model.load(date: Self.now, now: Self.now)
 
-    #expect(model.dayMeasurement?.weightKg == 61.2)
-    #expect(scale.startedWith.isEmpty)
+    #expect(model.summary?.weight?.latest == 61.2)
+    #expect(scale.startedWith == [.automatic])
+  }
+
+  @Test func 同じ日に何度乗ってもすべてカードに出す() async {
+    let scale = FakeScale()
+    let store = FakeStore(stored: [
+      Self.measurement(day: "2026-01-02", at: "03:00", weight: 60.9),
+      Self.measurement(day: "2026-01-02", at: "12:00", weight: 61.9),
+    ])
+    let model = Self.model(scale: scale, store: store, paired: true)
+
+    await model.load(date: Self.now, now: Self.now)
+
+    #expect(model.summary?.measurements.count == 2)
+    #expect(model.summary?.todayRange == 60.9...61.9)
   }
 
   @Test func 過去の日を開いたときは探さない() async {
@@ -255,10 +217,10 @@ struct BodyCompositionModelTests {
 
     #expect(model.isVisible)
     #expect(!model.canMeasure)
-    #expect(model.dayMeasurement?.weightKg == 60.8)
+    #expect(model.summary?.weight?.latest == 60.8)
   }
 
-  @Test func 同じ日に開き直しても自動では一度しか探さない() async {
+  @Test func 続けて開き直しても探し直さない() async {
     let scale = FakeScale()
     let model = Self.model(scale: scale, store: FakeStore(), paired: true)
 
@@ -267,6 +229,30 @@ struct BodyCompositionModelTests {
     await model.load(date: Self.now, now: Self.now)
 
     #expect(scale.startedWith == [.automatic])
+  }
+
+  @Test func 間が空けば同じ日でも探し直す() async {
+    let scale = FakeScale()
+    let model = Self.model(scale: scale, store: FakeStore(), paired: true)
+
+    await model.load(date: Self.now, now: Self.now)
+    scale.stop()
+    let later = Self.now.addingTimeInterval(ScaleAutoStart.retryInterval + 1)
+    await model.load(date: Self.now, now: later)
+
+    #expect(scale.startedWith == [.automatic, .automatic])
+  }
+
+  @Test func 傾向を出せるだけの範囲を取りに行く() async {
+    let scale = FakeScale()
+    let store = FakeStore()
+    let model = Self.model(scale: scale, store: store, paired: true)
+
+    await model.load(date: Self.now, now: Self.now)
+
+    // 傾向は窓2つぶんを比べるので、その日の1件だけでは足りない
+    #expect(store.requestedRanges.first?.to == "2026-01-02")
+    #expect(store.requestedRanges.first!.from < "2026-01-02")
   }
 
   @Test func 自動で探して空振りしたことは画面に出さない() async {
@@ -284,8 +270,10 @@ struct BodyCompositionModelTests {
     let scale = FakeScale()
     let store = FakeStore(stored: [Self.measurement(day: "2026-01-02", weight: 61.2)])
     let model = Self.model(scale: scale, store: store, paired: true)
-    // その日はもう測っているので自動では探さない。そこから手で始める
+    // 自動の探索が終わったあと、自分で「測る」を押す
     await model.load(date: Self.now, now: Self.now)
+    scale.stop()
+    scale.startedWith = []
     model.measureByHand()
     scale.subject.send(.failed("体組成計が見つかりませんでした"))
 
@@ -319,10 +307,10 @@ struct BodyCompositionModelTests {
     received.bodyFatPercent = 20.0
     scale.onMeasurement?(received)
 
-    try await Self.settle { store.created.count == 1 && model.dayMeasurement != nil }
+    try await Self.settle { store.created.count == 1 && model.summary?.weight != nil }
 
     #expect(store.created.first?.weightKg == 61.2)
-    #expect(model.dayMeasurement?.weightKg == 61.2)
+    #expect(model.summary?.weight?.latest == 61.2)
   }
 
   @Test func 測定が取れなくてもカードは黙って消える() async {

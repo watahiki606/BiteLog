@@ -4,27 +4,30 @@ import Foundation
 /// 記録の画面が体組成計を自動で探し始めてよいかを決める。
 ///
 /// 自動で探すと、記録をつけたいだけで開いたときにも Bluetooth の接続が走る。
-/// 「その日まだ測っていない今日」に1回だけ、という線を引く。
+/// かといって「その日もう測ったから」で止めると、朝に乗って夜にまた乗る使い方で
+/// 2回目以降が拾えない。時間で間隔を空ける形にする。
 enum ScaleAutoStart {
+  /// 自動で探し直すまでの間隔。
+  ///
+  /// タブを行き来するたびに探すと Bluetooth を使い続けることになる。
+  /// 逆に1日1回に絞ると、同じ日に何度も乗る使い方で2回目以降が拾えない。
+  static let retryInterval: TimeInterval = 30 * 60
+
   struct Conditions: Equatable {
     /// 見ているのが今日か。過去の日を開いて測り始めるのは筋が通らない
     var isToday: Bool
     /// この端末が体組成計に登録できているか
     var isPaired: Bool
-    /// その暦日の測定がもうサーバーにあるか
-    var alreadyMeasured: Bool
     /// もう探している途中か
     var isRunning: Bool
-    /// その暦日について自動で1回試したか。空振りを繰り返さないための歯止め
-    var attemptedToday: Bool
+    /// 最後に自動で探してからの経過。まだ一度も探していなければ nil
+    var sinceLastAttempt: TimeInterval?
   }
 
   static func shouldStart(_ conditions: Conditions) -> Bool {
-    conditions.isToday
-      && conditions.isPaired
-      && !conditions.alreadyMeasured
-      && !conditions.isRunning
-      && !conditions.attemptedToday
+    guard conditions.isToday, conditions.isPaired, !conditions.isRunning else { return false }
+    guard let since = conditions.sinceLastAttempt else { return true }
+    return since >= retryInterval
   }
 }
 
@@ -43,8 +46,8 @@ final class BodyCompositionModel: ObservableObject {
     case reading
   }
 
-  /// 見ている日の測定。同じ日に複数回測ったときは最後のもの
-  @Published private(set) var dayMeasurement: BodyMeasurementDTO?
+  /// カードに出すもの。見ている日の測定と、前日との差と、ならした傾向
+  @Published private(set) var summary: BodyCardSummary.Summary?
   @Published private(set) var activity: Activity = .idle
   /// 体組成計を登録しているか。登録していない人にはカードを出さない
   @Published private(set) var isPaired: Bool
@@ -57,9 +60,10 @@ final class BodyCompositionModel: ObservableObject {
   private let api: BodyMeasurementStore
   private let defaults: UserDefaults
   private let timeZone: TimeZone
+  private let calendar: Calendar
   private var cancellables: Set<AnyCancellable> = []
-  /// 自動で試した暦日。1日1回に抑える
-  private var attemptedDays: Set<String> = []
+  /// 最後に自動で探し始めた時刻。間を空けるために持つ
+  private var lastAutoAttempt: Date?
   /// 手で始めたかどうか。空振りを伝えるかどうかがここで変わる
   private var startedByHand = false
   private var day: String?
@@ -74,6 +78,9 @@ final class BodyCompositionModel: ObservableObject {
     self.api = api
     self.defaults = defaults
     self.timeZone = timeZone
+    var calendar = Calendar.current
+    calendar.timeZone = timeZone
+    self.calendar = calendar
     self.isPaired = TanitaScaleConnection.isPaired(defaults: defaults)
 
     connection.onMeasurement = { [weak self] measurement in
@@ -86,9 +93,9 @@ final class BodyCompositionModel: ObservableObject {
 
   /// カードを出すか。
   ///
-  /// その日の測定があれば、登録していない人にも出す。
-  /// 値が無いときに出す意味があるのは「これから測れる今日」だけ。
-  var isVisible: Bool { dayMeasurement != nil || (isPaired && isToday) }
+  /// 体組成を持っている人には、見ている日に測っていなくても出す。前回の値を出せる。
+  /// 1件も持っていない人には、これから測れる今日だけ出す。
+  var isVisible: Bool { (summary?.hasAnyData ?? false) || (isPaired && isToday) }
 
   /// いまから測れるか。過去の日には出さない
   var canMeasure: Bool { isPaired && isToday }
@@ -108,12 +115,11 @@ final class BodyCompositionModel: ObservableObject {
     let conditions = ScaleAutoStart.Conditions(
       isToday: isToday,
       isPaired: isPaired,
-      alreadyMeasured: dayMeasurement != nil,
       isRunning: isRunning,
-      attemptedToday: attemptedDays.contains(day)
+      sinceLastAttempt: lastAutoAttempt.map { now.timeIntervalSince($0) }
     )
     guard ScaleAutoStart.shouldStart(conditions) else { return }
-    attemptedDays.insert(day)
+    lastAutoAttempt = now
     startedByHand = false
     connection.start(timeouts: .automatic)
   }
@@ -132,11 +138,16 @@ final class BodyCompositionModel: ObservableObject {
 
   // MARK: - 内側
 
+  /// 見ている日を末尾にした直近の範囲を取る。
+  ///
+  /// その日の1件だけでは足りない。前日との差と、ならした傾向のために
+  /// 傾向の窓2つぶんと、前回いつ測ったかを見に行くだけの余裕が要る。
   private func reload(day: String) async {
+    let span = BodyCardSummary.trendWindowDays * 2 + 14
+    let from = BodyCardSummary.offsetDay(day, by: -(span - 1), calendar: calendar)
     do {
-      // 直近の数件で足りる。見ているのはその日の1件だけ
-      let measurements = try await api.fetchBodyMeasurements(limit: 20)
-      dayMeasurement = BodyMeasurementDTO.latestByDay(measurements)[day]
+      let measurements = try await api.fetchBodyMeasurements(from: from, to: day)
+      summary = BodyCardSummary.make(measurements, day: day, calendar: calendar)
     } catch {
       // 取れなくてもカードが消えるだけ。記録の画面の本題ではないので何も言わない
     }
@@ -188,7 +199,7 @@ extension TanitaScaleConnection: ScaleSession {
 
 /// 測定の出し入れ。実物は `APIClient` で、差し替えられるように切っている。
 protocol BodyMeasurementStore {
-  func fetchBodyMeasurements(limit: Int) async throws -> [BodyMeasurementDTO]
+  func fetchBodyMeasurements(from: String, to: String) async throws -> [BodyMeasurementDTO]
   func createBodyMeasurement(_ dto: BodyMeasurementCreateDTO) async throws
 }
 

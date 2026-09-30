@@ -335,20 +335,25 @@ struct BodyMeasurementDTO: Codable, Identifiable, Equatable {
 }
 
 extension BodyMeasurementDTO {
-  /// 測定を暦日ごとに1件へまとめる。同じ日に複数回測った日は最後のものを残す。
+  /// 計測時刻。
   ///
-  /// 日中の変動より「その日どうだったか」を見たいので、直近の1件で代表させる。
-  /// `sourceDate` が無い行は、どの暦日のものか決められないので落とす。
-  static func latestByDay(_ measurements: [BodyMeasurementDTO]) -> [String: BodyMeasurementDTO] {
-    var byDay: [String: BodyMeasurementDTO] = [:]
-    for measurement in measurements {
-      guard let day = measurement.sourceDate else { continue }
-      // ISO 8601 は桁が揃っているので、文字列の大小がそのまま時刻の前後になる
-      if let existing = byDay[day], existing.measuredAt >= measurement.measuredAt { continue }
-      byDay[day] = measurement
+  /// 書き込んだ経路によって小数秒の有無が揃っていないので、両方を試す。
+  var measuredAtDate: Date? {
+    for formatter in Self.timestampFormatters {
+      if let date = formatter.date(from: measuredAt) { return date }
     }
-    return byDay
+    return nil
   }
+
+  private static let timestampFormatters: [DateFormatter] = {
+    ["yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", "yyyy-MM-dd'T'HH:mm:ss'Z'"].map { format in
+      let formatter = DateFormatter()
+      formatter.locale = Locale(identifier: "en_US_POSIX")
+      formatter.timeZone = TimeZone(identifier: "UTC")
+      formatter.dateFormat = format
+      return formatter
+    }
+  }()
 
   /// 暦日の文字列。体組成の `sourceDate` と同じ形にする。
   static func formatDay(_ date: Date, timeZone: TimeZone = .current) -> String {

@@ -140,13 +140,22 @@ struct DayContentView: View {
 
   // MARK: - 体組成
 
-  /// 体組成計を登録していない人には出さない。測る導線も置かない。
+  /// 体組成を持っておらず、体組成計も登録していない人には何も出さない。
+  ///
+  /// 数値の行は体組成の画面へ入る口を兼ねる。測るボタンと入れ子にすると
+  /// どちらを押したのか分からなくなるので、行を分けている。
   @ViewBuilder
   private var bodyCompositionSection: some View {
     if bodyComposition.isVisible {
       Section {
-        BodyCompositionCardView(
-          measurement: bodyComposition.dayMeasurement,
+        if let summary = bodyComposition.summary, summary.hasAnyData {
+          NavigationLink(destination: BodyCompositionView()) {
+            BodyCompositionValuesView(summary: summary)
+          }
+        }
+
+        BodyCompositionActionView(
+          hasMeasurementToday: !(bodyComposition.summary?.measurements.isEmpty ?? true),
           activity: bodyComposition.activity,
           canMeasure: bodyComposition.canMeasure,
           failure: bodyComposition.manualFailure,
