@@ -305,3 +305,13 @@
 "Could not finish" = "Could not finish";
 "A measurement without a timestamp was skipped" = "A measurement without a timestamp was skipped";
 "Connection Log" = "Connection Log";
+
+// The body composition card on the Log screen
+"Body Composition" = "Body Composition";
+"Not measured today" = "Not measured today";
+"Measure" = "Measure";
+"Weight" = "Weight";
+"Body Fat" = "Body Fat";
+"Scale Setup" = "Scale Setup";
+"Once this works, the Log screen looks for the scale on its own." = "Once this works, the Log screen looks for the scale on its own.";
+"Measure again" = "Measure again";

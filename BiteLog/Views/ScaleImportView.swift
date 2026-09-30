@@ -1,6 +1,10 @@
 import SwiftUI
 
-/// 体組成計から Bluetooth で測定データを取り込む。
+/// 体組成計の登録と、うまくいかないときの確認。
+///
+/// ふだん測るのは記録の画面のカードからで、ここはその手前にある。
+/// 最初の1回はここでつないで登録し、以降は記録の画面が自動で探す。
+/// 通信の記録を出すのもここだけなので、途中で切れたときはここで段階を見る。
 ///
 /// 体重計は測定のたびに本体へ溜めていくので、1回つなぐと未送信のぶんがまとめて流れてくる。
 /// 受け取った順にサーバーへ送り、既に持っている計測時刻のものは重複として数える。
@@ -94,9 +98,13 @@ struct ScaleImportView: View {
           NSLocalizedString(
             "Step on the scale after the connection starts. Measurements stored on the scale are imported together.",
             comment: "Scale import help"))
+        Text(
+          NSLocalizedString(
+            "Once this works, the Log screen looks for the scale on its own.",
+            comment: "Scale setup help"))
       }
     }
-    .navigationTitle(NSLocalizedString("Import from Scale", comment: "Scale import title"))
+    .navigationTitle(NSLocalizedString("Scale Setup", comment: "Scale setup title"))
     .navigationBarTitleDisplayMode(.inline)
     .onAppear {
       connection.onMeasurement = { measurement in
