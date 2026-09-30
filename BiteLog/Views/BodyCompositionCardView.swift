@@ -1,138 +1,95 @@
 import SwiftUI
 
-/// 記録の画面の体組成カードに出す数値。
+/// 記録の画面の体組成カードの1行。測定1回ぶん。
 ///
-/// 体重計には同じ日に何度も乗る。最後に測ったものを見出しにして、
-/// その日に何回乗って、どれだけ動いたかを添える。1つの数字にまとめない。
+/// 体重計には同じ日に何度も乗るので、1つの数字にまとめず、乗った回数だけ行を並べる。
+/// 出すのは時刻と、毎日見る3項目だけ。残りの6項目と前日との差は開いた先にある。
 ///
-/// 日ごとの差は小さく出す。1日の上下は食事と水分で大きく振れるので、
-/// そこから読めることは少ない。読めるのはならした傾向のほう。
-struct BodyCompositionValuesView: View {
-  let summary: BodyCardSummary.Summary
+/// 差をここに添えない。1日の上下は食事と水分で大きく振れるので、
+/// 並んだ数字の横に差を置くと、読めないものを読ませることになる。
+struct BodyMeasurementRow: View {
+  let measurement: BodyMeasurementDTO
+  /// 項目名を出すか。同じ日の2行目からは数字だけにして、表のように読ませる
+  var showsLabels = true
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
+  /// 毎日見る3項目。9項目すべては開いた先で出す
+  private static let headlineMetrics: [BodyMetric] = [
+    .weightKg, .bodyFatPercent, .muscleMassKg,
+  ]
+
   var body: some View {
-    VStack(alignment: .leading, spacing: 8) {
-      if summary.weight != nil || summary.bodyFat != nil {
-        measuredDay
-      } else if let last = summary.lastMeasured {
-        // その日に測っていない。空欄を出さずに、前回いつ何だったかを出す
-        previously(last)
-      }
-    }
-    .frame(maxWidth: .infinity, alignment: .leading)
-  }
-
-  /// 体重・体脂肪率・傾向を横に並べる。
-  ///
-  /// 傾向も数値の1つとして同じ高さに置く。1日ごとの差は食事と水分で振れるので、
-  /// 向きが読めるのは傾向のほう。小さな注釈にすると読まれない。
-  private var measuredDay: some View {
-    VStack(alignment: .leading, spacing: 8) {
-      // 大きな文字では3つを横に並べると数字が折り返して読めなくなる
-      if dynamicTypeSize.isAccessibilitySize {
-        VStack(alignment: .leading, spacing: 12) { columns }
-      } else {
-        HStack(alignment: .firstTextBaseline, spacing: 8) { columns }
-      }
-
-      if let detail = dayDetail {
-        Text(detail)
+    VStack(alignment: .leading, spacing: 6) {
+      if let measuredAt = measurement.measuredAtDate {
+        Text(measuredAt.formatted(date: .omitted, time: .shortened))
           .font(.caption)
           .foregroundStyle(.secondary)
       }
+
+      // 大きな文字では3つを横に並べると数字が折り返して読めなくなる
+      if dynamicTypeSize.isAccessibilitySize {
+        VStack(alignment: .leading, spacing: 10) { values }
+      } else {
+        HStack(alignment: .firstTextBaseline, spacing: 8) { values }
+      }
     }
+    .frame(maxWidth: .infinity, alignment: .leading)
   }
 
   @ViewBuilder
-  private var columns: some View {
-    if let weight = summary.weight {
-      value(BodyMetric.weightKg.localizedName, weight, unit: "kg", metric: .weightKg)
-    }
-    if let bodyFat = summary.bodyFat {
-      value(
-        BodyMetric.bodyFatPercent.localizedName, bodyFat, unit: "%", metric: .bodyFatPercent)
-    }
-    if let trend = summary.weightTrend {
-      trendColumn(trend)
+  private var values: some View {
+    ForEach(Self.headlineMetrics) { metric in
+      // 取れなかった項目は列ごと出さない。空欄は測ったのに読めなかったように見える
+      if let value = metric.value(of: measurement) {
+        BodyMetricValue(metric: metric, value: value, showsLabel: showsLabels)
+      }
     }
   }
+}
 
-  /// ならした傾向。窓2つぶんの平均の差なので、前日との差とは別の数字。
-  private func trendColumn(_ trend: BodyCardSummary.Trend) -> some View {
+/// 項目名と数値。カードでも1件の画面でも同じ見た目にする。
+struct BodyMetricValue: View {
+  let metric: BodyMetric
+  let value: Double
+  /// 項目名を出すか。並べたときに同じ語を繰り返さないために消せるようにしている
+  var showsLabel = true
+
+  var body: some View {
     VStack(alignment: .leading, spacing: 2) {
-      Text(
-        String(
-          format: NSLocalizedString("%d-day trend", comment: "Body card trend label"),
-          trend.windowDays)
-      )
-      .font(.caption)
-      .foregroundStyle(.secondary)
-      HStack(alignment: .firstTextBaseline, spacing: 2) {
-        Text(signed(trend.change, digits: 1))
-          .font(.title3)
-          .fontWeight(.semibold)
-          .monospacedDigit()
-        Text("kg")
+      if showsLabel {
+        Text(metric.localizedName)
           .font(.caption)
           .foregroundStyle(.secondary)
       }
-    }
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .accessibilityElement(children: .combine)
-  }
-
-  /// 何時に測ったか。2回以上乗った日は回数とその日の幅も添える。
-  ///
-  /// 「今日」とは書かない。このカードは見ている日のものを出すので、
-  /// 過去の日を開いているときに「今日」と書くと嘘になる。
-  private var dayDetail: String? {
-    let times = summary.measurements.compactMap(\.measuredAtDate)
-    guard let latest = times.last else { return nil }
-    let clock = latest.formatted(date: .omitted, time: .shortened)
-
-    guard summary.measurements.count > 1 else { return clock }
-    let count = String(
-      format: NSLocalizedString("%d measurements", comment: "Body card measurement count"),
-      summary.measurements.count)
-    guard let range = summary.dayRange else { return "\(clock) · \(count)" }
-    let spread =
-      "\(BodyMetric.weightKg.format(range.lowerBound))–"
-      + "\(BodyMetric.weightKg.format(range.upperBound)) kg"
-    return "\(clock) · \(count) · \(spread)"
-  }
-
-  private func value(
-    _ label: String, _ value: BodyCardSummary.Value, unit: String, metric: BodyMetric
-  ) -> some View {
-    VStack(alignment: .leading, spacing: 2) {
-      Text(label)
-        .font(.caption)
-        .foregroundStyle(.secondary)
       HStack(alignment: .firstTextBaseline, spacing: 2) {
-        Text(metric.format(value.latest))
+        Text(metric.format(value))
           .font(.title3)
           .fontWeight(.semibold)
           .monospacedDigit()
-        Text(unit)
-          .font(.caption)
-          .foregroundStyle(.secondary)
-        if let change = value.dayChange {
-          Text(signed(change, digits: metric.fractionDigits))
+        if !metric.unit.isEmpty {
+          Text(metric.unit)
             .font(.caption)
-            .monospacedDigit()
             .foregroundStyle(.secondary)
-            .padding(.leading, 2)
         }
       }
     }
-    // 3つで幅を分け合う。左に寄せると右半分が空いたままになる
+    // 横に並べたときに幅を分け合う。左に寄せると右半分が空いたままになる
     .frame(maxWidth: .infinity, alignment: .leading)
-    .accessibilityElement(children: .combine)
+    // 項目名を消しても読み上げでは何の値か分かるようにする
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(metric.localizedName)
+    .accessibilityValue("\(metric.format(value)) \(metric.unit)")
   }
+}
 
-  private func previously(_ last: BodyCardSummary.LastMeasured) -> some View {
+/// その日に測っていないときに出す行。
+///
+/// 空欄を出さない。前回いつ何だったかが分かれば、間が空いていることも伝わる。
+struct BodyLastMeasuredRow: View {
+  let last: BodyCardSummary.LastMeasured
+
+  var body: some View {
     VStack(alignment: .leading, spacing: 4) {
       Text(
         String(
@@ -155,13 +112,6 @@ struct BodyCompositionValuesView: View {
       .foregroundStyle(.secondary)
     }
     .accessibilityElement(children: .combine)
-  }
-
-  /// 増減の向きが一目で分かる形にする。マイナス記号は全角の −
-  private func signed(_ value: Double, digits: Int) -> String {
-    let rounded = (value * pow(10, Double(digits))).rounded() / pow(10, Double(digits))
-    let sign = rounded > 0 ? "+" : rounded < 0 ? "−" : "±"
-    return sign + String(format: "%.\(digits)f", abs(rounded))
   }
 }
 

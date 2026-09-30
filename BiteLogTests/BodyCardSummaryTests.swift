@@ -31,29 +31,10 @@ struct BodyCardSummaryTests {
     BodyCardSummary.make(measurements, day: day, calendar: calendar)
   }
 
-  // MARK: - その日の見出し
-
-  @Test func 最後に測ったものを見出しにする() {
-    // 乗った直後にちらっと見る場所なので、いまの状態を出す
-    let summary = Self.make([
-      Self.measurement("2026-02-15", at: "07:00", weight: 60.9, bodyFat: 18.1),
-      Self.measurement("2026-02-15", at: "21:00", weight: 61.9, bodyFat: 18.6),
-    ])
-
-    #expect(summary.weight?.latest == 61.9)
-    #expect(summary.bodyFat?.latest == 18.6)
-  }
-
-  @Test func サーバーが新しい順に返しても最後の1件を取れる() {
-    let summary = Self.make([
-      Self.measurement("2026-02-15", at: "21:00", weight: 61.9),
-      Self.measurement("2026-02-15", at: "07:00", weight: 60.9),
-    ])
-
-    #expect(summary.weight?.latest == 61.9)
-  }
+  // MARK: - その日に乗ったぶん
 
   @Test func その日に乗ったぶんを早い順に全部持つ() {
+    // 1つにまとめない。乗った回数だけ行になる
     let summary = Self.make([
       Self.measurement("2026-02-15", at: "21:00", weight: 61.9),
       Self.measurement("2026-02-15", at: "07:00", weight: 60.9),
@@ -63,111 +44,37 @@ struct BodyCardSummaryTests {
     #expect(summary.measurements.compactMap(\.weightKg) == [60.9, 61.4, 61.9])
   }
 
-  @Test func 二回以上乗った日はその日どれだけ動いたかを出す() {
+  @Test func 見ている日のぶんだけ持つ() {
     let summary = Self.make([
-      Self.measurement("2026-02-15", at: "07:00", weight: 60.9),
-      Self.measurement("2026-02-15", at: "21:00", weight: 61.9),
+      Self.measurement("2026-02-14", at: "07:00", weight: 60.0),
+      Self.measurement("2026-02-15", at: "07:00", weight: 60.2),
     ])
 
-    #expect(summary.dayRange == 60.9...61.9)
+    #expect(summary.measurements.count == 1)
+    #expect(summary.measurements.first?.weightKg == 60.2)
   }
 
-  @Test func 一度しか乗っていない日に幅を出さない() {
-    let summary = Self.make([Self.measurement("2026-02-15", at: "07:00", weight: 60.9)])
+  // MARK: - 前日の最後
 
-    #expect(summary.dayRange == nil)
-  }
-
-  @Test func 同じ値で二回乗っても幅は出さない() {
-    let summary = Self.make([
-      Self.measurement("2026-02-15", at: "07:00", weight: 60.9),
-      Self.measurement("2026-02-15", at: "21:00", weight: 60.9),
-    ])
-
-    #expect(summary.dayRange == nil)
-  }
-
-  // MARK: - 前日との差
-
-  @Test func 前日との差は同じ取り方どうしで比べる() {
-    // 前日の朝と今日の夜を比べると、食事で増えたぶんしか出てこない
+  @Test func 前日の最後に測ったものを持つ() {
+    // 1件を開いたときの差に使う。前日の朝と今日の夜を比べても食事のぶんしか出ない
     let summary = Self.make([
       Self.measurement("2026-02-14", at: "07:00", weight: 60.0),
       Self.measurement("2026-02-14", at: "21:00", weight: 61.5),
       Self.measurement("2026-02-15", at: "07:00", weight: 60.2),
-      Self.measurement("2026-02-15", at: "21:00", weight: 61.8),
     ])
 
-    // どちらもその日の最後。61.8 − 61.5
-    #expect(abs(summary.weight!.dayChange! - 0.3) < 0.0001)
+    #expect(summary.previousDayLast?.weightKg == 61.5)
   }
 
-  @Test func 前日に測っていなければ差は出さない() {
+  @Test func 前日に測っていなければ持たない() {
     let summary = Self.make([
       Self.measurement("2026-02-13", at: "07:00", weight: 60.0),
       Self.measurement("2026-02-15", at: "07:00", weight: 60.2),
     ])
 
     // 2日前と比べて「前日比」と書くのは嘘になる
-    #expect(summary.weight?.dayChange == nil)
-  }
-
-  @Test func 体脂肪率だけ取れなかった回があっても体重の差は出す() {
-    let summary = Self.make([
-      Self.measurement("2026-02-14", at: "07:00", weight: 60.0, bodyFat: 18.0),
-      Self.measurement("2026-02-15", at: "07:00", weight: 60.5),
-    ])
-
-    #expect(summary.weight?.dayChange == 0.5)
-    #expect(summary.bodyFat == nil)
-  }
-
-  // MARK: - ならした傾向
-
-  /// `day` から数えて `offset` 日前
-  private static func daysBefore(_ offset: Int, weight: Double) -> BodyMeasurementDTO {
-    let day = BodyCardSummary.offsetDay("2026-02-15", by: -offset, calendar: calendar)
-    return measurement(day, at: "07:00", weight: weight)
-  }
-
-  @Test func 直近の7日とその前の7日の平均を比べる() {
-    // 1日ごとの上下は食事と水分で振れる。窓でならして向きだけを出す
-    var measurements: [BodyMeasurementDTO] = []
-    for offset in 0..<7 { measurements.append(Self.daysBefore(offset, weight: 60.0)) }
-    for offset in 7..<14 { measurements.append(Self.daysBefore(offset, weight: 61.0)) }
-
-    let summary = Self.make(measurements)
-
-    #expect(abs(summary.weightTrend!.change - (-1.0)) < 0.0001)
-    #expect(summary.weightTrend?.windowDays == 7)
-  }
-
-  @Test func 片側の窓しか無ければ傾向を出さない() {
-    // 測り始めた週に大きな変化があったように見せない
-    let measurements = (0..<7).map { Self.daysBefore($0, weight: 60.0) }
-
-    #expect(Self.make(measurements).weightTrend == nil)
-  }
-
-  @Test func 窓の中で測った日が飛んでいても出す() {
-    let measurements = [
-      Self.daysBefore(0, weight: 60.0),
-      Self.daysBefore(10, weight: 61.0),
-    ]
-
-    #expect(Self.make(measurements).weightTrend?.change == -1.0)
-  }
-
-  @Test func 同じ日に何度も乗っても傾向は1日1つぶんとして数える() {
-    // 乗った回数の多い日に引きずられない
-    var measurements = [
-      Self.measurement("2026-02-15", at: "07:00", weight: 60.0),
-      Self.measurement("2026-02-15", at: "12:00", weight: 60.0),
-      Self.measurement("2026-02-15", at: "21:00", weight: 60.0),
-    ]
-    measurements.append(Self.daysBefore(10, weight: 61.0))
-
-    #expect(Self.make(measurements).weightTrend?.change == -1.0)
+    #expect(summary.previousDayLast == nil)
   }
 
   // MARK: - 測っていない日
@@ -178,7 +85,7 @@ struct BodyCardSummaryTests {
       Self.measurement("2026-02-12", at: "07:00", weight: 61.0, bodyFat: 18.2)
     ])
 
-    #expect(summary.weight == nil)
+    #expect(summary.measurements.isEmpty)
     #expect(summary.lastMeasured?.weightKg == 61.0)
     #expect(summary.lastMeasured?.bodyFatPercent == 18.2)
     #expect(summary.lastMeasured?.daysAgo == 3)
@@ -209,5 +116,76 @@ struct BodyCardSummaryTests {
 
   @Test func 過去に測っていればその日に測っていなくてもカードを出す() {
     #expect(Self.make([Self.measurement("2026-02-12", at: "07:00", weight: 61.0)]).hasAnyData)
+  }
+}
+
+/// 測定1件を開いたときに並べる9項目。
+struct BodyMeasurementDetailTests {
+
+  private static func measurement(
+    weight: Double? = nil, bodyFat: Double? = nil, muscle: Double? = nil,
+    metabolicAge: Int? = nil
+  ) -> BodyMeasurementDTO {
+    BodyMeasurementDTO(
+      id: UUID().uuidString, sourceDate: "2026-02-15",
+      measuredAt: "2026-02-15T07:00:00.000Z", weightKg: weight, bodyFatPercent: bodyFat,
+      muscleMassKg: muscle, muscleScore: nil, visceralFatLevel: nil,
+      basalMetabolismKcal: nil, metabolicAge: metabolicAge, boneMassKg: nil,
+      bodyWaterPercent: nil)
+  }
+
+  private static func row(
+    _ rows: [BodyMeasurementDetail.Row], _ metric: BodyMetric
+  ) -> BodyMeasurementDetail.Row? {
+    rows.first { $0.metric == metric }
+  }
+
+  @Test func どの項目も同じ並びで返す() {
+    let rows = BodyMeasurementDetail.rows(for: Self.measurement(), previousDay: nil)
+
+    #expect(rows.map(\.metric) == BodyMetric.allCases)
+  }
+
+  @Test func 前日と比べた差を出す() {
+    let rows = BodyMeasurementDetail.rows(
+      for: Self.measurement(weight: 60.2),
+      previousDay: Self.measurement(weight: 61.5))
+
+    #expect(abs(Self.row(rows, .weightKg)!.change! - (-1.3)) < 0.0001)
+  }
+
+  @Test func 前日が無ければ差は出さない() {
+    let rows = BodyMeasurementDetail.rows(for: Self.measurement(weight: 60.2), previousDay: nil)
+
+    #expect(Self.row(rows, .weightKg)?.value == 60.2)
+    #expect(Self.row(rows, .weightKg)?.change == nil)
+  }
+
+  @Test func 前日にその項目が無ければ差は出さない() {
+    // 体重は入ったが体脂肪率が取れなかった回がある
+    let rows = BodyMeasurementDetail.rows(
+      for: Self.measurement(weight: 60.2, bodyFat: 18.0),
+      previousDay: Self.measurement(weight: 61.5))
+
+    #expect(Self.row(rows, .weightKg)?.change != nil)
+    #expect(Self.row(rows, .bodyFatPercent)?.change == nil)
+  }
+
+  @Test func 取れなかった項目は値も差も出さない() {
+    let rows = BodyMeasurementDetail.rows(
+      for: Self.measurement(weight: 60.2),
+      previousDay: Self.measurement(weight: 61.5, muscle: 47.0))
+
+    // 0 と書くと測れたことになる
+    #expect(Self.row(rows, .muscleMassKg)?.value == nil)
+    #expect(Self.row(rows, .muscleMassKg)?.change == nil)
+  }
+
+  @Test func 整数で持っている項目も差を出せる() {
+    let rows = BodyMeasurementDetail.rows(
+      for: Self.measurement(metabolicAge: 34),
+      previousDay: Self.measurement(metabolicAge: 35))
+
+    #expect(Self.row(rows, .metabolicAge)?.change == -1)
   }
 }

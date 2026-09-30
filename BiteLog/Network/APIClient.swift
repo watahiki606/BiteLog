@@ -255,6 +255,11 @@ final class APIClient {
     return response.items
   }
 
+  /// 測定1件を消す。取り込みをやり直したいときや、他人が乗ったぶんが混ざったとき。
+  func deleteBodyMeasurement(id: String) async throws {
+    try await requestVoid(path: "/api/body-measurements/\(id)", method: "DELETE")
+  }
+
   // MARK: - NutritionGoals
 
   func fetchNutritionGoals() async throws -> NutritionGoalsDTO {

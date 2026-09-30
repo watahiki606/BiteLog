@@ -341,3 +341,10 @@
 "%d measurements" = "%d measurements";
 "%d-day trend" = "%d-day trend";
 "Last measured %d days ago" = "Last measured %d days ago";
+
+// The single-measurement screen
+"Change is against the last measurement of the day before." = "Change is against the last measurement of the day before.";
+"See the trend" = "See the trend";
+"Delete Measurement" = "Delete Measurement";
+"Delete this measurement?" = "Delete this measurement?";
+"The scale keeps its own copy, so it may come back the next time you connect." = "The scale keeps its own copy, so it may come back the next time you connect.";

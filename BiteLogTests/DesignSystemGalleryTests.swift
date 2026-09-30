@@ -194,10 +194,15 @@ private struct BodyGalleryView: View {
       }
 
       group("Body Card") {
-        VStack(alignment: .leading, spacing: 20) {
-          ForEach(Array(Self.cardSummaries.enumerated()), id: \.offset) { _, summary in
-            BodyCompositionValuesView(summary: summary)
+        VStack(alignment: .leading, spacing: 16) {
+          // 同じ日に3回乗った日。乗った回数だけ行が並ぶ
+          ForEach(Array(Self.dayMeasurements.enumerated()), id: \.element.id) { index, item in
+            BodyMeasurementRow(measurement: item, showsLabels: index == 0)
+            Divider()
           }
+
+          BodyLastMeasuredRow(
+            last: .init(weightKg: 61.0, bodyFatPercent: 18.2, daysAgo: 3))
 
           BodyCompositionActionView(
             hasMeasurementToday: false, activity: .idle, canMeasure: true, failure: nil,
@@ -234,53 +239,26 @@ private struct BodyGalleryView: View {
     }
   }
 
-  /// カードが取りうる状態。値は架空。
+  /// 同じ日に3回乗った日。値は架空。
   ///
   /// 探している間の表示はここに並べられない。`ProgressView` は `ImageRenderer` で
   /// 描けず、AX5 では書き出し自体が失敗する。実機で見るしかない。
-  static var cardSummaries: [BodyCardSummary.Summary] {
+  static var dayMeasurements: [BodyMeasurementDTO] {
     [
-      // 1回だけ乗った日
-      summary(
-        measurements: [measurement("2026-09-24", at: "22:02", weight: 61.2, bodyFat: 18.4)],
-        weight: .init(latest: 61.2, dayChange: -0.3),
-        bodyFat: .init(latest: 18.4, dayChange: 0.2),
-        trend: .init(change: -0.6, windowDays: 7), lastMeasured: nil),
-      // 同じ日に3回乗った日
-      summary(
-        measurements: [
-          measurement("2026-09-24", at: "22:02", weight: 60.9, bodyFat: 18.1),
-          measurement("2026-09-25", at: "03:30", weight: 61.4, bodyFat: 18.3),
-          measurement("2026-09-25", at: "12:45", weight: 61.9, bodyFat: 18.6),
-        ],
-        weight: .init(latest: 61.9, dayChange: 0.4),
-        bodyFat: .init(latest: 18.6, dayChange: 0.1),
-        trend: .init(change: 0.2, windowDays: 7), lastMeasured: nil),
-      // その日は乗らなかった
-      summary(
-        measurements: [], weight: nil, bodyFat: nil, trend: nil,
-        lastMeasured: .init(weightKg: 61.0, bodyFatPercent: 18.2, daysAgo: 3)),
+      measurement("2026-09-24", at: "22:02", weight: 60.9, bodyFat: 18.1, muscle: 47.4),
+      measurement("2026-09-25", at: "03:30", weight: 61.4, bodyFat: 18.3, muscle: 47.5),
+      measurement("2026-09-25", at: "12:45", weight: 61.9, bodyFat: 18.6, muscle: 47.6),
     ]
-  }
-
-  private static func summary(
-    measurements: [BodyMeasurementDTO], weight: BodyCardSummary.Value?,
-    bodyFat: BodyCardSummary.Value?, trend: BodyCardSummary.Trend?,
-    lastMeasured: BodyCardSummary.LastMeasured?
-  ) -> BodyCardSummary.Summary {
-    BodyCardSummary.Summary(
-      measurements: measurements, weight: weight, bodyFat: bodyFat, weightTrend: trend,
-      lastMeasured: lastMeasured, hasAnyData: true)
   }
 
   /// `day` は UTC 側の日付。`measuredAt` は UTC なので、朝いちばんの計測は
   /// 暦日より前の日付になる。暦日は `sourceDate` に固定で入れる
   private static func measurement(
-    _ day: String, at time: String, weight: Double, bodyFat: Double
+    _ day: String, at time: String, weight: Double, bodyFat: Double, muscle: Double
   ) -> BodyMeasurementDTO {
     BodyMeasurementDTO(
       id: "\(day)T\(time)", sourceDate: "2026-09-25", measuredAt: "\(day)T\(time):00.000Z",
-      weightKg: weight, bodyFatPercent: bodyFat, muscleMassKg: 47.6, muscleScore: 2,
+      weightKg: weight, bodyFatPercent: bodyFat, muscleMassKg: muscle, muscleScore: 2,
       visceralFatLevel: 6.5, basalMetabolismKcal: 1480, metabolicAge: 34, boneMassKg: 2.7,
       bodyWaterPercent: 57.3)
   }

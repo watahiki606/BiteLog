@@ -8,7 +8,6 @@ struct DayContentView: View {
 
   @EnvironmentObject private var nutritionGoalsManager: NutritionGoalsManager
   @StateObject private var bodyComposition = BodyCompositionModel()
-  @Environment(\.scenePhase) private var scenePhase
 
   @State private var dayLogItems: [LogItemDTO] = []
   @State private var isLoading = false
@@ -81,14 +80,6 @@ struct DayContentView: View {
     // 記録の読み込みとは別に走らせる。体組成が取れなくても記録の表示は待たせない
     .task(id: taskID) {
       await bodyComposition.load(date: date)
-      // この画面は記録を1つ足すたびに読み直される。探し始めるのは
-      // アプリを開いてから最初の1回だけで、あとはモデル側で止まる
-      bodyComposition.autoMeasureIfNeeded()
-    }
-    .onChange(of: scenePhase) { _, phase in
-      // アプリを開き直したら、もう一度だけ探す。朝に乗って夜にまた乗る使い方は、
-      // たいていアプリを開き直す
-      if phase == .active { bodyComposition.foregrounded() }
     }
     .onDisappear {
       // 画面を離れたら探すのをやめる。つないだまま残すと Bluetooth を掴み続ける
@@ -151,16 +142,37 @@ struct DayContentView: View {
 
   /// 体組成を持っておらず、体組成計も登録していない人には何も出さない。
   ///
-  /// 数値の行は体組成の画面へ入る口を兼ねる。測るボタンと入れ子にすると
-  /// どちらを押したのか分からなくなるので、行を分けている。
+  /// 乗った回数だけ行を並べる。同じ日に何度も乗るので1つにまとめない。
+  /// 行になっていれば、開いて9項目を見るのも、1件だけ消すのも同じ形で扱える。
   @ViewBuilder
   private var bodyCompositionSection: some View {
     if bodyComposition.isVisible {
       Section {
-        if let summary = bodyComposition.summary, summary.hasAnyData {
-          NavigationLink(destination: BodyCompositionView()) {
-            BodyCompositionValuesView(summary: summary)
+        let dayMeasurements = bodyComposition.summary?.measurements ?? []
+        ForEach(Array(dayMeasurements.enumerated()), id: \.element.id) { index, measurement in
+          NavigationLink {
+            BodyMeasurementDetailView(
+              measurement: measurement,
+              previousDayLast: bodyComposition.summary?.previousDayLast,
+              onDelete: { await bodyComposition.delete(measurement) }
+            )
+          } label: {
+            // 項目名は先頭の行だけ。同じ日に何度も乗ると同じ語が何度も並ぶ
+            BodyMeasurementRow(measurement: measurement, showsLabels: index == 0)
           }
+          // 食品マスタの削除と同じ操作。完全スワイプで消えると取り消せない
+          .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive) {
+              Task { await bodyComposition.delete(measurement) }
+            } label: {
+              Label(
+                NSLocalizedString("Delete", comment: "Delete button"), systemImage: "trash")
+            }
+          }
+        }
+
+        if let last = bodyComposition.summary?.lastMeasured {
+          BodyLastMeasuredRow(last: last)
         }
 
         if bodyComposition.showsAction {

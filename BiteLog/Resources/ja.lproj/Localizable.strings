@@ -356,3 +356,10 @@
 "%d measurements" = "%d回";
 "%d-day trend" = "%d日の傾向";
 "Last measured %d days ago" = "前回は%d日前";
+
+// 測定1件の画面
+"Change is against the last measurement of the day before." = "差は前日の最後に測ったものとの比較です。";
+"See the trend" = "グラフで見る";
+"Delete Measurement" = "この測定を削除";
+"Delete this measurement?" = "この測定を削除しますか？";
+"The scale keeps its own copy, so it may come back the next time you connect." = "体組成計にも同じ測定が残っているので、次につないだときに戻ってくることがあります。";

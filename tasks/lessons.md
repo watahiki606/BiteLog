@@ -289,3 +289,19 @@ lessons に既に書いてあるのに、また忘れてクローン側に書き
 - **あわせて**: `ProgressView` は `ImageRenderer` で描けない
   （`Unable to render flattened version of PlatformViewRepresentableAdaptor`）。
   進行中の表示はギャラリーに並べられないので、実機で見る。
+
+## Swift のテスト名を数字で始めるとビルドシステムごと落ちる
+
+- **症状**: `xcodebuild test` が
+  `unexpected service error: The Xcode build system has crashed.` で失敗する。
+  アプリ本体の `build` は通るので、原因が見えない。DerivedData を消しても直らない。
+- **原因**: テスト関数名が数字で始まっていた。
+  `@Test func 9項目すべてを同じ並びで返す()` `func 2回以上乗った日は…()` など。
+  Swift の識別子は数字で始められない。
+- **切り分け方**: テストターゲットのファイルを1つずつ構文チェックする。
+  ```
+  for f in BiteLogTests/*.swift; do xcrun swiftc -parse "$f" 2>&1 | grep error:; done
+  ```
+  `function name can only start with a letter or underscore, not a number` が出る。
+- **予防**: 日本語のテスト名でも数字で始めない。
+  「9項目すべて」→「どの項目も」、「2回以上乗った日」→「二回以上乗った日」。
