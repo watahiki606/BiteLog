@@ -304,7 +304,6 @@
 "Done. %d saved, %d already stored" = "Done. %d saved, %d already stored";
 "Could not finish" = "Could not finish";
 "A measurement without a timestamp was skipped" = "A measurement without a timestamp was skipped";
-"Connection Log" = "Connection Log";
 
 // The body composition card on the Log screen
 "Body Composition" = "Body Composition";
@@ -313,8 +312,15 @@
 "Weight" = "Weight";
 "Body Fat" = "Body Fat";
 "Scale Setup" = "Scale Setup";
-"Once this works, the Log screen looks for the scale on its own." = "Once this works, the Log screen looks for the scale on its own.";
 "Measure again" = "Measure again";
+"Register" = "Register";
+"Register Again" = "Register Again";
+"Registration" = "Registration";
+"Turn the scale off." = "Turn the scale off.";
+"Hold the communication button for 3 seconds or more." = "Hold the communication button for 3 seconds or more.";
+"Tap Register, then step on the scale once it is registered." = "Tap Register, then step on the scale once it is registered.";
+"Registered. Use Measure on the Log screen from now on." = "Registered. Use Measure on the Log screen from now on.";
+"The scale remembers only one app. Registering here disconnects the Health Planet app. To switch back, register the scale again in the Health Planet app." = "The scale remembers only one app. Registering here disconnects the Health Planet app. To switch back, register the scale again in the Health Planet app.";
 
 // The body composition screen
 "Muscle Mass" = "Muscle Mass";

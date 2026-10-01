@@ -4,7 +4,7 @@ import Testing
 @testable import BiteLog
 
 /// CoreBluetooth に触らずに確かめられる部分だけ。
-/// 接続そのものは実機が要るので、ここでは識別子の扱いを見る。
+/// 接続そのものは実機が要るので、ここでは登録済みかどうかの扱いを見る。
 struct TanitaScaleConnectionTests {
 
   private static func emptyDefaults() -> UserDefaults {
@@ -13,22 +13,31 @@ struct TanitaScaleConnectionTests {
     return defaults
   }
 
-  @Test func 識別子は最初に作って以降は使い回す() {
+  @Test func 識別子を持っていなければ未登録() {
     let defaults = Self.emptyDefaults()
 
-    let first = TanitaScaleConnection.storedAppIdentifier(defaults: defaults, key: "id")
-    let second = TanitaScaleConnection.storedAppIdentifier(defaults: defaults, key: "id")
-
-    // 体重計側が識別子を覚えている可能性があるので、接続ごとに変えてはいけない
-    #expect(first == second)
-    #expect(UUID(uuidString: first) != nil)
+    #expect(TanitaScaleConnection.registeredIdentifier(defaults: defaults) == nil)
+    #expect(!TanitaScaleConnection.isPaired(defaults: defaults))
   }
 
-  @Test func 保存済みの識別子があればそれを返す() {
+  @Test func 識別子を持っていれば登録済み() {
     let defaults = Self.emptyDefaults()
     let stored = "00000000-0000-4000-8000-000000000000"
-    defaults.set(stored, forKey: "id")
+    defaults.set(stored, forKey: TanitaScaleConnection.identifierKey)
 
-    #expect(TanitaScaleConnection.storedAppIdentifier(defaults: defaults, key: "id") == stored)
+    #expect(TanitaScaleConnection.registeredIdentifier(defaults: defaults) == stored)
+    #expect(TanitaScaleConnection.isPaired(defaults: defaults))
+  }
+
+  @Test func 未登録のまま始めたら探さずに止める() {
+    let connection = TanitaScaleConnection(defaults: Self.emptyDefaults())
+
+    connection.start()
+
+    // 知らない識別子で名乗ると体重計に Err UUID が出るだけなので、探しにも行かない
+    guard case .failed = connection.state else {
+      Issue.record("止まっていない: \(connection.state)")
+      return
+    }
   }
 }

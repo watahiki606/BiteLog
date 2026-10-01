@@ -114,3 +114,6 @@ screenshot-*.png
 
 # Personal body-composition data (HealthPlanet export) — never commit
 measurements.csv
+
+# Python
+__pycache__/
