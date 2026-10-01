@@ -4,7 +4,6 @@ import SwiftUI
 ///
 /// ふだん測るのは記録の画面のカードからで、ここはその手前にある。
 /// 最初の1回はここで登録し、以降は記録の画面の「測る」から測る。
-/// 通信の記録を出すのもここだけなので、途中で切れたときはここで段階を見る。
 ///
 /// 体組成計が覚えられるアプリは1つだけで、登録すると公式アプリの登録は外れる。
 /// 戻し方を登録の手前に書いておく。
@@ -106,19 +105,6 @@ struct ScaleImportView: View {
         ) {
           ForEach(Array(received.enumerated()), id: \.offset) { _, measurement in
             measurementRow(measurement)
-          }
-        }
-      }
-
-      if !connection.log.isEmpty {
-        Section(
-          header: Text(NSLocalizedString("Connection Log", comment: "Scale import section"))
-        ) {
-          ForEach(Array(connection.log.enumerated()), id: \.offset) { _, line in
-            Text(line)
-              .font(.system(.caption, design: .monospaced))
-              .foregroundColor(.secondary)
-              .textSelection(.enabled)
           }
         }
       }

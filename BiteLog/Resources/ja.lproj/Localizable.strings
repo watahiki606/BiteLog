@@ -319,7 +319,6 @@
 "Done. %d saved, %d already stored" = "完了。%d件を保存、%d件は登録済み";
 "Could not finish" = "最後まで進みませんでした";
 "A measurement without a timestamp was skipped" = "計測時刻の無い測定を1件とばしました";
-"Connection Log" = "通信の記録";
 
 // 記録の画面の体組成カード
 "Body Composition" = "体組成";

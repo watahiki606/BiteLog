@@ -1,6 +1,7 @@
 import Combine
 import CoreBluetooth
 import Foundation
+import os
 
 /// 体組成計とつないで測定データを受け取る。
 ///
@@ -53,8 +54,6 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
   }
 
   @Published private(set) var state: State = .idle
-  /// どこまで進んだかの記録。うまくいかなかったときに、どの段階で切れたかを見るために出す
-  @Published private(set) var log: [String] = []
   /// 引き取った測定データ。1回の接続で本体に溜まっている分すべてが流れてくる
   var onMeasurement: ((TanitaBodyMeasurement) -> Void)?
 
@@ -210,19 +209,25 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
     }
   }
 
-  /// 記録は試行ごとに区切って足していく。空にすると、失敗のあとに
-  /// 別のボタンを押した時点で、何が起きたかを見る手段が無くなる
+  /// どこまで進んだかの記録。失敗したときに、どの段階で切れたかを見るために残す。
+  ///
+  /// 画面には出さず OS のログに流す。Mac から
+  /// `xcrun devicectl device process launch --console` で起動すれば手元で読める。
+  /// 受信したバイト列には体重計の識別番号や測定値が入るので、Debug ビルドでだけ値を見せる。
+  private static let logger = Logger(
+    subsystem: Bundle.main.bundleIdentifier ?? "com.bitelog", category: "Scale")
+
   private func beginLog(_ title: String) {
-    note("―― \(title) \(Date().formatted(date: .omitted, time: .standard)) ――")
+    note("―― \(title) ――")
   }
 
   private func note(_ line: String) {
-    log.append(line)
-    // 記録の画面は自動で待ち直すので、アプリを開いている間ずっと溜まり続けないようにする
-    if log.count > Self.logLimit { log.removeFirst(log.count - Self.logLimit) }
+    #if DEBUG
+      Self.logger.notice("\(line, privacy: .public)")
+    #else
+      Self.logger.notice("\(line, privacy: .private)")
+    #endif
   }
-
-  private static let logLimit = 300
 
   private func fail(_ message: String) {
     note("失敗: \(message)")

@@ -304,7 +304,6 @@
 "Done. %d saved, %d already stored" = "Done. %d saved, %d already stored";
 "Could not finish" = "Could not finish";
 "A measurement without a timestamp was skipped" = "A measurement without a timestamp was skipped";
-"Connection Log" = "Connection Log";
 
 // The body composition card on the Log screen
 "Body Composition" = "Body Composition";
