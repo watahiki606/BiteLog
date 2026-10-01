@@ -40,4 +40,15 @@ struct TanitaScaleConnectionTests {
       return
     }
   }
+
+  @Test func 次に始めても前の試行の記録を残す() {
+    let connection = TanitaScaleConnection(defaults: Self.emptyDefaults())
+
+    connection.start()
+    connection.start()
+
+    // 失敗のあとに別のボタンを押しても、何が起きたかを後から見られるようにする
+    #expect(connection.log.filter { $0.hasPrefix("失敗") }.count == 2)
+    #expect(connection.log.filter { $0.hasPrefix("――") }.count == 2)
+  }
 }

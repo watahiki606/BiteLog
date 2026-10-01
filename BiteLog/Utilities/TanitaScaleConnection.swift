@@ -93,10 +93,11 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
   /// 登録済みの識別子で名乗り、測定を引き取る
   func start(timeouts: Timeouts = .manual) {
     guard let identifier = Self.registeredIdentifier(defaults: defaults) else {
-      log = []
+      beginLog("取り込み")
       fail("体組成計が登録されていません。設定の「体組成計」から登録してください")
       return
     }
+    beginLog("取り込み")
     reset(TanitaSession(appIdentifier: identifier), timeouts: timeouts)
     central = CBCentralManager(delegate: self, queue: .main)
   }
@@ -106,6 +107,7 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
   /// 識別子は端末ごとに作り、体重計が受け付けるまで保存しない。
   /// 途中で失敗したときに、通らない識別子が登録済みとして残らないようにするため。
   func register() {
+    beginLog("登録")
     reset(TanitaSession(registering: UUID().uuidString), timeouts: .manual)
     central = CBCentralManager(delegate: self, queue: .main)
   }
@@ -113,7 +115,6 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
   private func reset(_ session: TanitaSession, timeouts: Timeouts) {
     self.timeouts = timeouts
     // 前回の接続の残りを持ち越すと、2回目以降が噛み合わなくなる
-    log = []
     self.session = session
     assembler = TanitaFraming.Assembler()
     writeQueue = []
@@ -209,9 +210,19 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
     }
   }
 
+  /// 記録は試行ごとに区切って足していく。空にすると、失敗のあとに
+  /// 別のボタンを押した時点で、何が起きたかを見る手段が無くなる
+  private func beginLog(_ title: String) {
+    note("―― \(title) \(Date().formatted(date: .omitted, time: .standard)) ――")
+  }
+
   private func note(_ line: String) {
     log.append(line)
+    // 記録の画面は自動で待ち直すので、アプリを開いている間ずっと溜まり続けないようにする
+    if log.count > Self.logLimit { log.removeFirst(log.count - Self.logLimit) }
   }
+
+  private static let logLimit = 300
 
   private func fail(_ message: String) {
     note("失敗: \(message)")

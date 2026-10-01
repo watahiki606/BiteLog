@@ -51,29 +51,6 @@ struct ScaleImportView: View {
         }
       }
 
-      if !received.isEmpty {
-        Section(
-          header: Text(NSLocalizedString("Received Measurements", comment: "Scale import section"))
-        ) {
-          ForEach(Array(received.enumerated()), id: \.offset) { _, measurement in
-            measurementRow(measurement)
-          }
-        }
-      }
-
-      if !connection.log.isEmpty {
-        Section(
-          header: Text(NSLocalizedString("Connection Log", comment: "Scale import section"))
-        ) {
-          ForEach(Array(connection.log.enumerated()), id: \.offset) { _, line in
-            Text(line)
-              .font(.system(.caption, design: .monospaced))
-              .foregroundColor(.secondary)
-              .textSelection(.enabled)
-          }
-        }
-      }
-
       if isRegistered {
         Section {
           runButton(NSLocalizedString("Connect to Scale", comment: "Scale import button")) {
@@ -120,6 +97,29 @@ struct ScaleImportView: View {
           Text(NSLocalizedString("Registration", comment: "Scale register section"))
         } footer: {
           Text(restoreHelp)
+        }
+      }
+
+      if !received.isEmpty {
+        Section(
+          header: Text(NSLocalizedString("Received Measurements", comment: "Scale import section"))
+        ) {
+          ForEach(Array(received.enumerated()), id: \.offset) { _, measurement in
+            measurementRow(measurement)
+          }
+        }
+      }
+
+      if !connection.log.isEmpty {
+        Section(
+          header: Text(NSLocalizedString("Connection Log", comment: "Scale import section"))
+        ) {
+          ForEach(Array(connection.log.enumerated()), id: \.offset) { _, line in
+            Text(line)
+              .font(.system(.caption, design: .monospaced))
+              .foregroundColor(.secondary)
+              .textSelection(.enabled)
+          }
         }
       }
     }
