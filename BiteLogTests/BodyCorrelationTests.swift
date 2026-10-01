@@ -27,16 +27,6 @@ struct BodyCorrelationTests {
     return formatter.date(from: string)!
   }
 
-  private static func stat(
-    _ date: String, calories: Double = 0, netCarbs: Double = 0, fiber: Double = 0
-  ) -> DailyStatDTO {
-    DailyStatDTO(
-      date: date, calories: calories, protein: 0, fat: 0, netCarbs: netCarbs,
-      dietaryFiber: fiber, weightKg: nil, bodyFatPercent: nil, muscleMassKg: nil,
-      muscleScore: nil, visceralFatLevel: nil, basalMetabolismKcal: nil, metabolicAge: nil,
-      boneMassKg: nil, bodyWaterPercent: nil)
-  }
-
   /// 暦日と計測時刻を分けて渡す。
   ///
   /// `measuredAt` は UTC なので、朝いちばんの計測は前日の日付になる。
@@ -54,13 +44,11 @@ struct BodyCorrelationTests {
   }
 
   private static func series(
-    nutrition: [DailyStatDTO] = [], measurements: [BodyMeasurementDTO] = [], from: String,
-    to: String, bucket: StatBucket = .day, average: Bool = false,
-    nutrient: TrendMetric = .calories, body: BodyMetric = .weightKg, pick: DailyPick = .first
+    _ measurements: [BodyMeasurementDTO], from: String, to: String,
+    bucket: StatBucket = .day, body: BodyMetric = .weightKg, pick: DailyPick = .first
   ) -> [BodyCorrelation.Point] {
-    BodyCorrelation.series(
-      nutrition: nutrition, measurements: measurements, from: day(from), to: day(to),
-      bucket: bucket, average: average, nutrient: nutrient, body: body, pick: pick,
+    BodyCorrelation.bodySeries(
+      measurements, from: day(from), to: day(to), bucket: bucket, body: body, pick: pick,
       calendar: calendar)
   }
 
@@ -68,25 +56,18 @@ struct BodyCorrelationTests {
 
   @Test func 期間の両端まで1日も飛ばさずに並べる() {
     let points = Self.series(
-      nutrition: [Self.stat("2026-01-02", calories: 1800)], from: "2026-01-01", to: "2026-01-05")
+      [Self.measurement("2026-01-02", at: "07:00", weight: 61.0)], from: "2026-01-01",
+      to: "2026-01-05")
 
     #expect(points.count == 5)
     #expect(points.first?.date == Self.day("2026-01-01"))
     #expect(points.last?.date == Self.day("2026-01-05"))
   }
 
-  @Test func 記録の無い日の栄養は0にする() {
-    let points = Self.series(
-      nutrition: [Self.stat("2026-01-02", calories: 1800)], from: "2026-01-01", to: "2026-01-03")
-
-    #expect(points[0].nutrient == 0)
-    #expect(points[1].nutrient == 1800)
-  }
-
   @Test func 測っていない日の体組成はnilにする() {
     // 0 で埋めると、測らなかった日に体重が 0 まで落ちる谷ができる
     let points = Self.series(
-      measurements: [
+      [
         Self.measurement("2026-01-01", at: "07:00", weight: 61.0),
         Self.measurement("2026-01-03", at: "07:00", weight: 60.8),
       ], from: "2026-01-01", to: "2026-01-03")
@@ -94,14 +75,6 @@ struct BodyCorrelationTests {
     #expect(points[0].body == 61.0)
     #expect(points[1].body == nil)
     #expect(points[2].body == 60.8)
-  }
-
-  @Test func 炭水化物は糖質と食物繊維の合計にする() {
-    let points = Self.series(
-      nutrition: [Self.stat("2026-01-01", netCarbs: 180, fiber: 20)], from: "2026-01-01",
-      to: "2026-01-01", nutrient: .carbs)
-
-    #expect(points[0].nutrient == 200)
   }
 
   // MARK: - 同じ日に何度も乗る
@@ -119,7 +92,7 @@ struct BodyCorrelationTests {
   @Test func 朝いちばんを代表にできる() {
     // サーバーは新しい順に返す。並び順に引きずられて最後の1件を拾ってはいけない
     let points = Self.series(
-      measurements: Self.threeTimesADay.reversed(), from: "2026-01-02", to: "2026-01-02",
+      Self.threeTimesADay.reversed(), from: "2026-01-02", to: "2026-01-02",
       pick: .first)
 
     #expect(points[0].body == 60.2)
@@ -127,21 +100,21 @@ struct BodyCorrelationTests {
 
   @Test func その日の最後を代表にできる() {
     let points = Self.series(
-      measurements: Self.threeTimesADay, from: "2026-01-02", to: "2026-01-02", pick: .last)
+      Self.threeTimesADay, from: "2026-01-02", to: "2026-01-02", pick: .last)
 
     #expect(points[0].body == 61.4)
   }
 
   @Test func その日の平均を代表にできる() {
     let points = Self.series(
-      measurements: Self.threeTimesADay, from: "2026-01-02", to: "2026-01-02", pick: .average)
+      Self.threeTimesADay, from: "2026-01-02", to: "2026-01-02", pick: .average)
 
     #expect(abs(points[0].body! - (60.2 + 61.0 + 61.4) / 3) < 0.0001)
   }
 
   @Test func その日どれだけ動いたかを幅として残す() {
     let points = Self.series(
-      measurements: Self.threeTimesADay, from: "2026-01-02", to: "2026-01-02")
+      Self.threeTimesADay, from: "2026-01-02", to: "2026-01-02")
 
     #expect(points[0].low == 60.2)
     #expect(points[0].high == 61.4)
@@ -151,7 +124,7 @@ struct BodyCorrelationTests {
 
   @Test func 一度しか乗らなかった日に幅は出さない() {
     let points = Self.series(
-      measurements: [Self.measurement("2026-01-02", at: "03:30", weight: 61.0)],
+      [Self.measurement("2026-01-02", at: "03:30", weight: 61.0)],
       from: "2026-01-02", to: "2026-01-02")
 
     #expect(points[0].measurementCount == 1)
@@ -161,7 +134,7 @@ struct BodyCorrelationTests {
   @Test func 暦日は計測時刻ではなくsourceDateで決める() {
     // 3件とも UTC では 2026-01-01 と 2026-01-02 にまたがるが、暦日は同じ 2026-01-02
     let points = Self.series(
-      measurements: Self.threeTimesADay, from: "2026-01-01", to: "2026-01-02")
+      Self.threeTimesADay, from: "2026-01-01", to: "2026-01-02")
 
     #expect(points[0].measurementCount == 0)
     #expect(points[1].measurementCount == 3)
@@ -170,7 +143,7 @@ struct BodyCorrelationTests {
   @Test func 選んだ項目を測っていない回は数に入れない() {
     // 体重だけ入って体脂肪率が取れなかった回がある
     let points = Self.series(
-      measurements: [
+      [
         Self.measurement("2026-01-02", at: "03:30", weight: 61.0, bodyFat: 18.0),
         Self.measurement("2026-01-02", at: "12:00", weight: 61.4),
       ], from: "2026-01-02", to: "2026-01-02", body: .bodyFatPercent)
@@ -181,30 +154,6 @@ struct BodyCorrelationTests {
 
   // MARK: - 週・月へまとめる
 
-  @Test func 週へまとめると栄養は合計になる() {
-    let nutrition = (1...7).map { Self.stat(String(format: "2026-01-%02d", $0), calories: 100) }
-    let points = Self.series(
-      nutrition: nutrition, from: "2026-01-01", to: "2026-01-07", bucket: .week)
-
-    #expect(points.map(\.nutrient).reduce(0, +) == 700)
-  }
-
-  @Test func 週の平均は暦日数で割る() {
-    // 3日しか記録しなかった週が、毎日食べた週より多く見えてはいけない
-    let nutrition = [
-      Self.stat("2026-01-05", calories: 2100),
-      Self.stat("2026-01-06", calories: 2100),
-      Self.stat("2026-01-07", calories: 2100),
-    ]
-    // 2026-01-04 は日曜。この暦で1週ちょうどになる範囲を取る
-    let points = Self.series(
-      nutrition: nutrition, from: "2026-01-04", to: "2026-01-10", bucket: .week, average: true)
-
-    #expect(points.count == 1)
-    // 記録のあった3日ではなく、週の7日で割る
-    #expect(points[0].nutrient == 6300.0 / 7.0)
-  }
-
   @Test func 週の折れ線は日ごとの代表の平均にする() {
     // 乗った回数の多い日に引きずられないこと。5日は2回、7日は1回
     let measurements = [
@@ -213,7 +162,7 @@ struct BodyCorrelationTests {
       Self.measurement("2026-01-07", at: "03:00", weight: 61.0),
     ]
     let points = Self.series(
-      measurements: measurements, from: "2026-01-04", to: "2026-01-10", bucket: .week,
+      measurements, from: "2026-01-04", to: "2026-01-10", bucket: .week,
       pick: .first)
 
     // 朝いちばんどうしの平均。全6件の平均 61.0 ではなく (60.0 + 61.0) / 2
@@ -227,25 +176,26 @@ struct BodyCorrelationTests {
       Self.measurement("2026-01-07", at: "03:00", weight: 61.0),
     ]
     let points = Self.series(
-      measurements: measurements, from: "2026-01-04", to: "2026-01-10", bucket: .week)
+      measurements, from: "2026-01-04", to: "2026-01-10", bucket: .week)
 
     #expect(points[0].low == 60.0)
     #expect(points[0].high == 62.0)
     #expect(points[0].measurementCount == 3)
   }
 
-  @Test func 一度も測らなかった週の体組成はnilにする() {
-    let points = Self.series(
-      nutrition: [Self.stat("2026-01-05", calories: 2000)], from: "2026-01-04", to: "2026-01-10",
-      bucket: .week)
+  @Test func 一度も測らなかった週は折れ線を出さない() {
+    // 2026-01-04 は日曜。この暦で1週ちょうどになる範囲を取る
+    let points = Self.series([], from: "2026-01-04", to: "2026-01-10", bucket: .week)
 
+    #expect(points.count == 1)
     #expect(points[0].body == nil)
   }
 
   @Test func まとめた結果は日付の昇順で返す() {
-    let nutrition = (1...28).map { Self.stat(String(format: "2026-01-%02d", $0), calories: 100) }
-    let points = Self.series(
-      nutrition: nutrition, from: "2026-01-01", to: "2026-01-28", bucket: .week)
+    let measurements = (1...28).map {
+      Self.measurement(String(format: "2026-01-%02d", $0), at: "03:00", weight: 60.0)
+    }
+    let points = Self.series(measurements, from: "2026-01-01", to: "2026-01-28", bucket: .week)
 
     #expect(points.map(\.date) == points.map(\.date).sorted())
   }
@@ -268,16 +218,57 @@ struct BodyCorrelationTests {
 
   // MARK: - 期間の変化
 
-  @Test func 最後に測った日と最初に測った日の差を出す() {
+  @Test func 期間の端から端までの差を出す() {
     let deltas = BodyCorrelation.deltas(
       [
         Self.measurement("2026-01-01", at: "03:00", weight: 62.0),
         Self.measurement("2026-01-05", at: "03:00", weight: 60.5),
       ], pick: .first)
-    let weight = deltas.first { $0.metric == .weightKg }
 
-    #expect(weight?.latest == 60.5)
-    #expect(weight?.change == -1.5)
+    #expect(deltas.first { $0.metric == .weightKg }?.change == -1.5)
+  }
+
+  @Test func 期間の外の測定は差に混ぜない() {
+    // サーバーが期間の外まで返してくることがある。そのまま使うと、
+    // 期間を変えても「この期間の変化」が動かない
+    let all = [
+      Self.measurement("2025-06-01", at: "03:00", weight: 70.0),
+      Self.measurement("2026-01-20", at: "03:00", weight: 61.5),
+      Self.measurement("2026-01-31", at: "03:00", weight: 61.0),
+    ]
+
+    let inRange = BodyMeasurementDTO.within(all, from: "2026-01-01", to: "2026-01-31")
+
+    #expect(inRange.count == 2)
+    #expect(BodyCorrelation.deltas(inRange, pick: .first).first { $0.metric == .weightKg }?
+      .change == -0.5)
+  }
+
+  @Test func 期間の両端はどちらも含める() {
+    let all = [
+      Self.measurement("2026-01-01", at: "03:00", weight: 62.0),
+      Self.measurement("2026-01-31", at: "03:00", weight: 61.0),
+    ]
+
+    #expect(BodyMeasurementDTO.within(all, from: "2026-01-01", to: "2026-01-31").count == 2)
+    #expect(BodyMeasurementDTO.within(all, from: "2026-01-02", to: "2026-01-30").isEmpty)
+  }
+
+  @Test func 期間を広げると差も変わる() {
+    // 「この期間の変化」が期間に連動していること。
+    // 最新の値だけを出していたころは、期間を変えても数字が動かなかった
+    let measurements = [
+      Self.measurement("2026-01-01", at: "03:00", weight: 63.0),
+      Self.measurement("2026-01-20", at: "03:00", weight: 61.5),
+      Self.measurement("2026-01-31", at: "03:00", weight: 61.0),
+    ]
+    let narrow = Array(measurements.dropFirst())
+
+    let wide = BodyCorrelation.deltas(measurements, pick: .first)
+    let short = BodyCorrelation.deltas(narrow, pick: .first)
+
+    #expect(wide.first { $0.metric == .weightKg }?.change == -2.0)
+    #expect(short.first { $0.metric == .weightKg }?.change == -0.5)
   }
 
   @Test func 日をまたいだ差は代表どうしで比べる() {
@@ -291,6 +282,21 @@ struct BodyCorrelationTests {
       ], pick: .first)
 
     #expect(abs(deltas.first { $0.metric == .weightKg }!.change! - 0.2) < 0.0001)
+  }
+
+  @Test func 代表の選び方を変えると差も変わる() {
+    let measurements = [
+      Self.measurement("2026-01-01", at: "03:00", weight: 60.0),
+      Self.measurement("2026-01-01", at: "12:00", weight: 61.5),
+      Self.measurement("2026-01-02", at: "03:00", weight: 60.2),
+      Self.measurement("2026-01-02", at: "12:00", weight: 61.0),
+    ]
+
+    let byFirst = BodyCorrelation.deltas(measurements, pick: .first)
+    let byLast = BodyCorrelation.deltas(measurements, pick: .last)
+
+    #expect(abs(byFirst.first { $0.metric == .weightKg }!.change! - 0.2) < 0.0001)
+    #expect(abs(byLast.first { $0.metric == .weightKg }!.change! - (-0.5)) < 0.0001)
   }
 
   @Test func 並びが前後していても期間の始めから見る() {
@@ -312,20 +318,18 @@ struct BodyCorrelationTests {
       ], pick: .first)
     let weight = deltas.first { $0.metric == .weightKg }
 
-    #expect(weight?.latest == 62.0)
     // 0 と書くと「変わらなかった」に読める
     #expect(weight?.change == nil)
-    #expect(weight?.measurementCount == 2)
+    #expect(weight?.measuredDays == 1)
   }
 
-  @Test func 一度も測っていない項目は値も差も出さない() {
+  @Test func 一度も測っていない項目は差も日数も出さない() {
     let deltas = BodyCorrelation.deltas(
       [Self.measurement("2026-01-01", at: "03:00", weight: 62.0)], pick: .first)
     let bodyFat = deltas.first { $0.metric == .bodyFatPercent }
 
-    #expect(bodyFat?.latest == nil)
     #expect(bodyFat?.change == nil)
-    #expect(bodyFat?.measurementCount == 0)
+    #expect(bodyFat?.measuredDays == 0)
   }
 
   @Test func どの項目も同じ並びで返す() {
@@ -336,7 +340,7 @@ struct BodyCorrelationTests {
 
   private static func point(_ day: Int, body: Double?) -> BodyCorrelation.Point {
     BodyCorrelation.Point(
-      date: Self.day(String(format: "2026-01-%02d", day)), nutrient: 0, body: body,
+      date: Self.day(String(format: "2026-01-%02d", day)), body: body,
       low: body, high: body, measurementCount: body == nil ? 0 : 1)
   }
 

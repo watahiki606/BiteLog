@@ -120,6 +120,19 @@ enum DailyPick: String, CaseIterable, Identifiable {
 }
 
 extension BodyMeasurementDTO {
+  /// 期間の中に入るものだけを残す。
+  ///
+  /// サーバーが何を返してきたかに関わらず、画面が見ている期間で切る。
+  /// 期間の外の測定が混ざると、「この期間の変化」が期間を変えても動かなくなる。
+  static func within(_ measurements: [BodyMeasurementDTO], from: String, to: String)
+    -> [BodyMeasurementDTO]
+  {
+    measurements.filter { measurement in
+      guard let day = measurement.sourceDate else { return false }
+      return day >= from && day <= to
+    }
+  }
+
   /// 暦日ごとにまとめる。同じ日に何度も乗るので1件には潰さない。
   ///
   /// 各日の中は測った順に並べる。サーバーは新しい順で返すので、ここで向きを揃える。
@@ -135,21 +148,20 @@ extension BodyMeasurementDTO {
   }
 }
 
-/// 栄養と体組成を1枚のグラフに載せるための計算。
+/// 体組成を栄養のグラフに重ねるための計算。
 ///
 /// 表示に必要な形へ整えるだけで、どう描くかは持たない。
-/// 元は web の `apps/web/src/lib/correlation.ts` だが、体組成は日次平均ではなく
+/// 元は web の `apps/web/src/lib/correlation.ts` だが、日次平均ではなく
 /// 1回ずつの測定から組み立てる。同じ日に何度も乗るので、平均に潰すと
 /// 朝の 60.2kg と夜の 61.5kg が「その日は 60.85kg だった」になってしまう。
 enum BodyCorrelation {
 
-  /// 二軸グラフの1点。棒が栄養、折れ線が体組成。
+  /// 折れ線の1点。
   ///
   /// `body` が `nil` なのは「測っていない」。折れ線はそこで途切れるのが正しい。
   /// `low` と `high` はその区間で測った値の幅で、同じ日に何度も乗ったぶんが見える。
   struct Point: Equatable, Identifiable {
     let date: Date
-    let nutrient: Double
     let body: Double?
     let low: Double?
     let high: Double?
@@ -167,30 +179,22 @@ enum BodyCorrelation {
 
   /// 体組成を1件でも持っているか。
   ///
-  /// 持っていない人に軸だけのグラフを見せない。空のグラフは「壊れている」と読まれる。
+  /// 持っていない人に折れ線の選択肢を出さない。
   static func hasBodyData(_ measurements: [BodyMeasurementDTO]) -> Bool {
     measurements.contains { measurement in
       BodyMetric.allCases.contains { $0.value(of: measurement) != nil }
     }
   }
 
-  /// 二軸グラフの系列。
+  /// 折れ線の系列。
   ///
-  /// `from` から `to` までを1日も飛ばさずに並べる。記録の無い日は栄養が 0、
-  /// 測っていない日は体組成が `nil`。
-  ///
+  /// `from` から `to` までを1日も飛ばさずに並べる。測っていない日は `nil`。
   /// 同じ日に何度も乗った日は `pick` で代表を1つ選び、その日の幅を `low`/`high` に残す。
   /// 週や月へまとめるときは、代表の平均を折れ線にし、幅はその区間で測った全部の幅にする。
-  ///
-  /// 栄養の平均は暦日数で割る。記録の無い日を母数から外すと、
-  /// 3日しか記録しなかった週が毎日食べた週より多く見える。
-  static func series(
-    nutrition: [DailyStatDTO], measurements: [BodyMeasurementDTO], from: Date, to: Date,
-    bucket: StatBucket, average: Bool, nutrient: TrendMetric, body: BodyMetric,
-    pick: DailyPick, calendar: Calendar = .current
+  static func bodySeries(
+    _ measurements: [BodyMeasurementDTO], from: Date, to: Date, bucket: StatBucket,
+    body: BodyMetric, pick: DailyPick, calendar: Calendar = .current
   ) -> [Point] {
-    let statsByDay = Dictionary(
-      nutrition.map { ($0.date, $0) }, uniquingKeysWith: { _, last in last })
     let measurementsByDay = BodyMeasurementDTO.byDay(measurements)
 
     var daily: [Point] = []
@@ -201,11 +205,7 @@ enum BodyCorrelation {
       let values = (measurementsByDay[key] ?? []).compactMap { body.value(of: $0) }
       daily.append(
         Point(
-          date: cursor,
-          nutrient: statsByDay[key].map { nutrientValue($0, nutrient) } ?? 0,
-          body: pick.apply(values),
-          low: values.min(),
-          high: values.max(),
+          date: cursor, body: pick.apply(values), low: values.min(), high: values.max(),
           measurementCount: values.count))
       guard let next = calendar.date(byAdding: .day, value: 1, to: cursor) else { break }
       cursor = next
@@ -219,12 +219,8 @@ enum BodyCorrelation {
 
     return groups.map { start, points in
       let representatives = points.compactMap(\.body)
-      let sum = points.reduce(0) { $0 + $1.nutrient }
-      // 週は7日、月はその月の日数。バケットごとに母数が変わる
-      let calendarDays = calendar.range(of: .day, in: component, for: start)?.count ?? points.count
       return Point(
         date: start,
-        nutrient: average ? sum / Double(max(calendarDays, 1)) : sum,
         body: representatives.isEmpty
           ? nil : representatives.reduce(0, +) / Double(representatives.count),
         low: points.compactMap(\.low).min(),
@@ -235,14 +231,17 @@ enum BodyCorrelation {
   }
 
   /// 期間の始めから終わりまでで、各項目がどう動いたか。
+  ///
+  /// いまいくつかは持たない。最新の値は期間を変えても動かないので、
+  /// 「この期間の変化」と書いた場所に置くと、期間を変えても数字が変わらないように見える。
+  /// いまの値は記録の画面にある。
   struct Delta: Equatable, Identifiable {
     let metric: BodyMetric
-    /// 期間内で最後に測った日の代表値
-    let latest: Double?
-    /// 最後の日の代表値 − 最初の日の代表値。測った日が1日だけなら出せない
+    /// 最後に測った日の代表値 − 最初に測った日の代表値。
+    /// 測った日が1日だけなら比べる相手が無いので出せない
     let change: Double?
-    /// 期間内に測った回数
-    let measurementCount: Int
+    /// 期間内にその項目を測った日数
+    let measuredDays: Int
 
     var id: String { metric.rawValue }
   }
@@ -258,13 +257,10 @@ enum BodyCorrelation {
       let representatives = days.compactMap { day -> Double? in
         pick.apply((byDay[day] ?? []).compactMap { metric.value(of: $0) })
       }
-      let count = measurements.filter { metric.value(of: $0) != nil }.count
-      guard let latest = representatives.last else {
-        return Delta(metric: metric, latest: nil, change: nil, measurementCount: count)
-      }
       // 1日分しか無ければ比べる相手が無い。0 と書くと「変わらなかった」になる
-      let change = representatives.count > 1 ? latest - representatives[0] : nil
-      return Delta(metric: metric, latest: latest, change: change, measurementCount: count)
+      let change =
+        representatives.count > 1 ? representatives.last! - representatives[0] : nil
+      return Delta(metric: metric, change: change, measuredDays: representatives.count)
     }
   }
 
@@ -286,16 +282,6 @@ enum BodyCorrelation {
     }
     if !current.isEmpty { runs.append(current) }
     return runs
-  }
-
-  static func nutrientValue(_ stat: DailyStatDTO, _ metric: TrendMetric) -> Double {
-    switch metric {
-    case .calories: return stat.calories
-    case .protein: return stat.protein
-    case .fat: return stat.fat
-    // 炭水化物は糖質と食物繊維の合計。記録の画面の carbs と揃える
-    case .carbs: return stat.netCarbs + stat.dietaryFiber
-    }
   }
 
   static let dayFormatter: DateFormatter = {

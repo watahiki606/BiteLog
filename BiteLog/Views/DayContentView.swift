@@ -140,19 +140,51 @@ struct DayContentView: View {
 
   // MARK: - 体組成
 
-  /// 体組成計を登録していない人には出さない。測る導線も置かない。
+  /// 体組成を持っておらず、体組成計も登録していない人には何も出さない。
+  ///
+  /// 乗った回数だけ行を並べる。同じ日に何度も乗るので1つにまとめない。
+  /// 行になっていれば、開いて9項目を見るのも、1件だけ消すのも同じ形で扱える。
   @ViewBuilder
   private var bodyCompositionSection: some View {
     if bodyComposition.isVisible {
       Section {
-        BodyCompositionCardView(
-          measurement: bodyComposition.dayMeasurement,
-          activity: bodyComposition.activity,
-          canMeasure: bodyComposition.canMeasure,
-          failure: bodyComposition.manualFailure,
-          onMeasure: { bodyComposition.measureByHand() },
-          onStop: { bodyComposition.stop() }
-        )
+        let dayMeasurements = bodyComposition.summary?.measurements ?? []
+        ForEach(Array(dayMeasurements.enumerated()), id: \.element.id) { index, measurement in
+          NavigationLink {
+            BodyMeasurementDetailView(
+              measurement: measurement,
+              previousDayLast: bodyComposition.summary?.previousDayLast,
+              onDelete: { await bodyComposition.delete(measurement) }
+            )
+          } label: {
+            // 項目名は先頭の行だけ。同じ日に何度も乗ると同じ語が何度も並ぶ
+            BodyMeasurementRow(measurement: measurement, showsLabels: index == 0)
+          }
+          // 食品マスタの削除と同じ操作。完全スワイプで消えると取り消せない
+          .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive) {
+              Task { await bodyComposition.delete(measurement) }
+            } label: {
+              Label(
+                NSLocalizedString("Delete", comment: "Delete button"), systemImage: "trash")
+            }
+          }
+        }
+
+        if let last = bodyComposition.summary?.lastMeasured {
+          BodyLastMeasuredRow(last: last)
+        }
+
+        if bodyComposition.showsAction {
+          BodyCompositionActionView(
+            hasMeasurementToday: !(bodyComposition.summary?.measurements.isEmpty ?? true),
+            activity: bodyComposition.activity,
+            canMeasure: bodyComposition.canMeasure,
+            failure: bodyComposition.manualFailure,
+            onMeasure: { bodyComposition.measureByHand() },
+            onStop: { bodyComposition.stop() }
+          )
+        }
       } header: {
         Text(NSLocalizedString("Body Composition", comment: "Body composition section"))
       }

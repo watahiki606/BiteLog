@@ -187,65 +187,50 @@ private struct DailyTotalsSample: View {
 private struct BodyGalleryView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 20) {
-      group("Body Correlation") {
-        BodyCorrelationChart(
-          points: Self.correlationPoints, nutrient: .calories, metric: .weightKg,
-          bucket: .day, xAxisStride: 2)
-      }
-
-      group("Body Composition") {
+      group("Body Card") {
         VStack(alignment: .leading, spacing: 16) {
-          ForEach(Array(Self.bodyCompositionCases.enumerated()), id: \.offset) { _, item in
-            BodyCompositionCardView(
-              measurement: item.measurement, activity: item.activity, canMeasure: true,
-              failure: item.failure, onMeasure: {}, onStop: {})
+          // 同じ日に3回乗った日。乗った回数だけ行が並ぶ
+          ForEach(Array(Self.dayMeasurements.enumerated()), id: \.element.id) { index, item in
+            BodyMeasurementRow(measurement: item, showsLabels: index == 0)
+            Divider()
           }
+
+          BodyLastMeasuredRow(
+            last: .init(weightKg: 61.0, bodyFatPercent: 18.2, daysAgo: 3))
+
+          BodyCompositionActionView(
+            hasMeasurementToday: false, activity: .idle, canMeasure: true, failure: nil,
+            onMeasure: {}, onStop: {})
+          BodyCompositionActionView(
+            hasMeasurementToday: true, activity: .idle, canMeasure: true,
+            failure: "体組成計が見つかりませんでした。電源が入っていない状態で通信ボタンを押してから、もう一度試してください",
+            onMeasure: {}, onStop: {})
         }
       }
     }
     .padding()
   }
 
-  /// 二軸グラフの見え方。値は架空で、同じ日に何度も乗った日と、
-  /// 測らなかった日と、記録の無い日を混ぜてある。
-  static var correlationPoints: [BodyCorrelation.Point] {
-    let start = Calendar.current.startOfDay(for: Date())
-    let rows: [(nutrient: Double, body: Double?, low: Double?, high: Double?, count: Int)] = [
-      (2180, 61.2, 60.9, 61.9, 3),
-      (1740, 61.0, 61.0, 61.0, 1),
-      (0, nil, nil, nil, 0),
-      (2460, 61.4, 61.1, 62.3, 2),
-      (1980, 61.1, 61.1, 61.1, 1),
-      (2050, nil, nil, nil, 0),
-      (1620, 60.8, 60.4, 61.5, 4),
-      (2310, 60.9, 60.9, 60.9, 1),
-    ]
-    return rows.enumerated().map { index, row in
-      BodyCorrelation.Point(
-        date: Calendar.current.date(byAdding: .day, value: index, to: start)!,
-        nutrient: row.nutrient, body: row.body, low: row.low, high: row.high,
-        measurementCount: row.count)
-    }
-  }
-
-  /// カードが取りうる状態。値は架空。
+  /// 同じ日に3回乗った日。値は架空。
   ///
   /// 探している間の表示はここに並べられない。`ProgressView` は `ImageRenderer` で
   /// 描けず、AX5 では書き出し自体が失敗する。実機で見るしかない。
-  static var bodyCompositionCases:
-    [(measurement: BodyMeasurementDTO?, activity: BodyCompositionModel.Activity, failure: String?)]
-  {
+  static var dayMeasurements: [BodyMeasurementDTO] {
     [
-      (nil, .idle, nil),
-      (measured, .idle, nil),
-      (nil, .idle, "体組成計が見つかりませんでした。電源が入っていない状態で通信ボタンを押してから、もう一度試してください"),
+      measurement("2026-09-24", at: "22:02", weight: 60.9, bodyFat: 18.1, muscle: 47.4),
+      measurement("2026-09-25", at: "03:30", weight: 61.4, bodyFat: 18.3, muscle: 47.5),
+      measurement("2026-09-25", at: "12:45", weight: 61.9, bodyFat: 18.6, muscle: 47.6),
     ]
   }
 
-  static var measured: BodyMeasurementDTO {
+  /// `day` は UTC 側の日付。`measuredAt` は UTC なので、朝いちばんの計測は
+  /// 暦日より前の日付になる。暦日は `sourceDate` に固定で入れる
+  private static func measurement(
+    _ day: String, at time: String, weight: Double, bodyFat: Double, muscle: Double
+  ) -> BodyMeasurementDTO {
     BodyMeasurementDTO(
-      id: "sample", sourceDate: "2026-09-24", measuredAt: "2026-09-24T22:10:00.000Z",
-      weightKg: 61.25, bodyFatPercent: 18.4, muscleMassKg: 47.6, muscleScore: 2,
+      id: "\(day)T\(time)", sourceDate: "2026-09-25", measuredAt: "\(day)T\(time):00.000Z",
+      weightKg: weight, bodyFatPercent: bodyFat, muscleMassKg: muscle, muscleScore: 2,
       visceralFatLevel: 6.5, basalMetabolismKcal: 1480, metabolicAge: 34, boneMassKg: 2.7,
       bodyWaterPercent: 57.3)
   }
