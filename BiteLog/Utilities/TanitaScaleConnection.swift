@@ -282,8 +282,12 @@ extension TanitaScaleConnection: CBCentralManagerDelegate {
   func centralManager(
     _ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?
   ) {
-    // 引き取り終えてこちらから切った場合は成功のまま残す
-    guard state != .finished else { return }
+    // 引き取り終えてこちらから切った場合は成功のまま残す。
+    // 失敗してこちらから切った場合も、先に出した理由を切断の文面で上書きしない
+    switch state {
+    case .finished, .failed: return
+    default: break
+    }
     fail("通信中に切断されました（\(phaseName)）: \(error?.localizedDescription ?? "理由なし")")
   }
 }
