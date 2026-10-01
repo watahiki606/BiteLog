@@ -7,12 +7,16 @@ enum TanitaSessionError: Error, Equatable {
   case rejected(command: UInt16, status: UInt8)
   /// 名乗った識別子が体重計に登録されていない。体重計の表示は Err UUID になる
   case unregisteredIdentifier(code: UInt8)
+  /// 登録を断られた。応答の2バイト目が 0 以外。名乗りの応答と同じ並びと見ている
+  case registrationRefused(code: UInt8)
   case measurementDecodeFailed
 }
 
 /// 体重計との1回のやり取りの進行。
 ///
 /// 接続したら名乗り、時計を合わせ、測定を待ち、溜まっているデータを引き取って終わる。
+/// 登録のときは名乗らずに始め、個人データを読んだあとで識別子を登録し、そのまま測定へ進む。
+/// 公式アプリが登録するときの手順をなぞっている。
 /// CoreBluetooth に依存しないので、実機に触らずに手順を検証できる。
 struct TanitaSession {
   enum Event {
@@ -22,6 +26,8 @@ struct TanitaSession {
 
   enum Action: Equatable {
     case send(TanitaMessage)
+    /// 識別子を体重計が受け付けた。以降はこの識別子で名乗れば通る
+    case registered
     case deliver(TanitaBodyMeasurement)
     case finished
     case failed(TanitaSessionError)
@@ -30,6 +36,8 @@ struct TanitaSession {
   /// 体重計に自分を名乗る識別子。公式アプリは36文字のUUID文字列を送っている。
   /// 体重計側が値を覚えている可能性があるので、端末ごとに固定したものを渡す。
   let appIdentifier: String
+  /// 名乗る代わりに識別子を登録する
+  let isRegistering: Bool
   let timeZone: TimeZone
   private let now: () -> Date
 
@@ -44,6 +52,19 @@ struct TanitaSession {
     now: @escaping () -> Date = Date.init
   ) {
     self.appIdentifier = appIdentifier
+    self.isRegistering = false
+    self.timeZone = timeZone
+    self.now = now
+  }
+
+  /// ペアリングモードの体重計に `identifier` を登録する
+  init(
+    registering identifier: String,
+    timeZone: TimeZone = .current,
+    now: @escaping () -> Date = Date.init
+  ) {
+    self.appIdentifier = identifier
+    self.isRegistering = true
     self.timeZone = timeZone
     self.now = now
   }
@@ -51,7 +72,11 @@ struct TanitaSession {
   mutating func handle(_ event: Event) -> [Action] {
     switch event {
     case .connected:
-      return [send(.identify, TanitaMessage(.identify, text: appIdentifier))]
+      // ペアリングモードの体重計はまだこの識別子を知らないので、名乗っても通らない
+      guard isRegistering else {
+        return [send(.identify, TanitaMessage(.identify, text: appIdentifier))]
+      }
+      return [setClock()]
 
     case .received(let message):
       guard let expected = awaiting?.responseCommand, message.command == expected else {
@@ -76,8 +101,7 @@ struct TanitaSession {
       if let code = message.payload.dropFirst().first, code != 0 {
         return [.failed(.unregisteredIdentifier(code: code))]
       }
-      let clock = TanitaField.clock(at: now(), timeZone: timeZone)
-      return [send(.setClock, TanitaMessage(.setClock, fields: clock))]
+      return [setClock()]
 
     case .setClock:
       return [send(.deviceInfo, TanitaMessage(.deviceInfo))]
@@ -87,8 +111,17 @@ struct TanitaSession {
 
     case .readProfile:
       // 個人データの書き込みは飛ばしている。身長や生年月日は体重計が既に持っており、
-      // こちらから上書きする理由が無い。これで測定に進めるかは実機で確かめる
-      return [send(.startMeasurement, TanitaMessage(.startMeasurement))]
+      // こちらから上書きする理由が無い。公式アプリは登録の前にも書き込んでいるが、
+      // 測定のときは飛ばしても通ったので、登録でも要るかは実機で確かめる
+      guard isRegistering else { return [startMeasurement()] }
+      return [send(.register, TanitaMessage(.register, text: appIdentifier))]
+
+    case .register:
+      if let code = message.payload.dropFirst().first, code != 0 {
+        return [.failed(.registrationRefused(code: code))]
+      }
+      // 公式アプリも登録の直後にそのまま測定へ進んでいる
+      return [.registered, startMeasurement()]
 
     case .startMeasurement:
       // ここまでの応答は速いが、これだけは人が乗って測り終わるまで返ってこない
@@ -122,6 +155,15 @@ struct TanitaSession {
     default:
       return [.failed(.unexpectedResponse(expected: 0, actual: message.command))]
     }
+  }
+
+  private mutating func setClock() -> Action {
+    let clock = TanitaField.clock(at: now(), timeZone: timeZone)
+    return send(.setClock, TanitaMessage(.setClock, fields: clock))
+  }
+
+  private mutating func startMeasurement() -> Action {
+    send(.startMeasurement, TanitaMessage(.startMeasurement))
   }
 
   private mutating func send(_ command: TanitaCommand, _ message: TanitaMessage) -> Action {

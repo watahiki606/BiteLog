@@ -3,14 +3,17 @@ import SwiftUI
 /// 体組成計の登録と、うまくいかないときの確認。
 ///
 /// ふだん測るのは記録の画面のカードからで、ここはその手前にある。
-/// 最初の1回はここでつないで登録し、以降は記録の画面が自動で探す。
+/// 最初の1回はここで登録し、以降は記録の画面の「測る」から測る。
 /// 通信の記録を出すのもここだけなので、途中で切れたときはここで段階を見る。
+///
+/// 体組成計が覚えられるアプリは1つだけで、登録すると公式アプリの登録は外れる。
+/// 戻し方を登録の手前に書いておく。
 ///
 /// 体重計は測定のたびに本体へ溜めていくので、1回つなぐと未送信のぶんがまとめて流れてくる。
 /// 受け取った順にサーバーへ送り、既に持っている計測時刻のものは重複として数える。
 struct ScaleImportView: View {
   @StateObject private var connection = TanitaScaleConnection()
-  @AppStorage("TanitaAppIdentifier") private var appIdentifier = ""
+  @State private var isRegistered = TanitaScaleConnection.isPaired()
 
   @State private var received: [TanitaBodyMeasurement] = []
   @State private var savedCount = 0
@@ -71,37 +74,53 @@ struct ScaleImportView: View {
         }
       }
 
-      #if DEBUG
-        Section(
-          header: Text("識別子（開発用）"),
-          footer: Text("体組成計は登録済みの識別子しか受け付けない。未登録だと Err UUID が出る")
-        ) {
-          TextField("UUID", text: $appIdentifier)
-            .font(.system(.caption, design: .monospaced))
-            .textInputAutocapitalization(.characters)
-            .autocorrectionDisabled()
-        }
-      #endif
-
-      Section {
-        if isRunning {
-          Button(NSLocalizedString("Stop", comment: "Scale import button"), role: .cancel) {
-            connection.stop()
-          }
-        } else {
-          Button(NSLocalizedString("Connect to Scale", comment: "Scale import button")) {
+      if isRegistered {
+        Section {
+          runButton(NSLocalizedString("Connect to Scale", comment: "Scale import button")) {
             startImport()
           }
+        } footer: {
+          Text(
+            NSLocalizedString(
+              "Step on the scale after the connection starts. Measurements stored on the scale are imported together.",
+              comment: "Scale import help"))
+          Text(
+            NSLocalizedString(
+              "Registered. Use Measure on the Log screen from now on.",
+              comment: "Scale setup help"))
         }
-      } footer: {
-        Text(
-          NSLocalizedString(
-            "Step on the scale after the connection starts. Measurements stored on the scale are imported together.",
-            comment: "Scale import help"))
-        Text(
-          NSLocalizedString(
-            "Once this works, the Log screen looks for the scale on its own.",
-            comment: "Scale setup help"))
+
+        Section {
+          if !isRunning {
+            Button(NSLocalizedString("Register Again", comment: "Scale register button")) {
+              startRegistration()
+            }
+          }
+        } footer: {
+          Text(restoreHelp)
+        }
+      } else {
+        Section {
+          registrationStep(
+            1, NSLocalizedString("Turn the scale off.", comment: "Scale register step"))
+          registrationStep(
+            2,
+            NSLocalizedString(
+              "Hold the communication button for 3 seconds or more.",
+              comment: "Scale register step"))
+          registrationStep(
+            3,
+            NSLocalizedString(
+              "Tap Register, then step on the scale once it is registered.",
+              comment: "Scale register step"))
+          runButton(NSLocalizedString("Register", comment: "Scale register button")) {
+            startRegistration()
+          }
+        } header: {
+          Text(NSLocalizedString("Registration", comment: "Scale register section"))
+        } footer: {
+          Text(restoreHelp)
+        }
       }
     }
     .navigationTitle(NSLocalizedString("Scale Setup", comment: "Scale setup title"))
@@ -114,6 +133,38 @@ struct ScaleImportView: View {
     }
     .onDisappear {
       connection.stop()
+    }
+    .onChange(of: connection.state) {
+      // 登録が通ったときと、登録が外れていると分かったときに切り替わる
+      isRegistered = TanitaScaleConnection.isPaired()
+    }
+  }
+
+  private var restoreHelp: String {
+    NSLocalizedString(
+      "The scale remembers only one app. Registering here disconnects the Health Planet app. To switch back, register the scale again in the Health Planet app.",
+      comment: "Scale register help")
+  }
+
+  /// 動いている間は同じ場所に「やめる」を出す
+  @ViewBuilder
+  private func runButton(_ title: String, action: @escaping () -> Void) -> some View {
+    if isRunning {
+      Button(NSLocalizedString("Stop", comment: "Scale import button"), role: .cancel) {
+        connection.stop()
+      }
+    } else {
+      Button(title, action: action)
+    }
+  }
+
+  private func registrationStep(_ number: Int, _ text: String) -> some View {
+    HStack(alignment: .firstTextBaseline, spacing: 12) {
+      Text("\(number)")
+        .font(.subheadline.monospacedDigit().weight(.semibold))
+        .foregroundColor(.secondary)
+      Text(text)
+        .font(.subheadline)
     }
   }
 
@@ -161,11 +212,20 @@ struct ScaleImportView: View {
   }
 
   private func startImport() {
+    clearResults()
+    connection.start()
+  }
+
+  private func startRegistration() {
+    clearResults()
+    connection.register()
+  }
+
+  private func clearResults() {
     received = []
     savedCount = 0
     duplicateCount = 0
     uploadError = nil
-    connection.start()
   }
 
   private func upload(_ measurement: TanitaBodyMeasurement) async {

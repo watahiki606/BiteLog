@@ -75,6 +75,9 @@ struct TanitaMessage: Equatable {
 enum TanitaCommand: UInt16 {
   /// アプリ識別子を送る。接続のたびに最初に必要
   case identify = 0x0003
+  /// アプリ識別子を体重計に登録する。体重計がペアリングモードのときに、名乗りの代わりに使う。
+  /// 登録できるのは1つだけで、前に登録されていたアプリは名乗っても通らなくなる
+  case register = 0x0002
   /// 体重計の時計を合わせる。測定日時はこの時計で記録される
   case setClock = 0x0010
   /// 機種名やシリアルを取る

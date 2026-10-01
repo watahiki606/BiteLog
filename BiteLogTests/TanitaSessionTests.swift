@@ -215,6 +215,67 @@ struct TanitaSessionTests {
       ])
   }
 
+  // MARK: - 登録
+
+  private static func makeRegistration() -> TanitaSession {
+    TanitaSession(
+      registering: "00000000-0000-4000-8000-000000000000",
+      timeZone: jst,
+      now: { fixedNow }
+    )
+  }
+
+  /// 識別子を登録するところまで進める
+  private static func advanceToRegistration(_ session: inout TanitaSession) {
+    _ = session.handle(.connected)
+    _ = session.handle(response(to: .setClock))
+    _ = session.handle(response(to: .deviceInfo))
+  }
+
+  @Test func 登録では名乗らずに時計合わせから始める() {
+    var session = Self.makeRegistration()
+
+    let actions = session.handle(.connected)
+
+    // ペアリングモードの体重計はまだ識別子を知らないので、名乗りを送っても通らない
+    #expect(Self.sentCommand(actions) == TanitaCommand.setClock.rawValue)
+  }
+
+  @Test func 登録では個人データを読んだあとに識別子を送る() {
+    var session = Self.makeRegistration()
+    Self.advanceToRegistration(&session)
+
+    let actions = session.handle(Self.response(to: .readProfile))
+
+    guard case .send(let message) = actions.first else {
+      Issue.record("送信していない")
+      return
+    }
+    #expect(message.command == TanitaCommand.register.rawValue)
+    #expect(String(data: message.payload, encoding: .utf8) == session.appIdentifier)
+  }
+
+  @Test func 登録が通ったら知らせてから測定待機に入る() {
+    var session = Self.makeRegistration()
+    Self.advanceToRegistration(&session)
+    _ = session.handle(Self.response(to: .readProfile))
+
+    let actions = session.handle(Self.response(to: .register))
+
+    #expect(actions.first == .registered)
+    #expect(Self.sentCommand(actions) == TanitaCommand.startMeasurement.rawValue)
+  }
+
+  @Test func 登録を断られたら止める() {
+    var session = Self.makeRegistration()
+    Self.advanceToRegistration(&session)
+    _ = session.handle(Self.response(to: .readProfile))
+
+    let actions = session.handle(Self.response(to: .register, data: [0x00, 0x01]))
+
+    #expect(actions == [.failed(.registrationRefused(code: 0x01))])
+  }
+
   @Test func 測定データが読めなければ止める() {
     var session = Self.makeSession()
     Self.advanceToMeasurement(&session)

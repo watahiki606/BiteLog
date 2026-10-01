@@ -163,6 +163,8 @@ final class BodyCompositionModel: ObservableObject {
       // 自動で探して見つからなかっただけのことをエラーとして出さない
       manualFailure = startedByHand ? message : nil
       pendingRearm = false
+      // 登録が外れていると分かったら、接続が識別子を消している。測る導線を引っ込める
+      isPaired = TanitaScaleConnection.isPaired(defaults: defaults)
     }
   }
 

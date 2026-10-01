@@ -62,8 +62,7 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
   private var peripheral: CBPeripheral?
   private var writeCharacteristic: CBCharacteristic?
   private var subscribedCount = 0
-  private let identifierProvider: () -> String
-  private var session: TanitaSession
+  private var session: TanitaSession?
   private var assembler = TanitaFraming.Assembler()
   /// 書き込みは応答を伴わないため、送れるようになるまで自前で溜める
   private var writeQueue: [Data] = []
@@ -71,48 +70,57 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
   private var timeouts: Timeouts = .manual
   private let defaults: UserDefaults
 
-  init(
-    identifierProvider: @escaping () -> String = { TanitaScaleConnection.storedAppIdentifier() },
-    defaults: UserDefaults = .standard
-  ) {
-    self.identifierProvider = identifierProvider
+  init(defaults: UserDefaults = .standard) {
     self.defaults = defaults
-    self.session = TanitaSession(appIdentifier: identifierProvider())
     super.init()
   }
 
-  /// 体重計に名乗る識別子。体重計側が覚えている可能性があるので端末ごとに固定する
-  static func storedAppIdentifier(
-    defaults: UserDefaults = .standard, key: String = "TanitaAppIdentifier"
-  ) -> String {
-    if let stored = defaults.string(forKey: key) { return stored }
-    let generated = UUID().uuidString
-    defaults.set(generated, forKey: key)
-    return generated
-  }
+  static let identifierKey = "TanitaAppIdentifier"
 
-  static let pairedKey = "TanitaScalePaired"
-
-  /// この端末が体組成計に登録できているか。
+  /// 体重計に登録できている識別子。
   ///
-  /// 識別子は登録されていなくても作られるので、識別子があること自体は登録の証拠にならない。
-  /// 最後まで通したことだけが確かな手がかりなので、通ったときに立てる。
-  static func isPaired(defaults: UserDefaults = .standard, key: String = pairedKey) -> Bool {
-    defaults.bool(forKey: key)
+  /// 体重計が受け付けたときにだけ保存し、知らないと言われたら消す。
+  /// 体重計は登録先を1つしか持たないので、公式アプリで登録し直すとこちらは外れる。
+  static func registeredIdentifier(defaults: UserDefaults = .standard) -> String? {
+    defaults.string(forKey: identifierKey)
   }
 
+  /// この端末が体組成計に登録できているか。未登録なら探しに行かない
+  static func isPaired(defaults: UserDefaults = .standard) -> Bool {
+    registeredIdentifier(defaults: defaults) != nil
+  }
+
+  /// 登録済みの識別子で名乗り、測定を引き取る
   func start(timeouts: Timeouts = .manual) {
+    guard let identifier = Self.registeredIdentifier(defaults: defaults) else {
+      log = []
+      fail("体組成計が登録されていません。設定の「体組成計」から登録してください")
+      return
+    }
+    reset(TanitaSession(appIdentifier: identifier), timeouts: timeouts)
+    central = CBCentralManager(delegate: self, queue: .main)
+  }
+
+  /// ペアリングモードの体重計に、新しく作った識別子を登録する。
+  ///
+  /// 識別子は端末ごとに作り、体重計が受け付けるまで保存しない。
+  /// 途中で失敗したときに、通らない識別子が登録済みとして残らないようにするため。
+  func register() {
+    reset(TanitaSession(registering: UUID().uuidString), timeouts: .manual)
+    central = CBCentralManager(delegate: self, queue: .main)
+  }
+
+  private func reset(_ session: TanitaSession, timeouts: Timeouts) {
     self.timeouts = timeouts
     // 前回の接続の残りを持ち越すと、2回目以降が噛み合わなくなる
     log = []
-    session = TanitaSession(appIdentifier: identifierProvider())
+    self.session = session
     assembler = TanitaFraming.Assembler()
     writeQueue = []
     writeCharacteristic = nil
     subscribedCount = 0
     peripheral = nil
     state = .scanning
-    central = CBCentralManager(delegate: self, queue: .main)
   }
 
   func stop() {
@@ -129,20 +137,25 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
       switch action {
       case .send(let message):
         send(message)
+      case .registered:
+        guard let identifier = session?.appIdentifier else { continue }
+        defaults.set(identifier, forKey: Self.identifierKey)
+        note("登録完了")
       case .deliver(let measurement):
         state = .reading
         onMeasurement?(measurement)
       case .finished:
         timeoutWork?.cancel()
         state = .finished
-        // 最後まで通ったということは、名乗った識別子が体組成計に登録されている。
-        // 以降は記録の画面から自動で探してよい
-        defaults.set(true, forKey: Self.pairedKey)
         if let peripheral { central?.cancelPeripheralConnection(peripheral) }
       case .failed(.unregisteredIdentifier(let code)):
+        // ほかのアプリが登録し直した。持っていても通らないので、未登録に戻して探すのをやめる
+        defaults.removeObject(forKey: Self.identifierKey)
         fail(
           String(
-            format: "この識別子は体組成計に登録されていません（%02x）。体組成計を登録するか、登録済みの識別子を入れてください", code))
+            format: "体組成計の登録が外れています（%02x）。設定の「体組成計」から登録し直してください", code))
+      case .failed(.registrationRefused(let code)):
+        fail(String(format: "体組成計が登録を受け付けませんでした（%02x）", code))
       case .failed(.rejected(let command, let status)):
         fail(String(format: "体重計が受け付けませんでした（コマンド %04x / 状態 %02x）", command, status))
       case .failed(let error):
@@ -312,8 +325,8 @@ extension TanitaScaleConnection: CBPeripheralDelegate {
     subscribedCount += 1
     note("購読成功 \(characteristic.uuid.uuidString.prefix(8))")
     // 購読が1本通れば応答は受け取れる。最初の1本で手順を始める
-    guard subscribedCount == 1 else { return }
-    perform(session.handle(.connected))
+    guard subscribedCount == 1, let actions = session?.handle(.connected) else { return }
+    perform(actions)
   }
 
   func peripheral(
@@ -328,7 +341,8 @@ extension TanitaScaleConnection: CBPeripheralDelegate {
           String(format: "受信 %02x%02x", raw[raw.startIndex + 2], raw[raw.startIndex + 3])
             + " [\(payload.map { String(format: "%02x", $0) }.joined(separator: " "))]")
       }
-      perform(session.handle(.received(try TanitaMessage(decoding: raw))))
+      let message = try TanitaMessage(decoding: raw)
+      perform(session?.handle(.received(message)) ?? [])
     } catch {
       fail("応答を読めませんでした: \(error)")
     }

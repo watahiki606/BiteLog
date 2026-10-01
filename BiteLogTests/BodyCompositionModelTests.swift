@@ -107,7 +107,10 @@ struct BodyCompositionModelTests {
   private static func defaults(paired: Bool) -> UserDefaults {
     let defaults = UserDefaults(suiteName: "BodyCompositionModelTests-\(UUID().uuidString)")!
     defaults.removePersistentDomain(forName: defaults.description)
-    defaults.set(paired, forKey: TanitaScaleConnection.pairedKey)
+    if paired {
+      defaults.set(
+        "00000000-0000-4000-8000-000000000000", forKey: TanitaScaleConnection.identifierKey)
+    }
     return defaults
   }
 
@@ -323,6 +326,22 @@ struct BodyCompositionModelTests {
 
     #expect(scale.startedWith == [.manual])
     #expect(model.manualFailure == "体組成計が見つかりませんでした")
+  }
+
+  @Test func 登録が外れていたら測るを引っ込める() async {
+    let scale = FakeScale()
+    let defaults = Self.defaults(paired: true)
+    let model = BodyCompositionModel(
+      connection: scale, api: FakeStore(), defaults: defaults, timeZone: Self.jst)
+    await Self.appear(model)
+    model.measureByHand()
+
+    // 公式アプリで登録し直すと、体重計はこちらの識別子を知らないと返す。
+    // 接続はそこで識別子を消してから失敗を流す
+    defaults.removeObject(forKey: TanitaScaleConnection.identifierKey)
+    scale.subject.send(.failed("体組成計の登録が外れています"))
+
+    #expect(!model.canMeasure)
   }
 
   @Test func 乗るのを待っている間はそのことが分かる() async {
