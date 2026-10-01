@@ -10,12 +10,13 @@ enum TanitaSessionError: Error, Equatable {
   /// 登録を断られた。応答の2バイト目が 0 以外。名乗りの応答と同じ並びと見ている
   case registrationRefused(code: UInt8)
   case measurementDecodeFailed
+  case profileDecodeFailed
 }
 
 /// 体重計との1回のやり取りの進行。
 ///
 /// 接続したら名乗り、時計を合わせ、測定を待ち、溜まっているデータを引き取って終わる。
-/// 登録のときは名乗らずに始め、個人データを読んだあとで識別子を登録し、そのまま測定へ進む。
+/// 登録のときは名乗らずに始め、読んだ個人データを書き戻してから識別子を登録し、そのまま測定へ進む。
 /// 公式アプリが登録するときの手順をなぞっている。
 /// CoreBluetooth に依存しないので、実機に触らずに手順を検証できる。
 struct TanitaSession {
@@ -110,10 +111,19 @@ struct TanitaSession {
       return [send(.readProfile, TanitaMessage(.readProfile))]
 
     case .readProfile:
-      // 個人データの書き込みは飛ばしている。身長や生年月日は体重計が既に持っており、
-      // こちらから上書きする理由が無い。公式アプリは登録の前にも書き込んでいるが、
-      // 測定のときは飛ばしても通ったので、登録でも要るかは実機で確かめる
+      // 測定のときは個人データの書き込みを飛ばしている。身長や生年月日は体重計が既に持っており、
+      // 飛ばしても測定まで通った
       guard isRegistering else { return [startMeasurement()] }
+      // 登録のときは公式アプリと同じく書き込んでから識別子を送る。値を変えたいわけではないので、
+      // 読んだものをそのまま書き戻す。値を BiteLog から決めるのは #155
+      guard let stored = try? TanitaField.parse(Data(message.payload.dropFirst())) else {
+        return [.failed(.profileDecodeFailed)]
+      }
+      let fields = Self.profileForRegistration(stored, clock: TanitaField.clock(at: now(), timeZone: timeZone))
+      let payload = fields.reduce(into: Data([0x00])) { $0.append($1.encoded) }
+      return [send(.writeProfile, TanitaMessage(command: TanitaCommand.writeProfile.rawValue, payload: payload))]
+
+    case .writeProfile:
       return [send(.register, TanitaMessage(.register, text: appIdentifier))]
 
     case .register:
@@ -155,6 +165,32 @@ struct TanitaSession {
     default:
       return [.failed(.unexpectedResponse(expected: 0, actual: message.command))]
     }
+  }
+
+  /// 体重計から読んだ個人データを、公式アプリが登録のときに書く形へ組み直す。
+  ///
+  /// - 日付と時刻は書き込む時点のものに差し替える
+  /// - 呼び名は `6A3D`（5バイト）のほかに `7E22`（長さ10 + 10バイト）にも入れる
+  /// - 末尾に `7E2F 01 01` を足す。ふだんの測定では `01 00` で、意味は確定していない
+  static func profileForRegistration(_ stored: [TanitaField], clock: [TanitaField]) -> [TanitaField] {
+    var fields: [TanitaField] = []
+    for field in stored {
+      switch field.tag {
+      case TanitaTag.date:
+        fields += clock.filter { $0.tag == TanitaTag.date }
+      case TanitaTag.time:
+        fields += clock.filter { $0.tag == TanitaTag.time }
+      case TanitaTag.nickname:
+        fields.append(field)
+        var name = Data(field.value.prefix { $0 != 0 }.prefix(10))
+        name.append(Data(repeating: 0, count: 10 - name.count))
+        fields.append(TanitaField(tag: TanitaTag.longNickname, value: Data([0x0A]) + name))
+      default:
+        fields.append(field)
+      }
+    }
+    fields.append(TanitaField(tag: TanitaTag.profileFlags, value: Data([0x01, 0x01])))
+    return fields
   }
 
   private mutating func setClock() -> Action {

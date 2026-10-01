@@ -145,6 +145,12 @@ enum TanitaTag {
   static let date: UInt16 = 0x6A32
   static let time: UInt16 = 0x6A33
   static let height: UInt16 = 0x6A3E
+  /// 個人データの呼び名。5バイトで、余りは 0 で埋める
+  static let nickname: UInt16 = 0x6A3D
+  /// 書き込むときだけ付ける呼び名。先頭1バイトが長さ10で、続く10バイトに名前
+  static let longNickname: UInt16 = 0x7E22
+  /// 書き込むときだけ付ける2バイト。登録のときは 01 01、ふだんの測定では 01 00
+  static let profileFlags: UInt16 = 0x7E2F
 
   /// タグごとの値の長さ。RD-902 の通信を全メッセージ解けるまで突き合わせて確定させた。
   /// 意味が分かっていないタグも、長さが分からないと後続が読めないので載せている。

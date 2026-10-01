@@ -225,8 +225,15 @@ struct TanitaSessionTests {
     )
   }
 
-  /// 識別子を登録するところまで進める
-  private static func advanceToRegistration(_ session: inout TanitaSession) {
+  /// 架空の個人データ。呼び名「ab」、身長 170.0cm、2番の人
+  private static let storedProfile: [UInt8] =
+    [0x6A, 0x32, 0x25, 0x00, 0x6A, 0x33, 0x00, 0x00, 0x10]
+    + [0x6A, 0x3D, 0x61, 0x62, 0x00, 0x00, 0x00]
+    + [0x6A, 0x3E, 0x06, 0xA4]
+    + [0x6A, 0x13, 0x02]
+
+  /// 個人データを読んだ応答が返るところまで進める
+  private static func advanceToProfile(_ session: inout TanitaSession) {
     _ = session.handle(.connected)
     _ = session.handle(response(to: .setClock))
     _ = session.handle(response(to: .deviceInfo))
@@ -241,11 +248,46 @@ struct TanitaSessionTests {
     #expect(Self.sentCommand(actions) == TanitaCommand.setClock.rawValue)
   }
 
-  @Test func 登録では個人データを読んだあとに識別子を送る() {
+  @Test func 登録では読んだ個人データを書き戻す() {
     var session = Self.makeRegistration()
-    Self.advanceToRegistration(&session)
+    Self.advanceToProfile(&session)
 
-    let actions = session.handle(Self.response(to: .readProfile))
+    let actions = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.storedProfile))
+
+    guard case .send(let message) = actions.first else {
+      Issue.record("送信していない")
+      return
+    }
+    // 日時はいまの時刻に、呼び名は 7E22 にも10バイトで入れ、末尾に 7E2F 01 01 を足す。
+    // 公式アプリが登録のときに書いている形
+    #expect(message.command == TanitaCommand.writeProfile.rawValue)
+    let expected: [UInt8] =
+      [0x00]
+      + [0x6A, 0x32, 0x25, 0x19, 0x6A, 0x33, 0x00, 0xD2, 0xF0]
+      + [0x6A, 0x3D, 0x61, 0x62, 0x00, 0x00, 0x00]
+      + [0x7E, 0x22, 0x0A, 0x61, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+      + [0x6A, 0x3E, 0x06, 0xA4]
+      + [0x6A, 0x13, 0x02]
+      + [0x7E, 0x2F, 0x01, 0x01]
+    #expect([UInt8](message.payload) == expected)
+  }
+
+  @Test func 個人データが読めなければ登録しない() {
+    var session = Self.makeRegistration()
+    Self.advanceToProfile(&session)
+
+    // 知らないタグが混ざっていて、書き戻す中身を組めない
+    let actions = session.handle(Self.response(to: .readProfile, data: [0x00, 0x60, 0x01, 0x00]))
+
+    #expect(actions == [.failed(.profileDecodeFailed)])
+  }
+
+  @Test func 個人データを書いたら識別子を送る() {
+    var session = Self.makeRegistration()
+    Self.advanceToProfile(&session)
+    _ = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.storedProfile))
+
+    let actions = session.handle(Self.response(to: .writeProfile))
 
     guard case .send(let message) = actions.first else {
       Issue.record("送信していない")
@@ -255,10 +297,16 @@ struct TanitaSessionTests {
     #expect(String(data: message.payload, encoding: .utf8) == session.appIdentifier)
   }
 
+  /// 識別子を送るところまで進める
+  private static func advanceToRegistration(_ session: inout TanitaSession) {
+    advanceToProfile(&session)
+    _ = session.handle(response(to: .readProfile, data: [0x00] + storedProfile))
+    _ = session.handle(response(to: .writeProfile))
+  }
+
   @Test func 登録が通ったら知らせてから測定待機に入る() {
     var session = Self.makeRegistration()
     Self.advanceToRegistration(&session)
-    _ = session.handle(Self.response(to: .readProfile))
 
     let actions = session.handle(Self.response(to: .register))
 
@@ -269,7 +317,6 @@ struct TanitaSessionTests {
   @Test func 登録を断られたら止める() {
     var session = Self.makeRegistration()
     Self.advanceToRegistration(&session)
-    _ = session.handle(Self.response(to: .readProfile))
 
     let actions = session.handle(Self.response(to: .register, data: [0x00, 0x01]))
 
