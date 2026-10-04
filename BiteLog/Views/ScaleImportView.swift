@@ -8,8 +8,7 @@ import SwiftUI
 /// 体組成計が覚えられるアプリは1つだけで、登録すると公式アプリの登録は外れる。
 /// 戻し方を登録の手前に書いておく。
 ///
-/// 体重計は測定のたびに本体へ溜めていくので、1回つなぐと未送信のぶんがまとめて流れてくる。
-/// 受け取った順にサーバーへ送り、既に持っている計測時刻のものは重複として数える。
+/// 受け取った測定はサーバーへ送り、既に持っている計測時刻のものは重複として数える。
 struct ScaleImportView: View {
   @StateObject private var connection = TanitaScaleConnection()
   @State private var isRegistered = TanitaScaleConnection.isPaired()
