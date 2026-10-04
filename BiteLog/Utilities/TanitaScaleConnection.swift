@@ -54,7 +54,7 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
   }
 
   @Published private(set) var state: State = .idle
-  /// 引き取った測定データ。1回の接続で本体に溜まっている分すべてが流れてくる
+  /// 引き取った測定データ。1回の接続で、そのとき測った1件が流れてくる
   var onMeasurement: ((TanitaBodyMeasurement) -> Void)?
 
   private var central: CBCentralManager?

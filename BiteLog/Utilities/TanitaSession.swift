@@ -15,7 +15,7 @@ enum TanitaSessionError: Error, Equatable {
 
 /// 体重計との1回のやり取りの進行。
 ///
-/// 接続したら名乗り、時計を合わせ、測定を待ち、溜まっているデータを引き取って終わる。
+/// 接続したら名乗り、時計を合わせ、測定を待ち、今測ったぶんを引き取って終わる。
 /// 登録のときは名乗らずに始め、読んだ個人データを書き戻してから識別子を登録し、そのまま測定へ進む。
 /// 公式アプリが登録するときの手順をなぞっている。
 /// CoreBluetooth に依存しないので、実機に触らずに手順を検証できる。
@@ -43,9 +43,6 @@ struct TanitaSession {
   private let now: () -> Date
 
   private var awaiting: TanitaCommand?
-  /// 体重計が持っている未送信データの件数
-  private var storedCount = 0
-  private var receivedCount = 0
 
   init(
     appIdentifier: String,
@@ -138,8 +135,11 @@ struct TanitaSession {
       return [send(.measurementCount, TanitaMessage(.measurementCount))]
 
     case .measurementCount:
-      storedCount = Int(message.payload.last ?? 0)
-      guard storedCount > 0 else { return [send(.finish, TanitaMessage(.finish))] }
+      // 引き取るのは今測った1件だけ。番号は新しいほうから数え、01 が今測ったものになる。
+      // 残りは体重計だけで測ったもので、日付も時刻も 0 になっている。何日の測定か分からず、
+      // 読むと状態 05 が返ったあと体重計が Err を出して終了に応えなくなり、次も同じところで止まる。
+      // 終了を送れば、読んでいないものも体重計の中では送信済みになる
+      guard message.payload.last ?? 0 > 0 else { return [send(.finish, TanitaMessage(.finish))] }
       return [send(.readMeasurement, TanitaMessage(.readMeasurement, argument: 1))]
 
     case .readMeasurement:
@@ -149,14 +149,7 @@ struct TanitaSession {
       else {
         return [.failed(.measurementDecodeFailed)]
       }
-      receivedCount += 1
-      guard receivedCount < storedCount else {
-        return [.deliver(measurement), send(.finish, TanitaMessage(.finish))]
-      }
-      return [
-        .deliver(measurement),
-        send(.readMeasurement, TanitaMessage(.readMeasurement, argument: UInt8(receivedCount + 1))),
-      ]
+      return [.deliver(measurement), send(.finish, TanitaMessage(.finish))]
 
     case .finish:
       awaiting = nil

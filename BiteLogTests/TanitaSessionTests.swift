@@ -160,19 +160,22 @@ struct TanitaSessionTests {
     #expect(Self.sentCommand(actions) == TanitaCommand.finish.rawValue)
   }
 
-  @Test func 溜まっている件数だけ繰り返し引き取る() {
+  @Test func 溜まっていても今測った1件だけ引き取って終える() {
     var session = Self.makeSession()
     Self.advanceToMeasurement(&session)
     _ = session.handle(Self.response(to: .startMeasurement))
-    _ = session.handle(Self.response(to: .measurementCount, data: [0x00, 0x02]))
 
-    let first = session.handle(Self.measurementResponse())
-    let second = session.handle(Self.measurementResponse())
+    let request = session.handle(Self.response(to: .measurementCount, data: [0x00, 0x03]))
+    let actions = session.handle(Self.measurementResponse())
 
-    // 1件目の後は2件目を要求し、2件目の後で終える
-    #expect(Self.sentCommand(first) == TanitaCommand.readMeasurement.rawValue)
-    #expect(Self.sentCommand(second) == TanitaCommand.finish.rawValue)
-    #expect(second.contains { if case .deliver = $0 { return true } else { return false } })
+    // 番号は新しいほうから数える。01 が今測ったもの
+    guard case .send(let message) = request.first else {
+      Issue.record("引き取りを頼んでいない")
+      return
+    }
+    #expect(message.command == TanitaCommand.readMeasurement.rawValue)
+    #expect(message.payload == Data([0x01]))
+    #expect(Self.sentCommand(actions) == TanitaCommand.finish.rawValue)
   }
 
   @Test func 終了の応答で完了にする() {
