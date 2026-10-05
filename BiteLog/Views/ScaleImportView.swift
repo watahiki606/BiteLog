@@ -57,7 +57,7 @@ struct ScaleImportView: View {
         } footer: {
           Text(
             NSLocalizedString(
-              "Step on the scale after the connection starts. Measurements stored on the scale are imported together.",
+              "Step on the scale after the connection starts.",
               comment: "Scale import help"))
           Text(
             NSLocalizedString(

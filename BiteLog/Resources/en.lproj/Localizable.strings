@@ -294,7 +294,7 @@
 "Connect to Scale" = "Connect to Scale";
 "Stop" = "Stop";
 "Received Measurements" = "Received Measurements";
-"Step on the scale after the connection starts. Measurements stored on the scale are imported together." = "Step on the scale after the connection starts. Measurements stored on the scale are imported together.";
+"Step on the scale after the connection starts." = "Step on the scale after the connection starts.";
 "Not connected" = "Not connected";
 "Looking for the scale" = "Looking for the scale";
 "Connecting" = "Connecting";

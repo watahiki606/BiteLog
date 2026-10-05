@@ -309,7 +309,7 @@
 "Connect to Scale" = "体組成計につなぐ";
 "Stop" = "やめる";
 "Received Measurements" = "受け取った測定";
-"Step on the scale after the connection starts. Measurements stored on the scale are imported together." = "つながったら体組成計に乗ってください。体組成計に溜まっている測定もまとめて取り込みます。";
+"Step on the scale after the connection starts." = "つながったら体組成計に乗ってください。";
 "Not connected" = "つないでいません";
 "Looking for the scale" = "体組成計を探しています";
 "Connecting" = "接続しています";
