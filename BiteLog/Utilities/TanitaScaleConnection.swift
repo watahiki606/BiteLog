@@ -56,6 +56,8 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
   @Published private(set) var state: State = .idle
   /// 引き取った測定データ。1回の接続で、そのとき測った1件が流れてくる
   var onMeasurement: ((TanitaBodyMeasurement) -> Void)?
+  /// 体組成計から読んだ個人データ。書いたときは読み直したもの
+  var onProfile: ((TanitaProfile) -> Void)?
 
   private var central: CBCentralManager?
   private var peripheral: CBPeripheral?
@@ -91,13 +93,26 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
 
   /// 登録済みの識別子で名乗り、測定を引き取る
   func start(timeouts: Timeouts = .manual) {
+    connect(.measure, title: "取り込み", timeouts: timeouts)
+  }
+
+  /// 登録済みの識別子で名乗り、個人データを読む。測らずに終える
+  func readProfile() {
+    connect(.readProfile, title: "個人データの読み出し", timeouts: .manual)
+  }
+
+  /// 登録済みの識別子で名乗り、個人データを書き換えて読み直す。測らずに終える
+  func writeProfile(_ profile: TanitaProfile) {
+    connect(.writeProfile(profile), title: "個人データの書き込み", timeouts: .manual)
+  }
+
+  private func connect(_ purpose: TanitaSession.Purpose, title: String, timeouts: Timeouts) {
+    beginLog(title)
     guard let identifier = Self.registeredIdentifier(defaults: defaults) else {
-      beginLog("取り込み")
       fail("体組成計が登録されていません。設定の「体組成計」から登録してください")
       return
     }
-    beginLog("取り込み")
-    reset(TanitaSession(appIdentifier: identifier), timeouts: timeouts)
+    reset(TanitaSession(appIdentifier: identifier, purpose: purpose), timeouts: timeouts)
     central = CBCentralManager(delegate: self, queue: .main)
   }
 
@@ -144,6 +159,8 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
       case .deliver(let measurement):
         state = .reading
         onMeasurement?(measurement)
+      case .profile(let profile):
+        onProfile?(profile)
       case .finished:
         timeoutWork?.cancel()
         state = .finished
@@ -156,6 +173,8 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
             format: "体組成計の登録が外れています（%02x）。設定の「体組成計」から登録し直してください", code))
       case .failed(.registrationRefused(let code)):
         fail(String(format: "体組成計が登録を受け付けませんでした（%02x）", code))
+      case .failed(.profileNotApplied):
+        fail("書き込んだ値が体組成計に入っていませんでした。もう一度試してください")
       case .failed(.rejected(let command, let status)):
         fail(String(format: "体重計が受け付けませんでした（コマンド %04x / 状態 %02x）", command, status))
       case .failed(let error):

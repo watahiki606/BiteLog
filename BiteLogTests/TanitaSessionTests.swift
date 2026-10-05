@@ -341,4 +341,118 @@ struct TanitaSessionTests {
 
     #expect(actions == [.failed(.measurementDecodeFailed)])
   }
+
+  // MARK: - 個人データ
+
+  private static func makeSession(_ purpose: TanitaSession.Purpose) -> TanitaSession {
+    TanitaSession(
+      appIdentifier: "00000000-0000-4000-8000-000000000000",
+      purpose: purpose,
+      timeZone: jst,
+      now: { fixedNow }
+    )
+  }
+
+  /// 架空の個人データ。呼び名「ab」、1990-04-01 生まれ、170.0cm、男性、標準、着衣 0、地域 02
+  private static let fullProfile: [UInt8] =
+    [0x6A, 0x32, 0x25, 0x00, 0x6A, 0x33, 0x00, 0x00, 0x10]
+    + [0x6A, 0x3D, 0x61, 0x62, 0x00, 0x00, 0x00]
+    + [0x6A, 0x3C, 0x80, 0xC3]
+    + [0x6A, 0x37, 0x00, 0x6A, 0x38, 0x00]
+    + [0x6A, 0x3E, 0x06, 0xA4]
+    + [0x6A, 0x3B, 0x00]
+    + [0x60, 0x4F, 0x00, 0x00]
+    + [0x6A, 0x13, 0x02]
+
+  private static var decodedProfile: TanitaProfile {
+    try! TanitaProfile(fields: TanitaField.parse(Data(fullProfile)))
+  }
+
+  /// 名乗って時計を合わせ、個人データを読む直前まで進める
+  private static func advanceToProfileRead(_ session: inout TanitaSession) {
+    _ = session.handle(.connected)
+    _ = session.handle(response(to: .identify))
+    _ = session.handle(response(to: .setClock))
+    _ = session.handle(response(to: .deviceInfo))
+  }
+
+  @Test func 個人データを読むだけなら読んだものを渡して終える() {
+    var session = Self.makeSession(.readProfile)
+    Self.advanceToProfileRead(&session)
+
+    let actions = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.fullProfile))
+
+    #expect(actions.first == .profile(Self.decodedProfile))
+    #expect(Self.sentCommand(actions) == TanitaCommand.finish.rawValue)
+  }
+
+  @Test func 書き込むときは読んだものに変えた項目を差し替えて書く() {
+    var changed = Self.decodedProfile
+    changed.heightCm = 171.5
+    var session = Self.makeSession(.writeProfile(changed))
+    Self.advanceToProfileRead(&session)
+
+    let actions = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.fullProfile))
+
+    guard case .send(let message) = actions.first else {
+      Issue.record("送信していない")
+      return
+    }
+    // 日時はいまの時刻に、呼び名は 7E22 にも入れ、末尾はふだんの測定と同じ 7E2F 01 00
+    #expect(message.command == TanitaCommand.writeProfile.rawValue)
+    let expected: [UInt8] =
+      [0x00]
+      + [0x6A, 0x32, 0x25, 0x19, 0x6A, 0x33, 0x00, 0xD2, 0xF0]
+      + [0x6A, 0x3D, 0x61, 0x62, 0x00, 0x00, 0x00]
+      + [0x7E, 0x22, 0x0A, 0x61, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+      + [0x6A, 0x3C, 0x80, 0xC3]
+      + [0x6A, 0x37, 0x00, 0x6A, 0x38, 0x00]
+      + [0x6A, 0x3E, 0x06, 0xB3]
+      + [0x6A, 0x3B, 0x00]
+      + [0x60, 0x4F, 0x00, 0x00]
+      + [0x6A, 0x13, 0x02]
+      + [0x7E, 0x2F, 0x01, 0x00]
+    #expect([UInt8](message.payload) == expected)
+  }
+
+  @Test func 書いたら読み直す() {
+    var session = Self.makeSession(.writeProfile(Self.decodedProfile))
+    Self.advanceToProfileRead(&session)
+    _ = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.fullProfile))
+
+    let actions = session.handle(Self.response(to: .writeProfile))
+
+    #expect(Self.sentCommand(actions) == TanitaCommand.readProfile.rawValue)
+  }
+
+  @Test func 読み直して書いた値になっていれば渡して終える() {
+    var changed = Self.decodedProfile
+    changed.sex = .female
+    var session = Self.makeSession(.writeProfile(changed))
+    Self.advanceToProfileRead(&session)
+    _ = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.fullProfile))
+    _ = session.handle(Self.response(to: .writeProfile))
+
+    let reread = changed.applied(to: try! TanitaField.parse(Data(Self.fullProfile)))
+    let payload = reread.reduce(into: Data([0x00])) { $0.append($1.encoded) }
+    let actions = session.handle(
+      .received(TanitaMessage(command: TanitaCommand.readProfile.responseCommand, payload: payload)))
+
+    #expect(actions.first == .profile(changed))
+    #expect(Self.sentCommand(actions) == TanitaCommand.finish.rawValue)
+  }
+
+  @Test func 読み直して書いた値になっていなければ止める() {
+    var changed = Self.decodedProfile
+    changed.sex = .female
+    var session = Self.makeSession(.writeProfile(changed))
+    Self.advanceToProfileRead(&session)
+    _ = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.fullProfile))
+    _ = session.handle(Self.response(to: .writeProfile))
+
+    // 書く前と同じものが返ってきた
+    let actions = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.fullProfile))
+
+    #expect(actions == [.failed(.profileNotApplied)])
+  }
 }
