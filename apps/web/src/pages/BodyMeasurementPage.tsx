@@ -78,7 +78,8 @@ export default function BodyMeasurementPage({ onToast }: Props) {
       return;
     }
     const measuredAt = new Date(form.measuredAt).toISOString();
-    const sourceDate = measuredAt.slice(0, 10);
+    // 暦日は入力したローカル日時のまま取る。UTC に直した measuredAt から切ると朝の計測が前日になる。
+    const sourceDate = form.measuredAt.slice(0, 10);
     const payload: Record<string, unknown> = {
       measuredAt, sourceDate, inputMethod: '手動入力',
     };

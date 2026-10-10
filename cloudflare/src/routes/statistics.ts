@@ -44,13 +44,16 @@ const statistics = new Hono<{ Bindings: Bindings; Variables: Variables }>()
        ORDER BY log_date ASC`
     ).bind(userId, from, to).all<NutriRow>();
 
-    // 体組成（日次平均）。measured_at は ISO 日時なので substr で日付化して比較・集約する。
+    // 体組成（日次平均）。栄養の log_date と同じく、測った地域の暦日 source_date でまとめる。
+    // measured_at は UTC なので、そこから日付を切り出すと朝の計測が前日に入る。
+    // source_date が空の行は暦日が分からないので measured_at から補う。
+    const day = `COALESCE(source_date, substr(measured_at, 1, 10))`;
     const bodyAvg = BODY_AVG_FIELDS.map((f) => `AVG(${f.col}) AS ${f.key}`).join(',\n        ');
     const bodyQuery = c.env.DB.prepare(
-      `SELECT substr(measured_at, 1, 10) AS date,
+      `SELECT ${day} AS date,
         ${bodyAvg}
        FROM body_measurements
-       WHERE user_id = ? AND substr(measured_at, 1, 10) BETWEEN ? AND ?
+       WHERE user_id = ? AND ${day} BETWEEN ? AND ?
        GROUP BY date
        ORDER BY date ASC`
     ).bind(userId, from, to).all<BodyRow>();
