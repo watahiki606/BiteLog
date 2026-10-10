@@ -12,6 +12,7 @@ import SwiftUI
 struct ScaleImportView: View {
   @StateObject private var connection = TanitaScaleConnection()
   @State private var isRegistered = TanitaScaleConnection.isPaired()
+  @State private var personalKey = TanitaScaleConnection.personalKey()
 
   @State private var received: [TanitaBodyMeasurement] = []
   @State private var savedCount = 0
@@ -47,6 +48,23 @@ struct ScaleImportView: View {
             .font(.footnote)
             .foregroundColor(.red)
         }
+      }
+
+      Section {
+        Picker(
+          NSLocalizedString("Personal Key", comment: "Scale personal key"), selection: $personalKey
+        ) {
+          ForEach(TanitaScaleConnection.personalKeys, id: \.self) { Text("\($0)").tag($0) }
+        }
+        .disabled(isRunning)
+        .onChange(of: personalKey) {
+          TanitaScaleConnection.setPersonalKey(personalKey)
+        }
+      } footer: {
+        Text(
+          NSLocalizedString(
+            "The scale keeps data for up to 4 people. Choose the same number as your personal key in the Health Planet app.",
+            comment: "Scale personal key help"))
       }
 
       if isRegistered {

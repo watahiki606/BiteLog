@@ -40,4 +40,24 @@ struct TanitaScaleConnectionTests {
       return
     }
   }
+
+  @Test func 個人キーを選んでいなければ1() {
+    #expect(TanitaScaleConnection.personalKey(defaults: Self.emptyDefaults()) == 1)
+  }
+
+  @Test func 選んだ個人キーを覚えている() {
+    let defaults = Self.emptyDefaults()
+
+    TanitaScaleConnection.setPersonalKey(3, defaults: defaults)
+
+    #expect(TanitaScaleConnection.personalKey(defaults: defaults) == 3)
+  }
+
+  @Test func 範囲外の個人キーは1として扱う() {
+    let defaults = Self.emptyDefaults()
+    defaults.set(5, forKey: TanitaScaleConnection.personalKeyKey)
+
+    // 体組成計が持つのは4人分。5番目の枠を読むと断られる
+    #expect(TanitaScaleConnection.personalKey(defaults: defaults) == 1)
+  }
 }

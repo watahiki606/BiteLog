@@ -398,3 +398,5 @@
 "Standard" = "標準";
 "Athlete" = "アスリート";
 "Height, date of birth, and other values the scale uses for its calculations." = "身長や生年月日など、体組成計が計算に使う値です。";
+"Personal Key" = "個人キー";
+"The scale keeps data for up to 4 people. Choose the same number as your personal key in the Health Planet app." = "体組成計は4人分の個人データを持っています。公式アプリの「体組成計個人キー」と同じ番号を選んでください。";

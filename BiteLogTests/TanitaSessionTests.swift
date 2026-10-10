@@ -37,6 +37,13 @@ struct TanitaSessionTests {
       TanitaMessage(command: TanitaCommand.readMeasurement.responseCommand, payload: payload))
   }
 
+  private static func sentMessage(_ actions: [TanitaSession.Action]) -> TanitaMessage? {
+    for action in actions {
+      if case .send(let message) = action { return message }
+    }
+    return nil
+  }
+
   private static func sentCommand(_ actions: [TanitaSession.Action]) -> UInt16? {
     for action in actions {
       if case .send(let message) = action { return message.command }
@@ -455,4 +462,66 @@ struct TanitaSessionTests {
 
     #expect(actions == [.failed(.profileNotApplied)])
   }
+
+  // MARK: - 個人キー
+
+  /// 個人キー3の人。体組成計には 3 から1を引いた 02 で伝える
+  private static func makeSession(personalKey: Int, _ purpose: TanitaSession.Purpose = .measure)
+    -> TanitaSession
+  {
+    TanitaSession(
+      appIdentifier: "00000000-0000-4000-8000-000000000000",
+      personalKey: personalKey,
+      purpose: purpose,
+      timeZone: jst,
+      now: { fixedNow }
+    )
+  }
+
+  @Test func 個人データは自分の個人キーの枠から読む() {
+    var session = Self.makeSession(personalKey: 3)
+    _ = session.handle(.connected)
+    _ = session.handle(Self.response(to: .identify))
+    _ = session.handle(Self.response(to: .setClock))
+
+    let actions = session.handle(Self.response(to: .deviceInfo))
+
+    #expect(Self.sentMessage(actions) == TanitaMessage(.readProfile, argument: 0x02))
+  }
+
+  @Test func 測定は自分の個人キーとして始める() {
+    var session = Self.makeSession(personalKey: 3)
+    Self.advanceToProfileRead(&session)
+
+    let actions = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.fullProfile))
+
+    // 個人キーを渡さないと、体組成計は別の人として測り、その人の設定で計算する
+    #expect(Self.sentMessage(actions) == TanitaMessage(.startMeasurement, argument: 0x02))
+  }
+
+  @Test func 個人データは自分の個人キーの枠へ書いて読み直す() {
+    var session = Self.makeSession(personalKey: 3, .writeProfile(Self.decodedProfile))
+    Self.advanceToProfileRead(&session)
+
+    let write = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.fullProfile))
+    let reread = session.handle(Self.response(to: .writeProfile))
+
+    #expect(Self.sentMessage(write)?.payload.first == 0x02)
+    #expect(Self.sentMessage(reread) == TanitaMessage(.readProfile, argument: 0x02))
+  }
+
+  @Test func 登録でも自分の個人キーの枠を読み書きする() {
+    var session = TanitaSession(
+      registering: "00000000-0000-4000-8000-000000000000", personalKey: 3, timeZone: Self.jst,
+      now: { Self.fixedNow })
+    _ = session.handle(.connected)
+    _ = session.handle(Self.response(to: .setClock))
+
+    let read = session.handle(Self.response(to: .deviceInfo))
+    let write = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.fullProfile))
+
+    #expect(Self.sentMessage(read) == TanitaMessage(.readProfile, argument: 0x02))
+    #expect(Self.sentMessage(write)?.payload.first == 0x02)
+  }
 }
+
