@@ -320,7 +320,7 @@
 "Hold the communication button for 3 seconds or more." = "Hold the communication button for 3 seconds or more.";
 "Tap Register, then step on the scale once it is registered." = "Tap Register, then step on the scale once it is registered.";
 "Registered. Use Measure on the Log screen from now on." = "Registered. Use Measure on the Log screen from now on.";
-"The scale remembers only one app. Registering here disconnects the Health Planet app. To switch back, register the scale again in the Health Planet app." = "The scale remembers only one app. Registering here disconnects the Health Planet app. To switch back, register the scale again in the Health Planet app.";
+"The scale remembers only one app. Registering here disconnects the app it was registered with before. To switch back, register the scale again in that app." = "The scale remembers only one app. Registering here disconnects the app it was registered with before. To switch back, register the scale again in that app.";
 
 // The body composition screen
 "Muscle Mass" = "Muscle Mass";

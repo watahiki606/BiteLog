@@ -181,7 +181,7 @@ struct ScaleImportView: View {
 
   private var restoreHelp: String {
     NSLocalizedString(
-      "The scale remembers only one app. Registering here disconnects the Health Planet app. To switch back, register the scale again in the Health Planet app.",
+      "The scale remembers only one app. Registering here disconnects the app it was registered with before. To switch back, register the scale again in that app.",
       comment: "Scale register help")
   }
 
