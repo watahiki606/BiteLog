@@ -94,11 +94,13 @@ function insertLog(id: string, userId: string, logDate: string, foodMasterId: st
   ).bind(id, userId, `${logDate}T00:00:00Z`, logDate, servings, foodMasterId);
 }
 
-function insertBody(id: string, userId: string, measuredAt: string, weightKg: number, bodyFat?: number) {
+function insertBody(
+  id: string, userId: string, measuredAt: string, weightKg: number, bodyFat?: number, sourceDate?: string,
+) {
   return env.DB.prepare(
-    `INSERT INTO body_measurements (id, user_id, measured_at, weight_kg, body_fat_percent)
-     VALUES (?, ?, ?, ?, ?)`
-  ).bind(id, userId, measuredAt, weightKg, bodyFat ?? null);
+    `INSERT INTO body_measurements (id, user_id, measured_at, weight_kg, body_fat_percent, source_date)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).bind(id, userId, measuredAt, weightKg, bodyFat ?? null, sourceDate ?? null);
 }
 
 type DailyRow = {
@@ -192,5 +194,28 @@ describe('GET /api/statistics/daily', () => {
     ]);
     const items = await getDaily('user-a', '2025-01-01', '2025-01-31');
     expect(items.map((i) => i.date)).toEqual(['2025-01-05', '2025-01-12', '2025-01-20']);
+  });
+
+  it('朝の計測は measured_at の UTC 日付ではなく、測った地域の暦日 source_date に入る', async () => {
+    // JST 2025-01-06 07:30 の計測。UTC では前日の 22:30。
+    await env.DB.batch([
+      insertFoodMaster('f1', { calories: 200, portionSize: 1 }),
+      insertLog('l1', 'user-a', '2025-01-06', 'f1', 1),
+      insertBody('b1', 'user-a', '2025-01-05T22:30:00.000Z', 53.1, 16.5, '2025-01-06'),
+    ]);
+    const items = await getDaily('user-a', '2025-01-01', '2025-01-31');
+    expect(items).toHaveLength(1);
+    expect(items[0].date).toBe('2025-01-06');
+    expect(items[0].calories).toBe(200);
+    expect(items[0].weightKg).toBe(53.1);
+  });
+
+  it('期間の絞り込みも source_date で行う', async () => {
+    // source_date は期間の初日だが、measured_at の UTC 日付は期間の前日。
+    await env.DB.batch([
+      insertBody('b1', 'user-a', '2024-12-31T22:30:00.000Z', 53.1, 16.5, '2025-01-01'),
+    ]);
+    const items = await getDaily('user-a', '2025-01-01', '2025-01-31');
+    expect(items.map((i) => i.date)).toEqual(['2025-01-01']);
   });
 });
