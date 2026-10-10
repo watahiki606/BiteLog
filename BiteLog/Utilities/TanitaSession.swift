@@ -55,6 +55,10 @@ struct TanitaSession {
   }
 
   let purpose: Purpose
+  /// 体組成計の個人キー。1〜4。体組成計は4人分の個人データを持ち、誰として読み書きし測るかをこれで選ぶ。
+  /// 測定データには誰の測定かが入っていないので、ほかの人の番号で測ると、その人の設定で計算されたものが
+  /// 自分の記録として入ってしまう
+  let personalKey: Int
   let timeZone: TimeZone
   private let now: () -> Date
 
@@ -64,11 +68,13 @@ struct TanitaSession {
 
   init(
     appIdentifier: String,
+    personalKey: Int = 1,
     purpose: Purpose = .measure,
     timeZone: TimeZone = .current,
     now: @escaping () -> Date = Date.init
   ) {
     self.appIdentifier = appIdentifier
+    self.personalKey = personalKey
     self.purpose = purpose
     self.timeZone = timeZone
     self.now = now
@@ -77,10 +83,12 @@ struct TanitaSession {
   /// ペアリングモードの体重計に `identifier` を登録する
   init(
     registering identifier: String,
+    personalKey: Int = 1,
     timeZone: TimeZone = .current,
     now: @escaping () -> Date = Date.init
   ) {
     self.appIdentifier = identifier
+    self.personalKey = personalKey
     self.purpose = .register
     self.timeZone = timeZone
     self.now = now
@@ -124,7 +132,7 @@ struct TanitaSession {
       return [send(.deviceInfo, TanitaMessage(.deviceInfo))]
 
     case .deviceInfo:
-      return [send(.readProfile, TanitaMessage(.readProfile))]
+      return [readProfile()]
 
     case .readProfile:
       return afterReadingProfile(message)
@@ -132,7 +140,7 @@ struct TanitaSession {
     case .writeProfile:
       guard purpose == .register else {
         wroteProfile = true
-        return [send(.readProfile, TanitaMessage(.readProfile))]
+        return [readProfile()]
       }
       return [send(.register, TanitaMessage(.register, text: appIdentifier))]
 
@@ -206,7 +214,7 @@ struct TanitaSession {
   private mutating func writeProfile(_ fields: [TanitaField], registering: Bool) -> Action {
     let clock = TanitaField.clock(at: now(), timeZone: timeZone)
     let payload = Self.profileToWrite(fields, clock: clock, registering: registering)
-      .reduce(into: Data([0x00])) { $0.append($1.encoded) }
+      .reduce(into: Data([slot])) { $0.append($1.encoded) }
     return send(.writeProfile, TanitaMessage(command: TanitaCommand.writeProfile.rawValue, payload: payload))
   }
 
@@ -243,8 +251,15 @@ struct TanitaSession {
     return send(.setClock, TanitaMessage(.setClock, fields: clock))
   }
 
+  /// 個人キーを体組成計に伝えるときの番号。読み出し・書き込み・測定開始の引数は、個人キーから1を引いた値
+  private var slot: UInt8 { UInt8(personalKey - 1) }
+
+  private mutating func readProfile() -> Action {
+    send(.readProfile, TanitaMessage(.readProfile, argument: slot))
+  }
+
   private mutating func startMeasurement() -> Action {
-    send(.startMeasurement, TanitaMessage(.startMeasurement))
+    send(.startMeasurement, TanitaMessage(.startMeasurement, argument: slot))
   }
 
   private mutating func send(_ command: TanitaCommand, _ message: TanitaMessage) -> Action {

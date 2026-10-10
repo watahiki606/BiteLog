@@ -86,6 +86,23 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
     defaults.string(forKey: identifierKey)
   }
 
+  static let personalKeyKey = "TanitaPersonalKey"
+  /// 体組成計が持つ個人キー。4人分
+  static let personalKeys = 1...4
+
+  /// この端末の持ち主の、体組成計での個人キー。選んでいなければ1。
+  ///
+  /// 体組成計は家族4人分の個人データを持つ。誰として読み書きし測るかはこれで決まり、
+  /// 測定データには誰の測定かが入っていないので、取り込んだあとでは見分けられない
+  static func personalKey(defaults: UserDefaults = .standard) -> Int {
+    let stored = defaults.integer(forKey: personalKeyKey)
+    return personalKeys.contains(stored) ? stored : 1
+  }
+
+  static func setPersonalKey(_ key: Int, defaults: UserDefaults = .standard) {
+    defaults.set(key, forKey: personalKeyKey)
+  }
+
   /// この端末が体組成計に登録できているか。未登録なら探しに行かない
   static func isPaired(defaults: UserDefaults = .standard) -> Bool {
     registeredIdentifier(defaults: defaults) != nil
@@ -112,7 +129,10 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
       fail("体組成計が登録されていません。設定の「体組成計」から登録してください")
       return
     }
-    reset(TanitaSession(appIdentifier: identifier, purpose: purpose), timeouts: timeouts)
+    reset(
+      TanitaSession(
+        appIdentifier: identifier, personalKey: Self.personalKey(defaults: defaults), purpose: purpose),
+      timeouts: timeouts)
     central = CBCentralManager(delegate: self, queue: .main)
   }
 
@@ -122,7 +142,9 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
   /// 途中で失敗したときに、通らない識別子が登録済みとして残らないようにするため。
   func register() {
     beginLog("登録")
-    reset(TanitaSession(registering: UUID().uuidString), timeouts: .manual)
+    reset(
+      TanitaSession(registering: UUID().uuidString, personalKey: Self.personalKey(defaults: defaults)),
+      timeouts: .manual)
     central = CBCentralManager(delegate: self, queue: .main)
   }
 
