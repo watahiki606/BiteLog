@@ -353,15 +353,7 @@
 "No overlay" = "No overlay";
 
 // 体組成計の個人データ
-"Connecting to the scale" = "Connecting to the scale";
-"Read from Scale" = "Read from Scale";
-"Written to the scale." = "Written to the scale.";
-"Make sure the scale is off before connecting." = "Make sure the scale is off before connecting.";
-"Write to Scale" = "Write to Scale";
-"Body fat and other results are calculated from these values. Wrong values make every later measurement wrong." = "Body fat and other results are calculated from these values. Wrong values make every later measurement wrong.";
 "Personal Data" = "Personal Data";
-"Write these changes to the scale?" = "Write these changes to the scale?";
-"Write" = "Write";
 "Nickname" = "Nickname";
 "Shown on the scale. Up to %d letters or digits." = "Shown on the scale. Up to %d letters or digits.";
 "Date of Birth" = "Date of Birth";
@@ -384,4 +376,11 @@
 "Athlete" = "Athlete";
 "Height, date of birth, and other values the scale uses for its calculations." = "Height, date of birth, and other values the scale uses for its calculations.";
 "Personal Key" = "Personal Key";
-"The scale keeps data for up to 4 people. Choose the same number as your personal key in the Health Planet app." = "The scale keeps data for up to 4 people. Choose the same number as your personal key in the Health Planet app.";
+"Body fat and other results are calculated from these values. They are sent to the scale when you register and each time you measure." = "Body fat and other results are calculated from these values. They are sent to the scale when you register and each time you measure.";
+"These values will be sent to the scale the next time you measure." = "These values will be sent to the scale the next time you measure.";
+"Choose" = "Choose";
+"Not Set" = "Not Set";
+"Not Entered" = "Not Entered";
+"Entered" = "Entered";
+"The scale keeps data for up to 4 people. Choose a number no one else in your family uses." = "The scale keeps data for up to 4 people. Choose a number no one else in your family uses.";
+"Enter your personal data first." = "Enter your personal data first.";

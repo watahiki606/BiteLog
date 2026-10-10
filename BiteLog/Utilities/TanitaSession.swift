@@ -17,10 +17,11 @@ enum TanitaSessionError: Error, Equatable {
 
 /// 体重計との1回のやり取りの進行。
 ///
-/// 接続したら名乗り、時計を合わせ、測定を待ち、今測ったぶんを引き取って終わる。
-/// 登録のときは名乗らずに始め、読んだ個人データを書き戻してから識別子を登録し、そのまま測定へ進む。
-/// 公式アプリが登録するときの手順をなぞっている。
-/// 個人データを扱うときは、名乗って読み、書くなら書いてから読み直し、測らずに終える。
+/// 接続したら名乗り、時計を合わせ、個人データを書き、測定を待ち、今測ったぶんを引き取って終わる。
+/// 登録のときは名乗らずに始め、個人データを書いてから識別子を登録し、そのまま測定へ進む。
+///
+/// 個人データの持ち主は BiteLog で、体組成計の枠は写し。公式アプリも、登録のときは空の枠へ
+/// アプリの値を書き、測るたびに書き直している。それをなぞる。
 /// CoreBluetooth に依存しないので、実機に触らずに手順を検証できる。
 struct TanitaSession {
   enum Event {
@@ -33,8 +34,6 @@ struct TanitaSession {
     /// 識別子を体重計が受け付けた。以降はこの識別子で名乗れば通る
     case registered
     case deliver(TanitaBodyMeasurement)
-    /// 体組成計から読んだ個人データ。書いたときは読み直したもの
-    case profile(TanitaProfile)
     case finished
     case failed(TanitaSessionError)
   }
@@ -42,19 +41,11 @@ struct TanitaSession {
   /// 体重計に自分を名乗る識別子。公式アプリは36文字のUUID文字列を送っている。
   /// 体重計側が値を覚えている可能性があるので、端末ごとに固定したものを渡す。
   let appIdentifier: String
-  /// 何のためにつなぐか
-  enum Purpose: Equatable {
-    /// 測って、今測ったぶんを引き取る
-    case measure
-    /// 名乗る代わりに識別子を登録し、そのまま測る
-    case register
-    /// 個人データを読むだけ
-    case readProfile
-    /// 個人データを書き換える。渡した値で上書きし、読み直して確かめる
-    case writeProfile(TanitaProfile)
-  }
-
-  let purpose: Purpose
+  /// 名乗る代わりに識別子を登録する
+  let isRegistering: Bool
+  /// 体組成計の枠へ書く個人データ。体脂肪率などは体組成計がこの値で計算する。
+  /// 無いときは書かずに、枠に入っている値のまま測る
+  let profile: TanitaProfile?
   /// 体組成計の個人キー。1〜4。体組成計は4人分の個人データを持ち、誰として読み書きし測るかをこれで選ぶ。
   /// 測定データには誰の測定かが入っていないので、ほかの人の番号で測ると、その人の設定で計算されたものが
   /// 自分の記録として入ってしまう
@@ -63,33 +54,34 @@ struct TanitaSession {
   private let now: () -> Date
 
   private var awaiting: TanitaCommand?
-  /// 個人データを書き終えた。次の読み出しは確かめるための読み直し
-  private var wroteProfile = false
 
   init(
     appIdentifier: String,
     personalKey: Int = 1,
-    purpose: Purpose = .measure,
+    profile: TanitaProfile? = nil,
     timeZone: TimeZone = .current,
     now: @escaping () -> Date = Date.init
   ) {
     self.appIdentifier = appIdentifier
     self.personalKey = personalKey
-    self.purpose = purpose
+    self.isRegistering = false
+    self.profile = profile
     self.timeZone = timeZone
     self.now = now
   }
 
-  /// ペアリングモードの体重計に `identifier` を登録する
+  /// ペアリングモードの体重計に `identifier` を登録する。登録のときは個人データを必ず書く
   init(
     registering identifier: String,
     personalKey: Int = 1,
+    profile: TanitaProfile,
     timeZone: TimeZone = .current,
     now: @escaping () -> Date = Date.init
   ) {
     self.appIdentifier = identifier
     self.personalKey = personalKey
-    self.purpose = .register
+    self.isRegistering = true
+    self.profile = profile
     self.timeZone = timeZone
     self.now = now
   }
@@ -98,7 +90,7 @@ struct TanitaSession {
     switch event {
     case .connected:
       // ペアリングモードの体重計はまだこの識別子を知らないので、名乗っても通らない
-      guard purpose == .register else {
+      guard isRegistering else {
         return [send(.identify, TanitaMessage(.identify, text: appIdentifier))]
       }
       return [setClock()]
@@ -138,10 +130,15 @@ struct TanitaSession {
       return afterReadingProfile(message)
 
     case .writeProfile:
-      guard purpose == .register else {
-        wroteProfile = true
-        return [readProfile()]
+      // 書き込みの応答には、書いたあとの枠がそのまま載ってくる。違う設定のまま測ると、
+      // 計算された値が全部ずれるので、書いた値になっていなければ先へ進まない
+      guard let fields = try? TanitaField.parse(Data(message.payload.dropFirst())),
+        let written = try? TanitaProfile(fields: fields)
+      else {
+        return [.failed(.profileDecodeFailed)]
       }
+      guard written == profile else { return [.failed(.profileNotApplied)] }
+      guard isRegistering else { return [startMeasurement()] }
       return [send(.register, TanitaMessage(.register, text: appIdentifier))]
 
     case .register:
@@ -182,33 +179,12 @@ struct TanitaSession {
   }
 
   private mutating func afterReadingProfile(_ message: TanitaMessage) -> [Action] {
-    // 測定のときは個人データの書き込みを飛ばしている。身長や生年月日は体重計が既に持っており、
-    // 飛ばしても測定まで通った
-    if purpose == .measure { return [startMeasurement()] }
-
+    guard let profile else { return [startMeasurement()] }
+    // 枠には意味の分かっていないタグも混ざっているので、読んだ並びのまま BiteLog の値に差し替える
     guard let stored = try? TanitaField.parse(Data(message.payload.dropFirst())) else {
       return [.failed(.profileDecodeFailed)]
     }
-
-    switch purpose {
-    case .register:
-      // 登録のときは公式アプリと同じく書き込んでから識別子を送る。値を変えたいわけではないので、
-      // 読んだものをそのまま書き戻す
-      return [writeProfile(stored, registering: true)]
-
-    case .writeProfile(let wanted) where !wroteProfile:
-      return [writeProfile(wanted.applied(to: stored), registering: false)]
-
-    default:
-      guard let profile = try? TanitaProfile(fields: stored) else {
-        return [.failed(.profileDecodeFailed)]
-      }
-      if case .writeProfile(let wanted) = purpose, profile != wanted {
-        return [.failed(.profileNotApplied)]
-      }
-      // 測らずに終える。測定を待たずに終了を送っても体組成計は応える
-      return [.profile(profile), send(.finish, TanitaMessage(.finish))]
-    }
+    return [writeProfile(profile.applied(to: stored), registering: isRegistering)]
   }
 
   private mutating func writeProfile(_ fields: [TanitaField], registering: Bool) -> Action {

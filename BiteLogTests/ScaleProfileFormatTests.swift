@@ -60,4 +60,30 @@ struct ScaleProfileFormatTests {
     #expect(changes.count == 2)
     #expect(changes.first?.summary.contains("170.0 cm → 171.5 cm") == true)
   }
+
+  @Test func 初めての入力では身長と生年月日と性別と地域を選ぶまで保存できない() {
+    var draft = ScaleProfileDraft(nil)
+    #expect(draft.profile == nil)
+
+    draft.birthDate = DateComponents(year: 1990, month: 4, day: 1)
+    draft.heightCm = 170.0
+    draft.sex = .male
+    #expect(draft.profile == nil)
+
+    draft.region = 2
+    #expect(draft.profile == Self.profile.withNickname(""))
+  }
+
+  @Test func 保存済みの個人データから始めればそのまま保存できる() {
+    #expect(ScaleProfileDraft(Self.profile).profile == Self.profile)
+  }
 }
+
+extension TanitaProfile {
+  fileprivate func withNickname(_ name: String) -> TanitaProfile {
+    var copy = self
+    copy.nickname = name
+    return copy
+  }
+}
+

@@ -3,7 +3,8 @@ import SwiftUI
 /// 体組成計の登録と、うまくいかないときの確認。
 ///
 /// ふだん測るのは記録の画面のカードからで、ここはその手前にある。
-/// 最初の1回はここで登録し、以降は記録の画面の「測る」から測る。
+/// 上から順に、個人データを入れ、個人キーを選び、登録する。以降は記録の画面の「測る」から測る。
+/// 体組成計は個人データを使って体脂肪率などを計算するので、個人データが無いうちは登録させない。
 ///
 /// 体組成計が覚えられるアプリは1つだけで、登録すると公式アプリの登録は外れる。
 /// 戻し方を登録の手前に書いておく。
@@ -13,6 +14,8 @@ struct ScaleImportView: View {
   @StateObject private var connection = TanitaScaleConnection()
   @State private var isRegistered = TanitaScaleConnection.isPaired()
   @State private var personalKey = TanitaScaleConnection.personalKey()
+  /// 個人データの画面から戻るたびに読み直す
+  @State private var profile = TanitaScaleConnection.profile()
 
   @State private var received: [TanitaBodyMeasurement] = []
   @State private var savedCount = 0
@@ -51,6 +54,28 @@ struct ScaleImportView: View {
       }
 
       Section {
+        NavigationLink(destination: ScaleProfileView()) {
+          HStack {
+            Text(NSLocalizedString("Personal Data", comment: "Scale profile title"))
+            Spacer()
+            Text(
+              profile == nil
+                ? NSLocalizedString("Not Entered", comment: "Scale profile missing")
+                : NSLocalizedString("Entered", comment: "Scale profile entered")
+            )
+            .foregroundColor(.secondary)
+          }
+        }
+      } header: {
+        Text(NSLocalizedString("Personal Data", comment: "Scale profile title"))
+      } footer: {
+        Text(
+          NSLocalizedString(
+            "Height, date of birth, and other values the scale uses for its calculations.",
+            comment: "Scale profile link help"))
+      }
+
+      Section {
         Picker(
           NSLocalizedString("Personal Key", comment: "Scale personal key"), selection: $personalKey
         ) {
@@ -60,10 +85,12 @@ struct ScaleImportView: View {
         .onChange(of: personalKey) {
           TanitaScaleConnection.setPersonalKey(personalKey)
         }
+      } header: {
+        Text(NSLocalizedString("Personal Key", comment: "Scale personal key"))
       } footer: {
         Text(
           NSLocalizedString(
-            "The scale keeps data for up to 4 people. Choose the same number as your personal key in the Health Planet app.",
+            "The scale keeps data for up to 4 people. Choose a number no one else in your family uses.",
             comment: "Scale personal key help"))
       }
 
@@ -84,17 +111,6 @@ struct ScaleImportView: View {
         }
 
         Section {
-          NavigationLink(destination: ScaleProfileView()) {
-            Text(NSLocalizedString("Personal Data", comment: "Scale profile title"))
-          }
-        } footer: {
-          Text(
-            NSLocalizedString(
-              "Height, date of birth, and other values the scale uses for its calculations.",
-              comment: "Scale profile link help"))
-        }
-
-        Section {
           if !isRunning {
             Button(NSLocalizedString("Register Again", comment: "Scale register button")) {
               startRegistration()
@@ -105,6 +121,13 @@ struct ScaleImportView: View {
         }
       } else {
         Section {
+          if profile == nil {
+            Text(
+              NSLocalizedString(
+                "Enter your personal data first.", comment: "Scale register needs profile")
+            )
+            .foregroundColor(.secondary)
+          }
           registrationStep(
             1, NSLocalizedString("Turn the scale off.", comment: "Scale register step"))
           registrationStep(
@@ -120,6 +143,7 @@ struct ScaleImportView: View {
           runButton(NSLocalizedString("Register", comment: "Scale register button")) {
             startRegistration()
           }
+          .disabled(profile == nil)
         } header: {
           Text(NSLocalizedString("Registration", comment: "Scale register section"))
         } footer: {
@@ -140,6 +164,7 @@ struct ScaleImportView: View {
     .navigationTitle(NSLocalizedString("Scale Setup", comment: "Scale setup title"))
     .navigationBarTitleDisplayMode(.inline)
     .onAppear {
+      profile = TanitaScaleConnection.profile()
       connection.onMeasurement = { measurement in
         received.append(measurement)
         Task { await upload(measurement) }

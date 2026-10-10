@@ -60,4 +60,38 @@ struct TanitaScaleConnectionTests {
     // 体組成計が持つのは4人分。5番目の枠を読むと断られる
     #expect(TanitaScaleConnection.personalKey(defaults: defaults) == 1)
   }
+
+  private static let profile = TanitaProfile(
+    nickname: "ab",
+    birthDate: DateComponents(year: 1990, month: 4, day: 1),
+    heightCm: 170.5,
+    sex: .female,
+    bodyType: .athlete,
+    clothingWeightKg: 0.3,
+    region: 2
+  )
+
+  @Test func 個人データを入れていなければ持っていない() {
+    #expect(TanitaScaleConnection.profile(defaults: Self.emptyDefaults()) == nil)
+  }
+
+  @Test func 保存した個人データをそのまま読み出せる() {
+    let defaults = Self.emptyDefaults()
+
+    TanitaScaleConnection.setProfile(Self.profile, defaults: defaults)
+
+    #expect(TanitaScaleConnection.profile(defaults: defaults) == Self.profile)
+  }
+
+  @Test func 個人データが無ければ登録を始めない() {
+    let connection = TanitaScaleConnection(defaults: Self.emptyDefaults())
+
+    connection.register()
+
+    // 空の枠に登録すると、体組成計は身長も生年月日も知らないまま測ることになる
+    guard case .failed = connection.state else {
+      Issue.record("止まっていない: \(connection.state)")
+      return
+    }
+  }
 }

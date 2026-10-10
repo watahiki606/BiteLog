@@ -225,114 +225,6 @@ struct TanitaSessionTests {
       ])
   }
 
-  // MARK: - 登録
-
-  private static func makeRegistration() -> TanitaSession {
-    TanitaSession(
-      registering: "00000000-0000-4000-8000-000000000000",
-      timeZone: jst,
-      now: { fixedNow }
-    )
-  }
-
-  /// 架空の個人データ。呼び名「ab」、身長 170.0cm、2番の人
-  private static let storedProfile: [UInt8] =
-    [0x6A, 0x32, 0x25, 0x00, 0x6A, 0x33, 0x00, 0x00, 0x10]
-    + [0x6A, 0x3D, 0x61, 0x62, 0x00, 0x00, 0x00]
-    + [0x6A, 0x3E, 0x06, 0xA4]
-    + [0x6A, 0x13, 0x02]
-
-  /// 個人データを読んだ応答が返るところまで進める
-  private static func advanceToProfile(_ session: inout TanitaSession) {
-    _ = session.handle(.connected)
-    _ = session.handle(response(to: .setClock))
-    _ = session.handle(response(to: .deviceInfo))
-  }
-
-  @Test func 登録では名乗らずに時計合わせから始める() {
-    var session = Self.makeRegistration()
-
-    let actions = session.handle(.connected)
-
-    // ペアリングモードの体重計はまだ識別子を知らないので、名乗りを送っても通らない
-    #expect(Self.sentCommand(actions) == TanitaCommand.setClock.rawValue)
-  }
-
-  @Test func 登録では読んだ個人データを書き戻す() {
-    var session = Self.makeRegistration()
-    Self.advanceToProfile(&session)
-
-    let actions = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.storedProfile))
-
-    guard case .send(let message) = actions.first else {
-      Issue.record("送信していない")
-      return
-    }
-    // 日時はいまの時刻に、呼び名は 7E22 にも10バイトで入れ、末尾に 7E2F 01 01 を足す。
-    // 公式アプリが登録のときに書いている形
-    #expect(message.command == TanitaCommand.writeProfile.rawValue)
-    let expected: [UInt8] =
-      [0x00]
-      + [0x6A, 0x32, 0x25, 0x19, 0x6A, 0x33, 0x00, 0xD2, 0xF0]
-      + [0x6A, 0x3D, 0x61, 0x62, 0x00, 0x00, 0x00]
-      + [0x7E, 0x22, 0x0A, 0x61, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
-      + [0x6A, 0x3E, 0x06, 0xA4]
-      + [0x6A, 0x13, 0x02]
-      + [0x7E, 0x2F, 0x01, 0x01]
-    #expect([UInt8](message.payload) == expected)
-  }
-
-  @Test func 個人データが読めなければ登録しない() {
-    var session = Self.makeRegistration()
-    Self.advanceToProfile(&session)
-
-    // 知らないタグが混ざっていて、書き戻す中身を組めない
-    let actions = session.handle(Self.response(to: .readProfile, data: [0x00, 0x60, 0x01, 0x00]))
-
-    #expect(actions == [.failed(.profileDecodeFailed)])
-  }
-
-  @Test func 個人データを書いたら識別子を送る() {
-    var session = Self.makeRegistration()
-    Self.advanceToProfile(&session)
-    _ = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.storedProfile))
-
-    let actions = session.handle(Self.response(to: .writeProfile))
-
-    guard case .send(let message) = actions.first else {
-      Issue.record("送信していない")
-      return
-    }
-    #expect(message.command == TanitaCommand.register.rawValue)
-    #expect(String(data: message.payload, encoding: .utf8) == session.appIdentifier)
-  }
-
-  /// 識別子を送るところまで進める
-  private static func advanceToRegistration(_ session: inout TanitaSession) {
-    advanceToProfile(&session)
-    _ = session.handle(response(to: .readProfile, data: [0x00] + storedProfile))
-    _ = session.handle(response(to: .writeProfile))
-  }
-
-  @Test func 登録が通ったら知らせてから測定待機に入る() {
-    var session = Self.makeRegistration()
-    Self.advanceToRegistration(&session)
-
-    let actions = session.handle(Self.response(to: .register))
-
-    #expect(actions.first == .registered)
-    #expect(Self.sentCommand(actions) == TanitaCommand.startMeasurement.rawValue)
-  }
-
-  @Test func 登録を断られたら止める() {
-    var session = Self.makeRegistration()
-    Self.advanceToRegistration(&session)
-
-    let actions = session.handle(Self.response(to: .register, data: [0x00, 0x01]))
-
-    #expect(actions == [.failed(.registrationRefused(code: 0x01))])
-  }
-
   @Test func 測定データが読めなければ止める() {
     var session = Self.makeSession()
     Self.advanceToMeasurement(&session)
@@ -351,19 +243,11 @@ struct TanitaSessionTests {
 
   // MARK: - 個人データ
 
-  private static func makeSession(_ purpose: TanitaSession.Purpose) -> TanitaSession {
-    TanitaSession(
-      appIdentifier: "00000000-0000-4000-8000-000000000000",
-      purpose: purpose,
-      timeZone: jst,
-      now: { fixedNow }
-    )
-  }
-
-  /// 架空の個人データ。呼び名「ab」、1990-04-01 生まれ、170.0cm、男性、標準、着衣 0、地域 02
-  private static let fullProfile: [UInt8] =
+  /// 体組成計の枠に入っていた架空の個人データ。呼び名は空、1990-04-01 生まれ、170.0cm、男性、標準、着衣 0、地域 02。
+  /// 意味の分かっていない `6A3B` も、体組成計が返すとおりに混ぜておく
+  private static let storedProfile: [UInt8] =
     [0x6A, 0x32, 0x25, 0x00, 0x6A, 0x33, 0x00, 0x00, 0x10]
-    + [0x6A, 0x3D, 0x61, 0x62, 0x00, 0x00, 0x00]
+    + [0x6A, 0x3D, 0x00, 0x00, 0x00, 0x00, 0x00]
     + [0x6A, 0x3C, 0x80, 0xC3]
     + [0x6A, 0x37, 0x00, 0x6A, 0x38, 0x00]
     + [0x6A, 0x3E, 0x06, 0xA4]
@@ -371,8 +255,43 @@ struct TanitaSessionTests {
     + [0x60, 0x4F, 0x00, 0x00]
     + [0x6A, 0x13, 0x02]
 
-  private static var decodedProfile: TanitaProfile {
-    try! TanitaProfile(fields: TanitaField.parse(Data(fullProfile)))
+  /// BiteLog が持っている架空の個人データ。枠の中身と呼び名・身長が違う
+  private static let ownProfile = TanitaProfile(
+    nickname: "ab",
+    birthDate: DateComponents(year: 1990, month: 4, day: 1),
+    heightCm: 171.5,
+    sex: .male,
+    bodyType: .standard,
+    clothingWeightKg: 0.0,
+    region: 0x02
+  )
+
+  /// 書いた中身をそのまま返すこだま。体組成計は書き込みの応答に、書いたあとの枠を載せて返す
+  private static func echo(of actions: [TanitaSession.Action]) -> TanitaSession.Event {
+    let written = sentMessage(actions)?.payload.dropFirst() ?? Data()
+    return .received(
+      TanitaMessage(
+        command: TanitaCommand.writeProfile.responseCommand, payload: Data([0x00]) + written))
+  }
+
+  private static func makeSession(personalKey: Int = 1, profile: TanitaProfile?) -> TanitaSession {
+    TanitaSession(
+      appIdentifier: "00000000-0000-4000-8000-000000000000",
+      personalKey: personalKey,
+      profile: profile,
+      timeZone: jst,
+      now: { fixedNow }
+    )
+  }
+
+  private static func makeRegistration(personalKey: Int = 1) -> TanitaSession {
+    TanitaSession(
+      registering: "00000000-0000-4000-8000-000000000000",
+      personalKey: personalKey,
+      profile: ownProfile,
+      timeZone: jst,
+      now: { fixedNow }
+    )
   }
 
   /// 名乗って時計を合わせ、個人データを読む直前まで進める
@@ -383,28 +302,17 @@ struct TanitaSessionTests {
     _ = session.handle(response(to: .deviceInfo))
   }
 
-  @Test func 個人データを読むだけなら読んだものを渡して終える() {
-    var session = Self.makeSession(.readProfile)
+  @Test func 個人データを持っていれば測る前に自分の値で書く() {
+    var session = Self.makeSession(profile: Self.ownProfile)
     Self.advanceToProfileRead(&session)
 
-    let actions = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.fullProfile))
+    let actions = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.storedProfile))
 
-    #expect(actions.first == .profile(Self.decodedProfile))
-    #expect(Self.sentCommand(actions) == TanitaCommand.finish.rawValue)
-  }
-
-  @Test func 書き込むときは読んだものに変えた項目を差し替えて書く() {
-    var changed = Self.decodedProfile
-    changed.heightCm = 171.5
-    var session = Self.makeSession(.writeProfile(changed))
-    Self.advanceToProfileRead(&session)
-
-    let actions = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.fullProfile))
-
-    guard case .send(let message) = actions.first else {
+    guard let message = Self.sentMessage(actions) else {
       Issue.record("送信していない")
       return
     }
+    // 体組成計の枠は写しで、持ち主は BiteLog。読んだ並びのまま BiteLog の値に差し替える。
     // 日時はいまの時刻に、呼び名は 7E22 にも入れ、末尾はふだんの測定と同じ 7E2F 01 00
     #expect(message.command == TanitaCommand.writeProfile.rawValue)
     let expected: [UInt8] =
@@ -422,106 +330,174 @@ struct TanitaSessionTests {
     #expect([UInt8](message.payload) == expected)
   }
 
-  @Test func 書いたら読み直す() {
-    var session = Self.makeSession(.writeProfile(Self.decodedProfile))
+  @Test func 書いた値がこだまで返れば測定待機に入る() {
+    var session = Self.makeSession(profile: Self.ownProfile)
     Self.advanceToProfileRead(&session)
-    _ = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.fullProfile))
+    let write = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.storedProfile))
 
-    let actions = session.handle(Self.response(to: .writeProfile))
+    let actions = session.handle(Self.echo(of: write))
 
-    #expect(Self.sentCommand(actions) == TanitaCommand.readProfile.rawValue)
+    #expect(Self.sentCommand(actions) == TanitaCommand.startMeasurement.rawValue)
   }
 
-  @Test func 読み直して書いた値になっていれば渡して終える() {
-    var changed = Self.decodedProfile
-    changed.sex = .female
-    var session = Self.makeSession(.writeProfile(changed))
+  @Test func こだまが書いた値と違えば測らずに止める() {
+    var session = Self.makeSession(profile: Self.ownProfile)
     Self.advanceToProfileRead(&session)
-    _ = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.fullProfile))
-    _ = session.handle(Self.response(to: .writeProfile))
+    _ = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.storedProfile))
 
-    let reread = changed.applied(to: try! TanitaField.parse(Data(Self.fullProfile)))
-    let payload = reread.reduce(into: Data([0x00])) { $0.append($1.encoded) }
+    // 書く前の枠がそのまま返ってきた。違う設定で測ると、計算された値が全部ずれる
     let actions = session.handle(
-      .received(TanitaMessage(command: TanitaCommand.readProfile.responseCommand, payload: payload)))
-
-    #expect(actions.first == .profile(changed))
-    #expect(Self.sentCommand(actions) == TanitaCommand.finish.rawValue)
-  }
-
-  @Test func 読み直して書いた値になっていなければ止める() {
-    var changed = Self.decodedProfile
-    changed.sex = .female
-    var session = Self.makeSession(.writeProfile(changed))
-    Self.advanceToProfileRead(&session)
-    _ = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.fullProfile))
-    _ = session.handle(Self.response(to: .writeProfile))
-
-    // 書く前と同じものが返ってきた
-    let actions = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.fullProfile))
+      Self.response(to: .writeProfile, data: [0x00] + Self.storedProfile))
 
     #expect(actions == [.failed(.profileNotApplied)])
   }
 
-  // MARK: - 個人キー
+  @Test func 個人データを持っていなければ書かずに測定待機に入る() {
+    var session = Self.makeSession(profile: nil)
+    Self.advanceToProfileRead(&session)
 
-  /// 個人キー3の人。体組成計には 3 から1を引いた 02 で伝える
-  private static func makeSession(personalKey: Int, _ purpose: TanitaSession.Purpose = .measure)
-    -> TanitaSession
-  {
-    TanitaSession(
-      appIdentifier: "00000000-0000-4000-8000-000000000000",
-      personalKey: personalKey,
-      purpose: purpose,
-      timeZone: jst,
-      now: { fixedNow }
-    )
+    let actions = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.storedProfile))
+
+    #expect(Self.sentCommand(actions) == TanitaCommand.startMeasurement.rawValue)
   }
 
+  // MARK: - 登録
+
+  /// 個人データを読んだ応答が返るところまで進める
+  private static func advanceToProfile(_ session: inout TanitaSession) {
+    _ = session.handle(.connected)
+    _ = session.handle(response(to: .setClock))
+    _ = session.handle(response(to: .deviceInfo))
+  }
+
+  @Test func 登録では名乗らずに時計合わせから始める() {
+    var session = Self.makeRegistration()
+
+    let actions = session.handle(.connected)
+
+    // ペアリングモードの体重計はまだ識別子を知らないので、名乗りを送っても通らない
+    #expect(Self.sentCommand(actions) == TanitaCommand.setClock.rawValue)
+  }
+
+  @Test func 登録ではBiteLogの個人データを枠へ書く() {
+    var session = Self.makeRegistration()
+    Self.advanceToProfile(&session)
+
+    let actions = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.storedProfile))
+
+    // 公式アプリも登録のとき、空の枠へアプリが持っている値を書いている。末尾は 7E2F 01 01
+    guard let message = Self.sentMessage(actions) else {
+      Issue.record("送信していない")
+      return
+    }
+    #expect(message.command == TanitaCommand.writeProfile.rawValue)
+    let fields = try? TanitaField.parse(message.payload.dropFirst())
+    #expect(fields.flatMap { try? TanitaProfile(fields: $0) } == Self.ownProfile)
+    #expect(fields?.last == TanitaField(tag: TanitaTag.profileFlags, value: Data([0x01, 0x01])))
+  }
+
+  @Test func 個人データが読めなければ登録しない() {
+    var session = Self.makeRegistration()
+    Self.advanceToProfile(&session)
+
+    // 知らないタグが混ざっていて、書き戻す中身を組めない
+    let actions = session.handle(Self.response(to: .readProfile, data: [0x00, 0x60, 0x01, 0x00]))
+
+    #expect(actions == [.failed(.profileDecodeFailed)])
+  }
+
+  /// 識別子を送るところまで進める
+  private static func advanceToRegistration(_ session: inout TanitaSession) -> [TanitaSession.Action] {
+    advanceToProfile(&session)
+    let write = session.handle(response(to: .readProfile, data: [0x00] + storedProfile))
+    return session.handle(echo(of: write))
+  }
+
+  @Test func 個人データを書いたら識別子を送る() {
+    var session = Self.makeRegistration()
+
+    let actions = Self.advanceToRegistration(&session)
+
+    guard let message = Self.sentMessage(actions) else {
+      Issue.record("送信していない")
+      return
+    }
+    #expect(message.command == TanitaCommand.register.rawValue)
+    #expect(String(data: message.payload, encoding: .utf8) == session.appIdentifier)
+  }
+
+  @Test func 登録でもこだまが書いた値と違えば識別子を送らない() {
+    var session = Self.makeRegistration()
+    Self.advanceToProfile(&session)
+    _ = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.storedProfile))
+
+    let actions = session.handle(
+      Self.response(to: .writeProfile, data: [0x00] + Self.storedProfile))
+
+    #expect(actions == [.failed(.profileNotApplied)])
+  }
+
+  @Test func 登録が通ったら知らせてから測定待機に入る() {
+    var session = Self.makeRegistration()
+    _ = Self.advanceToRegistration(&session)
+
+    let actions = session.handle(Self.response(to: .register))
+
+    #expect(actions.first == .registered)
+    #expect(Self.sentCommand(actions) == TanitaCommand.startMeasurement.rawValue)
+  }
+
+  @Test func 登録を断られたら止める() {
+    var session = Self.makeRegistration()
+    _ = Self.advanceToRegistration(&session)
+
+    let actions = session.handle(Self.response(to: .register, data: [0x00, 0x01]))
+
+    #expect(actions == [.failed(.registrationRefused(code: 0x01))])
+  }
+
+  // MARK: - 個人キー
+
   @Test func 個人データは自分の個人キーの枠から読む() {
-    var session = Self.makeSession(personalKey: 3)
+    var session = Self.makeSession(personalKey: 3, profile: nil)
     _ = session.handle(.connected)
     _ = session.handle(Self.response(to: .identify))
     _ = session.handle(Self.response(to: .setClock))
 
     let actions = session.handle(Self.response(to: .deviceInfo))
 
+    // 体組成計には個人キーから1を引いた番号で伝える
     #expect(Self.sentMessage(actions) == TanitaMessage(.readProfile, argument: 0x02))
   }
 
   @Test func 測定は自分の個人キーとして始める() {
-    var session = Self.makeSession(personalKey: 3)
+    var session = Self.makeSession(personalKey: 3, profile: nil)
     Self.advanceToProfileRead(&session)
 
-    let actions = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.fullProfile))
+    let actions = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.storedProfile))
 
     // 個人キーを渡さないと、体組成計は別の人として測り、その人の設定で計算する
     #expect(Self.sentMessage(actions) == TanitaMessage(.startMeasurement, argument: 0x02))
   }
 
-  @Test func 個人データは自分の個人キーの枠へ書いて読み直す() {
-    var session = Self.makeSession(personalKey: 3, .writeProfile(Self.decodedProfile))
+  @Test func 個人データは自分の個人キーの枠へ書く() {
+    var session = Self.makeSession(personalKey: 3, profile: Self.ownProfile)
     Self.advanceToProfileRead(&session)
 
-    let write = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.fullProfile))
-    let reread = session.handle(Self.response(to: .writeProfile))
+    let actions = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.storedProfile))
 
-    #expect(Self.sentMessage(write)?.payload.first == 0x02)
-    #expect(Self.sentMessage(reread) == TanitaMessage(.readProfile, argument: 0x02))
+    #expect(Self.sentMessage(actions)?.payload.first == 0x02)
   }
 
   @Test func 登録でも自分の個人キーの枠を読み書きする() {
-    var session = TanitaSession(
-      registering: "00000000-0000-4000-8000-000000000000", personalKey: 3, timeZone: Self.jst,
-      now: { Self.fixedNow })
+    var session = Self.makeRegistration(personalKey: 3)
     _ = session.handle(.connected)
     _ = session.handle(Self.response(to: .setClock))
 
     let read = session.handle(Self.response(to: .deviceInfo))
-    let write = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.fullProfile))
+    let write = session.handle(Self.response(to: .readProfile, data: [0x00] + Self.storedProfile))
 
     #expect(Self.sentMessage(read) == TanitaMessage(.readProfile, argument: 0x02))
     #expect(Self.sentMessage(write)?.payload.first == 0x02)
   }
 }
-
