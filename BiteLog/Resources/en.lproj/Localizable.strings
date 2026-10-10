@@ -351,3 +351,35 @@
 
 // The body composition line overlaid on the statistics chart
 "No overlay" = "No overlay";
+
+// 体組成計の個人データ
+"Connecting to the scale" = "Connecting to the scale";
+"Read from Scale" = "Read from Scale";
+"Written to the scale." = "Written to the scale.";
+"Make sure the scale is off before connecting." = "Make sure the scale is off before connecting.";
+"Write to Scale" = "Write to Scale";
+"Body fat and other results are calculated from these values. Wrong values make every later measurement wrong." = "Body fat and other results are calculated from these values. Wrong values make every later measurement wrong.";
+"Personal Data" = "Personal Data";
+"Write these changes to the scale?" = "Write these changes to the scale?";
+"Write" = "Write";
+"Nickname" = "Nickname";
+"Shown on the scale. Up to %d letters or digits." = "Shown on the scale. Up to %d letters or digits.";
+"Date of Birth" = "Date of Birth";
+"Height" = "Height";
+"Sex" = "Sex";
+"Body Type" = "Body Type";
+"Choose Athlete only if you are 18 or older and train 12 hours or more a week." = "Choose Athlete only if you are 18 or older and train 12 hours or more a week.";
+"Clothes and Phone" = "Clothes and Phone";
+"Region" = "Region";
+"The weight of clothes and phone is subtracted from your weight. The region corrects for gravity." = "The weight of clothes and phone is subtracted from your weight. The region corrects for gravity.";
+"Hokkaido" = "Hokkaido";
+"Tohoku" = "Tohoku";
+"Kanto, Chubu, Kinki, Chugoku, Shikoku" = "Kanto, Chubu, Kinki, Chugoku, Shikoku";
+"Kyushu" = "Kyushu";
+"Okinawa" = "Okinawa";
+"Region %d" = "Region %d";
+"Male" = "Male";
+"Female" = "Female";
+"Standard" = "Standard";
+"Athlete" = "Athlete";
+"Height, date of birth, and other values the scale uses for its calculations." = "Height, date of birth, and other values the scale uses for its calculations.";

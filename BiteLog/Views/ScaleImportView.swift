@@ -66,6 +66,17 @@ struct ScaleImportView: View {
         }
 
         Section {
+          NavigationLink(destination: ScaleProfileView()) {
+            Text(NSLocalizedString("Personal Data", comment: "Scale profile title"))
+          }
+        } footer: {
+          Text(
+            NSLocalizedString(
+              "Height, date of birth, and other values the scale uses for its calculations.",
+              comment: "Scale profile link help"))
+        }
+
+        Section {
           if !isRunning {
             Button(NSLocalizedString("Register Again", comment: "Scale register button")) {
               startRegistration()

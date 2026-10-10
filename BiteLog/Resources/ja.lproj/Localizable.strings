@@ -366,3 +366,35 @@
 
 // 統計のグラフに重ねる体組成
 "No overlay" = "体組成なし";
+
+// 体組成計の個人データ
+"Connecting to the scale" = "体組成計とやり取りしています";
+"Read from Scale" = "体組成計から読み込む";
+"Written to the scale." = "体組成計に書き込みました。";
+"Make sure the scale is off before connecting." = "体組成計の電源が切れている状態で読み込んでください。";
+"Write to Scale" = "体組成計に書き込む";
+"Body fat and other results are calculated from these values. Wrong values make every later measurement wrong." = "体脂肪率などは、体組成計がこの値を使って計算します。間違った値を書くと、以降の測定がすべてずれます。";
+"Personal Data" = "個人データ";
+"Write these changes to the scale?" = "この内容で体組成計に書き込みますか？";
+"Write" = "書き込む";
+"Nickname" = "ニックネーム";
+"Shown on the scale. Up to %d letters or digits." = "体組成計の画面に出ます。英数字%d文字まで。";
+"Date of Birth" = "生年月日";
+"Height" = "身長";
+"Sex" = "性別";
+"Body Type" = "体型";
+"Choose Athlete only if you are 18 or older and train 12 hours or more a week." = "アスリートは、18才以上で1週間に12時間以上トレーニングしている人が選びます。";
+"Clothes and Phone" = "着衣やスマホの重さ";
+"Region" = "地域";
+"The weight of clothes and phone is subtracted from your weight. The region corrects for gravity." = "着衣やスマホの重さは、体重から差し引かれます。地域は、重力による誤差の補正に使います。";
+"Hokkaido" = "北海道";
+"Tohoku" = "東北";
+"Kanto, Chubu, Kinki, Chugoku, Shikoku" = "関東・中部・近畿・中国・四国";
+"Kyushu" = "九州";
+"Okinawa" = "沖縄";
+"Region %d" = "地域 %d";
+"Male" = "男性";
+"Female" = "女性";
+"Standard" = "標準";
+"Athlete" = "アスリート";
+"Height, date of birth, and other values the scale uses for its calculations." = "身長や生年月日など、体組成計が計算に使う値です。";
