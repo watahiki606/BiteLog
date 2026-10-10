@@ -1,0 +1,13 @@
+New in 2.6: body composition scale
+
+BiteLog can receive weight and body composition from a TANITA RD-902 Bluetooth scale. The feature is optional. Every other part of the app works without the scale, and nothing related to the scale appears on the log screen until a scale has been registered.
+
+Where to find it: Settings > Data Management > Scale Setup.
+
+- Personal Data: height, sex, and birth date entered in BiteLog. The scale needs these to calculate body composition.
+- Registration: pairs the scale with BiteLog over Bluetooth.
+- After registration, stepping on the scale shows the measurement on that day's log screen.
+
+Bluetooth is used only to talk to the scale. Body composition values are calculated by the scale itself; BiteLog only receives and displays them.
+
+Without the scale, searching ends with a "scale not found" message. A video of the full flow on a real device is available on request.
