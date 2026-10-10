@@ -368,15 +368,7 @@
 "No overlay" = "体組成なし";
 
 // 体組成計の個人データ
-"Connecting to the scale" = "体組成計とやり取りしています";
-"Read from Scale" = "体組成計から読み込む";
-"Written to the scale." = "体組成計に書き込みました。";
-"Make sure the scale is off before connecting." = "体組成計の電源が切れている状態で読み込んでください。";
-"Write to Scale" = "体組成計に書き込む";
-"Body fat and other results are calculated from these values. Wrong values make every later measurement wrong." = "体脂肪率などは、体組成計がこの値を使って計算します。間違った値を書くと、以降の測定がすべてずれます。";
 "Personal Data" = "個人データ";
-"Write these changes to the scale?" = "この内容で体組成計に書き込みますか？";
-"Write" = "書き込む";
 "Nickname" = "ニックネーム";
 "Shown on the scale. Up to %d letters or digits." = "体組成計の画面に出ます。英数字%d文字まで。";
 "Date of Birth" = "生年月日";
@@ -399,4 +391,11 @@
 "Athlete" = "アスリート";
 "Height, date of birth, and other values the scale uses for its calculations." = "身長や生年月日など、体組成計が計算に使う値です。";
 "Personal Key" = "個人キー";
-"The scale keeps data for up to 4 people. Choose the same number as your personal key in the Health Planet app." = "体組成計は4人分の個人データを持っています。公式アプリの「体組成計個人キー」と同じ番号を選んでください。";
+"Body fat and other results are calculated from these values. They are sent to the scale when you register and each time you measure." = "体脂肪率などは、体組成計がこの値を使って計算します。登録のときと、測るたびに体組成計へ送ります。";
+"These values will be sent to the scale the next time you measure." = "次に測るときから、この値で体組成計が計算します。";
+"Choose" = "選ぶ";
+"Not Set" = "未設定";
+"Not Entered" = "未入力";
+"Entered" = "入力済み";
+"The scale keeps data for up to 4 people. Choose a number no one else in your family uses." = "体組成計は4人分の個人データを持っています。家族のほかの人と重ならない番号を選んでください。";
+"Enter your personal data first." = "先に個人データを入力してください。";

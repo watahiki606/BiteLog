@@ -1,16 +1,16 @@
 import Foundation
 
-/// 体組成計に登録されている個人データ。体脂肪率や体内年齢はこの値を使って体組成計が計算する。
+/// 体組成計の個人データ。体脂肪率や体内年齢は、体組成計がこの値を使って計算する。
 ///
-/// 体組成計から読んだフィールドの並びを土台にして、変えた項目だけ差し替えて書き戻す。
-/// 意味の分かっていないタグも混ざっているので、一から組み立てずに読んだものを残す。
-struct TanitaProfile: Equatable {
-  enum Sex: UInt8, CaseIterable {
+/// 持ち主は BiteLog で、体組成計の枠は写し。書くときは体組成計から読んだフィールドの並びを土台にして、
+/// この項目だけ差し替える。意味の分かっていないタグも混ざっているので、一から組み立てずに読んだものを残す。
+struct TanitaProfile: Equatable, Codable {
+  enum Sex: UInt8, CaseIterable, Codable {
     case male = 0
     case female = 1
   }
 
-  enum BodyType: UInt8, CaseIterable {
+  enum BodyType: UInt8, CaseIterable, Codable {
     case standard = 0
     case athlete = 1
   }
@@ -38,7 +38,7 @@ struct TanitaProfile: Equatable {
     bodyType: BodyType, clothingWeightKg: Double, region: UInt8
   ) {
     self.nickname = nickname
-    self.birthDate = birthDate
+    self.birthDate = Self.day(birthDate)
     self.heightCm = heightCm
     self.sex = sex
     self.bodyType = bodyType
@@ -106,7 +106,12 @@ struct TanitaProfile: Equatable {
     guard let epoch = calendar.date(from: birthEpoch),
       let date = calendar.date(byAdding: .day, value: days, to: epoch)
     else { return DateComponents() }
-    return calendar.dateComponents([.year, .month, .day], from: date)
+    return day(calendar.dateComponents([.year, .month, .day], from: date))
+  }
+
+  /// 年・月・日だけを残す。暦やタイムゾーンが混ざると、同じ日でも等しくならない
+  private static func day(_ components: DateComponents) -> DateComponents {
+    DateComponents(year: components.year, month: components.month, day: components.day)
   }
 
   private static func daysSinceEpoch(_ components: DateComponents) -> Int {

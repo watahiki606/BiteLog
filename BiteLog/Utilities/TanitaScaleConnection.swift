@@ -56,8 +56,6 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
   @Published private(set) var state: State = .idle
   /// 引き取った測定データ。1回の接続で、そのとき測った1件が流れてくる
   var onMeasurement: ((TanitaBodyMeasurement) -> Void)?
-  /// 体組成計から読んだ個人データ。書いたときは読み直したもの
-  var onProfile: ((TanitaProfile) -> Void)?
 
   private var central: CBCentralManager?
   private var peripheral: CBPeripheral?
@@ -103,35 +101,36 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
     defaults.set(key, forKey: personalKeyKey)
   }
 
+  static let profileKey = "TanitaProfile"
+
+  /// この端末の持ち主の個人データ。体組成計の枠は写しで、登録のときと測るたびにこれを書く。
+  /// 体組成計の登録が端末ごとなので、個人データも端末に持つ
+  static func profile(defaults: UserDefaults = .standard) -> TanitaProfile? {
+    guard let data = defaults.data(forKey: profileKey) else { return nil }
+    return try? JSONDecoder().decode(TanitaProfile.self, from: data)
+  }
+
+  static func setProfile(_ profile: TanitaProfile, defaults: UserDefaults = .standard) {
+    guard let data = try? JSONEncoder().encode(profile) else { return }
+    defaults.set(data, forKey: profileKey)
+  }
+
   /// この端末が体組成計に登録できているか。未登録なら探しに行かない
   static func isPaired(defaults: UserDefaults = .standard) -> Bool {
     registeredIdentifier(defaults: defaults) != nil
   }
 
-  /// 登録済みの識別子で名乗り、測定を引き取る
+  /// 登録済みの識別子で名乗り、個人データを書いてから測定を引き取る
   func start(timeouts: Timeouts = .manual) {
-    connect(.measure, title: "取り込み", timeouts: timeouts)
-  }
-
-  /// 登録済みの識別子で名乗り、個人データを読む。測らずに終える
-  func readProfile() {
-    connect(.readProfile, title: "個人データの読み出し", timeouts: .manual)
-  }
-
-  /// 登録済みの識別子で名乗り、個人データを書き換えて読み直す。測らずに終える
-  func writeProfile(_ profile: TanitaProfile) {
-    connect(.writeProfile(profile), title: "個人データの書き込み", timeouts: .manual)
-  }
-
-  private func connect(_ purpose: TanitaSession.Purpose, title: String, timeouts: Timeouts) {
-    beginLog(title)
+    beginLog("取り込み")
     guard let identifier = Self.registeredIdentifier(defaults: defaults) else {
       fail("体組成計が登録されていません。設定の「体組成計」から登録してください")
       return
     }
     reset(
       TanitaSession(
-        appIdentifier: identifier, personalKey: Self.personalKey(defaults: defaults), purpose: purpose),
+        appIdentifier: identifier, personalKey: Self.personalKey(defaults: defaults),
+        profile: Self.profile(defaults: defaults)),
       timeouts: timeouts)
     central = CBCentralManager(delegate: self, queue: .main)
   }
@@ -142,8 +141,15 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
   /// 途中で失敗したときに、通らない識別子が登録済みとして残らないようにするため。
   func register() {
     beginLog("登録")
+    // 空の枠に登録すると、体組成計は身長も生年月日も知らないまま測ることになる
+    guard let profile = Self.profile(defaults: defaults) else {
+      fail("先に個人データを入力してください")
+      return
+    }
     reset(
-      TanitaSession(registering: UUID().uuidString, personalKey: Self.personalKey(defaults: defaults)),
+      TanitaSession(
+        registering: UUID().uuidString, personalKey: Self.personalKey(defaults: defaults),
+        profile: profile),
       timeouts: .manual)
     central = CBCentralManager(delegate: self, queue: .main)
   }
@@ -181,8 +187,6 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
       case .deliver(let measurement):
         state = .reading
         onMeasurement?(measurement)
-      case .profile(let profile):
-        onProfile?(profile)
       case .finished:
         timeoutWork?.cancel()
         state = .finished

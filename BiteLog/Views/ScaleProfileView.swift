@@ -1,118 +1,114 @@
 import SwiftUI
 
-/// 体組成計に登録されている個人データを読んで、書き換える。
+/// 体組成計に書く個人データを入力して、端末に保存する。
 ///
-/// 体脂肪率や体内年齢は、体組成計がこの値を使って計算する。間違った値を書くと以降の測定が
-/// 全部ずれるので、開いただけでは何もせず、読んでから編集し、書く前に変わる項目を並べて確かめる。
-/// 書いたあとは体組成計から読み直した値を出す。
+/// 持ち主は BiteLog で、体組成計の枠は写し。登録のときと測るたびに、ここで保存した値を体組成計へ書く。
+/// 体脂肪率や体内年齢は体組成計がこの値で計算するので、登録したあとに直すときは、変わる項目を並べて確かめる。
 struct ScaleProfileView: View {
-  @StateObject private var connection = TanitaScaleConnection()
+  @Environment(\.dismiss) private var dismiss
 
-  /// 体組成計から最後に読んだ値。変更の有無と確認の文面はこれと比べて出す
-  @State private var stored: TanitaProfile?
-  @State private var draft: TanitaProfile?
+  /// 保存済みの値。初めてなら nil
+  @State private var stored = TanitaScaleConnection.profile()
+  @State private var draft = ScaleProfileDraft(TanitaScaleConnection.profile())
   @State private var isConfirming = false
-  @State private var didWrite = false
-
-  private var isRunning: Bool {
-    switch connection.state {
-    case .idle, .finished, .failed: return false
-    default: return true
-    }
-  }
 
   private var changes: [ScaleProfileChange] {
-    guard let stored, let draft else { return [] }
-    return ScaleProfileChange.between(stored, draft)
+    guard let stored, let profile = draft.profile else { return [] }
+    return ScaleProfileChange.between(stored, profile)
+  }
+
+  private var canSave: Bool {
+    guard draft.profile != nil else { return false }
+    return stored == nil || !changes.isEmpty
   }
 
   var body: some View {
     Form {
-      Section {
-        if isRunning {
-          HStack(spacing: 12) {
-            ProgressView()
-            Text(NSLocalizedString("Connecting to the scale", comment: "Scale profile status"))
-              .font(.subheadline)
-          }
-        } else {
-          Button(NSLocalizedString("Read from Scale", comment: "Scale profile button")) {
-            didWrite = false
-            connection.readProfile()
-          }
-        }
+      ScaleProfileForm(draft: $draft)
 
-        if case .failed(let message) = connection.state {
-          Text(message)
-            .font(.footnote)
-            .foregroundColor(.secondary)
+      Section {
+        Button(NSLocalizedString("Save", comment: "Scale profile save")) {
+          // 登録したあとに変えると、次の測定から計算が変わる。黙って変えずに確かめる
+          if stored != nil && TanitaScaleConnection.isPaired() {
+            isConfirming = true
+          } else {
+            save()
+          }
         }
-        if didWrite, case .finished = connection.state {
-          Text(NSLocalizedString("Written to the scale.", comment: "Scale profile result"))
-            .font(.footnote)
-            .foregroundColor(.secondary)
-        }
+        .disabled(!canSave)
       } footer: {
         Text(
           NSLocalizedString(
-            "Make sure the scale is off before connecting.", comment: "Scale profile help"))
-      }
-
-      if let binding = Binding($draft) {
-        ScaleProfileForm(profile: binding)
-          .disabled(isRunning)
-
-        Section {
-          Button(NSLocalizedString("Write to Scale", comment: "Scale profile button")) {
-            isConfirming = true
-          }
-          .disabled(changes.isEmpty || isRunning)
-        } footer: {
-          Text(
-            NSLocalizedString(
-              "Body fat and other results are calculated from these values. Wrong values make every later measurement wrong.",
-              comment: "Scale profile warning"))
-        }
+            "Body fat and other results are calculated from these values. They are sent to the scale when you register and each time you measure.",
+            comment: "Scale profile help"))
       }
     }
     .navigationTitle(NSLocalizedString("Personal Data", comment: "Scale profile title"))
     .navigationBarTitleDisplayMode(.inline)
     .confirmationDialog(
-      NSLocalizedString("Write these changes to the scale?", comment: "Scale profile confirm"),
+      NSLocalizedString(
+        "These values will be sent to the scale the next time you measure.",
+        comment: "Scale profile confirm"),
       isPresented: $isConfirming,
       titleVisibility: .visible
     ) {
-      Button(NSLocalizedString("Write", comment: "Scale profile confirm button")) {
-        guard let draft else { return }
-        didWrite = true
-        connection.writeProfile(draft)
-      }
+      Button(NSLocalizedString("Save", comment: "Scale profile save")) { save() }
     } message: {
       Text(changes.map(\.summary).joined(separator: "\n"))
     }
-    .onAppear {
-      connection.onProfile = { profile in
-        stored = profile
-        draft = profile
-      }
-    }
-    .onDisappear {
-      connection.stop()
-    }
+  }
+
+  private func save() {
+    guard let profile = draft.profile else { return }
+    TanitaScaleConnection.setProfile(profile)
+    dismiss()
+  }
+}
+
+/// 入力の途中の個人データ。身長や生年月日は、初めは決まっていない。
+///
+/// それらしい初期値を置くと、確かめずに保存されて体組成計の計算がずれるので、選ぶまで空にしておく。
+/// 体型と着衣は、ほとんどの人が「標準」「0.0kg」のままでよいので初めから入れておく。
+struct ScaleProfileDraft: Equatable {
+  var nickname = ""
+  var birthDate: DateComponents?
+  var heightCm: Double?
+  var sex: TanitaProfile.Sex?
+  var bodyType = TanitaProfile.BodyType.standard
+  var clothingWeightKg = 0.0
+  var region: UInt8?
+
+  init(_ profile: TanitaProfile?) {
+    guard let profile else { return }
+    nickname = profile.nickname
+    birthDate = profile.birthDate
+    heightCm = profile.heightCm
+    sex = profile.sex
+    bodyType = profile.bodyType
+    clothingWeightKg = profile.clothingWeightKg
+    region = profile.region
+  }
+
+  /// すべての項目がそろっていれば、体組成計に書ける個人データ
+  var profile: TanitaProfile? {
+    guard let birthDate, let heightCm, let sex, let region else { return nil }
+    return TanitaProfile(
+      nickname: nickname, birthDate: birthDate, heightCm: heightCm, sex: sex, bodyType: bodyType,
+      clothingWeightKg: clothingWeightKg, region: region)
   }
 }
 
 /// 個人データの各項目の入力欄
 private struct ScaleProfileForm: View {
-  @Binding var profile: TanitaProfile
+  @Binding var draft: ScaleProfileDraft
 
   var body: some View {
     Section {
       TextField(
         NSLocalizedString("Nickname", comment: "Scale profile field"),
         text: Binding(
-          get: { profile.nickname },
-          set: { profile.nickname = ScaleProfileFormat.nickname($0) }
+          get: { draft.nickname },
+          set: { draft.nickname = ScaleProfileFormat.nickname($0) }
         )
       )
       .textInputAutocapitalization(.never)
@@ -128,33 +124,48 @@ private struct ScaleProfileForm: View {
     }
 
     Section {
-      DatePicker(
-        NSLocalizedString("Date of Birth", comment: "Scale profile field"),
-        selection: Binding(
-          get: { ScaleProfileFormat.date(profile.birthDate) },
-          set: { profile.birthDate = ScaleProfileFormat.components($0) }
-        ),
-        in: ScaleProfileFormat.birthDateRange,
-        displayedComponents: .date
-      )
-
-      Picker(
-        NSLocalizedString("Height", comment: "Scale profile field"), selection: $profile.heightCm
-      ) {
-        ForEach(ScaleProfileFormat.heightOptions(including: profile.heightCm), id: \.self) {
-          Text(ScaleProfileFormat.height($0)).tag($0)
+      if let birthDate = draft.birthDate {
+        DatePicker(
+          NSLocalizedString("Date of Birth", comment: "Scale profile field"),
+          selection: Binding(
+            get: { ScaleProfileFormat.date(birthDate) },
+            set: { draft.birthDate = ScaleProfileFormat.components($0) }
+          ),
+          in: ScaleProfileFormat.birthDateRange,
+          displayedComponents: .date
+        )
+      } else {
+        // 日付の選択は今日から始まるので、そのまま出すと生年月日を遠くまで戻すことになる。
+        // 押したときに、多くの人の生年月日に近いところから始める
+        HStack {
+          Text(NSLocalizedString("Date of Birth", comment: "Scale profile field"))
+          Spacer()
+          Button(NSLocalizedString("Choose", comment: "Scale profile choose")) {
+            draft.birthDate = ScaleProfileFormat.birthDatePickerStart
+          }
         }
       }
 
-      Picker(NSLocalizedString("Sex", comment: "Scale profile field"), selection: $profile.sex) {
+      Picker(
+        NSLocalizedString("Height", comment: "Scale profile field"), selection: $draft.heightCm
+      ) {
+        Text(NSLocalizedString("Not Set", comment: "Scale profile unset")).tag(Double?.none)
+        ForEach(ScaleProfileFormat.heightOptions(including: draft.heightCm), id: \.self) {
+          Text(ScaleProfileFormat.height($0)).tag(Double?.some($0))
+        }
+      }
+
+      Picker(NSLocalizedString("Sex", comment: "Scale profile field"), selection: $draft.sex) {
+        Text(NSLocalizedString("Not Set", comment: "Scale profile unset"))
+          .tag(TanitaProfile.Sex?.none)
         ForEach(TanitaProfile.Sex.allCases, id: \.self) {
-          Text(ScaleProfileFormat.sex($0)).tag($0)
+          Text(ScaleProfileFormat.sex($0)).tag(TanitaProfile.Sex?.some($0))
         }
       }
 
       Picker(
         NSLocalizedString("Body Type", comment: "Scale profile field"),
-        selection: $profile.bodyType
+        selection: $draft.bodyType
       ) {
         ForEach(TanitaProfile.BodyType.allCases, id: \.self) {
           Text(ScaleProfileFormat.bodyType($0)).tag($0)
@@ -170,16 +181,17 @@ private struct ScaleProfileForm: View {
     Section {
       Picker(
         NSLocalizedString("Clothes and Phone", comment: "Scale profile field"),
-        selection: $profile.clothingWeightKg
+        selection: $draft.clothingWeightKg
       ) {
-        ForEach(ScaleProfileFormat.clothingOptions(including: profile.clothingWeightKg), id: \.self) {
+        ForEach(ScaleProfileFormat.clothingOptions(including: draft.clothingWeightKg), id: \.self) {
           Text(ScaleProfileFormat.clothing($0)).tag($0)
         }
       }
 
-      Picker(NSLocalizedString("Region", comment: "Scale profile field"), selection: $profile.region) {
-        ForEach(ScaleProfileFormat.regionOptions(including: profile.region), id: \.self) {
-          Text(ScaleProfileFormat.region($0)).tag($0)
+      Picker(NSLocalizedString("Region", comment: "Scale profile field"), selection: $draft.region) {
+        Text(NSLocalizedString("Not Set", comment: "Scale profile unset")).tag(UInt8?.none)
+        ForEach(ScaleProfileFormat.regionOptions(including: draft.region), id: \.self) {
+          Text(ScaleProfileFormat.region($0)).tag(UInt8?.some($0))
         }
       }
     } footer: {
@@ -241,12 +253,18 @@ enum ScaleProfileFormat {
     (4, NSLocalizedString("Okinawa", comment: "Scale region")),
   ]
 
+  /// 生年月日を選び始める日。30年前の1月1日
+  static var birthDatePickerStart: DateComponents {
+    let year = Calendar.current.component(.year, from: Date()) - 30
+    return DateComponents(year: year, month: 1, day: 1)
+  }
+
   /// 生年月日は 1900-01-01 から今日まで
   static var birthDateRange: ClosedRange<Date> {
     date(DateComponents(year: 1900, month: 1, day: 1))...Date()
   }
 
-  static func heightOptions(including current: Double) -> [Double] {
+  static func heightOptions(including current: Double?) -> [Double] {
     options(heightRange, step: heightStep, including: current)
   }
 
@@ -255,21 +273,22 @@ enum ScaleProfileFormat {
   }
 
   /// 体組成計に入っている値が刻みから外れていても選べるように、いまの値を混ぜる
-  private static func options(_ range: ClosedRange<Double>, step: Double, including current: Double)
+  private static func options(_ range: ClosedRange<Double>, step: Double, including current: Double?)
     -> [Double]
   {
     let count = Int(((range.upperBound - range.lowerBound) / step).rounded())
     var values = (0...count).map { ((range.lowerBound + Double($0) * step) * 10).rounded() / 10 }
-    if !values.contains(current) {
+    if let current, !values.contains(current) {
       values.append(current)
       values.sort()
     }
     return values
   }
 
-  static func regionOptions(including current: UInt8) -> [UInt8] {
+  static func regionOptions(including current: UInt8?) -> [UInt8] {
     let codes = regions.map(\.code)
-    return codes.contains(current) ? codes : codes + [current]
+    guard let current, !codes.contains(current) else { return codes }
+    return codes + [current]
   }
 
   /// 英数字だけを、枠に収まる長さまで残す
@@ -285,7 +304,8 @@ enum ScaleProfileFormat {
   }
 
   static func components(_ date: Date) -> DateComponents {
-    Calendar.current.dateComponents([.year, .month, .day], from: date)
+    let day = Calendar.current.dateComponents([.year, .month, .day], from: date)
+    return DateComponents(year: day.year, month: day.month, day: day.day)
   }
 
   static func birthDate(_ components: DateComponents) -> String {
