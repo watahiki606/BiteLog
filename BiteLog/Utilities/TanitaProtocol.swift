@@ -147,6 +147,16 @@ enum TanitaTag {
   static let height: UInt16 = 0x6A3E
   /// 個人データの呼び名。5バイトで、余りは 0 で埋める
   static let nickname: UInt16 = 0x6A3D
+  /// 個人データの生年月日。1899-12-31 からの日数
+  static let birthDate: UInt16 = 0x6A3C
+  /// 個人データの性別。男性 0、女性 1
+  static let sex: UInt16 = 0x6A37
+  /// 個人データの体型。標準 0、アスリート 1
+  static let bodyType: UInt16 = 0x6A38
+  /// 個人データの着衣やスマホの重さ。÷100 で kg
+  static let clothingWeight: UInt16 = 0x604F
+  /// 個人データの地域。重力の補正に使う。北海道 0、東京 2
+  static let region: UInt16 = 0x6A13
   /// 書き込むときだけ付ける呼び名。先頭1バイトが長さ10で、続く10バイトに名前
   static let longNickname: UInt16 = 0x7E22
   /// 書き込むときだけ付ける2バイト。登録のときは 01 01、ふだんの測定では 01 00

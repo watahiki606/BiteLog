@@ -57,12 +57,23 @@ struct ScaleImportView: View {
         } footer: {
           Text(
             NSLocalizedString(
-              "Step on the scale after the connection starts. Measurements stored on the scale are imported together.",
+              "Step on the scale after the connection starts.",
               comment: "Scale import help"))
           Text(
             NSLocalizedString(
               "Registered. Use Measure on the Log screen from now on.",
               comment: "Scale setup help"))
+        }
+
+        Section {
+          NavigationLink(destination: ScaleProfileView()) {
+            Text(NSLocalizedString("Personal Data", comment: "Scale profile title"))
+          }
+        } footer: {
+          Text(
+            NSLocalizedString(
+              "Height, date of birth, and other values the scale uses for its calculations.",
+              comment: "Scale profile link help"))
         }
 
         Section {
