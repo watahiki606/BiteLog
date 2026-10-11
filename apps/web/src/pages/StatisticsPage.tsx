@@ -5,6 +5,8 @@ import {
   XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 import type { ToastMessage } from '@/components/Toast';
+import { Segmented } from '@/components/Segmented';
+import { RelationsSection } from '@/components/RelationsSection';
 import { useSummary } from '@/hooks/useStatistics';
 import { useDailyStats } from '@/hooks/useDailyStats';
 import { useBodyMeasurements } from '@/hooks/useBodyMeasurements';
@@ -45,6 +47,9 @@ const MEAL_COLORS: Record<string, string> = {
   Snack:     '#ffff00',
   Other:     '#6060a0',
 };
+
+// 全期間を取るときの開始日。
+const HISTORY_FROM = '1970-01-01';
 
 const PERIOD_DAYS: Record<Period, number> = { week: 7, month: 30, year: 365 };
 
@@ -129,35 +134,6 @@ function MacroBar({ label, value, target, unit, color }: { label: string; value:
   );
 }
 
-/** 区切りトグル（period / metric / bucket / aggregation 共通の小ボタン群）。 */
-function Segmented<T extends string>({ options, value, onChange, colorFor }: {
-  options: { key: T; label: string }[];
-  value: T;
-  onChange: (v: T) => void;
-  colorFor?: (key: T) => string;
-}) {
-  return (
-    <div className="flex gap-1">
-      {options.map(({ key, label }) => {
-        const active = value === key;
-        const color = colorFor?.(key) ?? '#00e5ff';
-        return (
-          <button
-            key={key}
-            onClick={() => onChange(key)}
-            aria-pressed={active}
-            className="px-2.5 py-1 text-xs tracking-widest uppercase transition-all"
-            style={{
-              border:     `1px solid ${active ? color : '#1a1a3e'}`,
-              color:      active ? color : '#6060a0',
-              background: active ? `${color}18` : 'transparent',
-            }}
-          >{label}</button>
-        );
-      })}
-    </div>
-  );
-}
 
 const chartTooltipStyle = {
   contentStyle: { background: '#0d0d22', border: '1px solid #1a1a3e', borderRadius: 0, fontSize: 10, fontFamily: 'JetBrains Mono, monospace' },
@@ -182,6 +158,9 @@ export default function StatisticsPage({ onToast }: Props) {
   );
   const { data: items = [], isLoading } = useSummary(from, to, onError);
   const { data: daily = [] } = useDailyStats(from, to, onError);
+  // 関係の分析は表示レンジと無関係に全期間で見る（数か月〜年単位の変化を扱うため）。
+  const today = useMemo(() => formatDate(new Date()), []);
+  const { data: history = [] } = useDailyStats(HISTORY_FROM, today, onError);
   // ユーザーが体組成データを保有しているか（measured_at 降順・最新が先頭）。
   // 選択期間外でもセクションを出して「期間外」を案内するために使う。
   const { data: allBody = [] } = useBodyMeasurements();
@@ -545,6 +524,8 @@ export default function StatisticsPage({ onToast }: Props) {
             </div>
           </motion.div>
         )}
+
+        {hasAnyBody && history.length > 0 && <RelationsSection items={history} />}
 
       </div>
     </div>
