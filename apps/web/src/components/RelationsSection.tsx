@@ -113,7 +113,7 @@ export function RelationsSection({ items }: Props) {
           <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
             1日 +100kcal 多く食べた{weeks}週間の前後で、体組成がどれだけ変わったか。
             {mode === 'adjusted' ? '他の栄養素は同じだったとした場合の値。' : 'その栄養素だけで見た値で、一緒に増えた他の栄養素の分も含む。'}
-            OTHER は記録カロリーから PFC 換算を引いた残りで、主にお酒。
+            OTHER は記録カロリーから PFC 換算を引いた残りで、アルコールのほか、PFC が入力されていない食品の分も入る。
           </p>
           <div className="overflow-x-auto">
             <table className="text-xs border-separate" style={{ borderSpacing: 2 }}>
