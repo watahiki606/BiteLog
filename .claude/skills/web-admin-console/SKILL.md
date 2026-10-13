@@ -40,6 +40,7 @@ cd apps/docs && bun run dev
 ```bash
 cd cloudflare && npm test            # vitest
 cd apps/web && bun run build         # includes tsc type check
+cd apps/web && bun test              # pure functions under src/lib (tests live in apps/web/test/, outside tsc)
 cd apps/docs && bun run build        # SSG: tsc + vite-react-ssg build → apps/docs/dist/
 ```
 

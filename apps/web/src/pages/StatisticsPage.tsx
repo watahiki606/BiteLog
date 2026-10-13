@@ -5,6 +5,7 @@ import {
   XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 import type { ToastMessage } from '@/components/Toast';
+import { RelationsSection } from '@/components/RelationsSection';
 import { useSummary } from '@/hooks/useStatistics';
 import { useDailyStats } from '@/hooks/useDailyStats';
 import { useBodyMeasurements } from '@/hooks/useBodyMeasurements';
@@ -45,6 +46,9 @@ const MEAL_COLORS: Record<string, string> = {
   Snack:     '#ffff00',
   Other:     '#6060a0',
 };
+
+// 全期間を取るときの開始日。
+const HISTORY_FROM = '1970-01-01';
 
 const PERIOD_DAYS: Record<Period, number> = { week: 7, month: 30, year: 365 };
 
@@ -182,6 +186,9 @@ export default function StatisticsPage({ onToast }: Props) {
   );
   const { data: items = [], isLoading } = useSummary(from, to, onError);
   const { data: daily = [] } = useDailyStats(from, to, onError);
+  // 関係の分析は表示レンジと無関係に全期間で見る（数か月〜年単位の変化を扱うため）。
+  const today = useMemo(() => formatDate(new Date()), []);
+  const { data: history = [] } = useDailyStats(HISTORY_FROM, today, onError);
   // ユーザーが体組成データを保有しているか（measured_at 降順・最新が先頭）。
   // 選択期間外でもセクションを出して「期間外」を案内するために使う。
   const { data: allBody = [] } = useBodyMeasurements();
@@ -545,6 +552,8 @@ export default function StatisticsPage({ onToast }: Props) {
             </div>
           </motion.div>
         )}
+
+        {hasAnyBody && history.length > 0 && <RelationsSection items={history} />}
 
       </div>
     </div>
