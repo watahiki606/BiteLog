@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'bun:test';
 import {
-  toDay, buildWeeks, windowPairs, regress, estimate, relationMatrix, windowProfile,
-  nextDayEffects, intakeRelations, scatterPoints, WINDOWS,
-  type Week, type Pair, type SourceKey,
+  toDay, buildWeeks, windowPairs, regress, estimate, findings, findingText, MIN_SHIFTS,
+  type Week, type Pair, type SourceKey, type Finding,
 } from '../src/lib/relations';
 import type { DailyStat, BodyMetricKey } from '../src/lib/correlation';
 
@@ -118,157 +117,221 @@ describe('windowPairs: W週の摂取 × 直前W週から直後W週への変化',
   });
 });
 
-describe('regress: 切片付きの最小二乗と Newey-West の標準誤差', () => {
+describe('regress: 切片付きの最小二乗', () => {
   const x1 = [1, 2, 3, 4, 5, 6, 7, 8];
   const x2 = [2, 1, 4, 3, 6, 5, 8, 7];
   const y = [3.1, 4.9, 7.2, 8.8, 11.1, 13.0, 15.2, 16.8];
 
-  it('係数は通常の最小二乗と同じ', () => {
-    const r = regress(y, [x1, x2], 0)!;
+  it('係数と t 値', () => {
+    const r = regress(y, [x1, x2])!;
     expect(r.coef[0]).toBeCloseTo(1.86375, 8);
     expect(r.coef[1]).toBeCloseTo(0.13875, 8);
-  });
-
-  it('lag 0 の標準誤差', () => {
-    const r = regress(y, [x1, x2], 0)!;
-    expect(r.se[0]).toBeCloseTo(0.0262024868, 8);
-    expect(r.se[1]).toBeCloseTo(0.0227556655, 8);
-  });
-
-  it('lag 2 では隣り合う残差の相関も入れる', () => {
-    const r = regress(y, [x1, x2], 2)!;
-    expect(r.se[0]).toBeCloseTo(0.0219400224, 8);
-    expect(r.se[1]).toBeCloseTo(0.0169668795, 8);
+    expect(r.t[0]).toBeCloseTo(59.601867004, 6);
+    expect(r.t[1]).toBeCloseTo(4.437161125, 6);
   });
 
   it('説明変数より行が少なければ null', () => {
-    expect(regress([1, 2, 3], [[1, 2, 3], [3, 1, 2]], 0)).toBeNull();
+    expect(regress([1, 2, 3], [[1, 2, 3], [3, 1, 2]])).toBeNull();
   });
 
   it('説明変数が一定なら null', () => {
-    expect(regress([1, 2, 3, 4, 5], [[1, 1, 1, 1, 1]], 0)).toBeNull();
+    expect(regress([1, 2, 3, 4, 5], [[1, 1, 1, 1, 1]])).toBeNull();
   });
 });
 
-describe('estimate: 1日 +100kcal あたりの係数', () => {
+describe('estimate: 1日 1kcal あたりの係数', () => {
   // タンパク質と脂質が一緒に増減し、体重の変化は脂質だけで決まるデータ。
   const pairs = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => {
     const p = 300 + i * 10;
     const f = 400 + i * 20 + (i % 3) * 15;
-    return pair(intake(p, f, 400, 0), 0.002 * f);
+    return pair(intake(p, f, 400, 0), 0.002 * f + 0.0001 * ((i * 7) % 5));
   });
 
-  it('単独では、一緒に増える脂質の分までタンパク質に乗る', () => {
-    expect(estimate(pairs, 'protein', 'weightKg', 'single', 0)!.coef).toBeGreaterThan(0.3);
+  it('他の栄養素を固定するので、一緒に増えただけのタンパク質はほぼ0・脂質はほぼ0.002になる', () => {
+    expect(estimate(pairs, 'protein', 'weightKg')!.coef).toBeCloseTo(0, 4);
+    expect(estimate(pairs, 'fat', 'weightKg')!.coef).toBeCloseTo(0.002, 4);
   });
 
-  it('他の栄養素を固定すると、タンパク質は0・脂質は0.2になる', () => {
-    expect(estimate(pairs, 'protein', 'weightKg', 'adjusted', 0)!.coef).toBeCloseTo(0, 8);
-    expect(estimate(pairs, 'fat', 'weightKg', 'adjusted', 0)!.coef).toBeCloseTo(0.2, 8);
+  it('合計kcal は他の栄養素の合計なので、単独で回帰する', () => {
+    const r = regress(pairs.map((p) => p.delta.weightKg!), [pairs.map((p) => p.intake.kcal)])!;
+    const e = estimate(pairs, 'kcal', 'weightKg')!;
+    expect(e.coef).toBeCloseTo(r.coef[0], 10);
+    expect(e.t).toBeCloseTo(r.t[0], 10);
   });
 
-  it('合計kcal は他の栄養素の合計なので、固定するときも単独で回帰する', () => {
-    const single = estimate(pairs, 'kcal', 'weightKg', 'single', 0)!;
-    expect(estimate(pairs, 'kcal', 'weightKg', 'adjusted', 0)!.coef).toBeCloseTo(single.coef, 10);
-  });
-
-  it('信頼区間と組の数を返す', () => {
-    const e = estimate(pairs, 'fat', 'weightKg', 'single', 0)!;
-    expect(e.n).toBe(10);
-    expect(e.lo).toBeLessThanOrEqual(e.coef);
-    expect(e.hi).toBeGreaterThanOrEqual(e.coef);
+  it('組の数を返す', () => {
+    expect(estimate(pairs, 'fat', 'weightKg')!.n).toBe(10);
   });
 
   it('体組成の無い指標は null', () => {
-    expect(estimate(pairs, 'fat', 'muscleMassKg', 'single', 0)).toBeNull();
+    expect(estimate(pairs, 'fat', 'muscleMassKg')).toBeNull();
   });
 });
 
-/** 52週分。体重は「その週のタンパク質 kcal × 0.001」だけ翌週に増える。 */
-function syntheticWeeks(): Week[] {
-  const weeks: Week[] = [];
-  let w = 60;
-  for (let i = 0; i < 52; i++) {
-    const p = 300 + ((i * 37) % 11) * 10;
-    const f = 400 + ((i * 53) % 7) * 20;
-    weeks.push(week(i, intake(p, f, 400, 100), w));
-    w += 0.001 * (p - 350);
-  }
-  return weeks;
+/** 再現できる乱数（mulberry32）。標準正規は Box-Muller。 */
+function rng(seed: number) {
+  let a = seed;
+  const uniform = () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  return () => Math.sqrt(-2 * Math.log(1 - uniform())) * Math.cos(2 * Math.PI * uniform());
 }
 
-describe('relationMatrix / windowProfile', () => {
-  it('全てのカロリー源 × 体組成指標のマスを返す', () => {
-    const cells = relationMatrix(syntheticWeeks(), 1, 'adjusted');
-    expect(cells).toHaveLength(5 * 9);
-    const pw = cells.find((c) => c.source === 'protein' && c.body === 'weightKg')!;
-    expect(pw.estimate!.coef).toBeGreaterThan(0);
-    expect(cells.find((c) => c.body === 'muscleMassKg')!.estimate).toBeNull();
-  });
-
-  it('期間ごとの係数を、期間の短い順に返す', () => {
-    const prof = windowProfile(syntheticWeeks(), 'protein', 'weightKg', 'adjusted');
-    expect(prof.map((p) => p.weeks)).toEqual([...WINDOWS]);
-  });
-});
-
-describe('nextDayEffects: 翌朝の変化', () => {
-  // 体重は、その日の炭水化物 kcal × 0.001 だけ翌朝に増える。
-  const items: DailyStat[] = [];
-  let w = 60;
-  for (let i = 0; i < 40; i++) {
-    const c = 400 + ((i * 7) % 5) * 50;
-    const p = 300 + ((i * 3) % 4) * 25;
-    items.push(stat({ date: day(i), calories: p + 500 + c, protein: p / 4, fat: 500 / 9, netCarbs: c / 4, weightKg: w }));
-    w += 0.001 * c;
+/** 数週続けて多い・少ないが続く摂取（kcal/日）。 */
+function ar(n: number, base: number, sd: number, normal: () => number): number[] {
+  const out: number[] = [];
+  let x = 0;
+  for (let i = 0; i < n; i++) {
+    x = 0.7 * x + Math.sqrt(1 - 0.49) * sd * normal();
+    out.push(base + x);
   }
+  return out;
+}
 
-  it('当日の摂取がそのまま翌朝に出て、前日・前々日の分は0', () => {
-    const eff = nextDayEffects(items, 'carbs', 'weightKg', 'adjusted');
-    expect(eff.map((e) => e.lag)).toEqual([0, 1, 2]);
-    expect(eff[0].estimate!.coef).toBeCloseTo(0.1, 6);
-    expect(eff[1].estimate!.coef).toBeCloseTo(0, 6);
+interface Gen {
+  weeks: number;
+  seed: number;
+  /** 週ごとの体重の動き。carbs・protein はその週の摂取（kcal/日）。 */
+  weight?: (i: number, carbs: number, protein: number, prev: number) => number;
+  /** タンパク質を炭水化物と一緒に動かす。 */
+  proteinFollowsCarbs?: boolean;
+}
+
+/** 体重は、指定が無ければ摂取と無関係にゆっくり勝手に動く。体重計の値には毎週のブレが乗る。 */
+function synthetic({ weeks, seed, weight, proteinFollowsCarbs = false }: Gen): Week[] {
+  const normal = rng(seed);
+  const carbs = ar(weeks, 1000, 120, normal);
+  const ownProtein = ar(weeks, 350, 60, normal);
+  const protein = proteinFollowsCarbs ? carbs.map((c, i) => 350 + 0.5 * (c - 1000) + 0.3 * (ownProtein[i] - 350)) : ownProtein;
+  const fat = ar(weeks, 600, 80, normal);
+  const other = ar(weeks, 100, 30, normal);
+  const out: Week[] = [];
+  let truth = 65;
+  for (let i = 0; i < weeks; i++) {
+    truth = weight ? weight(i, carbs[i], protein[i], truth) : truth + 0.1 * normal();
+    out.push(week(i, intake(protein[i], fat[i], carbs[i], other[i]), truth + 0.3 * normal()));
+  }
+  return out;
+}
+
+function found(weeks: Week[]): Finding[] {
+  const r = findings(weeks);
+  if (r.kind !== 'ready') throw new Error(`記録が足りない判定になった: ${JSON.stringify(r)}`);
+  return r.findings;
+}
+
+describe('findings: 確かな関係だけを選ぶ', () => {
+  it('炭水化物の多い週の分だけ体重が溜まっていくなら、炭水化物と体重の関係が出る', () => {
+    const weeks = synthetic({ weeks: 104, seed: 1, weight: (_i, c, _p, prev) => prev + 0.001 * (c - 1000) });
+    const f = found(weeks).find((x) => x.source === 'carbs' && x.body === 'weightKg');
+    expect(f).toBeDefined();
+    expect(f!.change).toBeGreaterThan(0);
+  });
+
+  it('その週の摂取で体重計の値が上下するだけで溜まらないなら、出ない', () => {
+    const weeks = synthetic({ weeks: 104, seed: 2, weight: (_i, c) => 65 + 0.002 * (c - 1000) });
+    expect(found(weeks).filter((x) => x.source === 'carbs')).toEqual([]);
+  });
+
+  it('炭水化物と一緒に動いただけのタンパク質は出ない', () => {
+    const weeks = synthetic({
+      weeks: 104, seed: 3, proteinFollowsCarbs: true,
+      weight: (_i, c, _p, prev) => prev + 0.002 * (c - 1000),
+    });
+    const sources = found(weeks).filter((x) => x.body === 'weightKg').map((x) => x.source);
+    expect(sources.length).toBeGreaterThan(0);
+    expect(sources).not.toContain('protein');
+  });
+
+  it('摂取と体重が無関係なら、ほとんどの人で何も出ない', () => {
+    // 期間を重ねた組をそのまま t 値で判定すると、この条件では大半の人に何かが出てしまう。
+    const withAny = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+      .filter((seed) => found(synthetic({ weeks: 78, seed: 100 + seed })).length > 0);
+    expect(withAny.length).toBeLessThanOrEqual(1);
+  });
+
+  it('ふだんの量は、4週間平均のばらつき1つ分。変化は、その量だけ多いときの4週間の前後の値', () => {
+    const weeks = synthetic({ weeks: 104, seed: 1, weight: (_i, c, _p, prev) => prev + 0.001 * (c - 1000) });
+    const f = found(weeks).find((x) => x.source === 'carbs' && x.body === 'weightKg')!;
+    const x = windowPairs(weeks, 4).map((p) => p.intake.carbs);
+    const m = x.reduce((s, v) => s + v, 0) / x.length;
+    const sd = Math.sqrt(x.reduce((s, v) => s + (v - m) ** 2, 0) / (x.length - 1));
+    expect(f.typical).toBeCloseTo(sd, 8);
+    expect(f.change).toBeCloseTo(estimate(windowPairs(weeks, 4), 'carbs', 'weightKg')!.coef * sd, 8);
+  });
+
+  it('確かなものから順に並べる', () => {
+    const weeks = synthetic({
+      weeks: 104, seed: 5,
+      weight: (_i, c, p, prev) => prev + 0.002 * (c - 1000) + 0.003 * (p - 350),
+    });
+    const scores = found(weeks).map((f) => f.score);
+    expect(scores.length).toBeGreaterThan(1);
+    expect(scores).toEqual([...scores].sort((a, b) => b - a));
+  });
+
+  it('摂取をずらす余地が足りないうちは、あと何週分の記録が要るかを返す', () => {
+    // 12週以上ずらし、後ろからも12週以上残すので、ずらし方は「週数 − 23」通り。1週ごとに1つ増える。
+    expect(findings(synthetic({ weeks: 40, seed: 6 }))).toEqual({ kind: 'short', weeksNeeded: MIN_SHIFTS + 23 - 40 });
+    expect(findings(synthetic({ weeks: 40 + MIN_SHIFTS + 23 - 40, seed: 6 })).kind).toBe('ready');
+  });
+
+  it('体組成の記録が無ければ、組がそろうまでの週数も見る', () => {
+    expect(findings([])).toEqual({ kind: 'short', weeksNeeded: MIN_SHIFTS + 23 });
   });
 });
 
-describe('intakeRelations: ある源が増えた時期に他の源がどう動くか', () => {
-  // 炭水化物は脂質が増えた分だけ減る。
-  const weeks = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((i) => {
-    const f = 400 + ((i * 5) % 7) * 20;
-    return week(i, intake(300, f, 900 - f, 100), null);
+describe('findingText: 文にする', () => {
+  const base: Finding = { source: 'carbs', body: 'weightKg', typical: 120, change: 0.4, score: 4 };
+
+  it('栄養素を多くとった4週間の前後で、指標が増える傾向がある', () => {
+    expect(findingText(base)).toEqual({
+      headline: '炭水化物を多くとった4週間の前後で、体重が増える傾向があります',
+      detail: 'ふだんより1日約30g 多いと、+0.4kg ほど',
+    });
   });
 
-  it('脂質 +100kcal あたり、炭水化物は −100kcal', () => {
-    const rel = intakeRelations(weeks, 1);
-    const fc = rel.find((r) => r.x === 'fat' && r.y === 'carbs')!;
-    expect(fc.estimate!.coef).toBeCloseTo(-100, 6);
+  it('減るときは「減る」とマイナスの値', () => {
+    const t = findingText({ ...base, change: -0.25 });
+    expect(t.headline).toBe('炭水化物を多くとった4週間の前後で、体重が減る傾向があります');
+    expect(t.detail).toBe('ふだんより1日約30g 多いと、−0.25kg ほど');
   });
 
-  it('「残りの合計」は合計kcal から自分を引いたもの', () => {
-    const rel = intakeRelations(weeks, 1);
-    const rest = rel.find((r) => r.x === 'fat' && r.y === 'rest')!;
-    expect(rest.estimate!.coef).toBeCloseTo(-100, 6);
-  });
-});
-
-describe('scatterPoints: 散布図の点', () => {
-  const pairs = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
-    const p = 300 + i * 10;
-    const f = 400 + i * 20 + (i % 3) * 15;
-    return pair(intake(p, f, 400, 0), 0.002 * f + 0.001 * p);
+  it('脂質の g は kcal を9で割る', () => {
+    expect(findingText({ ...base, source: 'fat', typical: 90 }).detail).toBe('ふだんより1日約10g 多いと、+0.4kg ほど');
   });
 
-  it('単独では摂取量と変化そのもの', () => {
-    const pts = scatterPoints(pairs, 'protein', 'weightKg', 'single');
-    expect(pts[0]).toEqual({ x: 300, y: pairs[0].delta.weightKg! });
+  it('g は10以上なら5刻み、10未満なら1刻みで丸める', () => {
+    expect(findingText({ ...base, source: 'protein', typical: 90 }).detail).toMatch(/約25g/);
+    expect(findingText({ ...base, source: 'protein', typical: 26 }).detail).toMatch(/約7g/);
   });
 
-  it('固定するときは他の栄養素で説明できない分どうしで、傾きが係数と一致する', () => {
-    const pts = scatterPoints(pairs, 'protein', 'weightKg', 'adjusted');
-    const mx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
-    const my = pts.reduce((s, p) => s + p.y, 0) / pts.length;
-    const slope = pts.reduce((s, p) => s + (p.x - mx) * (p.y - my), 0)
-      / pts.reduce((s, p) => s + (p.x - mx) ** 2, 0);
-    expect(slope * 100).toBeCloseTo(estimate(pairs, 'protein', 'weightKg', 'adjusted', 0)!.coef, 8);
+  it('合計カロリーは「たくさん食べた」、量は10kcal 刻み', () => {
+    expect(findingText({ ...base, source: 'kcal', typical: 153 })).toEqual({
+      headline: 'たくさん食べた4週間の前後で、体重が増える傾向があります',
+      detail: 'ふだんより1日約150kcal 多いと、+0.4kg ほど',
+    });
+  });
+
+  it('その他は「PFC 以外のカロリー」で、量は kcal', () => {
+    expect(findingText({ ...base, source: 'other', typical: 48 })).toEqual({
+      headline: 'PFC 以外のカロリーが多い4週間の前後で、体重が増える傾向があります',
+      detail: 'ふだんより1日約50kcal 多いと、+0.4kg ほど',
+    });
+  });
+
+  it('変化は有効数字2桁。指標ごとの単位を付ける', () => {
+    expect(findingText({ ...base, body: 'bodyFatPercent', change: 0.4321 }).detail).toMatch(/\+0\.43% ほど$/);
+    expect(findingText({ ...base, body: 'basalMetabolismKcal', change: 12.6 }).detail).toMatch(/\+13kcal ほど$/);
+    expect(findingText({ ...base, body: 'metabolicAge', change: 1.04 }).detail).toMatch(/\+1歳 ほど$/);
+    expect(findingText({ ...base, body: 'visceralFatLevel', change: 0.3 }).detail).toMatch(/\+0\.3 ほど$/);
+  });
+
+  it('指標名は日本語', () => {
+    expect(findingText({ ...base, body: 'muscleMassKg' }).headline).toMatch(/筋肉量が/);
+    expect(findingText({ ...base, body: 'bodyWaterPercent' }).headline).toMatch(/体水分率が/);
   });
 });

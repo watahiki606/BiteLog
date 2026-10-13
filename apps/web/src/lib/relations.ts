@@ -1,5 +1,5 @@
 // 統計ページの「栄養素×体組成の関係」用ロジック。API /statistics/daily の日次行から、
-// カロリー源ごとの摂取と体組成の変化の関係（1日 +100kcal あたりの係数と 95% 信頼区間）を出す純粋関数群。
+// カロリー源ごとの摂取と体組成の変化の関係を調べ、確かなものだけを文にする純粋関数群。
 //
 // 同じ日の値どうしは比べない。体組成計は日々のブレが大きく、食べた分は数日〜数週間かけて表れるため、
 // 「W週の摂取の平均」と「直前W週の平均 → 直後W週の平均の変化」を組にする。
@@ -17,17 +17,11 @@ export type EnergySource = (typeof ENERGY_SOURCES)[number];
 export type SourceKey = 'kcal' | EnergySource;
 export const SOURCE_KEYS: SourceKey[] = ['kcal', ...ENERGY_SOURCES];
 
-/** single: その源だけで回帰 / adjusted: 他のカロリー源を同時に入れて固定する。 */
-export type Mode = 'single' | 'adjusted';
-
-export const WINDOWS = [1, 2, 4, 8, 13] as const;
-
 const MIN_KCAL = 800;          // これ未満の日は記録漏れとみなす
 const MAX_PFC_RATIO = 1.3;     // PFC 換算が記録カロリーをこれ以上超える日は入力ミスとみなす
 const MIN_LOGGED_DAYS = 4;     // 週の摂取として使う最低記録日数
 const MIN_BODY_DAYS = 2;       // 週の体組成として使う最低計測日数
 const MIN_ROWS = 8;            // これ未満の組では係数を出さない
-const Z95 = 1.96;
 
 type BodyValues = Record<BodyMetricKey, number | null>;
 
@@ -54,11 +48,10 @@ export interface Pair {
   delta: BodyValues;
 }
 
-/** 1日 +100kcal あたりの係数と 95% 信頼区間。 */
+/** 1日 1kcal あたりの係数と、その t 値。 */
 export interface Estimate {
   coef: number;
-  lo: number;
-  hi: number;
+  t: number;
   n: number;
 }
 
@@ -188,145 +181,203 @@ function inverse(A: number[][]): number[][] | null {
   return M.map((row) => row.slice(p));
 }
 
-/** 切片付き最小二乗。beta[0] が切片。 */
-function ols(y: number[], cols: number[][]) {
+/**
+ * 切片付き最小二乗の係数（切片を除く）と t 値。
+ * 期間を重ねて作った組は互いに独立でないので、この t 値をそのまま正規分布で判定してはいけない。
+ * 判定は findings で、摂取を時間方向にずらしたときの t 値と比べて行う。
+ */
+export function regress(y: number[], cols: number[][]) {
   const n = y.length;
   const p = cols.length + 1;
   if (n <= p + 2) return null;
-  const X = y.map((_, i) => [1, ...cols.map((c) => c[i])]);
-  const XtX = Array.from({ length: p }, (_, a) =>
-    Array.from({ length: p }, (_, b) => X.reduce((s, row) => s + row[a] * row[b], 0)));
-  const inv = inverse(XtX);
-  if (!inv) return null;
-  const Xty = Array.from({ length: p }, (_, a) => X.reduce((s, row, i) => s + row[a] * y[i], 0));
-  const beta = inv.map((row) => row.reduce((s, v, b) => s + v * Xty[b], 0));
-  const resid = X.map((row, i) => y[i] - row.reduce((s, v, k) => s + v * beta[k], 0));
-  return { X, inv, beta, resid };
-}
-
-/**
- * 係数（切片を除く）と Newey-West の標準誤差。
- * 窓をずらしながら作った組は隣どうしで期間が重なり残差が相関するため、通常の標準誤差だと狭く出すぎる。
- */
-export function regress(y: number[], cols: number[][], lag: number) {
-  const fit = ols(y, cols);
-  if (!fit) return null;
-  const { X, inv, beta, resid } = fit;
-  const p = beta.length;
-  const u = X.map((row, i) => row.map((v) => v * resid[i]));
-  const S = Array.from({ length: p }, () => new Array<number>(p).fill(0));
-  for (let l = 0; l <= lag; l++) {
-    const w = l === 0 ? 1 : 1 - l / (lag + 1);
-    for (let i = l; i < u.length; i++) {
-      const ui = u[i], uj = u[i - l];
-      for (let a = 0; a < p; a++) {
-        for (let b = 0; b < p; b++) {
-          S[a][b] += w * (l === 0 ? ui[a] * uj[b] : ui[a] * uj[b] + uj[a] * ui[b]);
-        }
-      }
+  // 毎回の行を配列で作らずに X'X と X'y を足し込む（摂取をずらすたびに何千回も呼ぶため）。
+  const col = (k: number, i: number) => (k === 0 ? 1 : cols[k - 1][i]);
+  const XtX = Array.from({ length: p }, () => new Array<number>(p).fill(0));
+  const Xty = new Array<number>(p).fill(0);
+  for (let i = 0; i < n; i++) {
+    for (let a = 0; a < p; a++) {
+      const va = col(a, i);
+      Xty[a] += va * y[i];
+      for (let b = a; b < p; b++) XtX[a][b] += va * col(b, i);
     }
   }
-  const IS = inv.map((row) => Array.from({ length: p }, (_, b) => row.reduce((s, v, k) => s + v * S[k][b], 0)));
-  const V = IS.map((row) => Array.from({ length: p }, (_, b) => row.reduce((s, v, k) => s + v * inv[k][b], 0)));
+  for (let a = 0; a < p; a++) for (let b = 0; b < a; b++) XtX[a][b] = XtX[b][a];
+  const inv = inverse(XtX);
+  if (!inv) return null;
+  const beta = inv.map((row) => row.reduce((s, v, b) => s + v * Xty[b], 0));
+  let rss = 0;
+  for (let i = 0; i < n; i++) {
+    let fit = 0;
+    for (let k = 0; k < p; k++) fit += beta[k] * col(k, i);
+    rss += (y[i] - fit) ** 2;
+  }
+  const s2 = rss / (n - p);
   return {
     coef: beta.slice(1),
-    se: V.slice(1).map((row, i) => Math.sqrt(Math.max(row[i + 1], 0))),
+    t: beta.slice(1).map((b, i) => b / Math.sqrt(s2 * inv[i + 1][i + 1])),
   };
 }
 
-/** 回帰に入れる説明変数。固定するときは、その期間に変動のある他のカロリー源を全て入れる。 */
-function regressors(source: SourceKey, mode: Mode, rows: Record<SourceKey, number>[]): SourceKey[] {
-  if (source === 'kcal' || mode === 'single') return [source];
-  return ENERGY_SOURCES.filter((s) => s === source || variance(rows.map((r) => r[s])) > 0);
-}
-
-function toEstimate(r: ReturnType<typeof regress>, idx: number, n: number): Estimate | null {
-  if (!r) return null;
-  const coef = r.coef[idx] * 100;
-  const half = Z95 * r.se[idx] * 100;
-  return { coef, lo: coef - half, hi: coef + half, n };
-}
-
-export function estimate(
-  pairs: Pair[], source: SourceKey, body: BodyMetricKey, mode: Mode, lag: number,
-): Estimate | null {
+/**
+ * 体組成の指標1つについて、全てのカロリー源の係数を出す。
+ * P・F・C・その他は、その期間に変動のあるものを全て入れた1本の回帰で互いを固定する。
+ * 合計kcal はそれらの和なので、一緒には入れず単独で回帰する。
+ */
+function fitAll(pairs: Pair[], body: BodyMetricKey): Partial<Record<SourceKey, Estimate>> {
   const rows = pairs.filter((p) => p.delta[body] != null);
-  if (rows.length < MIN_ROWS) return null;
-  const xs = regressors(source, mode, rows.map((r) => r.intake));
-  const r = regress(rows.map((p) => p.delta[body]!), xs.map((s) => rows.map((p) => p.intake[s])), lag);
-  return toEstimate(r, xs.indexOf(source), rows.length);
+  if (rows.length < MIN_ROWS) return {};
+  const y = rows.map((p) => p.delta[body]!);
+  const n = rows.length;
+  const out: Partial<Record<SourceKey, Estimate>> = {};
+  const k = regress(y, [rows.map((p) => p.intake.kcal)]);
+  if (k) out.kcal = { coef: k.coef[0], t: k.t[0], n };
+  const xs = ENERGY_SOURCES.filter((s) => variance(rows.map((p) => p.intake[s])) > 0);
+  const r = regress(y, xs.map((s) => rows.map((p) => p.intake[s])));
+  if (r) xs.forEach((s, i) => { out[s] = { coef: r.coef[i], t: r.t[i], n }; });
+  return out;
 }
 
-// MARK: - 画面用
+export function estimate(pairs: Pair[], source: SourceKey, body: BodyMetricKey): Estimate | null {
+  return fitAll(pairs, body)[source] ?? null;
+}
 
-export interface RelationCell {
+// MARK: - 文にする関係
+
+const SHORT_WEEKS = 2;
+/** 文の値に使う期間。2週間でも4週間でも同じ向きに出ることを求め、数週で戻る変化を除く。 */
+export const LONG_WEEKS = 4;
+/** 摂取をこれ以上ずらせば、元の摂取と体組成の期間が重ならない。 */
+const MIN_SHIFT = 3 * LONG_WEEKS;
+/**
+ * ずらしたときの最大値の 99% 点を超えたものだけを文にする。
+ * 関係の無い合成データで、文が出てしまう人が5%以下になる厳しさ（95% 点では1割近くになる）。
+ */
+const QUANTILE = 0.99;
+/** ずらし方がこれだけ取れるまでは判定しない。少ないと 99% 点が荒くなる。 */
+export const MIN_SHIFTS = 30;
+// 計算量を抑えるため、記録が長い人もずらし方はこの数までにする（等間隔に間引く）。
+const MAX_SHIFTS = 100;
+/** 4週間の期間でこれだけ組がそろった指標だけを判定する。 */
+const MIN_PAIRS = 20;
+
+export interface Finding {
   source: SourceKey;
   body: BodyMetricKey;
-  estimate: Estimate | null;
+  /** ふだんの増減の幅。4週間平均の摂取（kcal/日）の標準偏差。 */
+  typical: number;
+  /** 摂取が typical だけ多いときの、4週間の前後の変化（指標の単位）。 */
+  change: number;
+  /** 2週間と4週間の t 値の小さい方。並べる順に使う。 */
+  score: number;
 }
 
-export function relationMatrix(weeks: Week[], W: number, mode: Mode): RelationCell[] {
-  const pairs = windowPairs(weeks, W);
-  return SOURCE_KEYS.flatMap((source) =>
-    BODY_KEYS.map((body) => ({ source, body, estimate: estimate(pairs, source, body, mode, 2 * W) })));
+export type FindingsResult =
+  | { kind: 'ready'; findings: Finding[] }
+  | { kind: 'short'; weeksNeeded: number };
+
+function sd(v: number[]): number {
+  return Math.sqrt(variance(v) / (v.length - 1));
 }
 
-/** 期間を変えたときの係数。溜まり続けるものは期間に比例して大きくなり、一時的なものは頭打ちになる。 */
-export function windowProfile(weeks: Week[], source: SourceKey, body: BodyMetricKey, mode: Mode) {
-  return WINDOWS.map((W) => ({ weeks: W, estimate: estimate(windowPairs(weeks, W), source, body, mode, 2 * W) }));
-}
+interface Scored { source: SourceKey; body: BodyMetricKey; score: number; long: Estimate }
 
-/** 朝→翌朝の変化を、当日(0)・前日(1)・前々日(2)の摂取で説明する。 */
-export function nextDayEffects(items: DailyStat[], source: SourceKey, body: BodyMetricKey, mode: Mode) {
-  const lags = [0, 1, 2] as const;
-  const days = new Map(items.map((it) => [it.date, toDay(it)]));
-  const ys: number[] = [];
-  const rows: Record<SourceKey, number>[][] = [];
-  for (const d of days.values()) {
-    const next = days.get(addDays(d.date, 1));
-    const a = d.body[body], b = next?.body[body];
-    if (a == null || b == null) continue;
-    const back = lags.map((l) => days.get(addDays(d.date, -l)));
-    if (back.some((x) => !x?.logged)) continue;
-    ys.push(b - a);
-    rows.push(back.map((x) => Object.fromEntries(SOURCE_KEYS.map((s) => [s, x![s]])) as Record<SourceKey, number>));
+/** 2週間と4週間の両方で同じ向きなら、t 値の小さい方。向きが違えば 0。 */
+function score(weeks: Week[], bodies: BodyMetricKey[]): Scored[] {
+  const short = windowPairs(weeks, SHORT_WEEKS);
+  const long = windowPairs(weeks, LONG_WEEKS);
+  const out: Scored[] = [];
+  for (const body of bodies) {
+    const s = fitAll(short, body);
+    const l = fitAll(long, body);
+    for (const source of SOURCE_KEYS) {
+      const a = s[source], b = l[source];
+      if (!a || !b) continue;
+      const same = Math.sign(a.t) === Math.sign(b.t);
+      out.push({ source, body, score: same ? Math.min(Math.abs(a.t), Math.abs(b.t)) : 0, long: b });
+    }
   }
-  const empty = lags.map((lag) => ({ lag, estimate: null as Estimate | null }));
-  if (ys.length < MIN_ROWS) return empty;
-  const xs = regressors(source, mode, rows.map((r) => r[0]));
-  const cols = lags.flatMap((_, li) => xs.map((s) => rows.map((r) => r[li][s])));
-  const r = regress(ys, cols, 2);
-  return lags.map((lag, li) => ({ lag, estimate: toEstimate(r, li * xs.length + xs.indexOf(source), ys.length) }));
+  return out;
 }
 
-export type IntakeTarget = EnergySource | 'rest';
+/** 摂取だけを s 週ずらす（末尾は先頭へ回す）。体組成との関係だけが壊れ、それぞれの続き方は残る。 */
+function shiftIntake(weeks: Week[], s: number): Week[] {
+  return weeks.map((w, i) => ({ ...w, intake: weeks[(i + s) % weeks.length].intake }));
+}
 
-/** ある源が +100kcal の時期に、他の源（と自分以外の合計）が何 kcal 動くか。-100 なら完全に相殺している。 */
-export function intakeRelations(weeks: Week[], W: number) {
-  const rows = windowPairs(weeks, W).map((p) => p.intake);
-  return ENERGY_SOURCES.flatMap((x) => {
-    const targets: IntakeTarget[] = [...ENERGY_SOURCES.filter((s) => s !== x), 'rest'];
-    return targets.map((y) => {
-      const ys = rows.map((r) => (y === 'rest' ? r.kcal - r[x] : r[y]));
-      const est = rows.length >= MIN_ROWS ? toEstimate(regress(ys, [rows.map((r) => r[x])], W), 0, rows.length) : null;
-      return { x, y, estimate: est };
-    });
-  });
+function shiftsFor(n: number): number[] {
+  const all = n - 2 * MIN_SHIFT + 1;
+  const count = Math.min(all, MAX_SHIFTS);
+  return Array.from({ length: count }, (_, i) => MIN_SHIFT + Math.round((i * (all - 1)) / Math.max(count - 1, 1)));
 }
 
 /**
- * 散布図の点。固定するときは、他のカロリー源で説明できない分どうしを描く（傾きが係数と一致する）。
- * 単位が分かるよう、どちらも平均を足して元の水準に戻す。
+ * 確かな関係だけを、確かな順に返す。
+ *
+ * 期間を1週ずつずらして組を作るので、組どうしは独立でなく、t 値を正規分布で判定すると
+ * 関係が無くても大半の人で何かが「確か」に出てしまう。Newey-West の補正も、この記録の長さでは偶然を抑えきれない。
+ * そこで、摂取を何週もずらして体組成との関係だけを壊したデータを作り、全ての組み合わせの最大値と比べる。
+ * 組み合わせの多さによる偶然も、これで一緒に抑えられる。
  */
-export function scatterPoints(pairs: Pair[], source: SourceKey, body: BodyMetricKey, mode: Mode) {
-  const rows = pairs.filter((p) => p.delta[body] != null);
-  const x = rows.map((p) => p.intake[source]);
-  const y = rows.map((p) => p.delta[body]!);
-  const others = regressors(source, mode, rows.map((r) => r.intake)).filter((s) => s !== source);
-  if (others.length === 0) return x.map((xi, i) => ({ x: xi, y: y[i] }));
-  const cols = others.map((s) => rows.map((p) => p.intake[s]));
-  const fx = ols(x, cols), fy = ols(y, cols);
-  if (!fx || !fy) return x.map((xi, i) => ({ x: xi, y: y[i] }));
-  const mx = mean(x), my = mean(y);
-  return fx.resid.map((rx, i) => ({ x: rx + mx, y: fy.resid[i] + my }));
+export function findings(weeks: Week[]): FindingsResult {
+  const pairs = windowPairs(weeks, LONG_WEEKS);
+  const pairCount = (b: BodyMetricKey) => pairs.filter((p) => p.delta[b] != null).length;
+  const bodies = BODY_KEYS.filter((b) => pairCount(b) >= MIN_PAIRS);
+  // 1週増えるごとに、ずらし方も組も1つずつ増える。
+  const shiftsShort = MIN_SHIFTS - (weeks.length - 2 * MIN_SHIFT + 1);
+  if (bodies.length === 0 || shiftsShort > 0) {
+    const pairsShort = bodies.length > 0 ? 0 : MIN_PAIRS - Math.max(0, ...BODY_KEYS.map(pairCount));
+    return { kind: 'short', weeksNeeded: Math.max(shiftsShort, pairsShort) };
+  }
+
+  const maxes = shiftsFor(weeks.length)
+    .map((s) => Math.max(0, ...score(shiftIntake(weeks, s), bodies).map((x) => x.score)))
+    .sort((a, b) => a - b);
+  const threshold = maxes[Math.ceil(QUANTILE * maxes.length) - 1];
+
+  const out = score(weeks, bodies)
+    .filter((x) => x.score > threshold)
+    .map(({ source, body, score, long }) => {
+      const typical = sd(pairs.filter((p) => p.delta[body] != null).map((p) => p.intake[source]));
+      return { source, body, typical, change: long.coef * typical, score };
+    });
+  return { kind: 'ready', findings: out.sort((a, b) => b.score - a.score) };
+}
+
+// MARK: - 文
+
+const SOURCE_TEXT: Record<SourceKey, { lead: string; kcalPerGram?: number }> = {
+  kcal:    { lead: 'たくさん食べた' },
+  protein: { lead: 'タンパク質を多くとった', kcalPerGram: PROTEIN_KCAL },
+  fat:     { lead: '脂質を多くとった', kcalPerGram: FAT_KCAL },
+  carbs:   { lead: '炭水化物を多くとった', kcalPerGram: NET_CARBS_KCAL },
+  other:   { lead: 'PFC 以外のカロリーが多い' },
+};
+
+const METRIC_TEXT: Record<BodyMetricKey, { name: string; unit: string }> = {
+  weightKg:            { name: '体重',           unit: 'kg' },
+  bodyFatPercent:      { name: '体脂肪率',       unit: '%' },
+  muscleMassKg:        { name: '筋肉量',         unit: 'kg' },
+  muscleScore:         { name: '筋肉スコア',     unit: '' },
+  visceralFatLevel:    { name: '内臓脂肪レベル', unit: '' },
+  basalMetabolismKcal: { name: '基礎代謝',       unit: 'kcal' },
+  metabolicAge:        { name: '体内年齢',       unit: '歳' },
+  boneMassKg:          { name: '推定骨量',       unit: 'kg' },
+  bodyWaterPercent:    { name: '体水分率',       unit: '%' },
+};
+
+function amount(source: SourceKey, kcal: number): string {
+  const g = SOURCE_TEXT[source].kcalPerGram;
+  if (!g) return `${Math.round(kcal / 10) * 10}kcal`;
+  const grams = kcal / g;
+  return `${grams >= 10 ? Math.round(grams / 5) * 5 : Math.max(Math.round(grams), 1)}g`;
+}
+
+export function findingText(f: Finding): { headline: string; detail: string } {
+  const metric = METRIC_TEXT[f.body];
+  const up = f.change > 0;
+  const value = Number(Math.abs(f.change).toPrecision(2));
+  return {
+    headline: `${SOURCE_TEXT[f.source].lead}${LONG_WEEKS}週間の前後で、${metric.name}が${up ? '増える' : '減る'}傾向があります`,
+    detail: `ふだんより1日約${amount(f.source, f.typical)} 多いと、${up ? '+' : '−'}${value}${metric.unit} ほど`,
+  };
 }
