@@ -12,7 +12,13 @@ declare global {
           }): void;
           renderButton(
             parent: HTMLElement,
-            options: { theme: string; size: string; width: number; text: string }
+            options: {
+              theme: string;
+              size: string;
+              width: number;
+              text: string;
+              logo_alignment: string;
+            }
           ): void;
         };
       };
@@ -25,7 +31,7 @@ declare global {
           redirectURI: string;
           usePopup: boolean;
         }): void;
-        signIn(): Promise<{ authorization: { id_token: string } }>;
+        renderButton(): void;
       };
     };
   }
@@ -109,27 +115,69 @@ export async function renderGoogleButton(
       }
     },
   });
+  // Apple のボタンは暗い背景では白しか使えないため、Google も白(outline)に揃える
   window.google!.accounts.id.renderButton(container, {
-    theme: 'filled_black',
+    theme: 'outline',
     size: 'large',
-    width: 280,
+    width: Math.min(container.offsetWidth, 400),
     text: 'signin_with',
+    logo_alignment: 'center',
   });
 }
 
-export async function signInWithApple(): Promise<Session> {
+// Apple公式ボタンを描画する。ロゴはApple配布の素材以外を使えないため、自前で描かない。
+// 結果はdocumentへのイベントで届くので、購読を解除する関数を返す
+export function renderAppleButton(
+  container: HTMLElement,
+  onSuccess: () => void,
+  onError: (err: unknown) => void
+): () => void {
   const serviceId = import.meta.env.VITE_APPLE_SERVICE_ID;
-  if (!serviceId) {
-    throw new Error('Apple Sign-Inが設定されていません');
-  }
+  if (!serviceId) return () => {};
 
-  await loadScript(APPLE_SRC);
-  window.AppleID!.auth.init({
-    clientId: serviceId,
-    scope: '',
-    redirectURI: import.meta.env.VITE_APPLE_REDIRECT_URI ?? window.location.origin,
-    usePopup: true,
+  const handleSuccess = async (event: Event) => {
+    const { authorization } = (event as CustomEvent<{ authorization: { id_token: string } }>)
+      .detail;
+    try {
+      await signinWithIdentityToken('apple', authorization.id_token);
+      onSuccess();
+    } catch (err) {
+      onError(err);
+    }
+  };
+  const handleFailure = (event: Event) => {
+    const { error } = (event as CustomEvent<{ error: string }>).detail;
+    if (error !== 'popup_closed_by_user') onError(new Error(error));
+  };
+  document.addEventListener('AppleIDSignInOnSuccess', handleSuccess);
+  document.addEventListener('AppleIDSignInOnFailure', handleFailure);
+
+  // Google の large ボタンと高さ・角丸・ロゴ位置を揃える。角丸は高さに対する % で、10 が 4px
+  container.id = 'appleid-signin';
+  Object.assign(container.dataset, {
+    mode: 'center-align',
+    type: 'sign-in',
+    color: 'white',
+    border: 'false',
+    borderRadius: '10',
+    width: '100%',
+    height: '40',
   });
-  const { authorization } = await window.AppleID!.auth.signIn();
-  return await signinWithIdentityToken('apple', authorization.id_token);
+
+  loadScript(APPLE_SRC)
+    .then(() => {
+      window.AppleID!.auth.init({
+        clientId: serviceId,
+        scope: '',
+        redirectURI: import.meta.env.VITE_APPLE_REDIRECT_URI ?? window.location.origin,
+        usePopup: true,
+      });
+      window.AppleID!.auth.renderButton();
+    })
+    .catch(onError);
+
+  return () => {
+    document.removeEventListener('AppleIDSignInOnSuccess', handleSuccess);
+    document.removeEventListener('AppleIDSignInOnFailure', handleFailure);
+  };
 }

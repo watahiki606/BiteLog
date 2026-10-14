@@ -3,8 +3,8 @@ import { motion } from 'motion/react';
 import {
   isAppleLoginConfigured,
   isGoogleLoginConfigured,
+  renderAppleButton,
   renderGoogleButton,
-  signInWithApple,
 } from '@/lib/socialAuth';
 
 interface Props {
@@ -14,6 +14,7 @@ interface Props {
 export default function SetupModal({ onAuthenticated }: Props) {
   const [error, setError] = useState('');
   const googleButtonRef = useRef<HTMLDivElement>(null);
+  const appleButtonRef = useRef<HTMLDivElement>(null);
 
   const googleEnabled = isGoogleLoginConfigured();
   const appleEnabled = isAppleLoginConfigured();
@@ -28,21 +29,15 @@ export default function SetupModal({ onAuthenticated }: Props) {
     ).catch(() => setError('Googleサインインの読み込みに失敗しました'));
   }, [googleEnabled, onAuthenticated]);
 
-  async function handleAppleSignIn() {
-    setError('');
-    try {
-      await signInWithApple();
-      onAuthenticated();
-    } catch (err) {
-      // ユーザーがポップアップを閉じた場合もrejectされるため、メッセージは控えめにする
-      if (err instanceof Error && err.message.includes('サインイン')) {
-        setError(err.message);
-      }
-    }
-  }
+  useEffect(() => {
+    if (!appleEnabled || !appleButtonRef.current) return;
+    return renderAppleButton(appleButtonRef.current, onAuthenticated, () =>
+      setError('Appleサインインに失敗しました')
+    );
+  }, [appleEnabled, onAuthenticated]);
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-bg-deep neon-grid">
+    <div className="fixed inset-0 flex items-center justify-center px-4 bg-bg-deep neon-grid">
       <div className="scanlines" />
 
       <motion.div
@@ -73,21 +68,9 @@ export default function SetupModal({ onAuthenticated }: Props) {
           {socialEnabled ? (
             <div className="space-y-3">
               {googleEnabled && (
-                <div ref={googleButtonRef} className="flex justify-center" />
+                <div ref={googleButtonRef} />
               )}
-              {appleEnabled && (
-                <motion.button
-                  type="button"
-                  onClick={handleAppleSignIn}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full py-2.5 text-sm font-medium bg-white text-black flex items-center justify-center gap-2"
-                  style={{ borderRadius: 4 }}
-                >
-                  <span aria-hidden="true"></span>
-                  Appleでサインイン
-                </motion.button>
-              )}
+              {appleEnabled && <div ref={appleButtonRef} />}
             </div>
           ) : (
             <p className="text-xs text-muted-foreground tracking-wide">
