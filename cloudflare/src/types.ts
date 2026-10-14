@@ -5,6 +5,7 @@ export type Bindings = {
   GOOGLE_CLIENT_ID: string;
   // Web管理画面のソーシャルログイン用（未設定の場合はWebからのサインイン不可）
   GOOGLE_WEB_CLIENT_ID?: string;
+  GOOGLE_WEB_CLIENT_SECRET?: string;
   APPLE_WEB_SERVICE_ID?: string;
   OPENAI_API_KEY: string;
 };

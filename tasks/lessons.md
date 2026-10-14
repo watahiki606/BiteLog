@@ -365,3 +365,14 @@ lessons に既に書いてあるのに、また忘れてクローン側に書き
   ユーザーにもその結果で分析を説明していた。
 - **教訓**: 統計的に「確か」と言う仕組みを作ったら、係数が合うかだけでなく、関係の無いデータで誤って言う割合を必ず数える。
   特に、組どうしが重なる・時系列が続く・組み合わせが多いときは、教科書どおりの補正が足りないことが多い。
+
+## `_headers` の CSP は `vite dev` では当たらない
+
+- **やった間違い**: Apple 公式ボタンの見た目を `vite dev` で確かめて本番に出したら、本番だけ文字が明朝体で
+  引き伸ばされて崩れた。Apple のボタンは文字を `data:` の埋め込みフォントで描くが、本番の CSP の
+  `font-src` が `data:` を許していなかった
+- **原因**: `apps/web/public/_headers` は Cloudflare Pages が配信時に付けるヘッダーで、`vite dev` と
+  `vite preview` は読まない。手元では CSP なしで動いていた
+- **教訓**: 外部のスクリプトや iframe が描く部品を入れたら、`bun run build` のあと
+  `cd cloudflare && npx wrangler pages dev ../apps/web/dist --port 8788` で `_headers` を当てて確かめる。
+  `securitypolicyviolation` イベントを拾えば、違反の有無を目視に頼らず確認できる

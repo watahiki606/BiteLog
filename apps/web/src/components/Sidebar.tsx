@@ -32,9 +32,9 @@ export default function Sidebar({ activeTab, onTabChange, onLogout, isAdmin }: P
       {/* ブランド */}
       <div className="px-5 py-6 border-b border-border-dim">
         <GlitchText text="BITELOG" />
-        <div className="text-xs text-muted-foreground tracking-widest mt-1">
-          {isAdmin ? 'ADMIN v2.0' : 'USER MODE'}
-        </div>
+        {isAdmin && (
+          <div className="text-xs text-muted-foreground tracking-widest mt-1">ADMIN v2.0</div>
+        )}
       </div>
 
       {/* ナビゲーション */}

@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { motion } from 'motion/react';
 import {
   isAppleLoginConfigured,
   isGoogleLoginConfigured,
-  renderGoogleButton,
-  signInWithApple,
+  prepareGoogleSignIn,
+  renderAppleButton,
 } from '@/lib/socialAuth';
+
+const DOCS_URL = 'https://bitelog-docs.pages.dev';
 
 interface Props {
   onAuthenticated: () => void;
@@ -13,94 +14,69 @@ interface Props {
 
 export default function SetupModal({ onAuthenticated }: Props) {
   const [error, setError] = useState('');
-  const googleButtonRef = useRef<HTMLDivElement>(null);
+  const [startGoogleSignIn, setStartGoogleSignIn] = useState<() => void>();
+  const appleButtonRef = useRef<HTMLDivElement>(null);
 
   const googleEnabled = isGoogleLoginConfigured();
   const appleEnabled = isAppleLoginConfigured();
-  const socialEnabled = googleEnabled || appleEnabled;
 
   useEffect(() => {
-    if (!googleEnabled || !googleButtonRef.current) return;
-    renderGoogleButton(
-      googleButtonRef.current,
-      onAuthenticated,
-      () => setError('Googleサインインに失敗しました')
-    ).catch(() => setError('Googleサインインの読み込みに失敗しました'));
+    if (!googleEnabled) return;
+    prepareGoogleSignIn(onAuthenticated, () => setError('Googleサインインに失敗しました'))
+      .then((start) => setStartGoogleSignIn(() => start))
+      .catch(() => setError('Googleサインインの読み込みに失敗しました'));
   }, [googleEnabled, onAuthenticated]);
 
-  async function handleAppleSignIn() {
-    setError('');
-    try {
-      await signInWithApple();
-      onAuthenticated();
-    } catch (err) {
-      // ユーザーがポップアップを閉じた場合もrejectされるため、メッセージは控えめにする
-      if (err instanceof Error && err.message.includes('サインイン')) {
-        setError(err.message);
-      }
-    }
-  }
+  useEffect(() => {
+    if (!appleEnabled || !appleButtonRef.current) return;
+    return renderAppleButton(appleButtonRef.current, onAuthenticated, () =>
+      setError('Appleサインインに失敗しました')
+    );
+  }, [appleEnabled, onAuthenticated]);
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-bg-deep neon-grid">
-      <div className="scanlines" />
+    <div className="fixed inset-0 flex items-center justify-center px-4 bg-bg-deep">
+      <div className="w-full max-w-80 text-center">
+        <h1 className="text-2xl font-bold tracking-widest text-foreground">BiteLog</h1>
+        <p className="mt-2 text-sm text-muted-foreground">食事と体の記録をひとつに</p>
 
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: 'easeOut' }}
-        className="w-full max-w-sm"
-      >
-        <div
-          className="bg-bg-surface border border-border-dim p-8 relative"
-          style={{ boxShadow: '0 0 30px rgba(0,229,255,0.1), inset 0 0 30px rgba(0,0,0,0.5)' }}
-        >
-          {/* コーナーデコレーション */}
-          <span className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-neon-cyan" />
-          <span className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-neon-cyan" />
-          <span className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-neon-cyan" />
-          <span className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-neon-cyan" />
-
-          <div className="mb-8 text-center">
-            <div className="text-neon-cyan text-2xl font-bold tracking-widest text-glow-cyan mb-1">
-              BITELOG
-            </div>
-            <div className="text-muted-foreground text-xs tracking-widest uppercase">
-              Access Terminal
-            </div>
-          </div>
-
-          {socialEnabled ? (
-            <div className="space-y-3">
-              {googleEnabled && (
-                <div ref={googleButtonRef} className="flex justify-center" />
-              )}
-              {appleEnabled && (
-                <motion.button
-                  type="button"
-                  onClick={handleAppleSignIn}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full py-2.5 text-sm font-medium bg-white text-black flex items-center justify-center gap-2"
-                  style={{ borderRadius: 4 }}
-                >
-                  <span aria-hidden="true"></span>
-                  Appleでサインイン
-                </motion.button>
-              )}
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground tracking-wide">
-              ソーシャルログインが設定されていません。VITE_GOOGLE_CLIENT_ID または
-              VITE_APPLE_SERVICE_ID を設定してください。
-            </p>
+        <div className="mt-10 space-y-3">
+          {googleEnabled && (
+            // Apple公式ボタンと並べたときに揃うよう、高さ・角丸・文字の書体と大きさを合わせる。
+            // 枠線と配色はGoogleのLightテーマの指定どおり
+            <button
+              type="button"
+              onClick={() => startGoogleSignIn?.()}
+              disabled={!startGoogleSignIn}
+              className="flex h-10 w-full items-center justify-center gap-2 rounded bg-white text-[#1F1F1F] border border-[#747775] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon-cyan disabled:opacity-60"
+              style={{ fontFamily: 'system-ui, -apple-system, sans-serif', fontSize: 16, fontWeight: 600 }}
+            >
+              <img src="/google-g.svg" alt="" width={18} height={18} />
+              Googleでサインイン
+            </button>
           )}
-
-          {error && (
-            <p className="text-xs text-destructive tracking-wide mt-4">{error}</p>
-          )}
+          {appleEnabled && <div ref={appleButtonRef} />}
         </div>
-      </motion.div>
+
+        {error && <p className="mt-4 text-xs text-destructive">{error}</p>}
+
+        {!googleEnabled && !appleEnabled && (
+          <p className="mt-4 text-xs text-muted-foreground">
+            ソーシャルログインが設定されていません。VITE_GOOGLE_CLIENT_ID または
+            VITE_APPLE_SERVICE_ID を設定してください。
+          </p>
+        )}
+
+        <p className="mt-10 text-xs text-muted-foreground">
+          <a href={`${DOCS_URL}/terms`} className="hover:text-foreground">
+            利用規約
+          </a>
+          <span className="mx-2">·</span>
+          <a href={`${DOCS_URL}/privacy`} className="hover:text-foreground">
+            プライバシーポリシー
+          </a>
+        </p>
+      </div>
     </div>
   );
 }
