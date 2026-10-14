@@ -13,6 +13,7 @@ database_id = "cf39b710-956c-4f27-ae1a-6dbf7a6a0fef"
 
 # Web管理画面のソーシャルログインを有効にするには、以下も wrangler secret put で設定する
 # - GOOGLE_WEB_CLIENT_ID: Google Cloud ConsoleのWebアプリ用OAuthクライアントID（iOSと同じプロジェクト）
+# - GOOGLE_WEB_CLIENT_SECRET: 上記クライアントのシークレット。Webから届く認可コードをIDトークンに交換する
 # - APPLE_WEB_SERVICE_ID: Apple DeveloperのServices ID（例: com.watahiki.BiteLog.web）
 
 [dev]

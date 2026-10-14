@@ -5,21 +5,14 @@ declare global {
   interface Window {
     google?: {
       accounts: {
-        id: {
-          initialize(config: {
+        oauth2: {
+          initCodeClient(config: {
             client_id: string;
-            callback: (response: { credential: string }) => void;
-          }): void;
-          renderButton(
-            parent: HTMLElement,
-            options: {
-              theme: string;
-              size: string;
-              width: number;
-              text: string;
-              logo_alignment: string;
-            }
-          ): void;
+            scope: string;
+            ux_mode: 'popup';
+            callback: (response: { code?: string; error?: string }) => void;
+            error_callback: (error: { type: string }) => void;
+          }): { requestCode(): void };
         };
       };
     };
@@ -71,15 +64,16 @@ export function isAppleLoginConfigured(): boolean {
   return !!import.meta.env.VITE_APPLE_SERVICE_ID && window.location.protocol === 'https:';
 }
 
-// identityTokenをWorkerに送ってセッションJWTを取得・保存する
-async function signinWithIdentityToken(
-  provider: 'apple' | 'google',
-  identityToken: string
+// AppleのidentityTokenかGoogleの認可コードをWorkerに送ってセッションJWTを取得・保存する
+async function signin(
+  credential:
+    | { provider: 'apple'; identityToken: string }
+    | { provider: 'google'; authorizationCode: string }
 ): Promise<Session> {
   const res = await fetch(`${API_URL}/api/auth/signin`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ provider, identityToken }),
+    body: JSON.stringify(credential),
   });
   if (!res.ok) {
     throw new Error('サインインに失敗しました');
@@ -94,35 +88,39 @@ async function signinWithIdentityToken(
   return session;
 }
 
-// Google公式ボタンを描画する(GISはカスタムボタンからのID取得を許可していない)
-export async function renderGoogleButton(
-  container: HTMLElement,
+// Googleのポップアップを開く関数を返す。ポップアップはクリックと同じ流れで開かないとブロックされるため、
+// スクリプトの読み込みと初期化は先に済ませておく。
+// 公式ボタン部品(renderButton)は中身をGoogleが描き、形を揃えられないため使わない
+export async function prepareGoogleSignIn(
   onSuccess: () => void,
   onError: (err: unknown) => void
-): Promise<void> {
+): Promise<() => void> {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-  if (!clientId) return;
+  if (!clientId) throw new Error('VITE_GOOGLE_CLIENT_ID is not set');
 
   await loadScript(GIS_SRC);
-  window.google!.accounts.id.initialize({
+  const client = window.google!.accounts.oauth2.initCodeClient({
     client_id: clientId,
-    callback: async (response) => {
+    // Workerが使うのはIDトークンのsubだけなので、メールやプロフィールは求めない
+    scope: 'openid',
+    ux_mode: 'popup',
+    callback: async ({ code, error }) => {
+      if (!code) {
+        if (error !== 'access_denied') onError(new Error(error));
+        return;
+      }
       try {
-        await signinWithIdentityToken('google', response.credential);
+        await signin({ provider: 'google', authorizationCode: code });
         onSuccess();
       } catch (err) {
         onError(err);
       }
     },
+    error_callback: ({ type }) => {
+      if (type !== 'popup_closed') onError(new Error(type));
+    },
   });
-  // Apple のボタンは暗い背景では白しか使えないため、Google も白(outline)に揃える
-  window.google!.accounts.id.renderButton(container, {
-    theme: 'outline',
-    size: 'large',
-    width: Math.min(container.offsetWidth, 400),
-    text: 'signin_with',
-    logo_alignment: 'center',
-  });
+  return () => client.requestCode();
 }
 
 // Apple公式ボタンを描画する。ロゴはApple配布の素材以外を使えないため、自前で描かない。
@@ -139,7 +137,7 @@ export function renderAppleButton(
     const { authorization } = (event as CustomEvent<{ authorization: { id_token: string } }>)
       .detail;
     try {
-      await signinWithIdentityToken('apple', authorization.id_token);
+      await signin({ provider: 'apple', identityToken: authorization.id_token });
       onSuccess();
     } catch (err) {
       onError(err);
@@ -152,7 +150,8 @@ export function renderAppleButton(
   document.addEventListener('AppleIDSignInOnSuccess', handleSuccess);
   document.addEventListener('AppleIDSignInOnFailure', handleFailure);
 
-  // Google の large ボタンと高さ・角丸・ロゴ位置を揃える。角丸は高さに対する % で、10 が 4px
+  // 暗い背景では白しか使えない。左寄せモードは width: 100% で文字が折り返すため中央寄せにする。
+  // 角丸は高さに対する % で、10 が 4px
   container.id = 'appleid-signin';
   Object.assign(container.dataset, {
     mode: 'center-align',

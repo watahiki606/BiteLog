@@ -4,6 +4,7 @@ import type { Bindings, Variables } from '../types';
 
 const APPLE_KEYS_URL = 'https://appleid.apple.com/auth/keys';
 const GOOGLE_KEYS_URL = 'https://www.googleapis.com/oauth2/v3/certs';
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
 // iOSアプリのBundle ID（Appleトークンのaud）
 export const APPLE_BUNDLE_ID = 'com.watahiki.BiteLog';
@@ -65,6 +66,30 @@ export async function verifyAppleToken(
   if (!allowedAudiences.includes(payload.aud)) throw new Error('Invalid Apple token audience');
   if (!payload.sub) throw new Error('No sub in Apple token');
   return `apple:${payload.sub}`;
+}
+
+// Webのポップアップで得た認可コードをIDトークンに交換する。
+// redirect_uri にはコードを要求したページのオリジンを渡す決まりになっている
+export async function exchangeGoogleAuthorizationCode(
+  code: string,
+  clientId: string,
+  clientSecret: string,
+  redirectUri: string
+): Promise<string> {
+  const res = await fetch(GOOGLE_TOKEN_URL, {
+    method: 'POST',
+    body: new URLSearchParams({
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri,
+      grant_type: 'authorization_code',
+    }),
+  });
+  if (!res.ok) throw new Error(`Google token exchange failed: ${res.status}`);
+  const { id_token } = (await res.json()) as { id_token?: string };
+  if (!id_token) throw new Error('Google token exchange returned no id_token');
+  return id_token;
 }
 
 // Google identityToken検証
