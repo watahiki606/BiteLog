@@ -32,8 +32,9 @@ class AIFoodAnalyzer {
     }
 
     // 画像をリサイズしてBase64に変換
-    guard let resizedImage = resizeImage(image, maxSize: 1024),
-          let imageData = resizedImage.jpegData(compressionQuality: 0.8) else {
+    guard let imageData = Self.resizedForUpload(image, maxPixelSize: Self.uploadMaxPixelSize)
+      .jpegData(compressionQuality: 0.8)
+    else {
       throw AnalysisError.imageProcessingFailed
     }
 
@@ -61,17 +62,25 @@ class AIFoodAnalyzer {
     }
   }
 
-  // 画像をリサイズ
-  private func resizeImage(_ image: UIImage, maxSize: CGFloat) -> UIImage? {
-    let size = image.size
-    let ratio = min(maxSize / size.width, maxSize / size.height)
+  /// 1024 では成分表示の小さな文字を読み違え、2048 以上では精度が上がらずトークンだけ増えた。
+  static let uploadMaxPixelSize: CGFloat = 1536
+
+  /// 長辺が maxPixelSize ピクセルに収まるよう縮める。小さい画像はそのまま返す。
+  ///
+  /// UIImage.size はポイントなので、倍率を掛けてピクセルで比べる。描くときも倍率 1 にしないと、
+  /// UIGraphicsImageRenderer が画面の倍率で描き、iPhone では3倍のピクセル数になる。
+  static func resizedForUpload(_ image: UIImage, maxPixelSize: CGFloat) -> UIImage {
+    let pixelSize = CGSize(width: image.size.width * image.scale, height: image.size.height * image.scale)
+    let ratio = min(maxPixelSize / pixelSize.width, maxPixelSize / pixelSize.height)
 
     if ratio >= 1 {
       return image
     }
 
-    let newSize = CGSize(width: size.width * ratio, height: size.height * ratio)
-    let renderer = UIGraphicsImageRenderer(size: newSize)
+    let newSize = CGSize(width: (pixelSize.width * ratio).rounded(), height: (pixelSize.height * ratio).rounded())
+    let format = UIGraphicsImageRendererFormat()
+    format.scale = 1
+    let renderer = UIGraphicsImageRenderer(size: newSize, format: format)
 
     return renderer.image { _ in
       image.draw(in: CGRect(origin: .zero, size: newSize))
