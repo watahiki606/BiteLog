@@ -1,6 +1,5 @@
-BiteLog now works with a body composition scale.
+Reading nutrition from a photo is now more accurate.
 
-- Step on a supported Bluetooth scale and your weight and body fat appear on that day's log
-- The Statistics screen shows your meals and body composition side by side
-- See how much you have left before reaching each goal
-- You're now told when saving or loading fails
+- Values on a nutrition label are now calculated for the size of the package
+- When a photo shows food for several people, one serving is logged
+- Photos are sent at a smaller size, so reading them takes less time
