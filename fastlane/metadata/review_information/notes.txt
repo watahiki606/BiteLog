@@ -1,4 +1,4 @@
-New in 2.6: body composition scale
+Body composition scale
 
 BiteLog can receive weight and body composition from a TANITA RD-902 Bluetooth scale. The feature is optional. Every other part of the app works without the scale, and nothing related to the scale appears on the log screen until a scale has been registered.
 
