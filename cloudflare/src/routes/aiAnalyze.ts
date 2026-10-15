@@ -5,26 +5,29 @@ import { authMiddleware } from '../middleware/auth';
 const aiAnalyze = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 aiAnalyze.use('*', authMiddleware);
 
-const PROMPT = `Analyze this image and return nutrition information for the food shown.
+const SYSTEM_PROMPT = `You estimate nutrition from a food photo for a meal-logging app. The app saves your answer as what the user is eating right now, so every value must describe the amount one person eats in this sitting.
 
-IMPORTANT - Nutrition Label Reading:
-If the image contains a nutrition facts label (package/product label), prioritize reading the text:
-- Calories/Energy/カロリー/熱量
-- Protein/たんぱく質/タンパク質
-- Fat/脂質
-- Sugar/Carbohydrate/糖質
-- Dietary Fiber/食物繊維
-- Total Carbohydrates/炭水化物
-If "糖質" and "食物繊維" are both listed, use those values directly. If only "炭水化物" is listed, set sugar = 炭水化物 and dietaryFiber = 0.
-If a nutrition label is present, set confidence to "high".
+Deciding the amount
+- Nutrition label given per 100 g or 100 ml: scale every value to the full content of the package (内容量). For example, 250 kcal per 100 g in a 120 g pack becomes 300 kcal for 120 g.
+- Nutrition label given per unit (1個, 1本, 1袋, 1包装, 1缶, 1食): return that one unit as printed, even when the box holds several.
+- Food without a label: estimate one person's serving. When the same dish is served for several people, or other plates appear in the background, count only the main plate in the foreground and the side dishes that go with it. Add up the different dishes that make up that one person's meal.
+- portion and portionUnit state that amount, e.g. 120 g, 500 ml, 1 個, 1 人前.
 
-IMPORTANT - Portion:
-"portion"/"portionUnit" describe BOTH the basis for all returned nutrition values AND the amount the user is about to log as eaten right now - they refer to the same quantity.
-- If a nutrition label shows "per 100g" values but the visible package/container holds a different total amount, scale ALL nutrition values up from the label to the whole package, and set portion to the package's total size (not 100) with its unit.
-- If the photo shows a dish or serving without a label, set portion/portionUnit to a sensible amount for what is shown (e.g., 1 "人前", or an estimated weight in g) and provide nutrition values for that whole amount.
-- For multiple items in one photo, sum the totals into a single result and set portion/portionUnit to describe the combined amount.
+Reading a nutrition label
+- Copy the printed numbers as they are, then scale them only when the rules above require it.
+- Energy is エネルギー or 熱量. Protein is たんぱく質 or 蛋白質. Fat is 脂質.
+- sugar means 糖質, the net carbohydrates. If 糖質 and 食物繊維 are printed, use them. If only 炭水化物 and 食物繊維 are printed, sugar is 炭水化物 minus 食物繊維. If only 炭水化物 is printed, sugar is 炭水化物 and dietaryFiber is 0.
 
-If a user note is provided, use it to identify the product/dish, resolve visual ambiguity (e.g., regular vs. sugar-free version), and account for any amount actually consumed (e.g., "half eaten").`;
+productName
+- Write it in Japanese. Start with the general name of the food, such as 親子丼, 鮭おにぎり or 缶コーヒー, and put the product name or details after it in （）. The app looks up the user's past logs with the text before the first space or bracket.
+- Use a name printed on the package as written. Do not add a brand, flavor or product line you cannot see. Do not add words such as 推定.
+
+confidence
+- high: the values come from a nutrition label.
+- medium: the dish is clear and the amount is a typical serving.
+- low: the dish or the amount is uncertain.
+
+The user may add a note. The note overrides what the photo suggests: use it to identify the food and to adjust the amount actually eaten, such as 半分残した, 2個食べた or 全部.`;
 
 const RESPONSE_SCHEMA = {
   type: 'json_schema',
@@ -36,35 +39,35 @@ const RESPONSE_SCHEMA = {
       properties: {
         productName: {
           type: 'string',
-          description: 'Product or dish name in Japanese',
+          description: 'Japanese name: the general food name first, details in （）',
         },
         calories: {
           type: 'number',
-          description: 'Total calories in kcal for the "portion" amount',
+          description: 'kcal for the portion',
         },
         protein: {
           type: 'number',
-          description: 'Protein in grams for the "portion" amount',
+          description: 'Protein in grams for the portion',
         },
         fat: {
           type: 'number',
-          description: 'Fat in grams for the "portion" amount',
+          description: 'Fat in grams for the portion',
         },
         sugar: {
           type: 'number',
-          description: '糖質 (sugar/net carbs) in grams for the "portion" amount',
+          description: '糖質 (net carbohydrates) in grams for the portion',
         },
         dietaryFiber: {
           type: 'number',
-          description: '食物繊維 in grams for the "portion" amount',
+          description: '食物繊維 in grams for the portion',
         },
         portion: {
           type: 'number',
-          description: 'The amount that the nutrition values represent and that the user is logging now',
+          description: 'The amount the user is eating now',
         },
         portionUnit: {
           type: 'string',
-          description: 'Unit for portion, e.g. g, ml, 個, 人前',
+          description: 'Unit of portion, e.g. g, ml, 個, 人前',
         },
         confidence: {
           type: 'string',
@@ -94,17 +97,20 @@ aiAnalyze.post('/analyze-food', async (c) => {
     return c.json({ error: 'imageBase64 is required' }, 400);
   }
 
-  const messageContent: Array<
-    { type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }
-  > = [{ type: 'text', text: PROMPT }];
+  const userContent: Array<
+    | { type: 'text'; text: string }
+    | { type: 'image_url'; image_url: { url: string; detail: 'high' } }
+  > = [];
 
   if (typeof body.note === 'string' && body.note.trim()) {
-    messageContent.push({ type: 'text', text: `User note: ${body.note.trim()}` });
+    userContent.push({ type: 'text', text: `User note: ${body.note.trim()}` });
   }
 
-  messageContent.push({
+  // detail を指定しないと GPT-6 Luna は画像をほぼ原寸で数える。古いアプリは長辺約3072pxで送ってくるので、
+  // high で上限をかける。今のアプリが送る1536pxはこの上限に収まり、縮められない
+  userContent.push({
     type: 'image_url',
-    image_url: { url: `data:image/jpeg;base64,${body.imageBase64}` },
+    image_url: { url: `data:image/jpeg;base64,${body.imageBase64}`, detail: 'high' },
   });
 
   let openaiRes: Response;
@@ -116,9 +122,14 @@ aiAnalyze.post('/analyze-food', async (c) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-mini',
-        reasoning_effort: 'minimal',
-        messages: [{ role: 'user', content: messageContent }],
+        model: 'gpt-6-luna',
+        // 公式の移行ガイドは minimal なら low から比べるよう勧めている。実写真で比べると
+        // none のほうが速く安く、成分表示の読み違いも少なかった
+        reasoning_effort: 'none',
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: userContent },
+        ],
         response_format: RESPONSE_SCHEMA,
         max_completion_tokens: 4096,
       }),

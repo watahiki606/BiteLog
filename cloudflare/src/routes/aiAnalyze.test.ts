@@ -95,7 +95,7 @@ describe('POST /api/ai/analyze-food', () => {
     });
   });
 
-  it('OpenAIへのリクエストでStructured OutputsとminimalなreasoningEffortを指定する', async () => {
+  it('GPT-6 Luna に推論なしで、Structured Outputs を指定して送る', async () => {
     await analyzeFood({ imageBase64: 'dummy' }, await authHeader());
 
     const reqBody = lastOpenaiRequestBody as {
@@ -103,30 +103,40 @@ describe('POST /api/ai/analyze-food', () => {
       reasoning_effort: string;
       response_format: { type: string; json_schema: { strict: boolean } };
     };
-    expect(reqBody.model).toBe('gpt-5-mini');
-    expect(reqBody.reasoning_effort).toBe('minimal');
+    expect(reqBody.model).toBe('gpt-6-luna');
+    expect(reqBody.reasoning_effort).toBe('none');
     expect(reqBody.response_format.type).toBe('json_schema');
     expect(reqBody.response_format.json_schema.strict).toBe(true);
   });
 
-  it('noteを指定すると画像と一緒にユーザーの補足情報を送信する', async () => {
-    await analyzeFood({ imageBase64: 'dummy', note: 'マクドナルドのビッグマック' }, await authHeader());
+  it('指示は system に置き、user には画像だけを送る', async () => {
+    await analyzeFood({ imageBase64: 'abc' }, await authHeader());
 
-    const reqBody = lastOpenaiRequestBody as {
-      messages: Array<{ content: Array<{ type: string; text?: string }> }>;
-    };
-    const textParts = reqBody.messages[0].content.filter((part) => part.type === 'text');
-    expect(textParts.some((part) => part.text?.includes('マクドナルドのビッグマック'))).toBe(true);
+    const { messages } = lastOpenaiRequestBody as { messages: Array<{ role: string; content: unknown }> };
+    expect(messages.map((m) => m.role)).toEqual(['system', 'user']);
+    expect(typeof messages[0].content).toBe('string');
+    expect(messages[1].content).toEqual([
+      { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,abc', detail: 'high' } },
+    ]);
   });
 
-  it('noteが空文字の場合は補足テキストを追加しない', async () => {
+  it('noteを指定すると user に補足として画像の前に付ける', async () => {
+    await analyzeFood({ imageBase64: 'dummy', note: ' マクドナルドのビッグマック ' }, await authHeader());
+
+    const { messages } = lastOpenaiRequestBody as {
+      messages: Array<{ role: string; content: Array<{ type: string; text?: string }> }>;
+    };
+    expect(messages[1].content[0]).toEqual({ type: 'text', text: 'User note: マクドナルドのビッグマック' });
+    expect(messages[1].content[1].type).toBe('image_url');
+  });
+
+  it('noteが空白だけの場合は補足を付けない', async () => {
     await analyzeFood({ imageBase64: 'dummy', note: '   ' }, await authHeader());
 
-    const reqBody = lastOpenaiRequestBody as {
-      messages: Array<{ content: Array<{ type: string; text?: string }> }>;
+    const { messages } = lastOpenaiRequestBody as {
+      messages: Array<{ role: string; content: Array<{ type: string }> }>;
     };
-    const textParts = reqBody.messages[0].content.filter((part) => part.type === 'text');
-    expect(textParts).toHaveLength(1);
+    expect(messages[1].content.map((part) => part.type)).toEqual(['image_url']);
   });
 
   it('OpenAIが429を返した場合はレート制限エラーになる', async () => {
