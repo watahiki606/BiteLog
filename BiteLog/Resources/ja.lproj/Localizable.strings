@@ -162,10 +162,20 @@
 "Reselect" = "再選択";
 "Analyze" = "分析する";
 "Note (optional)" = "補足メモ(任意)";
-"e.g. Brand/product name, amount eaten, etc." = "例: 店名・商品名、食べた量など";
 
 // AI Analysis
 "Analyzing food..." = "料理を分析中...";
+"Store or product name" = "お店・商品名";
+"e.g. Sushiro salmon avocado" = "例: スシロー サーモンアボカド";
+"e.g. Left half, ate two" = "例: 半分残した、2個食べた";
+"Looking up official nutrition facts..." = "公式の栄養成分を調べています...";
+"Registered foods" = "登録済みの食品";
+"Look up official nutrition facts" = "公式の栄養成分を調べる";
+"We look up the nutrition facts the store or maker publishes and replace the values. This takes about 10 seconds." = "お店やメーカーが公開している栄養成分を探して、値を入れ替えます。10秒ほどかかります";
+"Values found on the web" = "Web で調べた値です";
+"Source: %@" = "出典: %@";
+"Stores often publish only calories, so the other nutrients may be estimates." = "お店が公開しているのはカロリーだけのことが多く、ほかの栄養素は推定を含みます";
+"No official values were found, so these are estimated from the photo." = "公式の値が見つからず、写真から推定しました";
 "Analysis Complete" = "分析完了";
 "Analysis Result" = "分析結果";
 "Tap to edit values" = "タップして値を編集";
@@ -301,7 +311,6 @@
 "Remaining %@" = "あと %@";
 
 // 写真解析の候補
-"You've logged this before" = "前にも記録しています";
 "Pick one to log it without adding a new food. The ones you eat often then rise to the top of search." = "選ぶと新しい食品を作らずに記録できます。よく食べるものほど検索の上に出るようになります。";
 
 // 体組成計からの取り込み

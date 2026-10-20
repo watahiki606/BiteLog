@@ -29,93 +29,167 @@ confidence
 
 The user may add a note. The note overrides what the photo suggests: use it to identify the food and to adjust the amount actually eaten, such as 半分残した, 2個食べた or 全部.`;
 
-const RESPONSE_SCHEMA = {
+// 店名が入ったときだけ足す。評価では、店名が無いのに検索させると皿の形から店を決めつけて調べ、
+// 費用も約10倍になったので、検索は店名があるときに限る
+const NAMED_RULES = `
+
+The user named the restaurant or product
+- The user's message gives the restaurant or product name. Search the web for the official nutrition values published by that restaurant or manufacturer for this item.
+- If a nutrition label is visible in the photo, use the label and do not search.
+- When several menu items match the name, pick the one that matches the photo.
+- Official values are often given per plate, per set or per package. Scale them to the amount in the photo and in the note. For example, when the official value is for a plate of two pieces and the photo shows one piece, return one piece.
+- If you cannot find official values for this item, estimate from the photo as described above.
+
+basis
+- label: the values come from a nutrition label in the photo.
+- official: the values come from nutrition values published by the restaurant or manufacturer.
+- estimate: you estimated the values from the photo.
+
+sourceUrl
+- When basis is official, the URL of the page you took the values from. Otherwise an empty string.`;
+
+const RESPONSE_FORMAT = {
   type: 'json_schema',
-  json_schema: {
-    name: 'food_nutrition_analysis',
-    strict: true,
-    schema: {
-      type: 'object',
-      properties: {
-        productName: {
-          type: 'string',
-          description: 'Japanese name: the general food name first, details in （）',
-        },
-        calories: {
-          type: 'number',
-          description: 'kcal for the portion',
-        },
-        protein: {
-          type: 'number',
-          description: 'Protein in grams for the portion',
-        },
-        fat: {
-          type: 'number',
-          description: 'Fat in grams for the portion',
-        },
-        sugar: {
-          type: 'number',
-          description: '糖質 (net carbohydrates) in grams for the portion',
-        },
-        dietaryFiber: {
-          type: 'number',
-          description: '食物繊維 in grams for the portion',
-        },
-        portion: {
-          type: 'number',
-          description: 'The amount the user is eating now',
-        },
-        portionUnit: {
-          type: 'string',
-          description: 'Unit of portion, e.g. g, ml, 個, 人前',
-        },
-        confidence: {
-          type: 'string',
-          enum: ['high', 'medium', 'low'],
-        },
+  name: 'food_nutrition_analysis',
+  strict: true,
+  schema: {
+    type: 'object',
+    properties: {
+      productName: {
+        type: 'string',
+        description: 'Japanese name: the general food name first, details in （）',
       },
-      required: [
-        'productName',
-        'calories',
-        'protein',
-        'fat',
-        'sugar',
-        'dietaryFiber',
-        'portion',
-        'portionUnit',
-        'confidence',
-      ],
-      additionalProperties: false,
+      calories: {
+        type: 'number',
+        description: 'kcal for the portion',
+      },
+      protein: {
+        type: 'number',
+        description: 'Protein in grams for the portion',
+      },
+      fat: {
+        type: 'number',
+        description: 'Fat in grams for the portion',
+      },
+      sugar: {
+        type: 'number',
+        description: '糖質 (net carbohydrates) in grams for the portion',
+      },
+      dietaryFiber: {
+        type: 'number',
+        description: '食物繊維 in grams for the portion',
+      },
+      portion: {
+        type: 'number',
+        description: 'The amount the user is eating now',
+      },
+      portionUnit: {
+        type: 'string',
+        description: 'Unit of portion, e.g. g, ml, 個, 人前',
+      },
+      confidence: {
+        type: 'string',
+        enum: ['high', 'medium', 'low'],
+      },
     },
+    required: [
+      'productName',
+      'calories',
+      'protein',
+      'fat',
+      'sugar',
+      'dietaryFiber',
+      'portion',
+      'portionUnit',
+      'confidence',
+    ],
+    additionalProperties: false,
   },
 };
 
+const NAMED_RESPONSE_FORMAT = {
+  ...RESPONSE_FORMAT,
+  schema: {
+    ...RESPONSE_FORMAT.schema,
+    properties: {
+      ...RESPONSE_FORMAT.schema.properties,
+      basis: { type: 'string', enum: ['label', 'official', 'estimate'] },
+      sourceUrl: { type: 'string', description: 'URL of the page the official values came from, or empty' },
+    },
+    required: [...RESPONSE_FORMAT.schema.required, 'basis', 'sourceUrl'],
+  },
+};
+
+// 使う項目だけを書く。type が web_search_call なら action、message なら content を持つ
+// 写真だけの解析で足す。結果画面の「公式の栄養成分を調べる」に、この名前を入れておく。
+// 見た目から店を決めつけると見当違いの店を調べるので、ロゴや文字が見えるときだけにする
+const GUESS_RULES = `
+
+menuGuess
+- If a logo, a store name or a product name is visible on the plate, cup, tray, package or receipt, write the restaurant or brand name, a space, and the menu or product name, e.g. スシロー サーモンアボカド.
+- Do not guess the restaurant from how the food looks. If no store or brand is visible, return an empty string.`;
+
+const PHOTO_RESPONSE_FORMAT = {
+  ...RESPONSE_FORMAT,
+  schema: {
+    ...RESPONSE_FORMAT.schema,
+    properties: { ...RESPONSE_FORMAT.schema.properties, menuGuess: { type: 'string' } },
+    required: [...RESPONSE_FORMAT.schema.required, 'menuGuess'],
+  },
+};
+
+type OpenAIOutputItem = {
+  type: string;
+  action?: { sources?: Array<{ url?: string }> };
+  content?: Array<{ type: string; text?: string }>;
+};
+
 aiAnalyze.post('/analyze-food', async (c) => {
-  const body = await c.req.json<{ imageBase64?: string; note?: string }>();
+  const body = await c.req.json<{ imageBase64?: string; note?: string; menuName?: string }>();
 
   if (!body.imageBase64 || typeof body.imageBase64 !== 'string') {
     return c.json({ error: 'imageBase64 is required' }, 400);
   }
 
+  const menuName = typeof body.menuName === 'string' ? body.menuName.trim() : '';
+  const note = typeof body.note === 'string' ? body.note.trim() : '';
+
   const userContent: Array<
-    | { type: 'text'; text: string }
-    | { type: 'image_url'; image_url: { url: string; detail: 'high' } }
+    | { type: 'input_text'; text: string }
+    | { type: 'input_image'; image_url: string; detail: 'high' }
   > = [];
 
-  if (typeof body.note === 'string' && body.note.trim()) {
-    userContent.push({ type: 'text', text: `User note: ${body.note.trim()}` });
-  }
+  if (menuName) userContent.push({ type: 'input_text', text: `Restaurant or product: ${menuName}` });
+  if (note) userContent.push({ type: 'input_text', text: `User note: ${note}` });
 
   // detail を指定しないと GPT-6 Luna は画像をほぼ原寸で数える。古いアプリは長辺約3072pxで送ってくるので、
   // high で上限をかける。今のアプリが送る1536pxはこの上限に収まり、縮められない
   userContent.push({
-    type: 'image_url',
-    image_url: { url: `data:image/jpeg;base64,${body.imageBase64}`, detail: 'high' },
+    type: 'input_image',
+    image_url: `data:image/jpeg;base64,${body.imageBase64}`,
+    detail: 'high',
   });
+
+  const request = menuName
+    ? {
+        // none のまま検索させると、成分表示が写っていても調べ直して個数を変えることがあった
+        reasoning: { effort: 'low' },
+        instructions: SYSTEM_PROMPT + NAMED_RULES,
+        text: { format: NAMED_RESPONSE_FORMAT },
+        tools: [{ type: 'web_search' }],
+        include: ['web_search_call.action.sources'],
+      }
+    : {
+        // 公式の移行ガイドは minimal なら low から比べるよう勧めている。実写真で比べると
+        // none のほうが速く安く、成分表示の読み違いも少なかった
+        reasoning: { effort: 'none' },
+        instructions: SYSTEM_PROMPT + GUESS_RULES,
+        text: { format: PHOTO_RESPONSE_FORMAT },
+      };
 
   let openaiRes: Response;
   try {
-    openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+    openaiRes = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${c.env.OPENAI_API_KEY}`,
@@ -123,15 +197,10 @@ aiAnalyze.post('/analyze-food', async (c) => {
       },
       body: JSON.stringify({
         model: 'gpt-6-luna',
-        // 公式の移行ガイドは minimal なら low から比べるよう勧めている。実写真で比べると
-        // none のほうが速く安く、成分表示の読み違いも少なかった
-        reasoning_effort: 'none',
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userContent },
-        ],
-        response_format: RESPONSE_SCHEMA,
-        max_completion_tokens: 4096,
+        ...request,
+        input: [{ role: 'user', content: userContent }],
+        max_output_tokens: 4096,
+        store: false,
       }),
     });
   } catch {
@@ -144,11 +213,11 @@ aiAnalyze.post('/analyze-food', async (c) => {
     return c.json({ error: 'AI service error' }, 500);
   }
 
-  const openaiData = await openaiRes.json<{
-    choices: Array<{ message: { content: string } }>;
-  }>();
+  const openaiData = await openaiRes.json<{ output?: OpenAIOutputItem[] }>();
+  const output = openaiData.output ?? [];
 
-  const content = openaiData.choices?.[0]?.message?.content;
+  const message = output.find((item) => item.type === 'message');
+  const content = message?.content?.find((part) => part.type === 'output_text')?.text;
   if (!content) {
     return c.json({ error: 'No content from AI' }, 500);
   }
@@ -160,7 +229,7 @@ aiAnalyze.post('/analyze-food', async (c) => {
     return c.json({ error: 'Failed to parse AI response' }, 500);
   }
 
-  return c.json({
+  const result = {
     calories: (parsed['calories'] as number) ?? 0,
     protein: (parsed['protein'] as number) ?? 0,
     fat: (parsed['fat'] as number) ?? 0,
@@ -170,6 +239,23 @@ aiAnalyze.post('/analyze-food', async (c) => {
     portionUnit: (parsed['portionUnit'] as string) ?? '人前',
     confidence: (parsed['confidence'] as string) ?? 'medium',
     productName: (parsed['productName'] as string) ?? '不明な料理',
+  };
+  if (!menuName) {
+    const menuGuess = typeof parsed['menuGuess'] === 'string' ? parsed['menuGuess'].trim() : '';
+    return c.json({ ...result, ...(menuGuess ? { menuGuess } : {}) });
+  }
+
+  // モデルは開いていないページの URL を書くことがある。検索で実際に見たページだけを出典にする
+  const searchedUrls = new Set(
+    output
+      .filter((item) => item.type === 'web_search_call')
+      .flatMap((item) => (item.action?.sources ?? []).map((source) => source.url))
+  );
+  const sourceUrl = parsed['sourceUrl'];
+  return c.json({
+    ...result,
+    basis: (parsed['basis'] as string) ?? 'estimate',
+    ...(typeof sourceUrl === 'string' && searchedUrls.has(sourceUrl) ? { sourceUrl } : {}),
   });
 });
 

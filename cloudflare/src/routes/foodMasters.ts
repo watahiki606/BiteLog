@@ -22,43 +22,33 @@ const foodMasters = new Hono<{ Bindings: Bindings; Variables: Variables }>()
     const offset = parseInt(c.req.query('offset') ?? '0');
     const onlyMine = c.req.query('onlyMine') === 'true';
 
-    let rows: FoodMasterRow[];
-    let total: number;
-
-    if (q) {
-      const pattern = `%${q}%`;
-      const mineClause = onlyMine ? 'AND fm.created_by = ?' : '';
-      const mineBinds = onlyMine ? [userId] : [];
-      const [dataResult, countResult] = await Promise.all([
-        c.env.DB.prepare(
-          `SELECT ${FM_SELECT} ${FM_JOIN}
-           WHERE (fm.brand_name LIKE ? OR fm.product_name LIKE ?) ${mineClause}
-           ORDER BY usage_count DESC, ufs.last_used_date DESC
-           LIMIT ? OFFSET ?`
-        ).bind(userId, pattern, pattern, ...mineBinds, limit, offset).all<FoodMasterRow>(),
-        c.env.DB.prepare(
-          `SELECT COUNT(*) as count FROM food_masters
-           WHERE (brand_name LIKE ? OR product_name LIKE ?) ${mineClause}`
-        ).bind(pattern, pattern, ...mineBinds).first<{ count: number }>(),
-      ]);
-      rows = dataResult.results;
-      total = countResult?.count ?? 0;
-    } else {
-      const mineClause = onlyMine ? 'WHERE fm.created_by = ?' : '';
-      const mineBinds = onlyMine ? [userId] : [];
-      const countClause = onlyMine ? 'WHERE created_by = ?' : '';
-      const [dataResult, countResult] = await Promise.all([
-        c.env.DB.prepare(
-          `SELECT ${FM_SELECT} ${FM_JOIN} ${mineClause}
-           ORDER BY usage_count DESC, ufs.last_used_date DESC
-           LIMIT ? OFFSET ?`
-        ).bind(userId, ...mineBinds, limit, offset).all<FoodMasterRow>(),
-        c.env.DB.prepare(`SELECT COUNT(*) as count FROM food_masters ${countClause}`)
-          .bind(...mineBinds).first<{ count: number }>(),
-      ]);
-      rows = dataResult.results;
-      total = countResult?.count ?? 0;
+    // 「スシロー サーモン」のように店名と品名を並べて探せるよう、語ごとにブランド名か商品名に含まれることを求める
+    const words = q.split(/\s+/).filter(Boolean);
+    const conditions: string[] = [];
+    const binds: string[] = [];
+    for (const word of words) {
+      // LIKE は D1 でパターン長に上限があり、長い商品名で探すと SQL がエラーになる。
+      // instr なら長さの上限が無い。lower で英字の大文字小文字を区別しない点は LIKE と同じにする
+      conditions.push('(instr(lower(fm.brand_name), lower(?)) > 0 OR instr(lower(fm.product_name), lower(?)) > 0)');
+      binds.push(word, word);
     }
+    if (onlyMine) {
+      conditions.push('fm.created_by = ?');
+      binds.push(userId);
+    }
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const [dataResult, countResult] = await Promise.all([
+      c.env.DB.prepare(
+        `SELECT ${FM_SELECT} ${FM_JOIN} ${where}
+         ORDER BY usage_count DESC, ufs.last_used_date DESC
+         LIMIT ? OFFSET ?`
+      ).bind(userId, ...binds, limit, offset).all<FoodMasterRow>(),
+      c.env.DB.prepare(`SELECT COUNT(*) as count FROM food_masters fm ${where}`)
+        .bind(...binds).first<{ count: number }>(),
+    ]);
+    const rows = dataResult.results;
+    const total = countResult?.count ?? 0;
 
     const isAdmin = c.get('isAdmin');
     return c.json({

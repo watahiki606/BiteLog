@@ -1,3 +1,4 @@
+import OSLog
 import SwiftUI
 import PhotosUI
 
@@ -30,7 +31,7 @@ struct PhotoPickerView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
               TextField(
-                NSLocalizedString("e.g. Brand/product name, amount eaten, etc.", comment: "Placeholder"),
+                NSLocalizedString("e.g. Left half, ate two", comment: "Placeholder"),
                 text: $note
               )
               .textFieldStyle(.roundedBorder)
@@ -171,18 +172,29 @@ struct ImagePicker: UIViewControllerRepresentable {
 
 // AI分析結果表示画面
 struct AIAnalysisResultView: View {
+  private static let logger = Logger(
+    subsystem: Bundle.main.bundleIdentifier ?? "com.bitelog", category: "PhotoAnalysis")
+
   @Environment(\.dismiss) var dismiss
 
-  let result: FoodAnalysisResult
   let image: UIImage
+  /// 公式の値を調べ直すときに、最初の解析と同じメモを渡す
+  let note: String?
   let mealType: MealType
   let date: Date
   var onSave: () -> Void
-  
+
+  /// 表示中の解析結果。公式の値を調べたら入れ替わる
+  @State private var current: FoodAnalysisResult
+  /// 公式の値を調べる名前。写真のロゴや文字から読み取った見当を入れておく
+  @State private var officialName: String
+  @State private var isLookingUpOfficial = false
+  @State private var lookupError: String?
+
   @State private var showingSaveConfirmation = false
   @State private var saveError: String?
 
-  /// 同じものを前にも記録していないか。
+  /// 同じものが登録済みでないか。自分のものに限らず探す。
   ///
   /// 写真から作った食品は名前が毎回変わるので、放っておくと同じおにぎりが
   /// 「NL…」「国産…」と別々に積まれ、使用回数が1のまま育たない。育たないから
@@ -200,12 +212,18 @@ struct AIAnalysisResultView: View {
   @State private var portionAmount: String
   @State private var portionUnit: String
 
-  init(result: FoodAnalysisResult, image: UIImage, mealType: MealType, date: Date, onSave: @escaping () -> Void) {
-    self.result = result
+  init(
+    result: FoodAnalysisResult, image: UIImage, note: String?, mealType: MealType, date: Date,
+    onSave: @escaping () -> Void
+  ) {
     self.image = image
+    self.note = note
     self.mealType = mealType
     self.date = date
     self.onSave = onSave
+
+    _current = State(initialValue: result)
+    _officialName = State(initialValue: result.menuGuess ?? "")
 
     // 初期値を設定
     _productName = State(initialValue: result.productName)
@@ -275,6 +293,8 @@ struct AIAnalysisResultView: View {
             .padding()
             .background(Color(UIColor.secondarySystemBackground))
             .cornerRadius(12)
+
+            officialLookupSection
           }
           .padding(.horizontal)
           
@@ -301,7 +321,7 @@ struct AIAnalysisResultView: View {
       }
       .navigationTitle(NSLocalizedString("Analysis Complete", comment: "Navigation title"))
       .navigationBarTitleDisplayMode(.inline)
-      .task { await findCandidates() }
+      .task { await findCandidates(for: current) }
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
           Button(NSLocalizedString("Cancel", comment: "Button title")) {
@@ -325,6 +345,113 @@ struct AIAnalysisResultView: View {
     }
   }
   
+  /// 写真だけの値に満足できないときだけ、公式の値を調べる。いつもは撮って保存するだけで済むよう、
+  /// 先に店名を入れさせず、結果を見てから選べるようにする。
+  private var officialLookupSection: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text(NSLocalizedString("Store or product name", comment: "Label"))
+        .font(.headline)
+      TextField(
+        NSLocalizedString("e.g. Sushiro salmon avocado", comment: "Placeholder"),
+        text: $officialName
+      )
+      .textFieldStyle(.roundedBorder)
+      Text(
+        NSLocalizedString(
+          "We look up the nutrition facts the store or maker publishes and replace the values. This takes about 10 seconds.",
+          comment: "Official lookup hint"))
+        .font(.caption)
+        .foregroundColor(.secondary)
+
+      Button {
+        Task { await lookUpOfficial() }
+      } label: {
+        if isLookingUpOfficial {
+          HStack(spacing: 8) {
+            ProgressView()
+            Text(NSLocalizedString("Looking up official nutrition facts...", comment: "Loading message"))
+          }
+          .frame(maxWidth: .infinity)
+        } else {
+          Label(NSLocalizedString("Look up official nutrition facts", comment: "Button title"), systemImage: "globe")
+            .frame(maxWidth: .infinity)
+        }
+      }
+      .buttonStyle(.bordered)
+      .disabled(isLookingUpOfficial || officialName.trimmingCharacters(in: .whitespaces).isEmpty)
+
+      if let lookupError {
+        Text(lookupError)
+          .font(.caption)
+          .foregroundColor(.red)
+      }
+
+      basisNote
+        .frame(maxWidth: .infinity)
+    }
+    .padding()
+    .background(Color(UIColor.secondarySystemBackground))
+    .cornerRadius(12)
+  }
+
+  private func lookUpOfficial() async {
+    let name = officialName.trimmingCharacters(in: .whitespaces)
+    guard !name.isEmpty else { return }
+    isLookingUpOfficial = true
+    lookupError = nil
+    defer { isLookingUpOfficial = false }
+    do {
+      let looked = try await AIFoodAnalyzer.shared.analyzeFood(image: image, note: note, menuName: name)
+      current = looked
+      productName = looked.productName
+      calories = String(format: "%.0f", looked.calories)
+      protein = NutritionFormatter.formatNutrition(looked.protein)
+      fat = NutritionFormatter.formatNutrition(looked.fat)
+      netCarbs = NutritionFormatter.formatNutrition(looked.netCarbs)
+      dietaryFiber = NutritionFormatter.formatNutrition(looked.dietaryFiber)
+      portionAmount = NutritionFormatter.formatNutrition(looked.portionAmount)
+      portionUnit = looked.portionUnit
+      await findCandidates(for: looked)
+    } catch {
+      lookupError = error.localizedDescription
+    }
+  }
+
+  /// 公式の値を調べたあと、値が何に基づくかを出す。
+  @ViewBuilder
+  private var basisNote: some View {
+    switch current.basis {
+    case .photoOnly, .nutritionLabel:
+      EmptyView()
+    case .web(let source):
+      VStack(spacing: 6) {
+        Label(NSLocalizedString("Values found on the web", comment: "Analysis basis"), systemImage: "globe")
+          .font(.subheadline)
+        // 似せたドメインのページを拾うこともあるので、押す前にどこのページか読めるようドメインを出す
+        if let source, let host = source.host() {
+          Link(String(format: NSLocalizedString("Source: %@", comment: "Analysis source"), host), destination: source)
+            .font(.subheadline)
+        }
+        basisText(
+          NSLocalizedString(
+            "Stores often publish only calories, so the other nutrients may be estimates.",
+            comment: "Analysis basis"))
+      }
+    case .estimatedAfterSearch:
+      basisText(
+        NSLocalizedString(
+          "No official values were found, so these are estimated from the photo.", comment: "Analysis basis"))
+    }
+  }
+
+  private func basisText(_ text: String) -> some View {
+    Text(text)
+      .font(.caption)
+      .foregroundColor(.secondary)
+      .multilineTextAlignment(.center)
+      .padding(.horizontal)
+  }
+
   private var confidenceBadge: some View {
     HStack(spacing: 4) {
       Image(systemName: confidenceIcon)
@@ -340,7 +467,7 @@ struct AIAnalysisResultView: View {
   }
   
   private var confidenceIcon: String {
-    switch result.confidence {
+    switch current.confidence {
     case "high": return "checkmark.circle.fill"
     case "low": return "exclamationmark.triangle.fill"
     default: return "info.circle.fill"
@@ -348,7 +475,7 @@ struct AIAnalysisResultView: View {
   }
   
   private var confidenceColor: Color {
-    switch result.confidence {
+    switch current.confidence {
     case "high": return .green
     case "low": return .orange
     default: return .blue
@@ -356,19 +483,19 @@ struct AIAnalysisResultView: View {
   }
   
   private var confidenceText: String {
-    switch result.confidence {
+    switch current.confidence {
     case "high": return NSLocalizedString("High Confidence", comment: "Confidence level")
     case "low": return NSLocalizedString("Low Confidence", comment: "Confidence level")
     default: return NSLocalizedString("Medium Confidence", comment: "Confidence level")
     }
   }
   
-  /// 前に記録した同じものを出す。選べば写真から作り直さずに済む。
+  /// 登録済みの同じものを出す。選べば写真から作り直さずに済む。
   @ViewBuilder
   private var candidatesSection: some View {
     if !candidates.isEmpty {
       VStack(alignment: .leading, spacing: 10) {
-        Text(NSLocalizedString("You've logged this before", comment: "AI candidate section title"))
+        Text(NSLocalizedString("Registered foods", comment: "AI candidate section title"))
           .font(.headline)
 
         Text(
@@ -399,17 +526,22 @@ struct AIAnalysisResultView: View {
     }
   }
 
-  private func findCandidates() async {
-    let term = AIFoodAnalyzer.searchTerm(for: result.productName)
-    guard term.count >= 2 else { return }
-    do {
-      let response = try await APIClient.shared.fetchFoodMasters(query: term, limit: 5)
-      // 自分が使ったことのあるものだけを出す。使ったことが無いものを
-      // 「前にも記録しています」とは言えない。
-      candidates = response.items.filter { $0.usageCount > 0 }
-    } catch {
-      candidates = []
+  /// 他の人の項目と AI の推定値も含めて探す。チェーン店のメニューは誰かが登録していれば、
+  /// Web で調べずに済む。見当の名前で当たらなければ料理名の頭で探す。
+  private func findCandidates(for analysis: FoodAnalysisResult) async {
+    for query in AIFoodAnalyzer.candidateQueries(menuGuess: analysis.menuGuess, productName: analysis.productName) {
+      do {
+        let items = try await APIClient.shared.fetchFoodMasters(query: query, limit: 5).items
+        if !items.isEmpty {
+          candidates = items
+          return
+        }
+      } catch {
+        // 探せなくても写真の値で記録できるので、候補なしとして進む。原因を追えるようログには残す
+        Self.logger.error("登録済みの食品を探せなかった: \(error.localizedDescription, privacy: .public)")
+      }
     }
+    candidates = []
   }
 
   /// 既存の食品として記録する。マスタを増やさず、その食品の使用回数が育つ。
@@ -422,7 +554,7 @@ struct AIAnalysisResultView: View {
       timestamp: ISO8601DateFormatter().string(from: LogItemDTO.timestamp(for: date)),
       logDate: LogItemDTO.formatLogDate(date),
       mealType: mealType.rawValue,
-      numberOfServings: foodMaster.lastNumberOfServings,
+      numberOfServings: foodMaster.servingsToLog,
       foodMasterId: foodMaster.id.uuidString,
       nutritionSnapshot: NutritionSnapshot.from(foodMaster)
     )

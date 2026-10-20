@@ -42,6 +42,7 @@ struct AddItemView: View {
   @State private var showingAnalysisResult = false
   @State private var showingAPIKeyError = false
   @State private var analysisError: String?
+  @State private var analysisNote: String?
 
   init(preselectedMealType: MealType, selectedDate: Date, selectedTab: Binding<AppTab>) {
     self.mealType = preselectedMealType
@@ -118,7 +119,8 @@ struct AddItemView: View {
       }
       .sheet(isPresented: $showingAnalysisResult) {
         if let result = analysisResult, let image = selectedImage {
-          AIAnalysisResultView(result: result, image: image, mealType: mealType, date: date, onSave: { dismiss() })
+          AIAnalysisResultView(
+            result: result, image: image, note: analysisNote, mealType: mealType, date: date, onSave: { dismiss() })
         }
       }
       .alert(NSLocalizedString("Sign In Required", comment: "Alert title"), isPresented: $showingAPIKeyError) {
@@ -154,7 +156,10 @@ struct AddItemView: View {
       await MainActor.run { isAnalyzing = true; showingPhotoPicker = false }
       do {
         let result = try await AIFoodAnalyzer.shared.analyzeFood(image: image, note: note)
-        await MainActor.run { isAnalyzing = false; analysisResult = result; showingAnalysisResult = true }
+        // 結果画面で公式の値を調べ直すときに、同じメモを渡す
+        await MainActor.run {
+          isAnalyzing = false; analysisResult = result; analysisNote = note; showingAnalysisResult = true
+        }
       } catch {
         await MainActor.run { isAnalyzing = false; analysisError = error.localizedDescription }
       }
@@ -354,13 +359,14 @@ struct AddItemView: View {
   /// - Returns: 保存できたら true。失敗したら false を返し、呼び出し側が画面を閉じないようにする。
   @discardableResult
   private func addFoodItem(_ foodMaster: FoodMasterDTO) async -> Bool {
+    let servings = foodMaster.servingsToLog
     let logItemID = UUID()
     let dto = LogItemCreateDTO(
       id: logItemID.uuidString,
       timestamp: ISO8601DateFormatter().string(from: LogItemDTO.timestamp(for: date)),
       logDate: LogItemDTO.formatLogDate(date),
       mealType: mealType.rawValue,
-      numberOfServings: foodMaster.lastNumberOfServings,
+      numberOfServings: servings,
       foodMasterId: foodMaster.id.uuidString,
       nutritionSnapshot: NutritionSnapshot.from(foodMaster)
     )
@@ -381,7 +387,7 @@ struct AddItemView: View {
     }
 
     let nutrition = NutritionSnapshot.from(foodMaster)
-      .scaled(by: foodMaster.lastNumberOfServings)
+      .scaled(by: servings)
     addedEntries.append(
       AddedEntry(
         logItemID: logItemID,
@@ -487,12 +493,12 @@ struct EmptyFoodMasterPromptView: View {
   }
 }
 
-/// 検索結果の行。ここだけは前回の摂取量 (`lastNumberOfServings`) 換算の値を出すので、
+/// 検索結果の行。ここだけはタップで記録される量 (`servingsToLog`) 換算の値を出すので、
 /// 1食分を出す `FoodMasterRow` とは表示する数値が異なる。
 struct PastItemCard: View {
   let item: FoodMasterDTO
 
-  private var servings: Double { item.lastNumberOfServings }
+  private var servings: Double { item.servingsToLog }
 
   var body: some View {
     FoodRow(

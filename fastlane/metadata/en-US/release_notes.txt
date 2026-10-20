@@ -1,5 +1,6 @@
-Reading nutrition from a photo is now more accurate.
+After reading nutrition from a photo, you can now look up the values a store publishes.
 
-- Values on a nutrition label are now calculated for the size of the package
-- When a photo shows food for several people, one serving is logged
-- Photos are sent at a smaller size, so reading them takes less time
+- From the result screen, look up the nutrition facts the store or maker publishes and replace the values. If a logo or product name is visible on the plate or package, the store or product name is filled in for you
+- Values found this way show their source
+- The result screen also suggests matching foods that other people have registered
+- Fixed foods you had never logged before being added with an amount of 1

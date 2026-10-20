@@ -12,6 +12,33 @@ struct FoodAnalysisResult {
   let portionAmount: Double
   let portionUnit: String
   let confidence: String
+  let basis: AnalysisBasis
+  /// 公式の栄養成分を調べる欄に入れておく名前。ロゴや文字が見えなければ nil
+  var menuGuess: String? = nil
+}
+
+/// 値が何に基づくか。店名を入れたときだけ Web で調べるので、結果画面でそれを見せる。
+enum AnalysisBasis: Equatable {
+  /// 店名を入れずに解析した。写真の成分表示を読んだ場合もここに入る
+  case photoOnly
+  /// 店名を入れたが、写真に成分表示があったのでそれを読んだ
+  case nutritionLabel
+  /// 店名から公式の値を調べた。出典は Worker が検索で実際に見たページのときだけ持つ
+  case web(source: URL?)
+  /// 店名から調べたが見つからず、写真から推定した
+  case estimatedAfterSearch
+
+  init(menuName: String?, basis: String?, sourceUrl: String?) {
+    guard menuName != nil else {
+      self = .photoOnly
+      return
+    }
+    switch basis {
+    case "official": self = .web(source: sourceUrl.flatMap(URL.init(string:)))
+    case "label": self = .nutritionLabel
+    default: self = .estimatedAfterSearch
+    }
+  }
 }
 
 class AIFoodAnalyzer {
@@ -25,7 +52,8 @@ class AIFoodAnalyzer {
   }
 
   // 写真から料理を分析
-  func analyzeFood(image: UIImage, note: String? = nil) async throws -> FoodAnalysisResult {
+  /// - Parameter menuName: 入れると、Worker が公式の栄養成分を Web で調べる。時間と費用がかかる
+  func analyzeFood(image: UIImage, note: String? = nil, menuName: String? = nil) async throws -> FoodAnalysisResult {
     let available = await MainActor.run { AuthManager.shared.isSignedIn }
     guard available else {
       throw AnalysisError.notAuthenticated
@@ -41,7 +69,8 @@ class AIFoodAnalyzer {
     let base64Image = imageData.base64EncodedString()
 
     do {
-      let response = try await APIClient.shared.analyzeFoodImage(imageBase64: base64Image, note: note)
+      let response = try await APIClient.shared.analyzeFoodImage(
+        imageBase64: base64Image, note: note, menuName: menuName)
       return FoodAnalysisResult(
         productName: response.productName,
         calories: response.calories,
@@ -51,7 +80,9 @@ class AIFoodAnalyzer {
         dietaryFiber: response.dietaryFiber,
         portionAmount: response.portionAmount,
         portionUnit: response.portionUnit,
-        confidence: response.confidence
+        confidence: response.confidence,
+        basis: AnalysisBasis(menuName: menuName, basis: response.basis, sourceUrl: response.sourceUrl),
+        menuGuess: response.menuGuess
       )
     } catch APIError.unauthorized {
       throw AnalysisError.notAuthenticated
@@ -127,6 +158,17 @@ extension AIFoodAnalyzer {
   ///
   /// 名前をそのまま検索語にすると当たらない。AI は写真ごとに違う言い回しを返すので、
   /// 同じおにぎりでも「NL」と「国産」で別物になる。区切りの手前までを使う。
+  /// 結果画面の「登録済みの食品」を探す語。見当の店名とメニュー名で先に探し、
+  /// 当たらなければ料理名の頭で探す。1文字だと関係の無い食品が大量に当たるので使わない。
+  static func candidateQueries(menuGuess: String?, productName: String) -> [String] {
+    var queries: [String] = []
+    for query in [menuGuess?.trimmingCharacters(in: .whitespaces) ?? "", searchTerm(for: productName)]
+    where query.count >= 2 && !queries.contains(query) {
+      queries.append(query)
+    }
+    return queries
+  }
+
   static func searchTerm(for productName: String) -> String {
     let separators = CharacterSet(charactersIn: " 　（(【[｛{、，,・/＋+&")
     let head =
