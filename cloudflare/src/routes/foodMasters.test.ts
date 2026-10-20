@@ -77,6 +77,15 @@ describe('GET /api/food-masters の q', () => {
     expect(names).toEqual(['スシロー|サーモンアボカド']);
   });
 
+  it('濁点が別の文字に分かれた語でも当たる', async () => {
+    // Mac のファイル名からコピーした文字は「グ」が「ク」と濁点に分かれていて、見た目は同じでも一致しない
+    const decomposed = 'スシロー サーモンアボカド'.normalize('NFD');
+    expect(decomposed).not.toBe('スシロー サーモンアボカド');
+
+    const { names } = await search(`q=${encodeURIComponent(decomposed)}`);
+    expect(names).toEqual(['スシロー|サーモンアボカド']);
+  });
+
   it('1語なら、ブランド名か商品名に含まれるものをすべて返す', async () => {
     const { names } = await search(`q=${encodeURIComponent('サーモン')}`);
     expect(names).toEqual(['|サーモンアボカド丼', 'スシロー|サーモンアボカド']);
