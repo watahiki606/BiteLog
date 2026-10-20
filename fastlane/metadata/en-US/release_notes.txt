@@ -1,6 +1,6 @@
-Photo analysis can now use the nutrition facts a store publishes.
+After reading nutrition from a photo, you can now look up the values a store publishes.
 
-- A new Store or product name field. When filled in, BiteLog looks up the nutrition facts the store or maker publishes
-- If a registered food matches the name, you can log it with one tap
-- Results show whether the values came from the web, and their source
+- From the result screen, look up the nutrition facts the store or maker publishes and replace the values. If a logo or product name is visible on the plate or package, the store or product name is filled in for you
+- Values found this way show their source
+- The result screen also suggests matching foods that other people have registered
 - Fixed foods you had never logged before being added with an amount of 1
