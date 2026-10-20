@@ -1,5 +1,6 @@
-Reading nutrition from a photo is now more accurate.
+Photo analysis can now use the nutrition facts a store publishes.
 
-- Values on a nutrition label are now calculated for the size of the package
-- When a photo shows food for several people, one serving is logged
-- Photos are sent at a smaller size, so reading them takes less time
+- A new Store or product name field. When filled in, BiteLog looks up the nutrition facts the store or maker publishes
+- If a registered food matches the name, you can log it with one tap
+- Results show whether the values came from the web, and their source
+- Fixed foods you had never logged before being added with an amount of 1
