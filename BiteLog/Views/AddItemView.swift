@@ -128,7 +128,7 @@ struct AddItemView: View {
             menuName: menuName, matches: menuMatches,
             onPick: { foodMaster in
               showingMenuMatches = false
-              Task { await addFoodItem(foodMaster, servings: foodMaster.servingsToLog) }
+              Task { await addFoodItem(foodMaster) }
             },
             onLookUpOfficial: {
               showingMenuMatches = false
@@ -400,10 +400,9 @@ struct AddItemView: View {
   }
 
   /// - Returns: 保存できたら true。失敗したら false を返し、呼び出し側が画面を閉じないようにする。
-  /// - Parameter servings: 省くと前回の量で記録する
   @discardableResult
-  private func addFoodItem(_ foodMaster: FoodMasterDTO, servings: Double? = nil) async -> Bool {
-    let servings = servings ?? foodMaster.lastNumberOfServings
+  private func addFoodItem(_ foodMaster: FoodMasterDTO) async -> Bool {
+    let servings = foodMaster.servingsToLog
     let logItemID = UUID()
     let dto = LogItemCreateDTO(
       id: logItemID.uuidString,
@@ -537,12 +536,12 @@ struct EmptyFoodMasterPromptView: View {
   }
 }
 
-/// 検索結果の行。ここだけは前回の摂取量 (`lastNumberOfServings`) 換算の値を出すので、
+/// 検索結果の行。ここだけはタップで記録される量 (`servingsToLog`) 換算の値を出すので、
 /// 1食分を出す `FoodMasterRow` とは表示する数値が異なる。
 struct PastItemCard: View {
   let item: FoodMasterDTO
 
-  private var servings: Double { item.lastNumberOfServings }
+  private var servings: Double { item.servingsToLog }
 
   var body: some View {
     FoodRow(

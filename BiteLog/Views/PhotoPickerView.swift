@@ -499,7 +499,7 @@ struct AIAnalysisResultView: View {
       timestamp: ISO8601DateFormatter().string(from: LogItemDTO.timestamp(for: date)),
       logDate: LogItemDTO.formatLogDate(date),
       mealType: mealType.rawValue,
-      numberOfServings: foodMaster.lastNumberOfServings,
+      numberOfServings: foodMaster.servingsToLog,
       foodMasterId: foodMaster.id.uuidString,
       nutritionSnapshot: NutritionSnapshot.from(foodMaster)
     )

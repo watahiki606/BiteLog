@@ -118,7 +118,7 @@ struct EditItemView: View {
       .sheet(isPresented: $showingFoodSearch) {
         FoodSearchView(onSelect: { selected in
           foodMaster = selected
-          numberOfServings = NutritionFormatter.formatNutrition(selected.lastNumberOfServings)
+          numberOfServings = NutritionFormatter.formatNutrition(selected.servingsToLog)
         })
       }
     }

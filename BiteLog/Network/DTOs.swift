@@ -24,6 +24,7 @@ struct FoodMasterDTO: Codable, Identifiable, Hashable {
 
   /// 選んで記録するときの量。サーバーは使ったことが無い食品の前回量を 1 で返すので、
   /// そのまま使うと 100g の食品が 1g で記録される。使ったことが無ければ1食分にする。
+  /// 記録の量は `lastNumberOfServings` を直接使わず、必ずこれを通す。
   var servingsToLog: Double { usageCount > 0 ? lastNumberOfServings : portionSize }
 
   /// 1食分 (portionSize 分) の栄養素値。表示コンポーネントに渡すためのまとめ。
