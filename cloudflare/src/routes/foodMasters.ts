@@ -21,8 +21,6 @@ const foodMasters = new Hono<{ Bindings: Bindings; Variables: Variables }>()
     const limit = Math.min(parseInt(c.req.query('limit') ?? '20'), 500);
     const offset = parseInt(c.req.query('offset') ?? '0');
     const onlyMine = c.req.query('onlyMine') === 'true';
-    // 写真解析で店名から探すときは、AI の推定値を公式の値の代わりに使わない
-    const excludeAI = c.req.query('excludeAI') === 'true';
 
     // 「スシロー サーモン」のように店名と品名を並べて探せるよう、語ごとにブランド名か商品名に含まれることを求める
     const words = q.split(/\s+/).filter(Boolean);
@@ -38,7 +36,6 @@ const foodMasters = new Hono<{ Bindings: Bindings; Variables: Variables }>()
       conditions.push('fm.created_by = ?');
       binds.push(userId);
     }
-    if (excludeAI) conditions.push("fm.brand_name != 'AI'");
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const [dataResult, countResult] = await Promise.all([

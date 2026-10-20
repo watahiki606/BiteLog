@@ -106,24 +106,3 @@ describe('GET /api/food-masters の q', () => {
     expect(names).toEqual(['|サーモンアボカド丼', 'スシロー|サーモンアボカド']);
   });
 });
-
-describe('GET /api/food-masters の excludeAI', () => {
-  beforeEach(async () => {
-    await env.DB.batch([
-      insertFoodMaster('fm-1', 'くら寿司', 'サーモン'),
-      insertFoodMaster('fm-2', 'AI', 'サーモン（くら寿司）'),
-      insertFoodMaster('fm-3', 'AI', 'サーモン（自分の推定）', 'user-a'),
-    ]);
-  });
-
-  it('true なら、自分のものも含めてブランド名が AI の項目を除く', async () => {
-    const { names, total } = await search(`q=${encodeURIComponent('サーモン')}&excludeAI=true`);
-    expect(names).toEqual(['くら寿司|サーモン']);
-    expect(total).toBe(1);
-  });
-
-  it('付けなければ AI の項目も返す', async () => {
-    const { total } = await search(`q=${encodeURIComponent('サーモン')}`);
-    expect(total).toBe(3);
-  });
-});
