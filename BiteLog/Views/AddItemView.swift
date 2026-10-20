@@ -1,6 +1,10 @@
+import OSLog
 import SwiftUI
 
 struct AddItemView: View {
+  private static let logger = Logger(
+    subsystem: Bundle.main.bundleIdentifier ?? "com.bitelog", category: "PhotoAnalysis")
+
   @Environment(\.dismiss) var dismiss
   @Binding var selectedTab: AppTab
 
@@ -178,9 +182,14 @@ struct AddItemView: View {
       showingPhotoPicker = false
       if let menuName = input.menuName {
         isAnalyzing = true
-        // 探せなくても解析はできるので、失敗は候補なしとして先へ進む
-        let matches =
-          (try? await APIClient.shared.fetchFoodMasters(query: menuName, limit: 10, excludeAI: true).items) ?? []
+        // 探せなくても解析はできるので、失敗は候補なしとして先へ進む。
+        // 黙って進むと Web 検索の結果しか見えず原因が隠れるので、エラーはログに残す
+        var matches: [FoodMasterDTO] = []
+        do {
+          matches = try await APIClient.shared.fetchFoodMasters(query: menuName, limit: 10, excludeAI: true).items
+        } catch {
+          Self.logger.error("店名で登録済みの食品を探せなかった: \(error.localizedDescription, privacy: .public)")
+        }
         if !matches.isEmpty {
           isAnalyzing = false
           menuMatches = matches
