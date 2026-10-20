@@ -13,6 +13,8 @@ struct FoodAnalysisResult {
   let portionUnit: String
   let confidence: String
   let basis: AnalysisBasis
+  /// 公式の栄養成分を調べる欄に入れておく名前。ロゴや文字が見えなければ nil
+  var menuGuess: String? = nil
 }
 
 /// 値が何に基づくか。店名を入れたときだけ Web で調べるので、結果画面でそれを見せる。
@@ -79,7 +81,8 @@ class AIFoodAnalyzer {
         portionAmount: response.portionAmount,
         portionUnit: response.portionUnit,
         confidence: response.confidence,
-        basis: AnalysisBasis(menuName: menuName, basis: response.basis, sourceUrl: response.sourceUrl)
+        basis: AnalysisBasis(menuName: menuName, basis: response.basis, sourceUrl: response.sourceUrl),
+        menuGuess: response.menuGuess
       )
     } catch APIError.unauthorized {
       throw AnalysisError.notAuthenticated
@@ -155,6 +158,17 @@ extension AIFoodAnalyzer {
   ///
   /// 名前をそのまま検索語にすると当たらない。AI は写真ごとに違う言い回しを返すので、
   /// 同じおにぎりでも「NL」と「国産」で別物になる。区切りの手前までを使う。
+  /// 結果画面の「登録済みの食品」を探す語。見当の店名とメニュー名で先に探し、
+  /// 当たらなければ料理名の頭で探す。1文字だと関係の無い食品が大量に当たるので使わない。
+  static func candidateQueries(menuGuess: String?, productName: String) -> [String] {
+    var queries: [String] = []
+    for query in [menuGuess?.trimmingCharacters(in: .whitespaces) ?? "", searchTerm(for: productName)]
+    where query.count >= 2 && !queries.contains(query) {
+      queries.append(query)
+    }
+    return queries
+  }
+
   static func searchTerm(for productName: String) -> String {
     let separators = CharacterSet(charactersIn: " 　（(【[｛{、，,・/＋+&")
     let head =

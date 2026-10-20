@@ -1,10 +1,6 @@
-import OSLog
 import SwiftUI
 
 struct AddItemView: View {
-  private static let logger = Logger(
-    subsystem: Bundle.main.bundleIdentifier ?? "com.bitelog", category: "PhotoAnalysis")
-
   @Environment(\.dismiss) var dismiss
   @Binding var selectedTab: AppTab
 
@@ -46,12 +42,7 @@ struct AddItemView: View {
   @State private var showingAnalysisResult = false
   @State private var showingAPIKeyError = false
   @State private var analysisError: String?
-  /// 店名を入れて解析中か。待ち時間が長いので、何をしているかを表示で分ける
-  @State private var isLookingUpOfficial = false
-  /// 店名に当たった登録済みの食品。選ばれなければ、この入力のまま公式の値を調べる
-  @State private var menuMatches: [FoodMasterDTO] = []
-  @State private var menuMatchInput: PhotoAnalysisInput?
-  @State private var showingMenuMatches = false
+  @State private var analysisNote: String?
 
   init(preselectedMealType: MealType, selectedDate: Date, selectedTab: Binding<AppTab>) {
     self.mealType = preselectedMealType
@@ -124,25 +115,12 @@ struct AddItemView: View {
         if !isDataLoaded { Task { await loadFoodMasters() } }
       }
       .sheet(isPresented: $showingPhotoPicker) {
-        PhotoPickerView(selectedImage: $selectedImage) { image, input in startAnalysis(image, input: input) }
-      }
-      .sheet(isPresented: $showingMenuMatches) {
-        if let input = menuMatchInput, let menuName = input.menuName, let image = selectedImage {
-          MenuMatchesView(
-            menuName: menuName, matches: menuMatches,
-            onPick: { foodMaster in
-              showingMenuMatches = false
-              Task { await addFoodItem(foodMaster) }
-            },
-            onLookUpOfficial: {
-              showingMenuMatches = false
-              Task { await analyze(image, input: input) }
-            })
-        }
+        PhotoPickerView(selectedImage: $selectedImage) { image, note in analyzeImage(image, note: note) }
       }
       .sheet(isPresented: $showingAnalysisResult) {
         if let result = analysisResult, let image = selectedImage {
-          AIAnalysisResultView(result: result, image: image, mealType: mealType, date: date, onSave: { dismiss() })
+          AIAnalysisResultView(
+            result: result, image: image, note: analysisNote, mealType: mealType, date: date, onSave: { dismiss() })
         }
       }
       .alert(NSLocalizedString("Sign In Required", comment: "Alert title"), isPresented: $showingAPIKeyError) {
@@ -161,10 +139,7 @@ struct AddItemView: View {
             Color.black.opacity(0.4).ignoresSafeArea()
             VStack(spacing: 16) {
               ProgressView().scaleEffect(1.5).tint(.white)
-              Text(
-                isLookingUpOfficial
-                  ? NSLocalizedString("Looking up official nutrition facts...", comment: "Loading message")
-                  : NSLocalizedString("Analyzing food...", comment: "Loading message"))
+              Text(NSLocalizedString("Analyzing food...", comment: "Loading message"))
                 .foregroundColor(.white).font(.headline)
             }
             .padding(30)
@@ -176,45 +151,18 @@ struct AddItemView: View {
     }
   }
 
-  /// 店名があれば、Web で調べる前に登録済みの食品を探す。当たれば選ぶだけで記録でき、費用も待ち時間もかからない。
-  private func startAnalysis(_ image: UIImage, input: PhotoAnalysisInput) {
+  private func analyzeImage(_ image: UIImage, note: String?) {
     Task {
-      showingPhotoPicker = false
-      if let menuName = input.menuName {
-        isAnalyzing = true
-        // 探せなくても解析はできるので、失敗は候補なしとして先へ進む。
-        // 黙って進むと Web 検索の結果しか見えず原因が隠れるので、エラーはログに残す
-        var matches: [FoodMasterDTO] = []
-        do {
-          matches = try await APIClient.shared.fetchFoodMasters(query: menuName, limit: 10, excludeAI: true).items
-        } catch {
-          Self.logger.error("店名で登録済みの食品を探せなかった: \(error.localizedDescription, privacy: .public)")
+      await MainActor.run { isAnalyzing = true; showingPhotoPicker = false }
+      do {
+        let result = try await AIFoodAnalyzer.shared.analyzeFood(image: image, note: note)
+        // 結果画面で公式の値を調べ直すときに、同じメモを渡す
+        await MainActor.run {
+          isAnalyzing = false; analysisResult = result; analysisNote = note; showingAnalysisResult = true
         }
-        if !matches.isEmpty {
-          isAnalyzing = false
-          menuMatches = matches
-          menuMatchInput = input
-          showingMenuMatches = true
-          return
-        }
+      } catch {
+        await MainActor.run { isAnalyzing = false; analysisError = error.localizedDescription }
       }
-      await analyze(image, input: input)
-    }
-  }
-
-  private func analyze(_ image: UIImage, input: PhotoAnalysisInput) async {
-    isAnalyzing = true
-    isLookingUpOfficial = input.menuName != nil
-    defer {
-      isAnalyzing = false
-      isLookingUpOfficial = false
-    }
-    do {
-      analysisResult = try await AIFoodAnalyzer.shared.analyzeFood(
-        image: image, note: input.note, menuName: input.menuName)
-      showingAnalysisResult = true
-    } catch {
-      analysisError = error.localizedDescription
     }
   }
 

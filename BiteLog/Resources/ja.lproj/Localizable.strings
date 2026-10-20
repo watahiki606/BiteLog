@@ -167,14 +167,11 @@
 "Analyzing food..." = "料理を分析中...";
 "Store or product name" = "お店・商品名";
 "e.g. Sushiro salmon avocado" = "例: スシロー サーモンアボカド";
-"If entered, we look up the nutrition facts the store or maker publishes. This takes about 10 seconds." = "入れると、お店やメーカーが公開している栄養成分を探します。10秒ほどかかります";
 "e.g. Left half, ate two" = "例: 半分残した、2個食べた";
 "Looking up official nutrition facts..." = "公式の栄養成分を調べています...";
-"Registered foods matching \"%@\"" = "「%@」に当たる登録済みの食品";
-"Pick one to log it as is." = "選ぶと、そのまま記録します";
-"None of these. Look up official nutrition facts" = "この中にない。公式の栄養成分を調べる";
-"Found in Registered Foods" = "登録済みの食品が見つかりました";
-"Enter a store or product name to look up official nutrition facts." = "お店・商品名を入れると、公式の栄養成分を探します";
+"Registered foods" = "登録済みの食品";
+"Look up official nutrition facts" = "公式の栄養成分を調べる";
+"We look up the nutrition facts the store or maker publishes and replace the values. This takes about 10 seconds." = "お店やメーカーが公開している栄養成分を探して、値を入れ替えます。10秒ほどかかります";
 "Values found on the web" = "Web で調べた値です";
 "Source: %@" = "出典: %@";
 "Stores often publish only calories, so the other nutrients may be estimates." = "お店が公開しているのはカロリーだけのことが多く、ほかの栄養素は推定を含みます";
@@ -314,7 +311,6 @@
 "Remaining %@" = "あと %@";
 
 // 写真解析の候補
-"You've logged this before" = "前にも記録しています";
 "Pick one to log it without adding a new food. The ones you eat often then rise to the top of search." = "選ぶと新しい食品を作らずに記録できます。よく食べるものほど検索の上に出るようになります。";
 
 // 体組成計からの取り込み

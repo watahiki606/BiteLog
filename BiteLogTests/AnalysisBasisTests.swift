@@ -72,3 +72,26 @@ struct FoodMasterServingsToLogTests {
     #expect(foodMaster(portionSize: 100, usageCount: 0, lastNumberOfServings: 1).servingsToLog == 100)
   }
 }
+
+/// 結果画面の「登録済みの食品」を探す語。
+struct CandidateQueriesTests {
+
+  @Test func 見当があれば見当で探し次に料理名の頭で探す() {
+    let queries = AIFoodAnalyzer.candidateQueries(menuGuess: "くら寿司 サーモン", productName: "サーモン（くら寿司）")
+
+    #expect(queries == ["くら寿司 サーモン", "サーモン"])
+  }
+
+  @Test func 見当が無ければ料理名の頭だけで探す() {
+    #expect(AIFoodAnalyzer.candidateQueries(menuGuess: nil, productName: "親子丼（卵とじ）") == ["親子丼"])
+  }
+
+  @Test func 一文字の語では探さない() {
+    // 1文字だと関係の無い食品が大量に当たる
+    #expect(AIFoodAnalyzer.candidateQueries(menuGuess: nil, productName: "茶") == [])
+  }
+
+  @Test func 同じ語は二度探さない() {
+    #expect(AIFoodAnalyzer.candidateQueries(menuGuess: "おにぎり", productName: "おにぎり（鮭）") == ["おにぎり"])
+  }
+}

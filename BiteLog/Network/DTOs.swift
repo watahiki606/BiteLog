@@ -243,6 +243,8 @@ struct AIAnalyzeResponse: Codable {
   var basis: String?
   /// 検索で実際に見たページのうち、値を取ったもの
   var sourceUrl: String?
+  /// 写真だけで解析したとき、ロゴや文字から読み取った店名とメニュー名
+  var menuGuess: String?
 }
 
 // MARK: - BodyMeasurement DTO
