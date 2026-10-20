@@ -149,6 +149,29 @@ describe('POST /api/ai/analyze-food', () => {
     expect(lastOpenaiRequestBody.input[0].content.map((part) => part.type)).toEqual(['input_image']);
   });
 
+  it('写真に見えた店名とメニュー名の見当を答えさせる', async () => {
+    await analyzeFood({ imageBase64: 'dummy' }, await authHeader());
+
+    expect(lastOpenaiRequestBody.text.format.schema.required).toContain('menuGuess');
+    expect(lastOpenaiRequestBody.instructions).toContain('menuGuess');
+  });
+
+  it('見当があれば返す', async () => {
+    openaiHandler = async () => openaiResponse({ ...VALID_ANALYSIS, menuGuess: 'くら寿司 サーモン' });
+
+    const res = await analyzeFood({ imageBase64: 'dummy' }, await authHeader());
+
+    expect((await res.json<Record<string, unknown>>()).menuGuess).toBe('くら寿司 サーモン');
+  });
+
+  it('見当が空なら返さない', async () => {
+    openaiHandler = async () => openaiResponse({ ...VALID_ANALYSIS, menuGuess: '' });
+
+    const res = await analyzeFood({ imageBase64: 'dummy' }, await authHeader());
+
+    expect(await res.json<Record<string, unknown>>()).not.toHaveProperty('menuGuess');
+  });
+
   it('menuNameが無ければWeb検索を使わない', async () => {
     await analyzeFood({ imageBase64: 'dummy', note: 'スシロー' }, await authHeader());
 

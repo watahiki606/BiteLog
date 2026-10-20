@@ -121,6 +121,23 @@ const NAMED_RESPONSE_FORMAT = {
 };
 
 // 使う項目だけを書く。type が web_search_call なら action、message なら content を持つ
+// 写真だけの解析で足す。結果画面の「公式の栄養成分を調べる」に、この名前を入れておく。
+// 見た目から店を決めつけると見当違いの店を調べるので、ロゴや文字が見えるときだけにする
+const GUESS_RULES = `
+
+menuGuess
+- If a logo, a store name or a product name is visible on the plate, cup, tray, package or receipt, write the restaurant or brand name, a space, and the menu or product name, e.g. スシロー サーモンアボカド.
+- Do not guess the restaurant from how the food looks. If no store or brand is visible, return an empty string.`;
+
+const PHOTO_RESPONSE_FORMAT = {
+  ...RESPONSE_FORMAT,
+  schema: {
+    ...RESPONSE_FORMAT.schema,
+    properties: { ...RESPONSE_FORMAT.schema.properties, menuGuess: { type: 'string' } },
+    required: [...RESPONSE_FORMAT.schema.required, 'menuGuess'],
+  },
+};
+
 type OpenAIOutputItem = {
   type: string;
   action?: { sources?: Array<{ url?: string }> };
@@ -166,8 +183,8 @@ aiAnalyze.post('/analyze-food', async (c) => {
         // 公式の移行ガイドは minimal なら low から比べるよう勧めている。実写真で比べると
         // none のほうが速く安く、成分表示の読み違いも少なかった
         reasoning: { effort: 'none' },
-        instructions: SYSTEM_PROMPT,
-        text: { format: RESPONSE_FORMAT },
+        instructions: SYSTEM_PROMPT + GUESS_RULES,
+        text: { format: PHOTO_RESPONSE_FORMAT },
       };
 
   let openaiRes: Response;
@@ -223,7 +240,10 @@ aiAnalyze.post('/analyze-food', async (c) => {
     confidence: (parsed['confidence'] as string) ?? 'medium',
     productName: (parsed['productName'] as string) ?? '不明な料理',
   };
-  if (!menuName) return c.json(result);
+  if (!menuName) {
+    const menuGuess = typeof parsed['menuGuess'] === 'string' ? parsed['menuGuess'].trim() : '';
+    return c.json({ ...result, ...(menuGuess ? { menuGuess } : {}) });
+  }
 
   // モデルは開いていないページの URL を書くことがある。検索で実際に見たページだけを出典にする
   const searchedUrls = new Set(
