@@ -21,44 +21,35 @@ const foodMasters = new Hono<{ Bindings: Bindings; Variables: Variables }>()
     const limit = Math.min(parseInt(c.req.query('limit') ?? '20'), 500);
     const offset = parseInt(c.req.query('offset') ?? '0');
     const onlyMine = c.req.query('onlyMine') === 'true';
+    // 写真解析で店名から探すときは、AI の推定値を公式の値の代わりに使わない
+    const excludeAI = c.req.query('excludeAI') === 'true';
 
-    let rows: FoodMasterRow[];
-    let total: number;
-
-    if (q) {
-      const pattern = `%${q}%`;
-      const mineClause = onlyMine ? 'AND fm.created_by = ?' : '';
-      const mineBinds = onlyMine ? [userId] : [];
-      const [dataResult, countResult] = await Promise.all([
-        c.env.DB.prepare(
-          `SELECT ${FM_SELECT} ${FM_JOIN}
-           WHERE (fm.brand_name LIKE ? OR fm.product_name LIKE ?) ${mineClause}
-           ORDER BY usage_count DESC, ufs.last_used_date DESC
-           LIMIT ? OFFSET ?`
-        ).bind(userId, pattern, pattern, ...mineBinds, limit, offset).all<FoodMasterRow>(),
-        c.env.DB.prepare(
-          `SELECT COUNT(*) as count FROM food_masters
-           WHERE (brand_name LIKE ? OR product_name LIKE ?) ${mineClause}`
-        ).bind(pattern, pattern, ...mineBinds).first<{ count: number }>(),
-      ]);
-      rows = dataResult.results;
-      total = countResult?.count ?? 0;
-    } else {
-      const mineClause = onlyMine ? 'WHERE fm.created_by = ?' : '';
-      const mineBinds = onlyMine ? [userId] : [];
-      const countClause = onlyMine ? 'WHERE created_by = ?' : '';
-      const [dataResult, countResult] = await Promise.all([
-        c.env.DB.prepare(
-          `SELECT ${FM_SELECT} ${FM_JOIN} ${mineClause}
-           ORDER BY usage_count DESC, ufs.last_used_date DESC
-           LIMIT ? OFFSET ?`
-        ).bind(userId, ...mineBinds, limit, offset).all<FoodMasterRow>(),
-        c.env.DB.prepare(`SELECT COUNT(*) as count FROM food_masters ${countClause}`)
-          .bind(...mineBinds).first<{ count: number }>(),
-      ]);
-      rows = dataResult.results;
-      total = countResult?.count ?? 0;
+    // 「スシロー サーモン」のように店名と品名を並べて探せるよう、語ごとにブランド名か商品名に含まれることを求める
+    const words = q.split(/\s+/).filter(Boolean);
+    const conditions: string[] = [];
+    const binds: string[] = [];
+    for (const word of words) {
+      conditions.push('(fm.brand_name LIKE ? OR fm.product_name LIKE ?)');
+      binds.push(`%${word}%`, `%${word}%`);
     }
+    if (onlyMine) {
+      conditions.push('fm.created_by = ?');
+      binds.push(userId);
+    }
+    if (excludeAI) conditions.push("fm.brand_name != 'AI'");
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const [dataResult, countResult] = await Promise.all([
+      c.env.DB.prepare(
+        `SELECT ${FM_SELECT} ${FM_JOIN} ${where}
+         ORDER BY usage_count DESC, ufs.last_used_date DESC
+         LIMIT ? OFFSET ?`
+      ).bind(userId, ...binds, limit, offset).all<FoodMasterRow>(),
+      c.env.DB.prepare(`SELECT COUNT(*) as count FROM food_masters fm ${where}`)
+        .bind(...binds).first<{ count: number }>(),
+    ]);
+    const rows = dataResult.results;
+    const total = countResult?.count ?? 0;
 
     const isAdmin = c.get('isAdmin');
     return c.json({
