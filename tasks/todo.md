@@ -21,7 +21,7 @@
 - [x] Worker `aiAnalyze`: Responses API に移す。TDDで進める
   - 検索なしも同じ道を通す。評価では Chat Completions と同じ精度・費用だった。21/21、44円
   - `menuName` があれば web_search ツールと推論lowを使い、検索用の指示を足す
-  - レスポンスに `basis` と `sources` を足す。basis は label、official、estimate のどれか。sources は title と url
+  - レスポンスに `basis` と `sourceUrl` を足す。basis は label、official、estimate のどれか。sourceUrl は検索で実際に見たページのときだけ返す
   - `menuName` を送らない古いアプリは、今と同じ動きのままにする
 - [x] Worker `foodMasters`: 名前で探す口を作る。TDDで進める
   - 空白で語に分け、すべての語がブランド名か商品名に含まれるものを返す
@@ -33,7 +33,7 @@
   - 結果画面に根拠を出す。公式サイトの値なら出典のリンクを、写真からの推定ならそう書く。名前が空だったときは「お店の名前を入れると公式の値を調べます」と案内する
   - DTOと、英語・日本語の Localizable.strings
 - [x] テスト: `cd cloudflare && npm test`、iOS は xcodebuild で
-- [x] 確認: `wrangler dev` とシミュレータで、次の3通りを動かす
+- [x] 確認: 次の3通りを動かす。サインインが要るのでシミュレータでの通しの操作はせず、`wrangler dev` に実写真を送り、画面は画像に描いて確かめた
   - チェーン写真に名前を入れる
   - フードマスターにある名前を入れる
   - 名前を空にする
