@@ -25,9 +25,7 @@ const foodMasters = new Hono<{ Bindings: Bindings; Variables: Variables }>()
     const excludeAI = c.req.query('excludeAI') === 'true';
 
     // 「スシロー サーモン」のように店名と品名を並べて探せるよう、語ごとにブランド名か商品名に含まれることを求める
-    // Mac のファイル名などからコピーすると「グ」が「ク」と濁点に分かれ、見た目が同じでも LIKE で一致しない。
-    // キーボードで入れた登録名は1文字の形なので、検索語もそろえる
-    const words = q.normalize('NFC').split(/\s+/).filter(Boolean);
+    const words = q.split(/\s+/).filter(Boolean);
     const conditions: string[] = [];
     const binds: string[] = [];
     for (const word of words) {
