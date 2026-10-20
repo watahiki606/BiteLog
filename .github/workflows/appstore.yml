@@ -16,7 +16,7 @@ on:
       auto_release:
         description: "審査通過後に自動で公開する（submit のときだけ効く）"
         type: boolean
-        default: false
+        default: true
       build_number:
         description: "出すビルド番号（空ならそのバージョンの最新）"
         type: string
