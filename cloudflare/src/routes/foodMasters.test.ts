@@ -77,6 +77,30 @@ describe('GET /api/food-masters の q', () => {
     expect(names).toEqual(['スシロー|サーモンアボカド']);
   });
 
+  it('50バイトを超える長い語でも探せる', async () => {
+    // D1 は LIKE のパターン長に上限があり、超えると SQL がエラーになる
+    await insertFoodMaster('fm-long', 'ロイヤルホスト', '国産鶏むね肉のグリルチキンサラダ（ｸﾞﾘｰﾝｺﾞｯﾃﾞｽﾄﾞﾚｯｼﾝｸﾞ) ').run();
+
+    const { names } = await search(
+      `q=${encodeURIComponent('ロイヤルホスト 国産鶏むね肉のグリルチキンサラダ（ｸﾞﾘｰﾝｺﾞｯﾃﾞｽﾄﾞﾚｯｼﾝｸﾞ)')}`
+    );
+    expect(names).toEqual(['ロイヤルホスト|国産鶏むね肉のグリルチキンサラダ（ｸﾞﾘｰﾝｺﾞｯﾃﾞｽﾄﾞﾚｯｼﾝｸﾞ) ']);
+  });
+
+  it('% や _ は文字そのものとして探す', async () => {
+    await insertFoodMaster('fm-percent', '', '果汁100%ジュース').run();
+
+    const { names } = await search(`q=${encodeURIComponent('100%')}`);
+    expect(names).toEqual(['|果汁100%ジュース']);
+  });
+
+  it('英字の大文字と小文字は区別しない', async () => {
+    await insertFoodMaster('fm-ascii', 'Starbucks', 'Latte').run();
+
+    const { names } = await search('q=starbucks%20latte');
+    expect(names).toEqual(['Starbucks|Latte']);
+  });
+
   it('1語なら、ブランド名か商品名に含まれるものをすべて返す', async () => {
     const { names } = await search(`q=${encodeURIComponent('サーモン')}`);
     expect(names).toEqual(['|サーモンアボカド丼', 'スシロー|サーモンアボカド']);

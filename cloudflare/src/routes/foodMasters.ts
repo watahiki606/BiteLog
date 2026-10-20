@@ -29,8 +29,10 @@ const foodMasters = new Hono<{ Bindings: Bindings; Variables: Variables }>()
     const conditions: string[] = [];
     const binds: string[] = [];
     for (const word of words) {
-      conditions.push('(fm.brand_name LIKE ? OR fm.product_name LIKE ?)');
-      binds.push(`%${word}%`, `%${word}%`);
+      // LIKE は D1 でパターン長に上限があり、長い商品名で探すと SQL がエラーになる。
+      // instr なら長さの上限が無い。lower で英字の大文字小文字を区別しない点は LIKE と同じにする
+      conditions.push('(instr(lower(fm.brand_name), lower(?)) > 0 OR instr(lower(fm.product_name), lower(?)) > 0)');
+      binds.push(word, word);
     }
     if (onlyMine) {
       conditions.push('fm.created_by = ?');
