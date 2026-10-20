@@ -1,15 +1,31 @@
 import SwiftUI
 import PhotosUI
 
+/// 写真と一緒に解析へ渡す入力。どちらも空なら nil にする。
+struct PhotoAnalysisInput {
+  /// 入れたときだけ、公式の栄養成分を探す
+  let menuName: String?
+  /// 量の補足など。解析の指示として渡す
+  let note: String?
+
+  init(menuName: String, note: String) {
+    let trimmedName = menuName.trimmingCharacters(in: .whitespacesAndNewlines)
+    let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
+    self.menuName = trimmedName.isEmpty ? nil : trimmedName
+    self.note = trimmedNote.isEmpty ? nil : trimmedNote
+  }
+}
+
 // 写真選択画面
 struct PhotoPickerView: View {
   @Environment(\.dismiss) var dismiss
   @Binding var selectedImage: UIImage?
-  var onAnalyze: (UIImage, String?) -> Void
+  var onAnalyze: (UIImage, PhotoAnalysisInput) -> Void
 
   @State private var showingImagePicker = false
   @State private var showingCamera = false
   @State private var sourceType: UIImagePickerController.SourceType = .photoLibrary
+  @State private var menuName: String = ""
   @State private var note: String = ""
   
   var body: some View {
@@ -25,12 +41,32 @@ struct PhotoPickerView: View {
               .cornerRadius(12)
               .shadow(radius: 5)
 
+            // 店名を入れたときだけ Web で調べるので、時間がかかることも含めて入力の前に知らせる。
+            // メモ欄に書いたら調べる、という隠れた決まりにはしない
+            VStack(alignment: .leading, spacing: 4) {
+              Text(NSLocalizedString("Store or product name", comment: "Label"))
+                .font(.caption)
+                .foregroundColor(.secondary)
+              TextField(
+                NSLocalizedString("e.g. Sushiro salmon avocado", comment: "Placeholder"),
+                text: $menuName
+              )
+              .textFieldStyle(.roundedBorder)
+              Text(
+                NSLocalizedString(
+                  "If entered, we look up the nutrition facts the store or maker publishes. This takes about 10 seconds.",
+                  comment: "Store name hint"))
+                .font(.caption)
+                .foregroundColor(.secondary)
+            }
+            .padding(.horizontal)
+
             VStack(alignment: .leading, spacing: 4) {
               Text(NSLocalizedString("Note (optional)", comment: "Label"))
                 .font(.caption)
                 .foregroundColor(.secondary)
               TextField(
-                NSLocalizedString("e.g. Brand/product name, amount eaten, etc.", comment: "Placeholder"),
+                NSLocalizedString("e.g. Left half, ate two", comment: "Placeholder"),
                 text: $note
               )
               .textFieldStyle(.roundedBorder)
@@ -40,6 +76,7 @@ struct PhotoPickerView: View {
             HStack(spacing: 16) {
               Button {
                 selectedImage = nil
+                menuName = ""
                 note = ""
               } label: {
                 Label(NSLocalizedString("Reselect", comment: "Button title"), systemImage: "arrow.clockwise")
@@ -51,8 +88,7 @@ struct PhotoPickerView: View {
               }
 
               Button {
-                let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
-                onAnalyze(image, trimmedNote.isEmpty ? nil : trimmedNote)
+                onAnalyze(image, PhotoAnalysisInput(menuName: menuName, note: note))
               } label: {
                 Label(NSLocalizedString("Analyze", comment: "Button title"), systemImage: "sparkles")
                   .frame(maxWidth: .infinity)
@@ -233,6 +269,8 @@ struct AIAnalysisResultView: View {
           // 信頼度表示
           confidenceBadge
 
+          basisNote
+
           candidatesSection
 
           // 分析結果
@@ -325,6 +363,45 @@ struct AIAnalysisResultView: View {
     }
   }
   
+  /// 値が何に基づくか。店名を入れたかどうかで解析の仕方が変わるので、それが分かるようにする。
+  @ViewBuilder
+  private var basisNote: some View {
+    switch result.basis {
+    case .photoOnly:
+      basisText(
+        NSLocalizedString(
+          "Enter a store or product name to look up official nutrition facts.", comment: "Analysis basis"))
+    case .nutritionLabel:
+      EmptyView()
+    case .web(let source):
+      VStack(spacing: 6) {
+        Label(NSLocalizedString("Values found on the web", comment: "Analysis basis"), systemImage: "globe")
+          .font(.subheadline)
+        // 似せたドメインのページを拾うこともあるので、押す前にどこのページか読めるようドメインを出す
+        if let source, let host = source.host() {
+          Link(String(format: NSLocalizedString("Source: %@", comment: "Analysis source"), host), destination: source)
+            .font(.subheadline)
+        }
+        basisText(
+          NSLocalizedString(
+            "Stores often publish only calories, so the other nutrients may be estimates.",
+            comment: "Analysis basis"))
+      }
+    case .estimatedAfterSearch:
+      basisText(
+        NSLocalizedString(
+          "No official values were found, so these are estimated from the photo.", comment: "Analysis basis"))
+    }
+  }
+
+  private func basisText(_ text: String) -> some View {
+    Text(text)
+      .font(.caption)
+      .foregroundColor(.secondary)
+      .multilineTextAlignment(.center)
+      .padding(.horizontal)
+  }
+
   private var confidenceBadge: some View {
     HStack(spacing: 4) {
       Image(systemName: confidenceIcon)

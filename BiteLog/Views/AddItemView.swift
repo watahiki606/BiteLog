@@ -42,6 +42,12 @@ struct AddItemView: View {
   @State private var showingAnalysisResult = false
   @State private var showingAPIKeyError = false
   @State private var analysisError: String?
+  /// 店名を入れて解析中か。待ち時間が長いので、何をしているかを表示で分ける
+  @State private var isLookingUpOfficial = false
+  /// 店名に当たった登録済みの食品。選ばれなければ、この入力のまま公式の値を調べる
+  @State private var menuMatches: [FoodMasterDTO] = []
+  @State private var menuMatchInput: PhotoAnalysisInput?
+  @State private var showingMenuMatches = false
 
   init(preselectedMealType: MealType, selectedDate: Date, selectedTab: Binding<AppTab>) {
     self.mealType = preselectedMealType
@@ -114,7 +120,21 @@ struct AddItemView: View {
         if !isDataLoaded { Task { await loadFoodMasters() } }
       }
       .sheet(isPresented: $showingPhotoPicker) {
-        PhotoPickerView(selectedImage: $selectedImage) { image, note in analyzeImage(image, note: note) }
+        PhotoPickerView(selectedImage: $selectedImage) { image, input in startAnalysis(image, input: input) }
+      }
+      .sheet(isPresented: $showingMenuMatches) {
+        if let input = menuMatchInput, let menuName = input.menuName, let image = selectedImage {
+          MenuMatchesView(
+            menuName: menuName, matches: menuMatches,
+            onPick: { foodMaster in
+              showingMenuMatches = false
+              Task { await addFoodItem(foodMaster, servings: foodMaster.servingsToLog) }
+            },
+            onLookUpOfficial: {
+              showingMenuMatches = false
+              Task { await analyze(image, input: input) }
+            })
+        }
       }
       .sheet(isPresented: $showingAnalysisResult) {
         if let result = analysisResult, let image = selectedImage {
@@ -137,7 +157,10 @@ struct AddItemView: View {
             Color.black.opacity(0.4).ignoresSafeArea()
             VStack(spacing: 16) {
               ProgressView().scaleEffect(1.5).tint(.white)
-              Text(NSLocalizedString("Analyzing food...", comment: "Loading message"))
+              Text(
+                isLookingUpOfficial
+                  ? NSLocalizedString("Looking up official nutrition facts...", comment: "Loading message")
+                  : NSLocalizedString("Analyzing food...", comment: "Loading message"))
                 .foregroundColor(.white).font(.headline)
             }
             .padding(30)
@@ -149,15 +172,40 @@ struct AddItemView: View {
     }
   }
 
-  private func analyzeImage(_ image: UIImage, note: String?) {
+  /// 店名があれば、Web で調べる前に登録済みの食品を探す。当たれば選ぶだけで記録でき、費用も待ち時間もかからない。
+  private func startAnalysis(_ image: UIImage, input: PhotoAnalysisInput) {
     Task {
-      await MainActor.run { isAnalyzing = true; showingPhotoPicker = false }
-      do {
-        let result = try await AIFoodAnalyzer.shared.analyzeFood(image: image, note: note)
-        await MainActor.run { isAnalyzing = false; analysisResult = result; showingAnalysisResult = true }
-      } catch {
-        await MainActor.run { isAnalyzing = false; analysisError = error.localizedDescription }
+      showingPhotoPicker = false
+      if let menuName = input.menuName {
+        isAnalyzing = true
+        // 探せなくても解析はできるので、失敗は候補なしとして先へ進む
+        let matches =
+          (try? await APIClient.shared.fetchFoodMasters(query: menuName, limit: 10, excludeAI: true).items) ?? []
+        if !matches.isEmpty {
+          isAnalyzing = false
+          menuMatches = matches
+          menuMatchInput = input
+          showingMenuMatches = true
+          return
+        }
       }
+      await analyze(image, input: input)
+    }
+  }
+
+  private func analyze(_ image: UIImage, input: PhotoAnalysisInput) async {
+    isAnalyzing = true
+    isLookingUpOfficial = input.menuName != nil
+    defer {
+      isAnalyzing = false
+      isLookingUpOfficial = false
+    }
+    do {
+      analysisResult = try await AIFoodAnalyzer.shared.analyzeFood(
+        image: image, note: input.note, menuName: input.menuName)
+      showingAnalysisResult = true
+    } catch {
+      analysisError = error.localizedDescription
     }
   }
 
@@ -352,15 +400,17 @@ struct AddItemView: View {
   }
 
   /// - Returns: 保存できたら true。失敗したら false を返し、呼び出し側が画面を閉じないようにする。
+  /// - Parameter servings: 省くと前回の量で記録する
   @discardableResult
-  private func addFoodItem(_ foodMaster: FoodMasterDTO) async -> Bool {
+  private func addFoodItem(_ foodMaster: FoodMasterDTO, servings: Double? = nil) async -> Bool {
+    let servings = servings ?? foodMaster.lastNumberOfServings
     let logItemID = UUID()
     let dto = LogItemCreateDTO(
       id: logItemID.uuidString,
       timestamp: ISO8601DateFormatter().string(from: LogItemDTO.timestamp(for: date)),
       logDate: LogItemDTO.formatLogDate(date),
       mealType: mealType.rawValue,
-      numberOfServings: foodMaster.lastNumberOfServings,
+      numberOfServings: servings,
       foodMasterId: foodMaster.id.uuidString,
       nutritionSnapshot: NutritionSnapshot.from(foodMaster)
     )
@@ -381,7 +431,7 @@ struct AddItemView: View {
     }
 
     let nutrition = NutritionSnapshot.from(foodMaster)
-      .scaled(by: foodMaster.lastNumberOfServings)
+      .scaled(by: servings)
     addedEntries.append(
       AddedEntry(
         logItemID: logItemID,

@@ -131,10 +131,13 @@ final class APIClient {
 
   // MARK: - FoodMaster
 
-  func fetchFoodMasters(query: String = "", limit: Int = 30, offset: Int = 0, onlyMine: Bool = false) async throws -> FoodMasterListResponse {
+  func fetchFoodMasters(
+    query: String = "", limit: Int = 30, offset: Int = 0, onlyMine: Bool = false, excludeAI: Bool = false
+  ) async throws -> FoodMasterListResponse {
     let q = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
     let mine = onlyMine ? "&onlyMine=true" : ""
-    return try await request(path: "/api/food-masters?q=\(q)&limit=\(limit)&offset=\(offset)\(mine)")
+    let ai = excludeAI ? "&excludeAI=true" : ""
+    return try await request(path: "/api/food-masters?q=\(q)&limit=\(limit)&offset=\(offset)\(mine)\(ai)")
   }
 
   func createFoodMaster(_ dto: FoodMasterCreateDTO) async throws -> FoodMasterDTO {
@@ -272,8 +275,10 @@ final class APIClient {
 
   // MARK: - AI
 
-  func analyzeFoodImage(imageBase64: String, note: String? = nil) async throws -> AIAnalyzeResponse {
-    return try await request(path: "/api/ai/analyze-food", method: "POST", body: AIAnalyzeRequest(imageBase64: imageBase64, note: note))
+  func analyzeFoodImage(imageBase64: String, note: String? = nil, menuName: String? = nil) async throws -> AIAnalyzeResponse {
+    return try await request(
+      path: "/api/ai/analyze-food", method: "POST",
+      body: AIAnalyzeRequest(imageBase64: imageBase64, note: note, menuName: menuName))
   }
 
   // MARK: - Auth

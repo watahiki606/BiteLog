@@ -129,10 +129,23 @@
 "Reselect" = "Reselect";
 "Analyze" = "Analyze";
 "Note (optional)" = "Note (optional)";
-"e.g. Brand/product name, amount eaten, etc." = "e.g. Brand/product name, amount eaten, etc.";
 
 // AI Analysis
 "Analyzing food..." = "Analyzing food...";
+"Store or product name" = "Store or product name";
+"e.g. Sushiro salmon avocado" = "e.g. Sushiro salmon avocado";
+"If entered, we look up the nutrition facts the store or maker publishes. This takes about 10 seconds." = "If entered, we look up the nutrition facts the store or maker publishes. This takes about 10 seconds.";
+"e.g. Left half, ate two" = "e.g. Left half, ate two";
+"Looking up official nutrition facts..." = "Looking up official nutrition facts...";
+"Registered foods matching \"%@\"" = "Registered foods matching \"%@\"";
+"Pick one to log it as is." = "Pick one to log it as is.";
+"None of these. Look up official nutrition facts" = "None of these. Look up official nutrition facts";
+"Found in Registered Foods" = "Found in Registered Foods";
+"Enter a store or product name to look up official nutrition facts." = "Enter a store or product name to look up official nutrition facts.";
+"Values found on the web" = "Values found on the web";
+"Source: %@" = "Source: %@";
+"Stores often publish only calories, so the other nutrients may be estimates." = "Stores often publish only calories, so the other nutrients may be estimates.";
+"No official values were found, so these are estimated from the photo." = "No official values were found, so these are estimated from the photo.";
 "Analysis Complete" = "Analysis Complete";
 "Analysis Result" = "Analysis Result";
 "Tap to edit values" = "Tap to edit values";

@@ -22,6 +22,10 @@ struct FoodMasterDTO: Codable, Identifiable, Hashable {
 
   var carbohydrates: Double { netCarbs + dietaryFiber }
 
+  /// 選んで記録するときの量。サーバーは使ったことが無い食品の前回量を 1 で返すので、
+  /// そのまま使うと 100g の食品が 1g で記録される。使ったことが無ければ1食分にする。
+  var servingsToLog: Double { usageCount > 0 ? lastNumberOfServings : portionSize }
+
   /// 1食分 (portionSize 分) の栄養素値。表示コンポーネントに渡すためのまとめ。
   var portionNutritionValues: NutritionValues {
     NutritionValues(
@@ -220,6 +224,8 @@ extension NutritionSnapshot {
 struct AIAnalyzeRequest: Codable {
   var imageBase64: String
   var note: String?
+  /// 入れたときだけ、Worker が公式の栄養成分を Web で調べる
+  var menuName: String?
 }
 
 struct AIAnalyzeResponse: Codable {
@@ -232,6 +238,10 @@ struct AIAnalyzeResponse: Codable {
   var portionUnit: String
   var confidence: String
   var productName: String
+  /// menuName を送ったときだけ返る。label、official、estimate のどれか
+  var basis: String?
+  /// 検索で実際に見たページのうち、値を取ったもの
+  var sourceUrl: String?
 }
 
 // MARK: - BodyMeasurement DTO
