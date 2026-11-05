@@ -29,7 +29,9 @@ struct SettingsView: View {
               }
               .foregroundStyle(.secondary)
             } label: {
-              Text(NSLocalizedString("Language", comment: "Settings section"))
+              SettingsRowLabel(
+                NSLocalizedString("Language", comment: "Settings section"),
+                systemImage: "globe", color: .blue)
             }
           }
           // 既定のままだと行のラベルまで着色され、同じ Form の中で
@@ -44,28 +46,40 @@ struct SettingsView: View {
 
         Section(header: Text(NSLocalizedString("Nutrition Goals", comment: "Nutrition goals section"))) {
           NavigationLink(destination: NutritionGoalsEditView()) {
-            Text(NSLocalizedString("Daily Nutrition Goals", comment: "Nutrition goals link"))
+            SettingsRowLabel(
+              NSLocalizedString("Daily Nutrition Goals", comment: "Nutrition goals link"),
+              systemImage: "target", color: .red)
           }
         }
 
         Section(header: Text(NSLocalizedString("Data Management", comment: "Data management section"))) {
           NavigationLink(destination: ImportCSVView()) {
-            Text(NSLocalizedString("Import CSV", comment: "Import CSV"))
+            SettingsRowLabel(
+              NSLocalizedString("Import CSV", comment: "Import CSV"),
+              systemImage: "square.and.arrow.down", color: .green)
           }
           NavigationLink(destination: ExportCSVView()) {
-            Text(NSLocalizedString("Export CSV", comment: "Export CSV"))
+            SettingsRowLabel(
+              NSLocalizedString("Export CSV", comment: "Export CSV"),
+              systemImage: "square.and.arrow.up", color: .teal)
           }
           NavigationLink(destination: ScaleImportView()) {
-            Text(NSLocalizedString("Scale Setup", comment: "Scale setup title"))
+            SettingsRowLabel(
+              NSLocalizedString("Scale Setup", comment: "Scale setup title"),
+              systemImage: "scalemass.fill", color: .purple)
           }
           Button(role: .destructive, action: { showingDeleteConfirmation = true }) {
-            Text(NSLocalizedString("Delete All Data", comment: "Delete all data"))
+            SettingsRowLabel(
+              NSLocalizedString("Delete All Data", comment: "Delete all data"),
+              systemImage: "trash.fill", color: .red)
           }
         }
 
         Section(header: Text(NSLocalizedString("Account", comment: "Account settings section"))) {
           Button(role: .destructive, action: { showingSignOutConfirmation = true }) {
-            Text(NSLocalizedString("Sign Out", comment: "Sign out button"))
+            SettingsRowLabel(
+              NSLocalizedString("Sign Out", comment: "Sign out button"),
+              systemImage: "rectangle.portrait.and.arrow.right", color: .red)
           }
         }
       }
@@ -160,6 +174,41 @@ struct SettingsView: View {
           + error.localizedDescription
         showDeleteErrorAlert = true
       }
+    }
+  }
+}
+
+/// 設定の1行。淡い色の角丸に入れたアイコンを行頭に置く。
+///
+/// 文字だけの行が続くと、目的の項目を見つけるのに上から全部読むことになる。
+/// 行ごとに色と形を変えておけば、2回目からは形で探せる。
+struct SettingsRowLabel: View {
+  let title: String
+  let systemImage: String
+  let color: Color
+
+  @Environment(\.colorSchemeContrast) private var contrast
+  @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 30
+
+  init(_ title: String, systemImage: String, color: Color) {
+    self.title = title
+    self.systemImage = systemImage
+    self.color = color
+  }
+
+  var body: some View {
+    HStack(spacing: 12) {
+      Image(systemName: systemImage)
+        .font(.subheadline.weight(.semibold))
+        .foregroundStyle(color)
+        .frame(width: iconSize, height: iconSize)
+        .background(
+          color.opacity(contrast == .increased ? 0.25 : 0.15),
+          in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+        )
+        .accessibilityHidden(true)
+
+      Text(title)
     }
   }
 }

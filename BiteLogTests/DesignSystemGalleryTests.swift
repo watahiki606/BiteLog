@@ -32,6 +32,7 @@ struct DesignSystemGalleryTests {
       try render(GalleryView(), to: base, name: name, scheme: scheme, typeSize: typeSize)
       try render(RowGalleryView(), to: base, name: "rows-\(name)", scheme: scheme, typeSize: typeSize)
       // 体組成は別の絵にする。1枚にまとめると AX5 で PNG に書き出せない高さになる
+      try render(ScreenPartsGalleryView(), to: base, name: "parts-\(name)", scheme: scheme, typeSize: typeSize)
       try render(BodyGalleryView(), to: base, name: "body-\(name)", scheme: scheme, typeSize: typeSize)
     }
   }
@@ -118,8 +119,8 @@ private struct GalleryView: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 20) {
-      group("Chips") {
-        NutrientChipRow(values: sample)
+      group("Nutrients") {
+        NutrientIconRow(values: sample)
       }
 
       group("Calorie") {
@@ -147,7 +148,7 @@ private struct GalleryView: View {
 
       group("Card") {
         CardView(title: "Daily Total") {
-          NutrientChipRow(values: overSample)
+          NutrientIconRow(values: overSample)
         }
       }
 
@@ -233,6 +234,76 @@ private struct BodyGalleryView: View {
       weightKg: weight, bodyFatPercent: bodyFat, muscleMassKg: muscle, muscleScore: 2,
       visceralFatLevel: 6.5, basalMetabolismKcal: 1480, metabolicAge: 34, boneMassKg: 2.7,
       bodyWaterPercent: 57.3)
+  }
+
+  private func group<Content: View>(
+    _ title: String, @ViewBuilder content: () -> Content
+  ) -> some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text(title)
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(.secondary)
+      content()
+    }
+  }
+}
+
+/// 画面の部品。週の帯・記録の詳細の要約・設定の行。
+/// ほかの絵に足すと AX5 で PNG に書き出せない高さになるので分ける。
+private struct ScreenPartsGalleryView: View {
+  private let sample = NutritionValues(
+    calories: 523, netCarbs: 62.4, dietaryFiber: 4.2, fat: 18.6, protein: 31.5)
+
+  private static var galleryToday: Date { Calendar.current.startOfDay(for: Date()) }
+
+  /// 今週の各日に、目標の手前・超過・未記録が混ざるように値を置く。
+  private static var weekCalories: [String: Double] {
+    let values: [Double] = [1850, 2300, 0, 1420, 960, 2000, 1200]
+    let days = WeekStripView.days(containing: galleryToday)
+    return Dictionary(
+      uniqueKeysWithValues: zip(days.map(LogItemDTO.formatLogDate), values))
+  }
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 20) {
+      group("Week Strip") {
+        WeekStripView(
+          selectedDate: Self.galleryToday,
+          caloriesByDate: Self.weekCalories,
+          targetCalories: 2000,
+          onSelect: { _ in })
+      }
+
+      group("Item Overview") {
+        NutritionOverview(values: sample)
+      }
+
+      group("Meal Type Selector") {
+        MealTypeSelector(selection: .constant(.lunch))
+      }
+
+      group("Log Row") {
+        FoodRow(
+          title: "Bulletproof Mct Oil", subtitle: "1 tbsp",
+          values: NutritionValues(
+            calories: 128, netCarbs: 0, dietaryFiber: 0, fat: 14, protein: 0),
+          trailingText: "8:12")
+        FoodRow(
+          title: "ごはん", subtitle: "150 g",
+          values: NutritionValues(
+            calories: 234, netCarbs: 53.4, dietaryFiber: 2.3, fat: 0.5, protein: 3.8),
+          showsAddIndicator: true)
+      }
+
+      group("Settings Rows") {
+        VStack(alignment: .leading, spacing: 12) {
+          SettingsRowLabel("Daily Nutrition Goals", systemImage: "target", color: .red)
+          SettingsRowLabel("Scale Setup", systemImage: "scalemass.fill", color: .purple)
+        }
+      }
+
+    }
+    .padding()
   }
 
   private func group<Content: View>(

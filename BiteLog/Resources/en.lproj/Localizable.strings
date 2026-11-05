@@ -393,3 +393,8 @@
 "Entered" = "Entered";
 "The scale keeps data for up to 4 people. Choose a number no one else in your family uses." = "The scale keeps data for up to 4 people. Choose a number no one else in your family uses.";
 "Enter your personal data first." = "Enter your personal data first.";
+
+/* Week strip */
+"Previous week" = "Previous week";
+"Next week" = "Next week";
+"Added %@ to %@" = "Added %1$@ to %2$@";

@@ -2,8 +2,9 @@ import SwiftUI
 
 /// 食品1件を表す一覧行。ログ・食品管理・検索結果で共通に使う。
 ///
-/// アクセシビリティ用の大きな文字サイズでは、名前とカロリーを横に並べると
-/// どちらも潰れて読めなくなるため縦積みに切り替える。
+/// 左端を上から読めば済むよう、名前・カロリーと量・栄養素を縦に積む。
+/// 右端には読み飛ばしてよい補足だけを置く。記録なら時刻、追加の一覧なら追加の印。
+/// カロリーを右端に置くと、名前を読んだあと視線が行の端まで飛ぶ。
 struct FoodRow: View {
   let title: String
   /// 摂取量や1食分の量。「2 個」「100 g」など。
@@ -16,66 +17,120 @@ struct FoodRow: View {
   /// 名前の行数。一覧では2行に抑えるが、似た名前から1つ選ばせる場面では
   /// 途中で切ると見分けがつかなくなるので nil を渡して全部出す。
   var titleLineLimit: Int? = 2
+  /// 名前の右に出す補足。記録した時刻など。
+  var trailingText: String?
+  /// 行の右端に追加の印を出す。押すとすぐ記録される一覧で、押せることを示す。
+  var showsAddIndicator: Bool = false
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 6) {
-      if dynamicTypeSize.isAccessibilitySize {
-        VStack(alignment: .leading, spacing: 4) {
-          titleBlock
-          CalorieLabel(calories: values.calories)
-        }
-      } else {
-        HStack(alignment: .firstTextBaseline) {
-          titleBlock
-          Spacer(minLength: 8)
-          CalorieLabel(calories: values.calories)
-        }
-      }
+    HStack(alignment: .center, spacing: 12) {
+      VStack(alignment: .leading, spacing: 4) {
+        titleRow
 
-      NutrientChipRow(values: values)
+        if isDeleted && dynamicTypeSize.isAccessibilitySize {
+          deletedBadge
+        }
+
+        amountLine
+
+        NutrientIconRow(values: values)
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+
+      if showsAddIndicator {
+        Image(systemName: "plus.circle")
+          .font(.title2)
+          .foregroundStyle(.tint)
+          .accessibilityHidden(true)
+      }
     }
     .padding(.vertical, 4)
     .accessibilityElement(children: .combine)
   }
 
-  private var titleBlock: some View {
-    VStack(alignment: .leading, spacing: 2) {
-      HStack(alignment: .firstTextBaseline, spacing: 4) {
-        if let leadingSymbol {
-          Image(systemName: leadingSymbol)
-            .font(.caption2)
-            .foregroundStyle(.tint)
-            .accessibilityLabel(leadingSymbolLabel ?? "")
-            .accessibilityHidden(leadingSymbolLabel == nil)
-        }
-
-        Text(title)
-          .font(.subheadline.weight(.medium))
-          .foregroundStyle(isDeleted ? .secondary : .primary)
-          .strikethrough(isDeleted)
-          .lineLimit(titleLineLimit)
-          // 行数を制限しない場合だけ、必要な高さを確保させる。
-          // これが無いと親の提案した高さに収まるよう2行で切られる。
-          .fixedSize(horizontal: false, vertical: titleLineLimit == nil)
-
-        if isDeleted && !dynamicTypeSize.isAccessibilitySize {
-          deletedBadge
-        }
+  @ViewBuilder
+  private var titleRow: some View {
+    // 大きな文字では名前と時刻を横に並べると名前が潰れる。時刻を下へ逃がす
+    if dynamicTypeSize.isAccessibilitySize {
+      VStack(alignment: .leading, spacing: 2) {
+        nameLine
+        trailingLabel
       }
-
-      if isDeleted && dynamicTypeSize.isAccessibilitySize {
-        deletedBadge
-      }
-
-      if !subtitle.isEmpty {
-        Text(subtitle)
-          .font(.caption)
-          .monospacedDigit()
-          .foregroundStyle(.secondary)
+    } else {
+      HStack(alignment: .firstTextBaseline, spacing: 8) {
+        nameLine
+        Spacer(minLength: 0)
+        trailingLabel
       }
     }
+  }
+
+  @ViewBuilder
+  private var trailingLabel: some View {
+    if let trailingText {
+      Text(trailingText)
+        .font(.caption)
+        .monospacedDigit()
+        .foregroundStyle(.secondary)
+    }
+  }
+
+  /// 「128 kcal · 1 tbsp」。名前より目立つと名前の下に置いた意味が薄れるので、灰色で添える。
+  private var amountLine: some View {
+    ViewThatFits(in: .horizontal) {
+      HStack(alignment: .firstTextBaseline, spacing: 6) {
+        CalorieLabel(calories: values.calories)
+        if !subtitle.isEmpty {
+          Text(verbatim: "·")
+            .font(.caption)
+            .foregroundStyle(.tertiary)
+            .accessibilityHidden(true)
+          subtitleText
+        }
+      }
+
+      VStack(alignment: .leading, spacing: 2) {
+        CalorieLabel(calories: values.calories)
+        if !subtitle.isEmpty {
+          subtitleText
+        }
+      }
+    }
+    .foregroundStyle(.secondary)
+  }
+
+  private var nameLine: some View {
+    HStack(alignment: .firstTextBaseline, spacing: 4) {
+      if let leadingSymbol {
+        Image(systemName: leadingSymbol)
+          .font(.caption2)
+          .foregroundStyle(.tint)
+          .accessibilityLabel(leadingSymbolLabel ?? "")
+          .accessibilityHidden(leadingSymbolLabel == nil)
+      }
+
+      Text(title)
+        .font(.subheadline.weight(.semibold))
+        .foregroundStyle(isDeleted ? .secondary : .primary)
+        .strikethrough(isDeleted)
+        .lineLimit(titleLineLimit)
+        // 行数を制限しない場合だけ、必要な高さを確保させる。
+        // これが無いと親の提案した高さに収まるよう2行で切られる。
+        .fixedSize(horizontal: false, vertical: titleLineLimit == nil)
+
+      if isDeleted && !dynamicTypeSize.isAccessibilitySize {
+        deletedBadge
+      }
+    }
+  }
+
+  private var subtitleText: some View {
+    Text(subtitle)
+      .font(.caption)
+      .monospacedDigit()
+      .foregroundStyle(.secondary)
   }
 
   private var deletedBadge: some View {
@@ -106,5 +161,15 @@ extension FoodRow {
   /// 「2 個」「100 g」のような量の表記。
   static func amountText(_ amount: Double, unit: String) -> String {
     "\(NutritionFormatter.formatNutrition(amount)) \(unit)"
+  }
+
+  /// 記録の時刻。0時ちょうどは出さない。
+  ///
+  /// 以前は日付を動かすと時刻が 00:00 に固定される不具合があり、
+  /// 古い記録の多くが 0時ちょうどになっている。食べた時刻ではないので見せない。
+  static func timeText(_ date: Date, calendar: Calendar = .current) -> String? {
+    let parts = calendar.dateComponents([.hour, .minute, .second], from: date)
+    if parts.hour == 0 && parts.minute == 0 && parts.second == 0 { return nil }
+    return date.formatted(date: .omitted, time: .shortened)
   }
 }

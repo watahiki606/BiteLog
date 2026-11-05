@@ -408,3 +408,8 @@
 "Entered" = "入力済み";
 "The scale keeps data for up to 4 people. Choose a number no one else in your family uses." = "体組成計は4人分の個人データを持っています。家族のほかの人と重ならない番号を選んでください。";
 "Enter your personal data first." = "先に個人データを入力してください。";
+
+/* 週の帯 */
+"Previous week" = "前の週";
+"Next week" = "次の週";
+"Added %@ to %@" = "%2$@に %1$@ を追加しました";

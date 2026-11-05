@@ -5,6 +5,7 @@ struct DayContentView: View {
   let selectedDate: Date
   let onAddTapped: (Date, MealType) -> Void
   var refreshTrigger: Int = 0
+  var onSelectDate: (Date) -> Void = { _ in }
 
   @EnvironmentObject private var nutritionGoalsManager: NutritionGoalsManager
   @StateObject private var bodyComposition = BodyCompositionModel()
@@ -18,12 +19,19 @@ struct DayContentView: View {
   @State private var editMode: EditMode = .inactive
   @State private var selectedItemIDs: Set<UUID> = []
   @State private var showsAllNutrients = false
+  /// 週の帯に出す、日ごとの摂取カロリー。
+  @State private var weekCalories: [String: Double] = [:]
 
   @State private var deleteAllTrigger = 0
   @State private var deletedCount = 0
 
   private var logDateString: String { LogItemDTO.formatLogDate(date) }
   private var taskID: String { "\(logDateString)-\(refreshTrigger)-\(deleteAllTrigger)" }
+  private var weekDays: [Date] { WeekStripView.days(containing: date) }
+  /// 同じ週の中で日を移っても読み直さない。週が変わったときと記録が変わったときだけ読む
+  private var weekTaskID: String {
+    "\(weekDays.first.map(LogItemDTO.formatLogDate) ?? "")-\(refreshTrigger)-\(deleteAllTrigger)"
+  }
 
   var body: some View {
     Group {
@@ -34,6 +42,15 @@ struct DayContentView: View {
       } else {
         logList
       }
+    }
+    // スクロールしなくても届くよう、追加の入口を画面の左下に固定する。
+    // 食事の種類は時刻から仮に選び、追加画面の上部で切り替えてもらう
+    .overlay(alignment: .bottomLeading) {
+      AddMealButton {
+        onAddTapped(date, MealType.suggested())
+      }
+      .padding(.leading, 20)
+      .padding(.bottom, 16)
     }
     // 広告はスクロール内容に混ぜず画面下端に固定する。
     // 高さは AdaptiveBannerView が幅に合わせて決めるので、ここで固定しない。
@@ -77,6 +94,9 @@ struct DayContentView: View {
     .task(id: taskID) {
       await loadLogItems()
     }
+    .task(id: weekTaskID) {
+      await loadWeekCalories()
+    }
     // 記録の読み込みとは別に走らせる。体組成が取れなくても記録の表示は待たせない
     .task(id: taskID) {
       await bodyComposition.load(date: date)
@@ -93,6 +113,8 @@ struct DayContentView: View {
 
   private var logList: some View {
     List(selection: editMode == .active ? $selectedItemIDs : .constant(Set<UUID>())) {
+      weekSection
+
       summarySection
 
       bodyCompositionSection
@@ -104,6 +126,8 @@ struct DayContentView: View {
       unloggedMealsSection
     }
     .listStyle(.insetGrouped)
+    // 最後の行が左下の追加ボタンに隠れないよう、下に余白を足す
+    .contentMargins(.bottom, 88, for: .scrollContent)
     .environment(\.editMode, $editMode)
     .refreshable {
       await loadLogItems()
@@ -114,6 +138,31 @@ struct DayContentView: View {
         ProgressView()
       }
     }
+  }
+
+  // MARK: - 週の帯
+
+  private var weekSection: some View {
+    Section {
+      WeekStripView(
+        selectedDate: date,
+        caloriesByDate: weekCaloriesIncludingToday,
+        targetCalories: nutritionGoalsManager.targetCalories,
+        onSelect: onSelectDate
+      )
+      .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+      .listRowBackground(Color.clear)
+    }
+  }
+
+  /// 表示中の日は、手元の記録から出した合計で上書きする。
+  /// 週の集計は読み込んだ時点のものなので、この画面で消した記録が反映されない。
+  private var weekCaloriesIncludingToday: [String: Double] {
+    var merged = weekCalories
+    if !dayLogItems.isEmpty || !isLoading {
+      merged[logDateString] = dailyTotals.calories
+    }
+    return merged
   }
 
   // MARK: - 1日の合計
@@ -132,10 +181,10 @@ struct DayContentView: View {
           fiber: nutritionGoalsManager.targetFiber),
         showsAllNutrients: $showsAllNutrients
       )
-    } header: {
-      Text(NSLocalizedString("Daily Total", comment: "Daily nutrition summary"))
+      // カードの地と角丸は DailyTotalsView が持つ。リストの行の地を敷くと二重になる
+      .listRowInsets(EdgeInsets())
+      .listRowBackground(Color.clear)
     }
-    .headerProminence(.increased)
   }
 
   // MARK: - 体組成
@@ -187,6 +236,7 @@ struct DayContentView: View {
         }
       } header: {
         Text(NSLocalizedString("Body Composition", comment: "Body composition section"))
+          .sectionHeaderAlignedToCard()
       }
       .headerProminence(.increased)
     }
@@ -225,6 +275,7 @@ struct DayContentView: View {
       }
     } header: {
       mealHeader(for: mealType, totalCalories: totals(for: mealItems).calories)
+        .sectionHeaderAlignedToCard()
     }
     .headerProminence(.increased)
   }
@@ -239,23 +290,9 @@ struct DayContentView: View {
 
       Spacer(minLength: 8)
 
+      // 追加は左下のボタンにまとめた。見出しごとに置くと入口が散らばる
       CalorieLabel(calories: totalCalories, textStyle: .subheadline)
         .foregroundStyle(.secondary)
-
-      Button {
-        onAddTapped(date, mealType)
-      } label: {
-        Image(systemName: "plus.circle.fill")
-          .font(.title3)
-          // アイコンだけだとタップ領域が小さいので 44pt 角を確保する。
-          .frame(width: 44, height: 44)
-          .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
-      .foregroundStyle(mealType.accentColor)
-      .accessibilityLabel(
-        String(
-          format: NSLocalizedString("Add %@", comment: "Add meal type"), mealType.localizedName))
     }
     .textCase(nil)
   }
@@ -310,6 +347,7 @@ struct DayContentView: View {
         }
       } header: {
         Text(NSLocalizedString("Not logged yet", comment: "Section for meals without records"))
+          .sectionHeaderAlignedToCard()
       }
     }
   }
@@ -346,6 +384,20 @@ struct DayContentView: View {
       } else {
         failure = .refreshing(error)
       }
+    }
+  }
+
+  /// 週の帯のリングは補助の表示なので、読めなくても画面を差し替えたり
+  /// アラートを出したりはしない。リングが空のまま、記録の表示はそのまま使える。
+  private func loadWeekCalories() async {
+    guard let first = weekDays.first, let last = weekDays.last else { return }
+    do {
+      let summary = try await APIClient.shared.fetchDailySummary(
+        from: LogItemDTO.formatLogDate(first), to: LogItemDTO.formatLogDate(last))
+      weekCalories = Dictionary(
+        summary.map { ($0.logDate, $0.calories) }, uniquingKeysWith: +)
+    } catch {
+      weekCalories = [:]
     }
   }
 
@@ -406,6 +458,44 @@ struct DayContentView: View {
     selectedItemIDs.removeAll()
     editMode = .inactive
     Task { await deleteItems(toDelete) }
+  }
+}
+
+// MARK: - 追加ボタン
+
+/// 画面の左下に浮かべる、食事を追加する丸いボタン。
+private struct AddMealButton: View {
+  let action: () -> Void
+
+  @ScaledMetric(relativeTo: .title2) private var scaledSize: CGFloat = 60
+
+  /// 大きな文字でも記録を覆いすぎないところで止める。
+  private var size: CGFloat { min(scaledSize, 76) }
+
+  var body: some View {
+    Button(action: action) {
+      Image(systemName: "plus")
+        .font(.title2.weight(.semibold))
+        .foregroundStyle(.white)
+        .frame(width: size, height: size)
+        .background(Circle().fill(.tint))
+        .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
+        .contentShape(Circle())
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel(NSLocalizedString("Add Meal", comment: "Navigation title"))
+  }
+}
+
+// MARK: - 見出しの位置
+
+extension View {
+  /// セクションの見出しを、下のカードの左端にそろえる。
+  ///
+  /// 既定では見出しがカードの中身と同じ位置まで内側に寄り、見出しなのに
+  /// カードより奥に引っ込んで見える。外側にそろえて、どのカードの見出しかを示す。
+  fileprivate func sectionHeaderAlignedToCard() -> some View {
+    listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 8, trailing: 4))
   }
 }
 

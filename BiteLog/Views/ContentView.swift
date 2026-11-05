@@ -78,17 +78,24 @@ struct ContentView: View {
         onAddTapped: { date, mealType in
           showingAddItemFor = (date, mealType)
         },
-        refreshTrigger: logRefreshTrigger
+        refreshTrigger: logRefreshTrigger,
+        onSelectDate: { selectedDate = $0 }
       )
+      // 大きなタイトルで今見ている日を示し、スクロールしたら小さく畳む。
+      // 日付の移動は記録の先頭にある週の帯で行う
       .navigationTitle(DateLabel.title(for: selectedDate, locale: languageManager.locale))
-      .navigationBarTitleDisplayMode(.inline)
+      .navigationBarTitleDisplayMode(.large)
+      .dateSubtitle(DateLabel.subtitle(for: selectedDate, locale: languageManager.locale))
       .toolbar {
-        ToolbarItem(placement: .principal) {
-          DateNavigationBar(
-            selectedDate: $selectedDate,
-            locale: languageManager.locale,
-            onPickDate: { showingDatePicker = true }
-          )
+        ToolbarItem(placement: .topBarLeading) {
+          // 週の帯では離れた日へ行きにくいので、暦から選ぶ入口を残す
+          Button {
+            showingDatePicker = true
+          } label: {
+            Label(
+              NSLocalizedString("Select Date", comment: "Date picker title"),
+              systemImage: "calendar")
+          }
         }
 
         ToolbarItem(placement: .topBarTrailing) {
@@ -128,56 +135,6 @@ struct ContentView: View {
   }
 }
 
-/// ツールバー中央の日付ナビゲーション。
-///
-/// 日付は「今日」「昨日」と曜日付きの表記にして、いつを見ているかを一目で分かるようにする。
-struct DateNavigationBar: View {
-  @Binding var selectedDate: Date
-  let locale: Locale
-  let onPickDate: () -> Void
-
-  private var isToday: Bool { Calendar.current.isDateInToday(selectedDate) }
-
-  var body: some View {
-    HStack(spacing: 0) {
-      Button {
-        shift(by: -1)
-      } label: {
-        Image(systemName: "chevron.left")
-          .frame(width: 44, height: 44)
-          .contentShape(Rectangle())
-      }
-      .accessibilityLabel(NSLocalizedString("Previous day", comment: "Date navigation"))
-
-      Button(action: onPickDate) {
-        Text(DateLabel.title(for: selectedDate, locale: locale))
-          .font(.headline)
-          .frame(minHeight: 44)
-          .contentShape(Rectangle())
-      }
-      .accessibilityLabel(NSLocalizedString("Select Date", comment: "Date picker title"))
-      .accessibilityValue(DateLabel.title(for: selectedDate, locale: locale))
-
-      Button {
-        shift(by: 1)
-      } label: {
-        Image(systemName: "chevron.right")
-          .frame(width: 44, height: 44)
-          .contentShape(Rectangle())
-      }
-      .accessibilityLabel(NSLocalizedString("Next day", comment: "Date navigation"))
-      .disabled(isToday)
-    }
-  }
-
-  private func shift(by days: Int) {
-    guard let shifted = Calendar.current.date(byAdding: .day, value: days, to: selectedDate) else {
-      return
-    }
-    selectedDate = shifted
-  }
-}
-
 /// 日付をユーザーが位置を把握できる形にする。
 enum DateLabel {
   /// 今日・昨日は相対表記、それ以外は曜日付き。
@@ -197,6 +154,29 @@ enum DateLabel {
       calendar.isDate(date, equalTo: Date(), toGranularity: .year) ? "MMMdEEE" : "yMMMdEEE")
     return formatter.string(from: date)
   }
+
+  /// タイトルが「今日」「昨日」のときだけ、何月何日の何曜日かを添える。
+  /// それ以外はタイトルに日付と曜日が入っているので重ねない。
+  static func subtitle(for date: Date, locale: Locale) -> String? {
+    let calendar = Calendar.current
+    guard calendar.isDateInToday(date) || calendar.isDateInYesterday(date) else { return nil }
+    let formatter = DateFormatter()
+    formatter.locale = locale
+    formatter.setLocalizedDateFormatFromTemplate("MMMMdEEEE")
+    return formatter.string(from: date)
+  }
+}
+
+extension View {
+  /// ナビゲーションの副題。iOS 26 より前には副題の置き場所が無いので何もしない。
+  @ViewBuilder
+  fileprivate func dateSubtitle(_ subtitle: String?) -> some View {
+    if #available(iOS 26.0, *), let subtitle {
+      navigationSubtitle(subtitle)
+    } else {
+      self
+    }
+  }
 }
 
 /// ログ1件の行。
@@ -210,7 +190,8 @@ struct ItemRowView: View {
       title: FoodRow.displayName(brand: item.brandName, product: item.productName),
       subtitle: FoodRow.amountText(item.numberOfServings, unit: item.portionUnit),
       values: item.nutritionValues,
-      isDeleted: item.isMasterDeleted
+      isDeleted: item.isMasterDeleted,
+      trailingText: FoodRow.timeText(item.timestamp)
     )
     .contentShape(Rectangle())
     .onTapGesture { showingEditSheet = true }

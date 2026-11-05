@@ -42,8 +42,8 @@ struct AddedEntrySummaryTests {
 
   @Test func 追加したぶんを足し上げる() {
     let entries = [
-      AddedEntry(logItemID: UUID(), name: "ゆで卵", calories: 71),
-      AddedEntry(logItemID: UUID(), name: "きゅうり", calories: 13),
+      AddedEntry(logItemID: UUID(), name: "ゆで卵", calories: 71, mealType: .breakfast),
+      AddedEntry(logItemID: UUID(), name: "きゅうり", calories: 13, mealType: .breakfast),
     ]
     #expect(entries.count == 2)
     #expect(entries.totalCalories == 84)
@@ -51,8 +51,8 @@ struct AddedEntrySummaryTests {
 
   @Test func 取り消すと合計から引かれる() {
     var entries = [
-      AddedEntry(logItemID: UUID(), name: "ゆで卵", calories: 71),
-      AddedEntry(logItemID: UUID(), name: "きゅうり", calories: 13),
+      AddedEntry(logItemID: UUID(), name: "ゆで卵", calories: 71, mealType: .breakfast),
+      AddedEntry(logItemID: UUID(), name: "きゅうり", calories: 13, mealType: .breakfast),
     ]
     entries.removeLast()
     #expect(entries.totalCalories == 71)
