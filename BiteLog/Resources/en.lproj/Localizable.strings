@@ -413,3 +413,8 @@
 "Kept only on this iPhone. If you use a body composition scale, these values are used for its calculations." = "Kept only on this iPhone. If you use a body composition scale, these values are used for its calculations.";
 "Sent to the scale when you register and each time you measure." = "Sent to the scale when you register and each time you measure.";
 "Enter your date of birth and height" = "Enter your date of birth and height";
+
+/* Statistics */
+"Metric" = "Metric";
+"Goal %@ kcal · On target %d of %d days" = "Goal %@ kcal · On target %d of %d days";
+"Nutrients per Day" = "Nutrients per Day";

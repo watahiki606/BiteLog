@@ -428,3 +428,8 @@
 "Kept only on this iPhone. If you use a body composition scale, these values are used for its calculations." = "このiPhoneの中にだけ保存します。体組成計を使う場合は、体脂肪率などの計算にこの値を使います。";
 "Sent to the scale when you register and each time you measure." = "登録するときと、測るたびに体組成計へ送ります。";
 "Enter your date of birth and height" = "生年月日と身長を入力してください";
+
+/* 統計 */
+"Metric" = "指標";
+"Goal %@ kcal · On target %d of %d days" = "目標 %@ kcal · 達成 %d / %d 日";
+"Nutrients per Day" = "栄養素の1日平均";

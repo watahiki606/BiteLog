@@ -52,21 +52,6 @@ enum TrendMetric: String, CaseIterable, Identifiable {
   func value(_ v: NutritionValues) -> Double { nutrient.value(of: v) }
 }
 
-/// トレンドの下でセグメント切替する詳細セクション。選択中のカードのみ描画する。
-enum StatSection: String, CaseIterable, Identifiable {
-  case average, pfc, mealType, body
-  var id: String { rawValue }
-
-  var localizedName: String {
-    switch self {
-    case .average: return NSLocalizedString("Daily Average", comment: "Statistics section")
-    case .pfc: return NSLocalizedString("PFC Balance", comment: "Statistics section")
-    case .mealType: return NSLocalizedString("By Meal Type", comment: "Statistics section")
-    case .body: return NSLocalizedString("Body Composition", comment: "Body composition section")
-    }
-  }
-}
-
 /// トレンドグラフの集計単位（X軸の1点が表す期間）。
 /// 年単位は複数年を映す期間が無く棒が1本になるため一旦持たない。
 enum StatBucket: String, CaseIterable, Identifiable {
@@ -91,19 +76,6 @@ enum StatBucket: String, CaseIterable, Identifiable {
   }
 }
 
-/// バケット内の集計方法。
-enum StatAggregation: String, CaseIterable, Identifiable {
-  case average, total
-  var id: String { rawValue }
-
-  var localizedName: String {
-    switch self {
-    case .average: return NSLocalizedString("Average", comment: "Aggregation")
-    case .total: return NSLocalizedString("Total", comment: "Aggregation")
-    }
-  }
-}
-
 // MARK: - 日付ユーティリティ
 
 private enum StatDate {
@@ -121,6 +93,11 @@ private enum StatDate {
 
 // MARK: - StatisticsView
 
+/// 統計のタブ。
+///
+/// 以前はグラフの上に、期間・指標・集計単位・平均か合計か・重ねる体組成の切り替えが
+/// 最大6つ並び、グラフより操作部品が目立っていた。下の4つの集計も切り替えで隠れていた。
+/// 切り替えは期間と指標の2つに絞り、集計は縦に並べてスクロールすれば全部見えるようにする。
 struct StatisticsView: View {
   @EnvironmentObject private var nutritionGoalsManager: NutritionGoalsManager
   @EnvironmentObject private var languageManager: LanguageManager
@@ -128,14 +105,10 @@ struct StatisticsView: View {
 
   @State private var period: StatPeriod = .week
   @State private var metric: TrendMetric = .calories
-  @State private var section: StatSection = .average
-  @State private var bucket: StatBucket = .day
-  @State private var aggregation: StatAggregation = .total
-  /// グラフに重ねる体組成。nil は重ねない
-  @State private var bodyMetric: BodyMetric?
-  /// 同じ日に何度も乗った日をどれで代表させるか
-  @State private var bodyPick: DailyPick = .first
   @State private var bodyMeasurements: [BodyMeasurementDTO] = []
+
+  /// 同じ日に何度も乗った日は、朝いちばんを代表にする。記録の画面と同じ
+  private let bodyPick: DailyPick = .first
 
   // カスタム期間
   @State private var customFrom: Date = Calendar.current.date(
@@ -172,30 +145,29 @@ struct StatisticsView: View {
 
   private var visibleSeconds: TimeInterval { Double(visibleDays) * 86400 }
 
-  /// period に対して意味のある集計単位だけを出す（棒が1本しか出ない組み合わせを避ける）。
-  private var availableBuckets: [StatBucket] {
+  /// グラフの1点が表す期間。期間から決める。
+  ///
+  /// 選ばせていた頃は、年で日ごとを選ぶと365本の線が潰れ、週で月ごとを選ぶと1点しか
+  /// 出ないなど、意味の無い組み合わせが作れた。期間ごとに読みやすい単位を1つに決める。
+  private var bucket: StatBucket {
     switch period {
-    case .week: return [.day]
-    case .month: return [.day, .week]
-    case .year: return [.day, .week, .month]
-    case .custom:
-      if visibleDays <= 31 { return [.day, .week] }
-      return [.day, .week, .month]
+    case .week, .month: return .day
+    case .year: return .week
+    case .custom: return visibleDays <= 62 ? .day : .week
     }
   }
 
-  /// トレンドグラフに描く系列。日次（`trendSeries`）を選択中の単位/集計で丸め直す。
+  /// トレンドグラフに描く系列。週ごとにまとめるときは1日あたりの平均にする。
+  /// 合計にすると目標の線と比べられない。
   private var displayTrendSeries: [DailyNutrition] {
     guard let component = bucket.component else { return trendSeries }
     return StatisticsCalculator.bucketed(
-      trendSeries, by: component, average: aggregation == .average, calendar: cal)
+      trendSeries, by: component, average: true, calendar: cal)
   }
 
-  /// カロリー目標線。合計バケットでは日次目標と比較できないため出さない。
+  /// 目標の線。カロリーのときだけ引く。
   private var trendGoalLine: Double? {
-    guard metric == .calories else { return nil }
-    if bucket != .day && aggregation == .total { return nil }
-    return nutritionGoalsManager.targetCalories
+    metric == .calories ? nutritionGoalsManager.targetCalories : nil
   }
 
   /// カードが集計対象とする期間 [from, to]（両端の日付）。スクロール停止時の位置。
@@ -211,9 +183,15 @@ struct StatisticsView: View {
     return items.filter { $0.logDate >= fromStr && $0.logDate <= toStr }
   }
 
+  private var settledAverage: NutritionValues {
+    StatisticsCalculator.dailyAverage(settledItems, dayCount: visibleDays)
+  }
+
   var body: some View {
     ScrollView {
-      VStack(spacing: 10) {
+      VStack(alignment: .leading, spacing: 12) {
+        PeriodSelector(selection: $period)
+
         if period == .custom {
           customRangePicker
         }
@@ -226,44 +204,40 @@ struct StatisticsView: View {
         } else {
           dateNavigationBar
           trendCard
-          sectionSelector
-          switch section {
-          case .average: averageCard
-          case .pfc: pfcBalanceCard
-          case .mealType: mealTypeCard
-          case .body: bodyChangeCard
+
+          // 上のカードの「1日平均」と同じ言葉だと、同じものが2回出ているように見える
+          sectionTitle(NSLocalizedString("Nutrients per Day", comment: "Statistics section"))
+          nutrientAverageCard
+
+          sectionTitle(NSLocalizedString("PFC Balance", comment: "Statistics section"))
+          pfcBalanceCard
+
+          sectionTitle(NSLocalizedString("By Meal Type", comment: "Statistics section"))
+          mealTypeCard
+
+          if hasBodyData {
+            sectionTitle(
+              NSLocalizedString("Change over this period", comment: "Body composition section"))
+            bodyChangeCard
           }
         }
       }
-      .padding()
+      .padding(.horizontal)
+      .padding(.bottom, 24)
     }
     .background(Color(UIColor.systemGroupedBackground))
     .navigationTitle(NSLocalizedString("Statistics", comment: "Tab name"))
-    .navigationBarTitleDisplayMode(.inline)
-    .toolbar {
-      // 期間・指標・セクションのセグメントが縦に3段重なるとグラフより操作部品が
-      // 目立つので、期間だけツールバーに逃がす。
-      ToolbarItem(placement: .topBarTrailing) {
-        // Picker をそのまま置くとナビゲーションバー幅いっぱいに伸びるので Menu に包む。
-        Menu {
-          Picker(NSLocalizedString("Period", comment: "Statistics period"), selection: $period) {
-            ForEach(StatPeriod.allCases) { p in
-              Text(p.localizedName).tag(p)
-            }
-          }
-        } label: {
-          // systemImage を付けるとツールバーではアイコンだけになり、
-          // 今どの期間を見ているのかが分からなくなるので文字だけにする。
-          Text(period.localizedName)
-        }
-        .accessibilityLabel(NSLocalizedString("Period", comment: "Statistics period"))
-      }
-    }
+    .navigationBarTitleDisplayMode(.large)
     .task(id: reloadKey) { await reload() }
-    .onChange(of: period) { _, _ in
-      // period を変えると使えない単位が出るので、対象外なら日次に戻す。
-      if !availableBuckets.contains(bucket) { bucket = .day }
-    }
+  }
+
+  /// カードの上に置く見出し。記録の画面の食事の見出しと同じ太さにそろえる
+  private func sectionTitle(_ title: String) -> some View {
+    Text(title)
+      .font(.title3.weight(.bold))
+      .padding(.top, 16)
+      .padding(.leading, 4)
+      .accessibilityAddTraits(.isHeader)
   }
 
   // task(id:) が変わったら全リセット＆再取得
@@ -294,13 +268,15 @@ struct StatisticsView: View {
 
   /// 期間ラベルの両サイドに前後ページ送りの矢印を備えたナビゲーションバー。
   private var dateNavigationBar: some View {
-    let f = DateFormatter()
-    f.locale = languageManager.locale
-    // 大きな文字では「Sep 20, 2026 – Sep 26, 2026」が3行に折り返し、
-    // 前後へ送る矢印を画面の端まで押しのける。短い表記に切り替える。
-    f.dateStyle = dynamicTypeSize.isAccessibilitySize ? .short : .medium
-    f.timeStyle = .none
-    let text = "\(f.string(from: settledRange.from)) – \(f.string(from: settledRange.to))"
+    // 「2026/10/30 – 2026/11/05」は長く、年はほとんどの場合わかっている。
+    // 今年なら月日だけにする
+    let sameYear = cal.isDate(settledRange.from, equalTo: Date(), toGranularity: .year)
+      && cal.isDate(settledRange.to, equalTo: Date(), toGranularity: .year)
+    let style: Date.FormatStyle =
+      sameYear
+      ? .dateTime.month(.defaultDigits).day().locale(languageManager.locale)
+      : .dateTime.year().month(.defaultDigits).day().locale(languageManager.locale)
+    let text = "\(settledRange.from.formatted(style)) – \(settledRange.to.formatted(style))"
     // 進む側は最新の可視期間（左端が today-(visibleDays-1)）に達したら無効化
     let latestFrom = cal.date(
       byAdding: .day, value: -(visibleDays - 1), to: cal.startOfDay(for: Date())) ?? Date()
@@ -318,10 +294,10 @@ struct StatisticsView: View {
 
       Spacer()
       Text(text)
-        .font(.subheadline.weight(.medium))
-        .foregroundStyle(.secondary)
+        .font(.headline)
+        .monospacedDigit()
         // 期間の表示は画面の位置を示す補助。最大まで大きくすると
-        // 3行に折り返して前後の矢印を画面の端へ押しやる。
+        // 折り返して前後の矢印を画面の端へ押しやる。
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .multilineTextAlignment(.center)
       Spacer()
@@ -336,22 +312,6 @@ struct StatisticsView: View {
       .accessibilityLabel(NSLocalizedString("Next period", comment: "Statistics paging"))
     }
     .frame(maxWidth: .infinity)
-  }
-
-  /// 表示するセクションを選ぶセグメント。選択中のカードだけを描画する。
-  private var sectionSelector: some View {
-    Picker("", selection: $section) {
-      ForEach(availableSections) { s in
-        Text(s.localizedName).tag(s)
-      }
-    }
-    .pickerStyle(.segmented)
-  }
-
-  /// 体組成を1件も持っていない人に体組成の欄を出さない。
-  /// 中身が「–」だけの表になる。
-  private var availableSections: [StatSection] {
-    hasBodyData ? StatSection.allCases : StatSection.allCases.filter { $0 != .body }
   }
 
   private var hasBodyData: Bool { BodyCorrelation.hasBodyData(bodyMeasurements) }
@@ -384,72 +344,53 @@ struct StatisticsView: View {
     .frame(maxWidth: .infinity, minHeight: 200)
   }
 
-  // MARK: - ① 期間トレンド（無限横スクロール）
+  // MARK: - 期間の推移
 
+  /// 選んだ指標の1日平均を大きく出し、その下に推移のグラフを置く。
   private var trendCard: some View {
-    CardView {
-      VStack(alignment: .leading, spacing: 10) {
-        Picker("", selection: $metric) {
-          ForEach(TrendMetric.allCases) { m in
-            Text(m.localizedName).tag(m)
+    let average = metric.value(settledAverage)
+    let achieved = StatisticsCalculator.goalAchievedDays(
+      settledItems, targetCalories: nutritionGoalsManager.targetCalories)
+
+    return CardView {
+      VStack(alignment: .leading, spacing: 16) {
+        MetricSelector(selection: $metric)
+
+        VStack(alignment: .leading, spacing: 4) {
+          Text(NSLocalizedString("Daily Average", comment: "Statistics section"))
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+
+          HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Text(metric.nutrient.format(average))
+              .font(.system(.largeTitle, design: .rounded, weight: .bold))
+              .monospacedDigit()
+              .foregroundStyle(
+                metric == .calories && average > nutritionGoalsManager.targetCalories * 1.1
+                  ? Color.red : Color.primary)
+            Text(metric.unit)
+              .font(.title3)
+              .foregroundStyle(.secondary)
+          }
+
+          // 目標の線と達成日数はカロリーにしか無い
+          if metric == .calories {
+            Text(
+              String(
+                format: NSLocalizedString(
+                  "Goal %@ kcal · On target %d of %d days", comment: "Statistics calorie summary"),
+                NutritionFormatter.formatCalories(nutritionGoalsManager.targetCalories),
+                achieved, visibleDays)
+            )
+            .font(.subheadline)
+            .monospacedDigit()
+            .foregroundStyle(.secondary)
           }
         }
-        .pickerStyle(.segmented)
-
-        // 選択肢が1つしかないときのセグメントは選べるものが無く場所を取るだけなので出さない。
-        HStack(spacing: 8) {
-          if availableBuckets.count > 1 {
-            Picker("", selection: $bucket) {
-              ForEach(availableBuckets) { b in
-                Text(b.localizedName).tag(b)
-              }
-            }
-            .pickerStyle(.segmented)
-          }
-
-          if bucket != .day {
-            Picker("", selection: $aggregation) {
-              ForEach(StatAggregation.allCases) { a in
-                Text(a.localizedName).tag(a)
-              }
-            }
-            .pickerStyle(.segmented)
-            .fixedSize()
-          }
-        }
-
-        // 体組成を持っている人にだけ、重ねる折れ線を選ばせる
-        if hasBodyData {
-          HStack(spacing: 8) {
-            Picker("", selection: $bodyMetric) {
-              Text(NSLocalizedString("No overlay", comment: "Body overlay off")).tag(
-                BodyMetric?.none)
-              ForEach(BodyMetric.allCases) { metric in
-                Text(metric.localizedName).tag(BodyMetric?.some(metric))
-              }
-            }
-            .pickerStyle(.menu)
-            .labelsHidden()
-
-            Spacer()
-
-            // 同じ日に何度も乗った日があるときだけ、代表の選び方を出す
-            if bodyMetric != nil && multiMeasurementDays > 0 {
-              Picker("", selection: $bodyPick) {
-                ForEach(DailyPick.allCases) { option in
-                  Text(option.localizedName).tag(option)
-                }
-              }
-              .pickerStyle(.menu)
-              .labelsHidden()
-            }
-          }
-        }
+        .accessibilityElement(children: .combine)
 
         TrendChartView(
           series: displayTrendSeries,
-          bodySeries: displayBodySeries,
-          bodyMetric: bodyMetric,
           xDomain: trendDomain,
           metric: metric,
           bucket: bucket,
@@ -472,19 +413,6 @@ struct StatisticsView: View {
     }
   }
 
-  /// グラフに重ねる折れ線。栄養の棒と同じ単位でまとめ直す。
-  private var displayBodySeries: [BodyCorrelation.Point] {
-    guard let bodyMetric else { return [] }
-    return BodyCorrelation.bodySeries(
-      bodyMeasurements, from: bufferFrom, to: bufferTo, bucket: bucket, body: bodyMetric,
-      pick: bodyPick, calendar: cal)
-  }
-
-  /// 同じ日に2回以上乗った日がいくつあるか。代表を選ぶ意味があるかの目安にする。
-  private var multiMeasurementDays: Int {
-    BodyMeasurementDTO.byDay(settledBodyMeasurements).values.filter { $0.count > 1 }.count
-  }
-
   /// カードが見ている期間に入る測定だけ。
   ///
   /// バッファには可視期間の外まで入っている。そのまま使うと、期間を変えても
@@ -495,12 +423,9 @@ struct StatisticsView: View {
       to: StatDate.string(settledRange.to))
   }
 
-  // MARK: - ⑤ 体組成の期間変化
+  // MARK: - 体組成の期間変化
 
   /// 期間の始めから終わりまでの変化。
-  ///
-  /// 集計単位を変えても動かない。集計単位はグラフの点をどうまとめるかの話で、
-  /// 期間の端から端までの差には関わらない。
   ///
   /// いまいくつかは出さない。最新の値は期間を変えても動かないので、
   /// 「この期間の変化」と書いた場所に置くと期間に連動していないように見える。
@@ -508,11 +433,7 @@ struct StatisticsView: View {
   private var bodyChangeCard: some View {
     let deltas = BodyCorrelation.deltas(settledBodyMeasurements, pick: bodyPick)
     return CardView {
-      VStack(alignment: .leading, spacing: 12) {
-        Text(NSLocalizedString("Change over this period", comment: "Body composition section"))
-          .font(.caption)
-          .foregroundColor(.secondary)
-
+      VStack(alignment: .leading, spacing: 14) {
         ForEach(deltas) { delta in
           bodyChangeRow(delta)
           if delta.id != deltas.last?.id { Divider() }
@@ -524,17 +445,17 @@ struct StatisticsView: View {
   private func bodyChangeRow(_ delta: BodyCorrelation.Delta) -> some View {
     HStack(alignment: .firstTextBaseline) {
       Text(delta.metric.localizedName)
-        .font(.subheadline)
+        .font(.body.weight(.semibold))
       Spacer()
       if let change = delta.change {
         HStack(alignment: .firstTextBaseline, spacing: 2) {
           Text(signedChange(change, digits: delta.metric.fractionDigits))
-            .font(.title3.weight(.semibold))
+            .font(.system(.title3, design: .rounded, weight: .bold))
             .monospacedDigit()
             .foregroundStyle(bodyChangeColor(delta.metric, change))
           if !delta.metric.unit.isEmpty {
             Text(delta.metric.unit)
-              .font(.caption)
+              .font(.footnote)
               .foregroundColor(.secondary)
           }
         }
@@ -582,73 +503,42 @@ struct StatisticsView: View {
     case .year: base = 1
     case .custom: base = max(visibleDays / 6, 1)
     }
-    // 大きな文字では日付1つぶんの幅が広がり、目盛りが「Sep…」と切れて読めない。
+    // 大きな文字では日付1つぶんの幅が広がり、目盛りが切れて読めない。
     // 本数を間引いて1つずつを読める幅にする。
     return dynamicTypeSize.isAccessibilitySize ? base * 3 : base
   }
 
-  // MARK: - ② 1日平均と目標達成日数
+  // MARK: - 栄養素の1日平均
 
-  private var averageCard: some View {
-    let avg = StatisticsCalculator.dailyAverage(settledItems, dayCount: visibleDays)
-    let achieved = StatisticsCalculator.goalAchievedDays(
-      settledItems, targetCalories: nutritionGoalsManager.targetCalories)
-
+  /// 主要3栄養素の1日平均を、目標に対するバーで並べる。カロリーは上の推移のカードに出す
+  private var nutrientAverageCard: some View {
+    let avg = settledAverage
     return CardView {
-      VStack(spacing: 16) {
-        // 大きな文字ではリングの横に残る幅で「Goal Achieved Days」が
-        // 単語の途中で折り返す。1日の合計と同じく縦積みに切り替える。
-        if dynamicTypeSize.isAccessibilitySize {
-          VStack(alignment: .leading, spacing: 12) {
-            CalorieRingView(
-              calories: avg.calories, targetCalories: nutritionGoalsManager.targetCalories)
-              .frame(maxWidth: .infinity, alignment: .center)
-            goalAchievedBlock(achieved)
-          }
-        } else {
-          HStack(alignment: .center, spacing: 20) {
-            CalorieRingView(
-              calories: avg.calories, targetCalories: nutritionGoalsManager.targetCalories)
-            goalAchievedBlock(achieved)
-            Spacer()
-          }
+      if dynamicTypeSize.isAccessibilitySize {
+        VStack(spacing: 12) {
+          NutrientBar(
+            nutrient: .protein, value: avg.protein, target: nutritionGoalsManager.targetProtein)
+          NutrientBar(nutrient: .fat, value: avg.fat, target: nutritionGoalsManager.targetFat)
+          NutrientBar(
+            nutrient: .netCarbs, value: avg.netCarbs, target: nutritionGoalsManager.targetNetCarbs)
         }
-
-        VStack(spacing: 8) {
+      } else {
+        HStack(alignment: .top, spacing: 16) {
           NutrientBar(
-            nutrient: .protein, value: avg.protein,
-            target: nutritionGoalsManager.targetProtein)
+            nutrient: .protein, value: avg.protein, target: nutritionGoalsManager.targetProtein,
+            isCompact: true)
           NutrientBar(
-            nutrient: .fat, value: avg.fat,
-            target: nutritionGoalsManager.targetFat)
+            nutrient: .fat, value: avg.fat, target: nutritionGoalsManager.targetFat,
+            isCompact: true)
           NutrientBar(
-            nutrient: .carbs, value: avg.carbs,
-            target: nutritionGoalsManager.targetNetCarbs + nutritionGoalsManager.targetFiber)
+            nutrient: .netCarbs, value: avg.netCarbs,
+            target: nutritionGoalsManager.targetNetCarbs, isCompact: true)
         }
       }
     }
   }
 
-  private func goalAchievedBlock(_ achieved: Int) -> some View {
-    VStack(alignment: .leading, spacing: 6) {
-      Text(NSLocalizedString("Goal Achieved Days", comment: "Statistics metric"))
-        .font(.caption)
-        .foregroundColor(.secondary)
-      HStack(alignment: .firstTextBaseline, spacing: 2) {
-        Text("\(achieved)")
-          .font(.system(.title, design: .rounded, weight: .bold))
-          .monospacedDigit()
-        Text("/ \(visibleDays) " + NSLocalizedString("days", comment: "days unit"))
-          .font(.subheadline)
-          .foregroundColor(.secondary)
-      }
-      Text(NSLocalizedString("Calories within ±10% of goal", comment: "Achievement rule"))
-        .font(.caption2)
-        .foregroundColor(.secondary)
-    }
-  }
-
-  // MARK: - ③ PFCバランス
+  // MARK: - PFCバランス
 
   private var pfcBalanceCard: some View {
     let balance = StatisticsCalculator.pfcBalance(settledItems)
@@ -659,19 +549,19 @@ struct StatisticsView: View {
     ]
 
     return CardView {
-      VStack(spacing: 12) {
+      VStack(spacing: 16) {
         GeometryReader { geo in
           // 区切りを隙間で表す。色だけで境目を示すと、色を区別しない設定で
           // どこまでが何の割合なのか分からなくなる。
-          HStack(spacing: 2) {
+          HStack(spacing: 3) {
             ForEach(segments, id: \.nutrient) { segment in
-              RoundedRectangle(cornerRadius: 3)
+              Capsule()
                 .fill(segment.nutrient.color)
-                .frame(width: max(geo.size.width * segment.percent / 100 - 2, 0))
+                .frame(width: max(geo.size.width * segment.percent / 100 - 3, 0))
             }
           }
         }
-        .frame(height: 24)
+        .frame(height: 14)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(NSLocalizedString("PFC Balance", comment: "Statistics section"))
         .accessibilityValue(
@@ -679,9 +569,10 @@ struct StatisticsView: View {
             .map { "\($0.nutrient.localizedName) \(Int($0.percent.rounded()))%" }
             .joined(separator: ", "))
 
-        HStack(spacing: 16) {
+        HStack(alignment: .top, spacing: 12) {
           ForEach(segments, id: \.nutrient) { segment in
             pfcLegend(segment.nutrient, segment.percent)
+              .frame(maxWidth: .infinity, alignment: .leading)
           }
         }
       }
@@ -689,16 +580,31 @@ struct StatisticsView: View {
   }
 
   private func pfcLegend(_ nutrient: Nutrient, _ pct: Double) -> some View {
-    HStack(spacing: 4) {
-      Circle().fill(nutrient.color).frame(width: 8, height: 8)
-        .accessibilityHidden(true)
-      Text(nutrient.localizedName).font(.caption).foregroundColor(.secondary)
-      Text("\(pct, specifier: "%.0f")%").font(.caption.weight(.semibold)).monospacedDigit()
+    VStack(alignment: .leading, spacing: 2) {
+      HStack(spacing: 4) {
+        Image(systemName: nutrient.symbolName)
+          .foregroundStyle(nutrient.color)
+          .accessibilityHidden(true)
+        Text(nutrient.localizedName)
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
+          .minimumScaleFactor(0.8)
+      }
+      .font(.caption)
+
+      HStack(alignment: .firstTextBaseline, spacing: 1) {
+        Text("\(Int(pct.rounded()))")
+          .font(.system(.title2, design: .rounded, weight: .bold))
+          .monospacedDigit()
+        Text("%")
+          .font(.footnote)
+          .foregroundStyle(.secondary)
+      }
     }
     .accessibilityElement(children: .combine)
   }
 
-  // MARK: - ④ 食事タイプ別内訳
+  // MARK: - 食事タイプ別内訳
 
   private var mealTypeCard: some View {
     let total = StatisticsCalculator.periodTotal(settledItems)
@@ -710,23 +616,21 @@ struct StatisticsView: View {
     let maxCal = rows.map { $0.values.calories }.max() ?? 0
 
     return CardView {
-      VStack(alignment: .leading, spacing: 16) {
-        // 期間合計（ラベルと数値を1行に）
-        VStack(alignment: .leading, spacing: 6) {
-          HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Text(NSLocalizedString("Period Total", comment: "Statistics metric"))
-              .font(.caption).foregroundColor(.secondary)
-            Spacer()
-            CalorieLabel(calories: total.calories, textStyle: .title3)
-          }
-          HStack(spacing: 6) {
-            NutrientChip(nutrient: .protein, value: total.protein)
-            NutrientChip(nutrient: .fat, value: total.fat)
-            NutrientChip(nutrient: .carbs, value: total.carbs)
+      VStack(alignment: .leading, spacing: 18) {
+        HStack(alignment: .firstTextBaseline) {
+          Text(NSLocalizedString("Period Total", comment: "Statistics metric"))
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+          Spacer()
+          HStack(alignment: .firstTextBaseline, spacing: 2) {
+            Text(NutritionFormatter.formatCalories(total.calories))
+              .font(.system(.title3, design: .rounded, weight: .bold))
+              .monospacedDigit()
+            Text(Nutrient.calories.unit)
+              .font(.footnote)
+              .foregroundStyle(.secondary)
           }
         }
-
-        Divider()
 
         if rows.isEmpty {
           Text(NSLocalizedString("No records in this period", comment: "Empty statistics"))
@@ -743,34 +647,36 @@ struct StatisticsView: View {
   }
 
   private func mealTypeBar(type: MealType, values: NutritionValues, maxCal: Double) -> some View {
-    VStack(alignment: .leading, spacing: 4) {
-      HStack {
+    VStack(alignment: .leading, spacing: 8) {
+      HStack(alignment: .firstTextBaseline) {
         Image(systemName: type.iconName)
-          .font(.caption2)
           .foregroundStyle(type.accentColor)
           .accessibilityHidden(true)
         Text(type.localizedName)
-          .font(.caption.weight(.medium))
+          .font(.body.weight(.semibold))
         Spacer()
-        CalorieLabel(calories: values.calories, textStyle: .caption)
+        HStack(alignment: .firstTextBaseline, spacing: 2) {
+          Text(NutritionFormatter.formatCalories(values.calories))
+            .font(.system(.body, design: .rounded, weight: .bold))
+            .monospacedDigit()
+          Text(Nutrient.calories.unit)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
       }
       GeometryReader { geo in
-        RoundedRectangle(cornerRadius: 3)
+        Capsule()
           .fill(type.accentColor.opacity(0.15))
           .overlay(alignment: .leading) {
-            RoundedRectangle(cornerRadius: 3)
+            Capsule()
               .fill(type.accentColor)
               .frame(width: maxCal > 0 ? geo.size.width * values.calories / maxCal : 0)
           }
       }
-      .frame(height: 6)
+      .frame(height: 8)
       // 棒が示すカロリーは同じ行に数値で出ているので、読み上げでは重ねない。
       .accessibilityHidden(true)
-      HStack(spacing: 6) {
-        NutrientChip(nutrient: .protein, value: values.protein)
-        NutrientChip(nutrient: .fat, value: values.fat)
-        NutrientChip(nutrient: .carbs, value: values.carbs)
-      }
+      NutrientIconRow(values: values)
     }
     .accessibilityElement(children: .combine)
   }
@@ -863,9 +769,6 @@ struct StatisticsView: View {
 /// 親（カード群）はスクロール停止時（`onScrollSettled`）にのみ再評価される。
 private struct TrendChartView: View {
   let series: [DailyNutrition]
-  /// 重ねる体組成。空なら重ねない
-  let bodySeries: [BodyCorrelation.Point]
-  let bodyMetric: BodyMetric?
   let xDomain: ClosedRange<Date>
   let metric: TrendMetric
   let bucket: StatBucket
@@ -885,15 +788,13 @@ private struct TrendChartView: View {
   @State private var selectedX: Date?
 
   init(
-    series: [DailyNutrition], bodySeries: [BodyCorrelation.Point], bodyMetric: BodyMetric?,
+    series: [DailyNutrition],
     xDomain: ClosedRange<Date>, metric: TrendMetric,
     bucket: StatBucket, visibleDays: Int,
     visibleSeconds: TimeInterval, goalLine: Double?, xAxisStride: Int, initialScrollX: Date,
     scrollTarget: Date, onScroll: @escaping (Date) -> Void, onScrollSettled: @escaping (Date) -> Void
   ) {
     self.series = series
-    self.bodySeries = bodySeries
-    self.bodyMetric = bodyMetric
     self.xDomain = xDomain
     self.metric = metric
     self.bucket = bucket
@@ -936,9 +837,10 @@ private struct TrendChartView: View {
     }
   }
 
+  /// 「10/30」のように数字だけにする。「10月30日」は1週間を並べると幅が足りず「10月…」と切れる
   private var axisLabelFormat: Date.FormatStyle {
     switch bucket {
-    case .day, .week: return .dateTime.month(.abbreviated).day()
+    case .day, .week: return .dateTime.month(.defaultDigits).day()
     case .month: return .dateTime.month(.abbreviated)
     }
   }
@@ -979,39 +881,10 @@ private struct TrendChartView: View {
     }
   }
 
-  /// 棒が届く高さ。体組成を写す先にもなる。
-  ///
-  /// 自動の目盛りに任せると写す先が決まらないので、ここで決め打ちにする。
+  /// 棒が届く高さ。目標の線が枠の上端に貼り付かないよう、少し余裕を持たせる
   private var plotMax: Double {
     let seriesMax = series.map { metric.value($0.values) }.max() ?? 0
     return max(max(seriesMax, goalLine ?? 0) * 1.1, 1)
-  }
-
-  /// 体組成の値を棒と同じ高さへ写す対応付け。
-  ///
-  /// 60kg の体重を 2000kcal と同じ軸に置くと横一直線になる。
-  /// 幅の上下も収める。折れ線だけで範囲を決めると縦線が枠から出る。
-  private var bodyScale: BodyAxisScale? {
-    guard bodyMetric != nil else { return nil }
-    let values =
-      bodySeries.compactMap(\.body) + bodySeries.compactMap(\.low)
-      + bodySeries.compactMap(\.high)
-    return BodyAxisScale(bodyValues: values, plotMax: plotMax)
-  }
-
-  private func bodyLine(
-    _ point: BodyCorrelation.Point, metric bodyMetric: BodyMetric, scale: BodyAxisScale, run: Int
-  ) -> some ChartContent {
-    LineMark(
-      x: .value("Date", point.date, unit: barUnit),
-      y: .value(bodyMetric.localizedName, scale.project(point.body ?? 0)),
-      series: .value("body", run)
-    )
-    .foregroundStyle(Color("BodyMetric"))
-    .lineStyle(StrokeStyle(lineWidth: 2))
-    .interpolationMethod(simplified ? .linear : .monotone)
-    .symbol(.circle)
-    .symbolSize(simplified ? 0 : 20)
   }
 
   var body: some View {
@@ -1049,30 +922,6 @@ private struct TrendChartView: View {
           .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
       }
 
-      if let bodyMetric, let scale = bodyScale {
-        // 同じ日に何度も乗った日の幅。折れ線1本だと、朝と夜で1kg以上違うことが消える
-        ForEach(bodySeries.filter(\.hasSpread)) { point in
-          if let low = point.low, let high = point.high {
-            RectangleMark(
-              x: .value("Date", point.date, unit: barUnit),
-              yStart: .value(bodyMetric.localizedName, scale.project(low)),
-              yEnd: .value(bodyMetric.localizedName, scale.project(high)),
-              width: .fixed(3)
-            )
-            .foregroundStyle(Color("BodyMetric").opacity(0.3))
-            .cornerRadius(1.5)
-          }
-        }
-
-        // 測っていない日をまたいでつながないように、ひとつづきごとに series を分ける
-        ForEach(Array(BodyCorrelation.measuredRuns(bodySeries).enumerated()), id: \.offset) {
-          index, run in
-          ForEach(run) { point in
-            bodyLine(point, metric: bodyMetric, scale: scale, run: index)
-          }
-        }
-      }
-
       if let selected = selectedPoint {
         RuleMark(x: .value("Date", selected.date, unit: barUnit))
           .foregroundStyle(.secondary.opacity(0.4))
@@ -1096,18 +945,6 @@ private struct TrendChartView: View {
     .chartYScale(domain: 0...plotMax)
     .chartYAxis {
       AxisMarks(position: .leading)
-
-      if let bodyMetric, let scale = bodyScale {
-        AxisMarks(position: .trailing, values: scale.tickPositions()) { mark in
-          AxisGridLine().foregroundStyle(.clear)
-          AxisValueLabel {
-            if let plotted = mark.as(Double.self) {
-              Text(bodyMetric.format(scale.unproject(plotted)))
-                .foregroundStyle(Color("BodyMetric"))
-            }
-          }
-        }
-      }
     }
     .chartXSelection(value: $selectedX)
     // 横スクロールできるグラフでは標準のタップ選択がスクロールに吸われて
@@ -1127,7 +964,7 @@ private struct TrendChartView: View {
         AxisValueLabel(format: axisLabelFormat)
       }
     }
-    .frame(height: 170)
+    .frame(height: 200)
     // 軸ラベルだけは文字サイズの追随に上限を置く。際限なく大きくすると
     // 目盛りが互いに重なり、グラフの幅の半分を数字が占めて線が読めなくなる。
     // カードの中の数値は従来どおり最大まで大きくなる。
