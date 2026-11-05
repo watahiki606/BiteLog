@@ -37,7 +37,7 @@ struct FoodRow: View {
         }
 
         amountLine
-          .padding(.top, 6)
+          .padding(.top, 4)
 
         NutrientIconRow(values: values)
           .padding(.top, 10)
@@ -81,7 +81,7 @@ struct FoodRow: View {
     }
   }
 
-  /// 「128 kcal · 1 tbsp」。名前より目立つと名前の下に置いた意味が薄れるので、灰色で添える。
+  /// 「128 kcal · 1 tbsp」。カロリーは記録で一番見たい数字なので大きく、量は灰色で添える。
   private var amountLine: some View {
     ViewThatFits(in: .horizontal) {
       HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -102,7 +102,6 @@ struct FoodRow: View {
         }
       }
     }
-    .foregroundStyle(.secondary)
   }
 
   /// 下の行の栄養素と同じく、カロリーにも色つきの形を添える。
@@ -110,10 +109,21 @@ struct FoodRow: View {
   private var calorieWithIcon: some View {
     HStack(alignment: .firstTextBaseline, spacing: 4) {
       Image(systemName: Nutrient.calories.symbolName)
-        .font(.caption)
+        .font(.subheadline)
         .foregroundStyle(Nutrient.calories.color)
         .accessibilityHidden(true)
-      CalorieLabel(calories: values.calories)
+
+      HStack(alignment: .firstTextBaseline, spacing: 2) {
+        Text(NutritionFormatter.formatCalories(values.calories))
+          .font(.system(.title3, design: .rounded, weight: .bold))
+          .monospacedDigit()
+          .foregroundStyle(isDeleted ? .secondary : .primary)
+        Text(Nutrient.calories.unit)
+          .font(.footnote)
+          .foregroundStyle(.secondary)
+      }
+      .accessibilityElement(children: .ignore)
+      .accessibilityLabel(Nutrient.calories.accessibilityLabel(for: values.calories))
     }
   }
 
