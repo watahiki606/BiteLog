@@ -105,6 +105,8 @@ platform :ios do
     UI.important("#{version} (#{build_number}) を App Store に出します")
     UI.important("審査に提出: #{submit} / 通過後に自動公開: #{auto_release}")
 
+    answer_age_rating_questions(api_key)
+
     upload_to_app_store(
       **app_store_options(api_key, version, build_number),
       submit_for_review: submit,
@@ -137,6 +139,34 @@ platform :ios do
       # アプリ内課金が無いので対象から外す。
       include_in_app_purchases: false
     )
+  end
+
+  # 年齢制限の質問票の回答。画面で答えるたびに場所を探すことになるので、ここで入れる。
+  #
+  # socialMedia は 2026年9月から答えないと審査に出せなくなった質問。
+  # BiteLog は自分の食事を記録するアプリで、ほかの人へ投稿したり、やり取りしたり、
+  # 誰かをフォローしたりする機能が無いので「いいえ」。ほかの人が登録した食品が
+  # 検索の候補に出るが、名前と栄養成分の表で、人どうしのつながりは無い。
+  AGE_RATING_ANSWERS = { "socialMedia" => false }.freeze
+
+  # 次の版のための App情報 の年齢制限に回答を書く。公開中の版の App情報 は書き換えられない。
+  # spaceship がまだ知らない項目でも送れるよう、属性をそのまま PATCH する。
+  def answer_age_rating_questions(api_key)
+    Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.from(hash: api_key)
+    app = Spaceship::ConnectAPI::App.find("com.watahiki.BiteLog")
+    UI.user_error!("App Store Connect に BiteLog が見つかりません") unless app
+
+    app_info = app.fetch_edit_app_info
+    UI.user_error!("編集できる App情報 がありません。先に新しい版を作ってください") unless app_info
+
+    declaration = app_info.fetch_age_rating_declaration
+    UI.user_error!("年齢制限の申告が見つかりません") unless declaration
+
+    Spaceship::ConnectAPI.patch_age_rating_declaration(
+      age_rating_declaration_id: declaration.id,
+      attributes: AGE_RATING_ANSWERS
+    )
+    UI.success("年齢制限の質問に回答しました: #{AGE_RATING_ANSWERS}")
   end
 
   # release で使う共通の指定。
