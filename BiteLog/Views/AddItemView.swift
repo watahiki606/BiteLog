@@ -294,6 +294,7 @@ struct AddItemView: View {
         // タップの受け付けは List 標準の行ハイライトが示す。
         Button { Task { await addFoodItem(item) } } label: { PastItemCard(item: item) }
           .buttonStyle(.plain)
+          .cardRow()
           .onAppear {
             if item.id == searchResults.last?.id && hasMoreData && !isLoading {
               Task { await loadMoreContent() }
@@ -318,6 +319,7 @@ struct AddItemView: View {
               .accessibilityHidden(true)
           }
         }
+        .cardRow()
       }
 
       if hasMoreData {
@@ -327,6 +329,7 @@ struct AddItemView: View {
           Spacer()
         }
         .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
       }
     }
     .listStyle(.insetGrouped)

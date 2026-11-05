@@ -198,16 +198,17 @@ struct DayContentView: View {
     if bodyComposition.isVisible {
       Section {
         let dayMeasurements = bodyComposition.summary?.measurements ?? []
-        ForEach(Array(dayMeasurements.enumerated()), id: \.element.id) { index, measurement in
-          NavigationLink {
+        ForEach(dayMeasurements, id: \.id) { measurement in
+          CardNavigationLink {
             BodyMeasurementDetailView(
               measurement: measurement,
               previousDayLast: bodyComposition.summary?.previousDayLast,
               onDelete: { await bodyComposition.delete(measurement) }
             )
           } label: {
-            // 項目名は先頭の行だけ。同じ日に何度も乗ると同じ語が何度も並ぶ
-            BodyMeasurementRow(measurement: measurement, showsLabels: index == 0)
+            // 1回ごとに別のカードなので、どのカードにも項目名を出す。
+            // 名前の無いカードは、上のカードと見比べないと何の数字か分からない
+            BodyMeasurementRow(measurement: measurement, showsLabels: true)
           }
           // 食品マスタの削除と同じ操作。完全スワイプで消えると取り消せない
           .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -222,6 +223,7 @@ struct DayContentView: View {
 
         if let last = bodyComposition.summary?.lastMeasured {
           BodyLastMeasuredRow(last: last)
+            .cardRow()
         }
 
         if bodyComposition.showsAction {
@@ -233,6 +235,7 @@ struct DayContentView: View {
             onMeasure: { bodyComposition.measureByHand() },
             onStop: { bodyComposition.stop() }
           )
+          .cardRow()
         }
       } header: {
         Text(NSLocalizedString("Body Composition", comment: "Body composition section"))
@@ -267,6 +270,7 @@ struct DayContentView: View {
             dayLogItems[index] = updated
           }
         })
+        .cardRow()
         .tag(item.id)
       }
       .onDelete { indexSet in
@@ -343,7 +347,7 @@ struct DayContentView: View {
                 format: NSLocalizedString("More options for %@", comment: "Meal options menu"),
                 mealType.localizedName))
           }
-          .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 8))
+          .cardRow(verticalPadding: 2)
         }
       } header: {
         Text(NSLocalizedString("Not logged yet", comment: "Section for meals without records"))

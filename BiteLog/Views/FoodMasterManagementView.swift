@@ -104,6 +104,7 @@ struct FoodMasterManagementView: View {
               FoodMasterRow(foodMaster: foodMaster)
             }
             .buttonStyle(.plain)
+            .cardRow()
             .onAppear {
               if foodMaster.id == foodMasters.last?.id && hasMoreData && !isLoading {
                 Task { await loadMoreContent() }
@@ -138,6 +139,7 @@ struct FoodMasterManagementView: View {
             Spacer()
           }
           .listRowBackground(Color.clear)
+          .listRowSeparator(.hidden)
         }
       }
       .listStyle(.insetGrouped)

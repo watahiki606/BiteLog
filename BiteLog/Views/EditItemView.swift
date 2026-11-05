@@ -283,6 +283,7 @@ struct FoodSearchView: View {
             FoodMasterRow(foodMaster: item)
           }
           .buttonStyle(.plain)
+          .cardRow()
           .onAppear {
             if item.id == searchResults.last?.id && hasMoreData {
               Task { await loadMoreItems() }
