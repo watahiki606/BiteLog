@@ -150,7 +150,7 @@ const sections = [
         <ul className="list-disc ml-5 space-y-2">
           <li>
             <strong className="text-fg-subtle">データの削除</strong> —
-            設定画面の「データ管理」から「すべてのデータを削除」を実行することで、
+            プロフィールの「データ管理」から「すべてのデータを削除」を実行することで、
             サーバー上の全データを削除できます（この操作は取り消しできません）
           </li>
           <li>
@@ -163,7 +163,7 @@ const sections = [
           </li>
           <li>
             <strong className="text-fg-subtle">ログアウト</strong> —
-            設定画面からサインアウトすると、デバイス上の認証トークンが削除されます
+            プロフィールからサインアウトすると、デバイス上の認証トークンが削除されます
           </li>
         </ul>
       </>
