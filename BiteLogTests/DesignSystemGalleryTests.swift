@@ -297,8 +297,11 @@ private struct ScreenPartsGalleryView: View {
 
       group("Settings Rows") {
         VStack(alignment: .leading, spacing: 12) {
-          SettingsRowLabel("Daily Nutrition Goals", systemImage: "target", color: .red)
-          SettingsRowLabel("Scale Setup", systemImage: "scalemass.fill", color: .purple)
+          SettingsRowLabel(
+            "Daily Nutrition Goals", systemImage: "target", color: .red, detail: "1,210 kcal")
+          SettingsRowLabel(
+            "Body Composition Scale", systemImage: "scalemass.fill", color: .purple,
+            detail: "Registered")
         }
       }
 

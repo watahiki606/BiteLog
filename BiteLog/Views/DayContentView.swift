@@ -491,18 +491,6 @@ private struct AddMealButton: View {
   }
 }
 
-// MARK: - 見出しの位置
-
-extension View {
-  /// セクションの見出しを、下のカードの左端にそろえる。
-  ///
-  /// 既定では見出しがカードの中身と同じ位置まで内側に寄り、見出しなのに
-  /// カードより奥に引っ込んで見える。外側にそろえて、どのカードの見出しかを示す。
-  fileprivate func sectionHeaderAlignedToCard() -> some View {
-    listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 8, trailing: 4))
-  }
-}
-
 // MARK: - LogItemDTO extension
 
 extension LogItemDTO {

@@ -1,11 +1,26 @@
 import SwiftUI
 
 /// タブの識別子。数値インデックスだと「1 はどの画面か」が呼び出し側から読めないため型で持つ。
-enum AppTab: Hashable {
+enum AppTab: String, Hashable {
   case log
   case food
   case statistics
   case profile
+
+  /// 起動したときに開くタブ。
+  ///
+  /// 開発用のビルドでは `-BiteLogStartTab profile` を付けて起動すると、そのタブから始まる。
+  /// 実機の画面を手で操作せずに撮って確かめるためで、公開する版では常に記録から始める。
+  static var initial: AppTab {
+    #if DEBUG
+      if let raw = UserDefaults.standard.string(forKey: "BiteLogStartTab"),
+        let tab = AppTab(rawValue: raw)
+      {
+        return tab
+      }
+    #endif
+    return .log
+  }
 }
 
 struct ContentView: View {
@@ -14,7 +29,7 @@ struct ContentView: View {
   @State private var selectedDate = Date()
   @State private var showingAddItemFor: (date: Date, mealType: MealType)?
   @State private var showingDatePicker = false
-  @State private var selectedTab: AppTab = .log
+  @State private var selectedTab: AppTab = .initial
   @State private var logRefreshTrigger = 0
 
   @ViewBuilder

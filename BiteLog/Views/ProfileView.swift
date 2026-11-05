@@ -27,24 +27,22 @@ struct ProfileView: View {
       Form {
         Section {
           NavigationLink(destination: PersonalProfileView()) {
-            SettingsRowLabel(
-              NSLocalizedString("About Me", comment: "Personal profile title"),
-              systemImage: "person.fill", color: .blue,
-              detail: personal?.summary()
-                ?? NSLocalizedString("Not Entered", comment: "Scale profile missing"))
+            ProfileHeroCard(personal: personal)
           }
         }
 
-        Section(header: Text(NSLocalizedString("Goals", comment: "Profile section"))) {
+        Section {
           NavigationLink(destination: NutritionGoalsEditView()) {
             SettingsRowLabel(
               NSLocalizedString("Daily Nutrition Goals", comment: "Nutrition goals link"),
               systemImage: "target", color: .red,
               detail: "\(NutritionFormatter.formatCalories(nutritionGoalsManager.targetCalories)) kcal")
           }
+        } header: {
+          CardSectionHeader(NSLocalizedString("Goals", comment: "Profile section"))
         }
 
-        Section(header: Text(NSLocalizedString("Devices", comment: "Profile section"))) {
+        Section {
           NavigationLink(destination: ScaleImportView()) {
             SettingsRowLabel(
               NSLocalizedString("Body Composition Scale", comment: "Profile scale link"),
@@ -53,9 +51,11 @@ struct ProfileView: View {
                 ? NSLocalizedString("Registered", comment: "Scale registered status")
                 : NSLocalizedString("Not Registered", comment: "Scale not registered status"))
           }
+        } header: {
+          CardSectionHeader(NSLocalizedString("Devices", comment: "Profile section"))
         }
 
-        Section(header: Text(NSLocalizedString("Data Management", comment: "Data management section"))) {
+        Section {
           NavigationLink(destination: ImportCSVView()) {
             SettingsRowLabel(
               NSLocalizedString("Import CSV", comment: "Import CSV"),
@@ -71,6 +71,8 @@ struct ProfileView: View {
               NSLocalizedString("Delete All Data", comment: "Delete all data"),
               systemImage: "trash.fill", color: .red)
           }
+        } header: {
+          CardSectionHeader(NSLocalizedString("Data Management", comment: "Data management section"))
         }
 
         Section {
@@ -99,7 +101,7 @@ struct ProfileView: View {
               systemImage: "rectangle.portrait.and.arrow.right", color: .red)
           }
         } header: {
-          Text(NSLocalizedString("Account", comment: "Account settings section"))
+          CardSectionHeader(NSLocalizedString("Account", comment: "Account settings section"))
         } footer: {
           Text(
             NSLocalizedString(
@@ -212,7 +214,7 @@ struct SettingsRowLabel: View {
   var detail: String?
 
   @Environment(\.colorSchemeContrast) private var contrast
-  @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 30
+  @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 38
 
   init(_ title: String, systemImage: String, color: Color, detail: String? = nil) {
     self.title = title
@@ -222,19 +224,21 @@ struct SettingsRowLabel: View {
   }
 
   var body: some View {
-    HStack(spacing: 12) {
+    HStack(spacing: 14) {
       Image(systemName: systemImage)
         .font(.subheadline.weight(.semibold))
         .foregroundStyle(color)
         .frame(width: iconSize, height: iconSize)
         .background(
           color.opacity(contrast == .increased ? 0.25 : 0.15),
-          in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+          in: RoundedRectangle(cornerRadius: 10, style: .continuous)
         )
         .accessibilityHidden(true)
 
-      VStack(alignment: .leading, spacing: 2) {
+      // 記録の画面の名前と同じく太字にする。細い字だと一覧が頼りなく見える
+      VStack(alignment: .leading, spacing: 3) {
         Text(title)
+          .font(.body.weight(.semibold))
         if let detail {
           Text(detail)
             .font(.subheadline)
@@ -243,5 +247,48 @@ struct SettingsRowLabel: View {
         }
       }
     }
+  }
+}
+
+/// プロフィールの先頭のカード。自分についての情報を大きく見せる。
+///
+/// 一覧の1行にすると、ほかの設定と同じ重さになって埋もれる。
+/// このタブの主役なので、アイコンと要約を大きく出す。
+private struct ProfileHeroCard: View {
+  let personal: PersonalProfile?
+
+  @ScaledMetric(relativeTo: .largeTitle) private var avatarSize: CGFloat = 84
+
+  var body: some View {
+    VStack(spacing: 12) {
+      Image(systemName: "person.fill")
+        .font(.system(size: avatarSize * 0.45, weight: .semibold))
+        .foregroundStyle(.white)
+        .frame(width: avatarSize, height: avatarSize)
+        .background(
+          LinearGradient(
+            colors: [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing),
+          in: Circle()
+        )
+        .accessibilityHidden(true)
+
+      VStack(spacing: 4) {
+        Text(NSLocalizedString("About Me", comment: "Personal profile title"))
+          .font(.title3.weight(.bold))
+
+        Text(
+          personal?.summary()
+            ?? NSLocalizedString(
+              "Enter your date of birth and height", comment: "Profile hero empty")
+        )
+        .font(.subheadline)
+        .monospacedDigit()
+        .foregroundStyle(.secondary)
+        .multilineTextAlignment(.center)
+      }
+    }
+    .frame(maxWidth: .infinity)
+    .padding(.vertical, 16)
+    .accessibilityElement(children: .combine)
   }
 }
