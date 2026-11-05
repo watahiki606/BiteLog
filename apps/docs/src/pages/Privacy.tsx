@@ -155,7 +155,7 @@ const sections = [
           </li>
           <li>
             <strong className="text-fg-subtle">データのエクスポート</strong> —
-            設定画面の「CSV エクスポート」から全食事記録を CSV 形式でダウンロードできます
+            プロフィールの「CSV エクスポート」から全食事記録を CSV 形式でダウンロードできます
           </li>
           <li>
             <strong className="text-fg-subtle">広告トラッキングの制限</strong> —

@@ -1,6 +1,9 @@
-After reading nutrition from a photo, you can now look up the values a store publishes.
+The Log screen has been redesigned so you can see where you stand without comparing numbers.
 
-- From the result screen, look up the nutrition facts the store or maker publishes and replace the values. If a logo or product name is visible on the plate or package, the store or product name is filled in for you
-- Values found this way show their source
-- The result screen also suggests matching foods that other people have registered
-- Fixed foods you had never logged before being added with an amount of 1
+- A week strip at the top shows each day's calories as a ring. Tap a day to jump to it
+- The daily total shows calories large, with the main nutrients below
+- Each logged food is now its own card, with calories shown large under the name
+- Adding food is now one button at the bottom left. You can switch between breakfast, lunch, and other meals on the add screen, so logging several meals at once no longer means reopening it
+- A new Profile tab brings together your date of birth, height, goals, and scale settings
+- The Statistics screen now shows everything from top to bottom once you pick a period
+- The "Other" meal type has been removed
