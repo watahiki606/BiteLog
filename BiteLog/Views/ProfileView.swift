@@ -4,8 +4,12 @@ extension Notification.Name {
   static let allDataDeleted = Notification.Name("allDataDeleted")
 }
 
-struct SettingsView: View {
-  @Environment(\.dismiss) private var dismiss
+/// プロフィールのタブ。自分について・目標・体組成計・データ・アカウントをまとめる。
+///
+/// 以前は記録の画面の歯車から開く設定のシートだった。生年月日や身長は体組成計の
+/// 設定の奥にあり、体組成計を持っていない人は見つけられなかった。
+/// 自分についての情報を先頭に置き、機器やデータの管理はその後ろに並べる。
+struct ProfileView: View {
   @EnvironmentObject private var languageManager: LanguageManager
   @EnvironmentObject private var nutritionGoalsManager: NutritionGoalsManager
   @State private var showingDeleteConfirmation = false
@@ -14,10 +18,61 @@ struct SettingsView: View {
   @State private var showDeleteErrorAlert = false
   @State private var showingSignOutConfirmation = false
   @State private var deleteErrorMessage = ""
+  /// 入力画面から戻るたびに読み直す
+  @State private var personal = PersonalProfile.load()
+  @State private var isScaleRegistered = TanitaScaleConnection.isPaired()
 
   var body: some View {
     NavigationStack {
       Form {
+        Section {
+          NavigationLink(destination: PersonalProfileView()) {
+            SettingsRowLabel(
+              NSLocalizedString("About Me", comment: "Personal profile title"),
+              systemImage: "person.fill", color: .blue,
+              detail: personal?.summary()
+                ?? NSLocalizedString("Not Entered", comment: "Scale profile missing"))
+          }
+        }
+
+        Section(header: Text(NSLocalizedString("Goals", comment: "Profile section"))) {
+          NavigationLink(destination: NutritionGoalsEditView()) {
+            SettingsRowLabel(
+              NSLocalizedString("Daily Nutrition Goals", comment: "Nutrition goals link"),
+              systemImage: "target", color: .red,
+              detail: "\(NutritionFormatter.formatCalories(nutritionGoalsManager.targetCalories)) kcal")
+          }
+        }
+
+        Section(header: Text(NSLocalizedString("Devices", comment: "Profile section"))) {
+          NavigationLink(destination: ScaleImportView()) {
+            SettingsRowLabel(
+              NSLocalizedString("Body Composition Scale", comment: "Profile scale link"),
+              systemImage: "scalemass.fill", color: .purple,
+              detail: isScaleRegistered
+                ? NSLocalizedString("Registered", comment: "Scale registered status")
+                : NSLocalizedString("Not Registered", comment: "Scale not registered status"))
+          }
+        }
+
+        Section(header: Text(NSLocalizedString("Data Management", comment: "Data management section"))) {
+          NavigationLink(destination: ImportCSVView()) {
+            SettingsRowLabel(
+              NSLocalizedString("Import CSV", comment: "Import CSV"),
+              systemImage: "square.and.arrow.down", color: .green)
+          }
+          NavigationLink(destination: ExportCSVView()) {
+            SettingsRowLabel(
+              NSLocalizedString("Export CSV", comment: "Export CSV"),
+              systemImage: "square.and.arrow.up", color: .teal)
+          }
+          Button(role: .destructive, action: { showingDeleteConfirmation = true }) {
+            SettingsRowLabel(
+              NSLocalizedString("Delete All Data", comment: "Delete all data"),
+              systemImage: "trash.fill", color: .red)
+          }
+        }
+
         Section {
           Button(action: { languageManager.openSystemSettings() }) {
             LabeledContent {
@@ -37,57 +92,25 @@ struct SettingsView: View {
           // 既定のままだと行のラベルまで着色され、同じ Form の中で
           // 遷移する他の行と見た目が揃わない。外に出ることは末尾の記号で示す。
           .buttonStyle(.plain)
+
+          Button(role: .destructive, action: { showingSignOutConfirmation = true }) {
+            SettingsRowLabel(
+              NSLocalizedString("Sign Out", comment: "Sign out button"),
+              systemImage: "rectangle.portrait.and.arrow.right", color: .red)
+          }
+        } header: {
+          Text(NSLocalizedString("Account", comment: "Account settings section"))
         } footer: {
           Text(
             NSLocalizedString(
               "Change the language in the Settings app, under Preferred Language.",
               comment: "Language settings footer"))
         }
-
-        Section(header: Text(NSLocalizedString("Nutrition Goals", comment: "Nutrition goals section"))) {
-          NavigationLink(destination: NutritionGoalsEditView()) {
-            SettingsRowLabel(
-              NSLocalizedString("Daily Nutrition Goals", comment: "Nutrition goals link"),
-              systemImage: "target", color: .red)
-          }
-        }
-
-        Section(header: Text(NSLocalizedString("Data Management", comment: "Data management section"))) {
-          NavigationLink(destination: ImportCSVView()) {
-            SettingsRowLabel(
-              NSLocalizedString("Import CSV", comment: "Import CSV"),
-              systemImage: "square.and.arrow.down", color: .green)
-          }
-          NavigationLink(destination: ExportCSVView()) {
-            SettingsRowLabel(
-              NSLocalizedString("Export CSV", comment: "Export CSV"),
-              systemImage: "square.and.arrow.up", color: .teal)
-          }
-          NavigationLink(destination: ScaleImportView()) {
-            SettingsRowLabel(
-              NSLocalizedString("Scale Setup", comment: "Scale setup title"),
-              systemImage: "scalemass.fill", color: .purple)
-          }
-          Button(role: .destructive, action: { showingDeleteConfirmation = true }) {
-            SettingsRowLabel(
-              NSLocalizedString("Delete All Data", comment: "Delete all data"),
-              systemImage: "trash.fill", color: .red)
-          }
-        }
-
-        Section(header: Text(NSLocalizedString("Account", comment: "Account settings section"))) {
-          Button(role: .destructive, action: { showingSignOutConfirmation = true }) {
-            SettingsRowLabel(
-              NSLocalizedString("Sign Out", comment: "Sign out button"),
-              systemImage: "rectangle.portrait.and.arrow.right", color: .red)
-          }
-        }
       }
-      .navigationTitle(NSLocalizedString("Settings", comment: "Navigation title"))
-      .toolbar {
-        ToolbarItem(placement: .navigationBarTrailing) {
-          Button(NSLocalizedString("Done", comment: "Button title")) { dismiss() }
-        }
+      .navigationTitle(NSLocalizedString("Profile", comment: "Tab name"))
+      .onAppear {
+        personal = PersonalProfile.load()
+        isScaleRegistered = TanitaScaleConnection.isPaired()
       }
       // 目標の編集は画面を離れたときに保存するので、失敗を伝える頃には
       // その画面が無い。まだ出ている設定画面から出す。
@@ -127,7 +150,6 @@ struct SettingsView: View {
       ) {
         Button(NSLocalizedString("Sign Out", comment: "Sign out button"), role: .destructive) {
           AuthManager.shared.signOut()
-          dismiss()
         }
         Button(NSLocalizedString("Cancel", comment: "Cancel button"), role: .cancel) {}
       } message: {
@@ -186,14 +208,17 @@ struct SettingsRowLabel: View {
   let title: String
   let systemImage: String
   let color: Color
+  /// 名前の下に添える今の値。「42歳 · 166.0 cm」など。開かなくても中身が分かる
+  var detail: String?
 
   @Environment(\.colorSchemeContrast) private var contrast
   @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 30
 
-  init(_ title: String, systemImage: String, color: Color) {
+  init(_ title: String, systemImage: String, color: Color, detail: String? = nil) {
     self.title = title
     self.systemImage = systemImage
     self.color = color
+    self.detail = detail
   }
 
   var body: some View {
@@ -208,7 +233,15 @@ struct SettingsRowLabel: View {
         )
         .accessibilityHidden(true)
 
-      Text(title)
+      VStack(alignment: .leading, spacing: 2) {
+        Text(title)
+        if let detail {
+          Text(detail)
+            .font(.subheadline)
+            .monospacedDigit()
+            .foregroundStyle(.secondary)
+        }
+      }
     }
   }
 }

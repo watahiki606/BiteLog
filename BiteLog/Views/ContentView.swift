@@ -5,6 +5,7 @@ enum AppTab: Hashable {
   case log
   case food
   case statistics
+  case profile
 }
 
 struct ContentView: View {
@@ -12,7 +13,6 @@ struct ContentView: View {
 
   @State private var selectedDate = Date()
   @State private var showingAddItemFor: (date: Date, mealType: MealType)?
-  @State private var showingSettings = false
   @State private var showingDatePicker = false
   @State private var selectedTab: AppTab = .log
   @State private var logRefreshTrigger = 0
@@ -50,6 +50,13 @@ struct ContentView: View {
           StatisticsView()
         }
       }
+
+      Tab(
+        NSLocalizedString("Profile", comment: "Tab name"), systemImage: "person.crop.circle",
+        value: AppTab.profile
+      ) {
+        ProfileView()
+      }
     }
   }
 
@@ -61,6 +68,11 @@ struct ContentView: View {
       set: { newValue in
         if newValue == .log && selectedTab == .log {
           selectedDate = Calendar.current.startOfDay(for: Date())
+          logRefreshTrigger += 1
+        }
+        // プロフィールで体組成計を登録したり目標を変えたりして戻ってきたら、記録を読み直す。
+        // 読み直さないと、次に日付を動かすまで体組成のカードや目標が古いまま
+        if newValue == .log && selectedTab == .profile {
           logRefreshTrigger += 1
         }
         selectedTab = newValue
@@ -97,15 +109,6 @@ struct ContentView: View {
               systemImage: "calendar")
           }
         }
-
-        ToolbarItem(placement: .topBarTrailing) {
-          Button {
-            showingSettings = true
-          } label: {
-            Label(
-              NSLocalizedString("Settings", comment: "Settings"), systemImage: "gearshape")
-          }
-        }
       }
       .sheet(
         isPresented: Binding(
@@ -125,11 +128,6 @@ struct ContentView: View {
       }
       .sheet(isPresented: $showingDatePicker) {
         DatePickerSheet(selectedDate: $selectedDate, isPresented: $showingDatePicker)
-      }
-      // 設定で体組成計を登録して戻ってきたら、記録の画面に体組成のカードが出る。
-      // 読み直さないと、次に日付を動かすまで登録が反映されない。
-      .sheet(isPresented: $showingSettings, onDismiss: { logRefreshTrigger += 1 }) {
-        SettingsView()
       }
     }
   }

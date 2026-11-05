@@ -95,3 +95,57 @@ struct TanitaScaleConnectionTests {
     }
   }
 }
+
+/// 自分についての情報と体組成計の設定を分けて持つ。値は架空のもの
+struct PersonalProfileStorageTests {
+  private static let profile = TanitaProfile(
+    nickname: "ab", birthDate: DateComponents(year: 1990, month: 4, day: 1), heightCm: 170.0,
+    sex: .male, bodyType: .standard, clothingWeightKg: 0.3, region: 2)
+
+  private static func emptyDefaults() -> UserDefaults {
+    let name = "PersonalProfileStorageTests-\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: name)!
+    defaults.removePersistentDomain(forName: name)
+    return defaults
+  }
+
+  @Test func 分ける前にまとめて保存した個人データもそのまま読める() throws {
+    let defaults = Self.emptyDefaults()
+    defaults.set(try JSONEncoder().encode(Self.profile), forKey: TanitaScaleConnection.profileKey)
+
+    #expect(PersonalProfile.load(defaults: defaults) == Self.profile.personal)
+    #expect(TanitaScaleConnection.scaleSettings(defaults: defaults) == Self.profile.scaleSettings)
+    #expect(TanitaScaleConnection.profile(defaults: defaults) == Self.profile)
+  }
+
+  @Test func 自分についての情報を直すと体組成計に書く個人データにも入る() throws {
+    let defaults = Self.emptyDefaults()
+    defaults.set(try JSONEncoder().encode(Self.profile), forKey: TanitaScaleConnection.profileKey)
+
+    var personal = Self.profile.personal
+    personal.heightCm = 171.5
+    PersonalProfile.save(personal, defaults: defaults)
+
+    #expect(TanitaScaleConnection.profile(defaults: defaults)?.heightCm == 171.5)
+    #expect(TanitaScaleConnection.profile(defaults: defaults)?.nickname == "ab")
+  }
+
+  @Test func 体組成計の設定が無ければ体組成計には書けない() {
+    let defaults = Self.emptyDefaults()
+    PersonalProfile.save(Self.profile.personal, defaults: defaults)
+
+    #expect(PersonalProfile.load(defaults: defaults) != nil)
+    #expect(TanitaScaleConnection.profile(defaults: defaults) == nil)
+  }
+
+  @Test func 年齢と身長を要約に出す() {
+    let today = Calendar(identifier: .gregorian).date(
+      from: DateComponents(year: 2026, month: 11, day: 5))!
+
+    let summary = Self.profile.personal.summary(
+      today: today, calendar: Calendar(identifier: .gregorian))
+
+    #expect(summary.contains("36"))
+    #expect(summary.contains("170.0 cm"))
+  }
+}

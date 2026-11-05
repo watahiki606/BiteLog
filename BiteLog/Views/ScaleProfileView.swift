@@ -1,15 +1,15 @@
 import SwiftUI
 
-/// 体組成計に書く個人データを入力して、端末に保存する。
+/// 自分についての情報を入力して、端末に保存する。生年月日・身長・性別・体型。
 ///
-/// 持ち主は BiteLog で、体組成計の枠は写し。登録のときと測るたびに、ここで保存した値を体組成計へ書く。
+/// プロフィールから開く。体組成計を登録していれば、測るたびにこの値を体組成計へ書く。
 /// 体脂肪率や体内年齢は体組成計がこの値で計算するので、登録したあとに直すときは、変わる項目を並べて確かめる。
-struct ScaleProfileView: View {
+struct PersonalProfileView: View {
   @Environment(\.dismiss) private var dismiss
 
   /// 保存済みの値。初めてなら nil
-  @State private var stored = TanitaScaleConnection.profile()
-  @State private var draft = ScaleProfileDraft(TanitaScaleConnection.profile())
+  @State private var stored = PersonalProfile.load()
+  @State private var draft = PersonalProfileDraft(PersonalProfile.load())
   @State private var isConfirming = false
 
   private var changes: [ScaleProfileChange] {
@@ -24,11 +24,11 @@ struct ScaleProfileView: View {
 
   var body: some View {
     Form {
-      ScaleProfileForm(draft: $draft)
+      PersonalProfileForm(draft: $draft)
 
       Section {
         Button(NSLocalizedString("Save", comment: "Scale profile save")) {
-          // 登録したあとに変えると、次の測定から計算が変わる。黙って変えずに確かめる
+          // 体組成計に登録したあとに変えると、次の測定から計算が変わる。黙って変えずに確かめる
           if stored != nil && TanitaScaleConnection.isPaired() {
             isConfirming = true
           } else {
@@ -39,11 +39,11 @@ struct ScaleProfileView: View {
       } footer: {
         Text(
           NSLocalizedString(
-            "Body fat and other results are calculated from these values. They are sent to the scale when you register and each time you measure.",
-            comment: "Scale profile help"))
+            "Kept only on this iPhone. If you use a body composition scale, these values are used for its calculations.",
+            comment: "Personal profile help"))
       }
     }
-    .navigationTitle(NSLocalizedString("Personal Data", comment: "Scale profile title"))
+    .navigationTitle(NSLocalizedString("About Me", comment: "Personal profile title"))
     .navigationBarTitleDisplayMode(.inline)
     .confirmationDialog(
       NSLocalizedString(
@@ -60,69 +60,121 @@ struct ScaleProfileView: View {
 
   private func save() {
     guard let profile = draft.profile else { return }
-    TanitaScaleConnection.setProfile(profile)
+    PersonalProfile.save(profile)
     dismiss()
   }
 }
 
-/// 入力の途中の個人データ。身長や生年月日は、初めは決まっていない。
+/// 体組成計にだけ関係する設定を入力して、端末に保存する。呼び名・服の重さ・地域。
+///
+/// 持ち主は BiteLog で、体組成計の枠は写し。登録のときと測るたびに、ここで保存した値を体組成計へ書く。
+struct ScaleProfileView: View {
+  @Environment(\.dismiss) private var dismiss
+
+  @State private var stored = TanitaScaleConnection.scaleSettings()
+  @State private var draft = ScaleSettingsDraft(TanitaScaleConnection.scaleSettings())
+  @State private var isConfirming = false
+
+  private var changes: [ScaleProfileChange] {
+    guard let stored, let settings = draft.settings else { return [] }
+    return ScaleProfileChange.between(stored, settings)
+  }
+
+  private var canSave: Bool {
+    guard draft.settings != nil else { return false }
+    return stored == nil || !changes.isEmpty
+  }
+
+  var body: some View {
+    Form {
+      ScaleSettingsForm(draft: $draft)
+
+      Section {
+        Button(NSLocalizedString("Save", comment: "Scale profile save")) {
+          if stored != nil && TanitaScaleConnection.isPaired() {
+            isConfirming = true
+          } else {
+            save()
+          }
+        }
+        .disabled(!canSave)
+      } footer: {
+        Text(
+          NSLocalizedString(
+            "Sent to the scale when you register and each time you measure.",
+            comment: "Scale settings help"))
+      }
+    }
+    .navigationTitle(NSLocalizedString("Scale Settings", comment: "Scale settings title"))
+    .navigationBarTitleDisplayMode(.inline)
+    .confirmationDialog(
+      NSLocalizedString(
+        "These values will be sent to the scale the next time you measure.",
+        comment: "Scale profile confirm"),
+      isPresented: $isConfirming,
+      titleVisibility: .visible
+    ) {
+      Button(NSLocalizedString("Save", comment: "Scale profile save")) { save() }
+    } message: {
+      Text(changes.map(\.summary).joined(separator: "\n"))
+    }
+  }
+
+  private func save() {
+    guard let settings = draft.settings else { return }
+    TanitaScaleConnection.setScaleSettings(settings)
+    dismiss()
+  }
+}
+
+/// 入力の途中の、自分についての情報。身長や生年月日は、初めは決まっていない。
 ///
 /// それらしい初期値を置くと、確かめずに保存されて体組成計の計算がずれるので、選ぶまで空にしておく。
-/// 体型と着衣は、ほとんどの人が「標準」「0.0kg」のままでよいので初めから入れておく。
-struct ScaleProfileDraft: Equatable {
-  var nickname = ""
+/// 体型は、ほとんどの人が「標準」のままでよいので初めから入れておく。
+struct PersonalProfileDraft: Equatable {
   var birthDate: DateComponents?
   var heightCm: Double?
   var sex: TanitaProfile.Sex?
   var bodyType = TanitaProfile.BodyType.standard
-  var clothingWeightKg = 0.0
-  var region: UInt8?
 
-  init(_ profile: TanitaProfile?) {
+  init(_ profile: PersonalProfile?) {
     guard let profile else { return }
-    nickname = profile.nickname
     birthDate = profile.birthDate
     heightCm = profile.heightCm
     sex = profile.sex
     bodyType = profile.bodyType
-    clothingWeightKg = profile.clothingWeightKg
-    region = profile.region
   }
 
-  /// すべての項目がそろっていれば、体組成計に書ける個人データ
-  var profile: TanitaProfile? {
-    guard let birthDate, let heightCm, let sex, let region else { return nil }
-    return TanitaProfile(
-      nickname: nickname, birthDate: birthDate, heightCm: heightCm, sex: sex, bodyType: bodyType,
-      clothingWeightKg: clothingWeightKg, region: region)
+  var profile: PersonalProfile? {
+    guard let birthDate, let heightCm, let sex else { return nil }
+    return PersonalProfile(birthDate: birthDate, heightCm: heightCm, sex: sex, bodyType: bodyType)
   }
 }
 
-/// 個人データの各項目の入力欄
-private struct ScaleProfileForm: View {
-  @Binding var draft: ScaleProfileDraft
+/// 入力の途中の、体組成計の設定。着衣はほとんどの人が「0.0kg」のままでよいので初めから入れておく
+struct ScaleSettingsDraft: Equatable {
+  var nickname = ""
+  var clothingWeightKg = 0.0
+  var region: UInt8?
+
+  init(_ settings: ScaleOwnerSettings?) {
+    guard let settings else { return }
+    nickname = settings.nickname
+    clothingWeightKg = settings.clothingWeightKg
+    region = settings.region
+  }
+
+  var settings: ScaleOwnerSettings? {
+    guard let region else { return nil }
+    return ScaleOwnerSettings(nickname: nickname, clothingWeightKg: clothingWeightKg, region: region)
+  }
+}
+
+/// 自分についての情報の入力欄
+private struct PersonalProfileForm: View {
+  @Binding var draft: PersonalProfileDraft
 
   var body: some View {
-    Section {
-      TextField(
-        NSLocalizedString("Nickname", comment: "Scale profile field"),
-        text: Binding(
-          get: { draft.nickname },
-          set: { draft.nickname = ScaleProfileFormat.nickname($0) }
-        )
-      )
-      .textInputAutocapitalization(.never)
-      .autocorrectionDisabled()
-    } header: {
-      Text(NSLocalizedString("Nickname", comment: "Scale profile field"))
-    } footer: {
-      Text(
-        String(
-          format: NSLocalizedString(
-            "Shown on the scale. Up to %d letters or digits.", comment: "Scale profile nickname help"),
-          TanitaProfile.nicknameBytes))
-    }
-
     Section {
       if let birthDate = draft.birthDate {
         DatePicker(
@@ -177,6 +229,33 @@ private struct ScaleProfileForm: View {
           "Choose Athlete only if you are 18 or older and train 12 hours or more a week.",
           comment: "Scale profile athlete help"))
     }
+  }
+}
+
+/// 体組成計の設定の入力欄
+private struct ScaleSettingsForm: View {
+  @Binding var draft: ScaleSettingsDraft
+
+  var body: some View {
+    Section {
+      TextField(
+        NSLocalizedString("Nickname", comment: "Scale profile field"),
+        text: Binding(
+          get: { draft.nickname },
+          set: { draft.nickname = ScaleProfileFormat.nickname($0) }
+        )
+      )
+      .textInputAutocapitalization(.never)
+      .autocorrectionDisabled()
+    } header: {
+      Text(NSLocalizedString("Nickname", comment: "Scale profile field"))
+    } footer: {
+      Text(
+        String(
+          format: NSLocalizedString(
+            "Shown on the scale. Up to %d letters or digits.", comment: "Scale profile nickname help"),
+          TanitaProfile.nicknameBytes))
+    }
 
     Section {
       Picker(
@@ -207,31 +286,50 @@ private struct ScaleProfileForm: View {
 struct ScaleProfileChange: Equatable {
   let summary: String
 
-  static func between(_ before: TanitaProfile, _ after: TanitaProfile) -> [ScaleProfileChange] {
-    typealias F = ScaleProfileFormat
-    var changes: [ScaleProfileChange] = []
-    func add(_ label: String, _ from: String, _ to: String) {
-      guard from != to else { return }
-      changes.append(ScaleProfileChange(summary: "\(label): \(from) → \(to)"))
+  private static func diff(_ pairs: [(String, String, String)]) -> [ScaleProfileChange] {
+    pairs.compactMap { label, from, to in
+      from == to ? nil : ScaleProfileChange(summary: "\(label): \(from) → \(to)")
     }
-    add(NSLocalizedString("Nickname", comment: "Scale profile field"), before.nickname, after.nickname)
-    add(
-      NSLocalizedString("Date of Birth", comment: "Scale profile field"),
-      F.birthDate(before.birthDate), F.birthDate(after.birthDate))
-    add(
-      NSLocalizedString("Height", comment: "Scale profile field"),
-      F.height(before.heightCm), F.height(after.heightCm))
-    add(NSLocalizedString("Sex", comment: "Scale profile field"), F.sex(before.sex), F.sex(after.sex))
-    add(
-      NSLocalizedString("Body Type", comment: "Scale profile field"),
-      F.bodyType(before.bodyType), F.bodyType(after.bodyType))
-    add(
-      NSLocalizedString("Clothes and Phone", comment: "Scale profile field"),
-      F.clothing(before.clothingWeightKg), F.clothing(after.clothingWeightKg))
-    add(
-      NSLocalizedString("Region", comment: "Scale profile field"),
-      F.region(before.region), F.region(after.region))
-    return changes
+  }
+
+  static func between(_ before: PersonalProfile, _ after: PersonalProfile) -> [ScaleProfileChange] {
+    typealias F = ScaleProfileFormat
+    return diff([
+      (
+        NSLocalizedString("Date of Birth", comment: "Scale profile field"),
+        F.birthDate(before.birthDate), F.birthDate(after.birthDate)
+      ),
+      (
+        NSLocalizedString("Height", comment: "Scale profile field"),
+        F.height(before.heightCm), F.height(after.heightCm)
+      ),
+      (NSLocalizedString("Sex", comment: "Scale profile field"), F.sex(before.sex), F.sex(after.sex)),
+      (
+        NSLocalizedString("Body Type", comment: "Scale profile field"),
+        F.bodyType(before.bodyType), F.bodyType(after.bodyType)
+      ),
+    ])
+  }
+
+  static func between(_ before: ScaleOwnerSettings, _ after: ScaleOwnerSettings)
+    -> [ScaleProfileChange]
+  {
+    typealias F = ScaleProfileFormat
+    return diff([
+      (NSLocalizedString("Nickname", comment: "Scale profile field"), before.nickname, after.nickname),
+      (
+        NSLocalizedString("Clothes and Phone", comment: "Scale profile field"),
+        F.clothing(before.clothingWeightKg), F.clothing(after.clothingWeightKg)
+      ),
+      (
+        NSLocalizedString("Region", comment: "Scale profile field"),
+        F.region(before.region), F.region(after.region)
+      ),
+    ])
+  }
+
+  static func between(_ before: TanitaProfile, _ after: TanitaProfile) -> [ScaleProfileChange] {
+    between(before.personal, after.personal) + between(before.scaleSettings, after.scaleSettings)
   }
 }
 

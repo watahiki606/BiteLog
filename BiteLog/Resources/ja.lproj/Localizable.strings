@@ -413,3 +413,17 @@
 "Previous week" = "前の週";
 "Next week" = "次の週";
 "Added %@ to %@" = "%2$@に %1$@ を追加しました";
+
+/* プロフィール */
+"Profile" = "プロフィール";
+"About Me" = "私について";
+"Goals" = "目標";
+"Devices" = "機器";
+"Body Composition Scale" = "体組成計";
+"Registered" = "登録済み";
+"Not Registered" = "未登録";
+"Scale Settings" = "体組成計の設定";
+"%d years old" = "%d歳";
+"Enter About Me and Scale Settings first." = "先に「私について」と「体組成計の設定」を入力してください。";
+"Kept only on this iPhone. If you use a body composition scale, these values are used for its calculations." = "このiPhoneの中にだけ保存します。体組成計を使う場合は、体脂肪率などの計算にこの値を使います。";
+"Sent to the scale when you register and each time you measure." = "登録するときと、測るたびに体組成計へ送ります。";

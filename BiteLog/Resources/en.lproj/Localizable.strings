@@ -398,3 +398,17 @@
 "Previous week" = "Previous week";
 "Next week" = "Next week";
 "Added %@ to %@" = "Added %1$@ to %2$@";
+
+/* Profile */
+"Profile" = "Profile";
+"About Me" = "About Me";
+"Goals" = "Goals";
+"Devices" = "Devices";
+"Body Composition Scale" = "Body Composition Scale";
+"Registered" = "Registered";
+"Not Registered" = "Not Registered";
+"Scale Settings" = "Scale Settings";
+"%d years old" = "%d years old";
+"Enter About Me and Scale Settings first." = "Enter About Me and Scale Settings first.";
+"Kept only on this iPhone. If you use a body composition scale, these values are used for its calculations." = "Kept only on this iPhone. If you use a body composition scale, these values are used for its calculations.";
+"Sent to the scale when you register and each time you measure." = "Sent to the scale when you register and each time you measure.";

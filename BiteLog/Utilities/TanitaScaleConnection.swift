@@ -101,18 +101,43 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
     defaults.set(key, forKey: personalKeyKey)
   }
 
+  /// 自分についての情報と体組成計の設定を分ける前に、まとめて保存していた場所。
+  /// 分けたあとも、新しい場所に無ければここから読む。消すと分ける前の入力が失われる
   static let profileKey = "TanitaProfile"
+  static let scaleSettingsKey = "ScaleOwnerSettings"
 
-  /// この端末の持ち主の個人データ。体組成計の枠は写しで、登録のときと測るたびにこれを書く。
-  /// 体組成計の登録が端末ごとなので、個人データも端末に持つ
-  static func profile(defaults: UserDefaults = .standard) -> TanitaProfile? {
+  static func legacyProfile(defaults: UserDefaults = .standard) -> TanitaProfile? {
     guard let data = defaults.data(forKey: profileKey) else { return nil }
     return try? JSONDecoder().decode(TanitaProfile.self, from: data)
   }
 
+  /// この端末の持ち主の個人データ。体組成計の枠は写しで、登録のときと測るたびにこれを書く。
+  /// 自分についての情報と体組成計の設定の両方がそろって、はじめて書ける
+  static func profile(defaults: UserDefaults = .standard) -> TanitaProfile? {
+    guard let personal = PersonalProfile.load(defaults: defaults),
+      let scale = scaleSettings(defaults: defaults)
+    else { return nil }
+    return TanitaProfile(personal: personal, scale: scale)
+  }
+
   static func setProfile(_ profile: TanitaProfile, defaults: UserDefaults = .standard) {
-    guard let data = try? JSONEncoder().encode(profile) else { return }
-    defaults.set(data, forKey: profileKey)
+    PersonalProfile.save(profile.personal, defaults: defaults)
+    setScaleSettings(profile.scaleSettings, defaults: defaults)
+  }
+
+  /// 体組成計にだけ関係する設定。体組成計の登録が端末ごとなので、端末に持つ
+  static func scaleSettings(defaults: UserDefaults = .standard) -> ScaleOwnerSettings? {
+    if let data = defaults.data(forKey: scaleSettingsKey),
+      let settings = try? JSONDecoder().decode(ScaleOwnerSettings.self, from: data)
+    {
+      return settings
+    }
+    return legacyProfile(defaults: defaults).map(\.scaleSettings)
+  }
+
+  static func setScaleSettings(_ settings: ScaleOwnerSettings, defaults: UserDefaults = .standard) {
+    guard let data = try? JSONEncoder().encode(settings) else { return }
+    defaults.set(data, forKey: scaleSettingsKey)
   }
 
   /// この端末が体組成計に登録できているか。未登録なら探しに行かない
@@ -124,7 +149,7 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
   func start(timeouts: Timeouts = .manual) {
     beginLog("取り込み")
     guard let identifier = Self.registeredIdentifier(defaults: defaults) else {
-      fail("体組成計が登録されていません。設定の「体組成計」から登録してください")
+      fail("体組成計が登録されていません。プロフィールの「体組成計」から登録してください")
       return
     }
     reset(
@@ -196,7 +221,7 @@ final class TanitaScaleConnection: NSObject, ObservableObject {
         defaults.removeObject(forKey: Self.identifierKey)
         fail(
           String(
-            format: "体組成計の登録が外れています（%02x）。設定の「体組成計」から登録し直してください", code))
+            format: "体組成計の登録が外れています（%02x）。プロフィールの「体組成計」から登録し直してください", code))
       case .failed(.registrationRefused(let code)):
         fail(String(format: "体組成計が登録を受け付けませんでした（%02x）", code))
       case .failed(.profileNotApplied):
