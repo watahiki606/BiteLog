@@ -85,7 +85,7 @@ struct FoodRow: View {
   private var amountLine: some View {
     ViewThatFits(in: .horizontal) {
       HStack(alignment: .firstTextBaseline, spacing: 6) {
-        CalorieLabel(calories: values.calories)
+        calorieWithIcon
         if !subtitle.isEmpty {
           Text(verbatim: "·")
             .font(.caption)
@@ -96,13 +96,25 @@ struct FoodRow: View {
       }
 
       VStack(alignment: .leading, spacing: 2) {
-        CalorieLabel(calories: values.calories)
+        calorieWithIcon
         if !subtitle.isEmpty {
           subtitleText
         }
       }
     }
     .foregroundStyle(.secondary)
+  }
+
+  /// 下の行の栄養素と同じく、カロリーにも色つきの形を添える。
+  /// 形が無いのがカロリーだけだと、数字が何の値か一瞬迷う。
+  private var calorieWithIcon: some View {
+    HStack(alignment: .firstTextBaseline, spacing: 4) {
+      Image(systemName: Nutrient.calories.symbolName)
+        .font(.caption)
+        .foregroundStyle(Nutrient.calories.color)
+        .accessibilityHidden(true)
+      CalorieLabel(calories: values.calories)
+    }
   }
 
   private var nameLine: some View {
