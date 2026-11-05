@@ -13,7 +13,6 @@ const MEAL_COLORS: Record<string, { border: string; bg: string; text: string }> 
   Lunch:     { border: '#00e5ff', bg: 'rgba(0,229,255,0.1)',  text: '#00e5ff' },
   Dinner:    { border: '#ff00ff', bg: 'rgba(255,0,255,0.1)',  text: '#ff00ff' },
   Snack:     { border: '#ffff00', bg: 'rgba(255,255,0,0.1)',  text: '#ffff00' },
-  Other:     { border: '#6060a0', bg: 'rgba(96,96,160,0.1)', text: '#6060a0' },
 };
 
 function today() {
@@ -113,7 +112,7 @@ export default function MealLogPage({ onToast }: Props) {
               <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground tracking-widest">NO DATA</td></tr>
             ) : items.map((item) => {
               const n = getNutrition(item);
-              const c = MEAL_COLORS[item.mealType] ?? MEAL_COLORS.Other;
+              const c = MEAL_COLORS[item.mealType] ?? MEAL_COLORS.Snack;
               return (
                 <motion.tr key={item.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                   className="border-b border-border-dim hover:bg-neon-cyan/5 transition-colors group"

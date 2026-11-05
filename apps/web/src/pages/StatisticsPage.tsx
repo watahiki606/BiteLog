@@ -44,7 +44,6 @@ const MEAL_COLORS: Record<string, string> = {
   Lunch:     '#00e5ff',
   Dinner:    '#ff00ff',
   Snack:     '#ffff00',
-  Other:     '#6060a0',
 };
 
 // 全期間を取るときの開始日。
@@ -491,7 +490,7 @@ export default function StatisticsPage({ onToast }: Props) {
           >
             <div className="text-xs text-muted-foreground tracking-widest mb-3">BY MEAL TYPE</div>
             <div className="space-y-2.5">
-              {['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Other'].map((mealType) => {
+              {['Breakfast', 'Lunch', 'Dinner', 'Snack'].map((mealType) => {
                 const cal   = meals[mealType]?.calories ?? 0;
                 const pct   = cal / maxMealCal;
                 const color = MEAL_COLORS[mealType] ?? '#6060a0';
