@@ -26,16 +26,21 @@ struct FoodRow: View {
 
   var body: some View {
     HStack(alignment: .center, spacing: 12) {
-      VStack(alignment: .leading, spacing: 4) {
+      // 行どうしを詰めると、3行が1つの塊に見えて硬くなる。
+      // 名前とカロリーは近く、栄養素は一段離して、読む単位ごとに間を取る
+      VStack(alignment: .leading, spacing: 0) {
         titleRow
 
         if isDeleted && dynamicTypeSize.isAccessibilitySize {
           deletedBadge
+            .padding(.top, 4)
         }
 
         amountLine
+          .padding(.top, 6)
 
         NutrientIconRow(values: values)
+          .padding(.top, 10)
       }
       .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -46,7 +51,6 @@ struct FoodRow: View {
           .accessibilityHidden(true)
       }
     }
-    .padding(.vertical, 4)
     .accessibilityElement(children: .combine)
   }
 
@@ -112,7 +116,8 @@ struct FoodRow: View {
       }
 
       Text(title)
-        .font(.subheadline.weight(.semibold))
+        .font(.body.weight(.semibold))
+        .lineSpacing(3)
         .foregroundStyle(isDeleted ? .secondary : .primary)
         .strikethrough(isDeleted)
         .lineLimit(titleLineLimit)

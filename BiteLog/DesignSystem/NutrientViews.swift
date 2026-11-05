@@ -56,13 +56,13 @@ struct NutrientIconRow: View {
   var body: some View {
     // 大きな文字では4つが1行に入らないので、2つずつ → 1つずつと折り返す
     ViewThatFits(in: .horizontal) {
-      HStack(spacing: 12) {
+      HStack(spacing: 16) {
         ForEach(items, id: \.0) { item($0.0, $0.1) }
       }
 
-      VStack(alignment: .leading, spacing: 4) {
+      VStack(alignment: .leading, spacing: 6) {
         ForEach(Array(stride(from: 0, to: items.count, by: 2)), id: \.self) { index in
-          HStack(spacing: 12) {
+          HStack(spacing: 16) {
             item(items[index].0, items[index].1)
             if index + 1 < items.count {
               item(items[index + 1].0, items[index + 1].1)
@@ -71,14 +71,14 @@ struct NutrientIconRow: View {
         }
       }
 
-      VStack(alignment: .leading, spacing: 4) {
+      VStack(alignment: .leading, spacing: 6) {
         ForEach(items, id: \.0) { item($0.0, $0.1) }
       }
     }
   }
 
   private func item(_ nutrient: Nutrient, _ value: Double) -> some View {
-    HStack(spacing: 3) {
+    HStack(spacing: 4) {
       Image(systemName: nutrient.symbolName)
         .font(.caption2)
         .foregroundStyle(nutrient.color)
