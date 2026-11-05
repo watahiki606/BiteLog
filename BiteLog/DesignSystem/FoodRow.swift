@@ -37,10 +37,10 @@ struct FoodRow: View {
         }
 
         amountLine
-          .padding(.top, 4)
+          .padding(.top, 8)
 
         NutrientIconRow(values: values)
-          .padding(.top, 10)
+          .padding(.top, 12)
       }
       .frame(maxWidth: .infinity, alignment: .leading)
 
