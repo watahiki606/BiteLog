@@ -23,11 +23,12 @@ struct CardView<Content: View>: View {
 
       content
     }
-    .padding()
+    // 記録の画面のカードと同じ余白と角の丸みにそろえる
+    .padding(20)
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(
       Color(UIColor.secondarySystemGroupedBackground),
-      in: RoundedRectangle(cornerRadius: 16)
+      in: RoundedRectangle(cornerRadius: 20, style: .continuous)
     )
   }
 }

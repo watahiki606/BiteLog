@@ -40,11 +40,13 @@ struct NutrientChip: View {
   }
 }
 
-/// P / 脂質 / 糖質 / 食物繊維 のチップを既定の順で並べる。
+// MARK: - 形と値の並び
+
+/// 一覧の行に添える栄養素。色つきの形と値だけを並べる。
 ///
-/// 文字を大きくすると4つ横並びでは入りきらないので、2列 → 1列と段階的に折り返す。
-/// 折り返さずに縮めるとチップの中の数値が「62…」のように切れて読めなくなる。
-struct NutrientChipRow: View {
+/// チップのように地を敷くと、4つの面が名前より目立って行が重くなる。
+/// 形で栄養素を見分けられるので、略号も地も要らない。
+struct NutrientIconRow: View {
   let values: NutritionValues
 
   private var items: [(Nutrient, Double)] {
@@ -52,26 +54,43 @@ struct NutrientChipRow: View {
   }
 
   var body: some View {
+    // 大きな文字では4つが1行に入らないので、2つずつ → 1つずつと折り返す
     ViewThatFits(in: .horizontal) {
-      HStack(spacing: 6) {
-        ForEach(items, id: \.0) { NutrientChip(nutrient: $0.0, value: $0.1) }
+      HStack(spacing: 16) {
+        ForEach(items, id: \.0) { item($0.0, $0.1) }
       }
 
-      VStack(alignment: .leading, spacing: 4) {
+      VStack(alignment: .leading, spacing: 6) {
         ForEach(Array(stride(from: 0, to: items.count, by: 2)), id: \.self) { index in
-          HStack(spacing: 6) {
-            NutrientChip(nutrient: items[index].0, value: items[index].1)
+          HStack(spacing: 16) {
+            item(items[index].0, items[index].1)
             if index + 1 < items.count {
-              NutrientChip(nutrient: items[index + 1].0, value: items[index + 1].1)
+              item(items[index + 1].0, items[index + 1].1)
             }
           }
         }
       }
 
-      VStack(alignment: .leading, spacing: 4) {
-        ForEach(items, id: \.0) { NutrientChip(nutrient: $0.0, value: $0.1) }
+      VStack(alignment: .leading, spacing: 6) {
+        ForEach(items, id: \.0) { item($0.0, $0.1) }
       }
     }
+  }
+
+  private func item(_ nutrient: Nutrient, _ value: Double) -> some View {
+    HStack(spacing: 4) {
+      Image(systemName: nutrient.symbolName)
+        .font(.caption2)
+        .foregroundStyle(nutrient.color)
+      Text("\(nutrient.format(value))\(nutrient.unit)")
+        .font(.caption)
+        .monospacedDigit()
+        .foregroundStyle(.secondary)
+    }
+    .lineLimit(1)
+    .fixedSize()
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(nutrient.accessibilityLabel(for: value))
   }
 }
 
@@ -88,6 +107,8 @@ struct NutrientBar: View {
   /// 次の食事を決められるのは後者だけ。今日の合計では出し、
   /// 期間の平均では出さない（過去の平均に「あと」は無い）。
   var showsRemaining: Bool = false
+  /// 横に3つ並べる狭い幅向けの形。名前・現在値・バー・残りを縦に積む。
+  var isCompact: Bool = false
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.colorSchemeContrast) private var contrast
@@ -143,59 +164,98 @@ struct NutrientBar: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 4) {
-      // 大きな文字では「名前・残り・現在値」の3つが1行に入らず、
-      // 名前が単語の途中で折れて数値も途中で改行される。名前を上の行へ逃がす。
-      if dynamicTypeSize.isAccessibilitySize {
-        VStack(alignment: .leading, spacing: 2) {
-          Text(nutrient.localizedName)
-            .font(.caption)
-            .foregroundStyle(.secondary)
-
-          HStack(spacing: 6) {
-            statusText
-            Spacer(minLength: 4)
-            valueText
-          }
-        }
+      if isCompact {
+        compactHeader
       } else {
-        HStack(spacing: 4) {
-          Text(nutrient.localizedName)
-            .font(.caption)
-            .foregroundStyle(.secondary)
-
-          Spacer(minLength: 4)
-
-          statusText
-          valueText
-        }
+        header
       }
 
-      GeometryReader { geometry in
-        ZStack(alignment: .leading) {
-          Capsule()
-            .fill(barColor.opacity(contrast == .increased ? 0.3 : 0.15))
-            .frame(height: 5)
+      bar
 
-          Capsule()
-            .fill(barColor)
-            .frame(width: geometry.size.width * barWidth, height: 5)
-            // 視差効果を減らす設定では伸び縮みさせず、新しい長さで直接描く。
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.5), value: barWidth)
-
-          if isOverTarget {
-            Rectangle()
-              .fill(Color.primary.opacity(0.6))
-              .frame(width: 2, height: 9)
-              .offset(x: geometry.size.width * targetLinePosition - 1)
-          }
-        }
-        .frame(maxHeight: .infinity)
+      if isCompact {
+        statusText
       }
-      .frame(height: 9)
     }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(nutrient.accessibilityLabel(for: value))
     .accessibilityValue(progressDescription)
+  }
+
+  /// 幅が狭いので1行に詰めず、現在値を名前の下に大きく出す。
+  private var compactHeader: some View {
+    VStack(alignment: .leading, spacing: 2) {
+      HStack(spacing: 4) {
+        Image(systemName: nutrient.symbolName)
+          .foregroundStyle(nutrient.color)
+          .accessibilityHidden(true)
+        Text(nutrient.localizedName)
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
+      }
+      .font(.caption)
+
+      Text("\(nutrient.format(value))\(nutrient.unit)")
+        .font(.system(.headline, design: .rounded, weight: .semibold))
+        .monospacedDigit()
+        .foregroundStyle(isOverTarget ? .red : .primary)
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+    }
+  }
+
+  @ViewBuilder
+  private var header: some View {
+    // 大きな文字では「名前・残り・現在値」の3つが1行に入らず、
+    // 名前が単語の途中で折れて数値も途中で改行される。名前を上の行へ逃がす。
+    if dynamicTypeSize.isAccessibilitySize {
+      VStack(alignment: .leading, spacing: 2) {
+        Text(nutrient.localizedName)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+
+        HStack(spacing: 6) {
+          statusText
+          Spacer(minLength: 4)
+          valueText
+        }
+      }
+    } else {
+      HStack(spacing: 4) {
+        Text(nutrient.localizedName)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+
+        Spacer(minLength: 4)
+
+        statusText
+        valueText
+      }
+    }
+  }
+
+  private var bar: some View {
+    GeometryReader { geometry in
+      ZStack(alignment: .leading) {
+        Capsule()
+          .fill(barColor.opacity(contrast == .increased ? 0.3 : 0.15))
+          .frame(height: 5)
+
+        Capsule()
+          .fill(barColor)
+          .frame(width: geometry.size.width * barWidth, height: 5)
+          // 視差効果を減らす設定では伸び縮みさせず、新しい長さで直接描く。
+          .animation(reduceMotion ? nil : .easeInOut(duration: 0.5), value: barWidth)
+
+        if isOverTarget {
+          Rectangle()
+            .fill(Color.primary.opacity(0.6))
+            .frame(width: 2, height: 9)
+            .offset(x: geometry.size.width * targetLinePosition - 1)
+        }
+      }
+      .frame(maxHeight: .infinity)
+    }
+    .frame(height: 9)
   }
 
   private var progressDescription: String {
@@ -228,18 +288,31 @@ struct CalorieRingView: View {
   /// 文字サイズに追随させる。固定 90pt のままだと大きい文字で数字が枠からはみ出す。
   @ScaledMetric(relativeTo: .title2) private var scaledDiameter: CGFloat = 92
   @ScaledMetric(relativeTo: .title2) private var scaledLineWidth: CGFloat = 10
+  @ScaledMetric(relativeTo: .largeTitle) private var scaledProminentDiameter: CGFloat = 168
+  @ScaledMetric(relativeTo: .largeTitle) private var scaledProminentLineWidth: CGFloat = 16
 
   /// 文字サイズには追随させるが、要約カードに収まる範囲で頭打ちにする。
-  private var diameter: CGFloat { min(scaledDiameter, 140) }
-  private var lineWidth: CGFloat { min(scaledLineWidth, 14) }
+  private var diameter: CGFloat {
+    isProminent ? min(scaledProminentDiameter, 240) : min(scaledDiameter, 140)
+  }
+  private var lineWidth: CGFloat {
+    isProminent ? min(scaledProminentLineWidth, 20) : min(scaledLineWidth, 14)
+  }
 
   /// 目標までの残りを出すか。今日の合計では出し、期間の平均では出さない。
   var showsRemaining: Bool = false
+  /// 画面の主役として大きく出すか。今日の合計で使う。
+  /// 統計のように2つ並べる場面では大きすぎるので、既定は小さい形。
+  var isProminent: Bool = false
 
-  init(calories: Double, targetCalories: Double = 2000, showsRemaining: Bool = false) {
+  init(
+    calories: Double, targetCalories: Double = 2000, showsRemaining: Bool = false,
+    isProminent: Bool = false
+  ) {
     self.calories = calories
     self.targetCalories = targetCalories
     self.showsRemaining = showsRemaining
+    self.isProminent = isProminent
   }
 
   private var ratio: Double {
@@ -306,17 +379,17 @@ struct CalorieRingView: View {
 
       VStack(spacing: 0) {
         Text(NutritionFormatter.formatCalories(calories))
-          .font(.system(.title3, design: .rounded, weight: .bold))
+          .font(.system(isProminent ? .largeTitle : .title3, design: .rounded, weight: .bold))
           .monospacedDigit()
           .foregroundStyle(isOverTarget ? Color.red : Color.primary)
 
         Text(Nutrient.calories.unit)
-          .font(.caption2.weight(.medium))
+          .font((isProminent ? Font.subheadline : .caption2).weight(.medium))
           .foregroundStyle(.secondary)
 
         if showingStatus, let status = statusLabel {
           Text(status.text)
-            .font(.system(.caption2, design: .rounded, weight: .semibold))
+            .font(.system(isProminent ? .subheadline : .caption2, design: .rounded, weight: .semibold))
             .monospacedDigit()
             .foregroundStyle(status.color)
             .lineLimit(1)

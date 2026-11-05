@@ -1,10 +1,26 @@
 import SwiftUI
 
 /// タブの識別子。数値インデックスだと「1 はどの画面か」が呼び出し側から読めないため型で持つ。
-enum AppTab: Hashable {
+enum AppTab: String, Hashable {
   case log
   case food
   case statistics
+  case profile
+
+  /// 起動したときに開くタブ。
+  ///
+  /// 開発用のビルドでは `-BiteLogStartTab profile` を付けて起動すると、そのタブから始まる。
+  /// 実機の画面を手で操作せずに撮って確かめるためで、公開する版では常に記録から始める。
+  static var initial: AppTab {
+    #if DEBUG
+      if let raw = UserDefaults.standard.string(forKey: "BiteLogStartTab"),
+        let tab = AppTab(rawValue: raw)
+      {
+        return tab
+      }
+    #endif
+    return .log
+  }
 }
 
 struct ContentView: View {
@@ -12,9 +28,8 @@ struct ContentView: View {
 
   @State private var selectedDate = Date()
   @State private var showingAddItemFor: (date: Date, mealType: MealType)?
-  @State private var showingSettings = false
   @State private var showingDatePicker = false
-  @State private var selectedTab: AppTab = .log
+  @State private var selectedTab: AppTab = .initial
   @State private var logRefreshTrigger = 0
 
   @ViewBuilder
@@ -50,6 +65,13 @@ struct ContentView: View {
           StatisticsView()
         }
       }
+
+      Tab(
+        NSLocalizedString("Profile", comment: "Tab name"), systemImage: "person.crop.circle",
+        value: AppTab.profile
+      ) {
+        ProfileView()
+      }
     }
   }
 
@@ -61,6 +83,11 @@ struct ContentView: View {
       set: { newValue in
         if newValue == .log && selectedTab == .log {
           selectedDate = Calendar.current.startOfDay(for: Date())
+          logRefreshTrigger += 1
+        }
+        // プロフィールで体組成計を登録したり目標を変えたりして戻ってきたら、記録を読み直す。
+        // 読み直さないと、次に日付を動かすまで体組成のカードや目標が古いまま
+        if newValue == .log && selectedTab == .profile {
           logRefreshTrigger += 1
         }
         selectedTab = newValue
@@ -78,25 +105,23 @@ struct ContentView: View {
         onAddTapped: { date, mealType in
           showingAddItemFor = (date, mealType)
         },
-        refreshTrigger: logRefreshTrigger
+        refreshTrigger: logRefreshTrigger,
+        onSelectDate: { selectedDate = $0 }
       )
+      // 大きなタイトルで今見ている日を示し、スクロールしたら小さく畳む。
+      // 日付の移動は記録の先頭にある週の帯で行う
       .navigationTitle(DateLabel.title(for: selectedDate, locale: languageManager.locale))
-      .navigationBarTitleDisplayMode(.inline)
+      .navigationBarTitleDisplayMode(.large)
+      .dateSubtitle(DateLabel.subtitle(for: selectedDate, locale: languageManager.locale))
       .toolbar {
-        ToolbarItem(placement: .principal) {
-          DateNavigationBar(
-            selectedDate: $selectedDate,
-            locale: languageManager.locale,
-            onPickDate: { showingDatePicker = true }
-          )
-        }
-
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItem(placement: .topBarLeading) {
+          // 週の帯では離れた日へ行きにくいので、暦から選ぶ入口を残す
           Button {
-            showingSettings = true
+            showingDatePicker = true
           } label: {
             Label(
-              NSLocalizedString("Settings", comment: "Settings"), systemImage: "gearshape")
+              NSLocalizedString("Select Date", comment: "Date picker title"),
+              systemImage: "calendar")
           }
         }
       }
@@ -119,62 +144,7 @@ struct ContentView: View {
       .sheet(isPresented: $showingDatePicker) {
         DatePickerSheet(selectedDate: $selectedDate, isPresented: $showingDatePicker)
       }
-      // 設定で体組成計を登録して戻ってきたら、記録の画面に体組成のカードが出る。
-      // 読み直さないと、次に日付を動かすまで登録が反映されない。
-      .sheet(isPresented: $showingSettings, onDismiss: { logRefreshTrigger += 1 }) {
-        SettingsView()
-      }
     }
-  }
-}
-
-/// ツールバー中央の日付ナビゲーション。
-///
-/// 日付は「今日」「昨日」と曜日付きの表記にして、いつを見ているかを一目で分かるようにする。
-struct DateNavigationBar: View {
-  @Binding var selectedDate: Date
-  let locale: Locale
-  let onPickDate: () -> Void
-
-  private var isToday: Bool { Calendar.current.isDateInToday(selectedDate) }
-
-  var body: some View {
-    HStack(spacing: 0) {
-      Button {
-        shift(by: -1)
-      } label: {
-        Image(systemName: "chevron.left")
-          .frame(width: 44, height: 44)
-          .contentShape(Rectangle())
-      }
-      .accessibilityLabel(NSLocalizedString("Previous day", comment: "Date navigation"))
-
-      Button(action: onPickDate) {
-        Text(DateLabel.title(for: selectedDate, locale: locale))
-          .font(.headline)
-          .frame(minHeight: 44)
-          .contentShape(Rectangle())
-      }
-      .accessibilityLabel(NSLocalizedString("Select Date", comment: "Date picker title"))
-      .accessibilityValue(DateLabel.title(for: selectedDate, locale: locale))
-
-      Button {
-        shift(by: 1)
-      } label: {
-        Image(systemName: "chevron.right")
-          .frame(width: 44, height: 44)
-          .contentShape(Rectangle())
-      }
-      .accessibilityLabel(NSLocalizedString("Next day", comment: "Date navigation"))
-      .disabled(isToday)
-    }
-  }
-
-  private func shift(by days: Int) {
-    guard let shifted = Calendar.current.date(byAdding: .day, value: days, to: selectedDate) else {
-      return
-    }
-    selectedDate = shifted
   }
 }
 
@@ -197,6 +167,29 @@ enum DateLabel {
       calendar.isDate(date, equalTo: Date(), toGranularity: .year) ? "MMMdEEE" : "yMMMdEEE")
     return formatter.string(from: date)
   }
+
+  /// タイトルが「今日」「昨日」のときだけ、何月何日の何曜日かを添える。
+  /// それ以外はタイトルに日付と曜日が入っているので重ねない。
+  static func subtitle(for date: Date, locale: Locale) -> String? {
+    let calendar = Calendar.current
+    guard calendar.isDateInToday(date) || calendar.isDateInYesterday(date) else { return nil }
+    let formatter = DateFormatter()
+    formatter.locale = locale
+    formatter.setLocalizedDateFormatFromTemplate("MMMMdEEEE")
+    return formatter.string(from: date)
+  }
+}
+
+extension View {
+  /// ナビゲーションの副題。iOS 26 より前には副題の置き場所が無いので何もしない。
+  @ViewBuilder
+  fileprivate func dateSubtitle(_ subtitle: String?) -> some View {
+    if #available(iOS 26.0, *), let subtitle {
+      navigationSubtitle(subtitle)
+    } else {
+      self
+    }
+  }
 }
 
 /// ログ1件の行。
@@ -210,7 +203,8 @@ struct ItemRowView: View {
       title: FoodRow.displayName(brand: item.brandName, product: item.productName),
       subtitle: FoodRow.amountText(item.numberOfServings, unit: item.portionUnit),
       values: item.nutritionValues,
-      isDeleted: item.isMasterDeleted
+      isDeleted: item.isMasterDeleted,
+      trailingText: FoodRow.timeText(item.timestamp)
     )
     .contentShape(Rectangle())
     .onTapGesture { showingEditSheet = true }

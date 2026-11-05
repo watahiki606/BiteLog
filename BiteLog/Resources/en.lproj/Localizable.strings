@@ -393,3 +393,28 @@
 "Entered" = "Entered";
 "The scale keeps data for up to 4 people. Choose a number no one else in your family uses." = "The scale keeps data for up to 4 people. Choose a number no one else in your family uses.";
 "Enter your personal data first." = "Enter your personal data first.";
+
+/* Week strip */
+"Previous week" = "Previous week";
+"Next week" = "Next week";
+"Added %@ to %@" = "Added %1$@ to %2$@";
+
+/* Profile */
+"Profile" = "Profile";
+"About Me" = "About Me";
+"Goals" = "Goals";
+"Devices" = "Devices";
+"Body Composition Scale" = "Body Composition Scale";
+"Registered" = "Registered";
+"Not Registered" = "Not Registered";
+"Scale Settings" = "Scale Settings";
+"%d years old" = "%d years old";
+"Enter About Me and Scale Settings first." = "Enter About Me and Scale Settings first.";
+"Kept only on this iPhone. If you use a body composition scale, these values are used for its calculations." = "Kept only on this iPhone. If you use a body composition scale, these values are used for its calculations.";
+"Sent to the scale when you register and each time you measure." = "Sent to the scale when you register and each time you measure.";
+"Enter your date of birth and height" = "Enter your date of birth and height";
+
+/* Statistics */
+"Metric" = "Metric";
+"Goal %@ kcal · On target %d of %d days" = "Goal %@ kcal · On target %d of %d days";
+"Nutrients per Day" = "Nutrients per Day";

@@ -4,7 +4,10 @@ struct AddItemView: View {
   @Environment(\.dismiss) var dismiss
   @Binding var selectedTab: AppTab
 
-  let mealType: MealType
+  /// 追加先の食事。開いたあとも切り替えられる。
+  /// 記録を忘れて夜に朝食と昼食をまとめて入れることがあるので、
+  /// 食事ごとに画面を開き直させない。
+  @State private var mealType: MealType
   var selectedDate: Date
 
   @State private var searchText = ""
@@ -21,8 +24,10 @@ struct AddItemView: View {
   @State private var hasMoreData = true
   private let pageSize = 20
 
-  @FocusState private var isSearchFocused: Bool
   @State private var searchDebounceTimer: Timer?
+  @FocusState private var isSearchFocused: Bool
+  /// 検索欄が入力中か。入力中は右上に×が出る。
+  @State private var isSearchPresented = false
 
   /// このシートで追加できたもの。閉じるまで残し、何を追加したか見て分かるようにする。
   @State private var addedEntries: [AddedEntry] = []
@@ -45,7 +50,7 @@ struct AddItemView: View {
   @State private var analysisNote: String?
 
   init(preselectedMealType: MealType, selectedDate: Date, selectedTab: Binding<AppTab>) {
-    self.mealType = preselectedMealType
+    _mealType = State(initialValue: preselectedMealType)
     self.selectedDate = selectedDate
     _date = State(initialValue: selectedDate)
     _selectedTab = selectedTab
@@ -57,10 +62,18 @@ struct AddItemView: View {
         .background(Color(UIColor.systemGroupedBackground))
         .searchable(
           text: $searchText,
+          isPresented: $isSearchPresented,
           placement: .navigationBarDrawer(displayMode: .always),
           prompt: Text(NSLocalizedString("Search food items", comment: "Search placeholder"))
         )
         .searchFocused($isSearchFocused)
+        // 入力中に右上へ出る×は、本来は検索をやめるだけで画面は閉じない。
+        // 画面の右上にある×なので閉じるボタンに見え、押しても閉じないと戸惑う。
+        // 検索欄の中の×で文字は消せるので、外の×は画面を閉じる操作に揃える
+        .onChange(of: isSearchPresented) { wasPresented, isPresented in
+          if wasPresented && !isPresented { dismiss() }
+        }
+        .safeAreaInset(edge: .top, spacing: 0) { mealTypePicker }
         .onChange(of: searchText) { _, _ in
           searchDebounceTimer?.invalidate()
           searchDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
@@ -166,6 +179,12 @@ struct AddItemView: View {
     }
   }
 
+  private var mealTypePicker: some View {
+    MealTypeSelector(selection: $mealType)
+      .padding(.horizontal)
+      .padding(.vertical, 8)
+  }
+
   /// 追加したものを示す下部バー。送信中は即座に出し、完了後は内容に切り替える。
   @ViewBuilder
   private var addedSummaryBar: some View {
@@ -184,10 +203,12 @@ struct AddItemView: View {
             .accessibilityHidden(true)
 
           VStack(alignment: .leading, spacing: 1) {
+            // 1つの画面で食事を切り替えながら追加するので、どの食事に入ったかも示す
             Text(
               String(
-                format: NSLocalizedString("Added %@", comment: "Added food confirmation"),
-                latest.name)
+                format: NSLocalizedString(
+                  "Added %@ to %@", comment: "Added food confirmation with meal"),
+                latest.name, latest.mealType.localizedName)
             )
             .font(.subheadline.weight(.medium))
             .lineLimit(1)
@@ -273,6 +294,7 @@ struct AddItemView: View {
         // タップの受け付けは List 標準の行ハイライトが示す。
         Button { Task { await addFoodItem(item) } } label: { PastItemCard(item: item) }
           .buttonStyle(.plain)
+          .cardRow()
           .onAppear {
             if item.id == searchResults.last?.id && hasMoreData && !isLoading {
               Task { await loadMoreContent() }
@@ -297,6 +319,7 @@ struct AddItemView: View {
               .accessibilityHidden(true)
           }
         }
+        .cardRow()
       }
 
       if hasMoreData {
@@ -306,6 +329,7 @@ struct AddItemView: View {
           Spacer()
         }
         .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
       }
     }
     .listStyle(.insetGrouped)
@@ -393,12 +417,14 @@ struct AddItemView: View {
         logItemID: logItemID,
         name: FoodRow.displayName(
           brand: foodMaster.brandName, product: foodMaster.productName),
-        calories: nutrition.calories))
+        calories: nutrition.calories,
+        mealType: mealType))
 
     announceAdded()
 
     searchText = ""
     await resetAndSearch()
+    // 続けて別の食品を探せるよう、検索欄に戻す
     isSearchFocused = true
     return true
   }
@@ -427,7 +453,8 @@ struct AddItemView: View {
   private func announceAdded() {
     guard let latest = addedEntries.last else { return }
     let message = String(
-      format: NSLocalizedString("Added %@", comment: "Added food confirmation"), latest.name)
+      format: NSLocalizedString("Added %@ to %@", comment: "Added food confirmation with meal"),
+      latest.name, latest.mealType.localizedName)
     AccessibilityNotification.Announcement(message).post()
   }
 
@@ -504,7 +531,8 @@ struct PastItemCard: View {
     FoodRow(
       title: FoodRow.displayName(brand: item.brandName, product: item.productName),
       subtitle: FoodRow.amountText(servings, unit: item.portionUnit),
-      values: NutritionSnapshot.from(item).scaled(by: servings)
+      values: NutritionSnapshot.from(item).scaled(by: servings),
+      showsAddIndicator: true
     )
   }
 }
@@ -516,11 +544,75 @@ struct AddedEntry: Identifiable {
   let logItemID: UUID
   let name: String
   let calories: Double
+  let mealType: MealType
 }
 
 extension Array where Element == AddedEntry {
   /// 確認バーに出す累計カロリー。
   var totalCalories: Double {
     reduce(0) { $0 + $1.calories }
+  }
+}
+
+/// 追加先の食事を選ぶ切り替え。
+///
+/// 標準のセグメントは文字が小さく、どれを選んでいるかも灰色の濃淡でしか分からない。
+/// 食事ごとの色と形を出し、選んだものはその色で塗る。朝はオレンジ、夜は藍色と
+/// 色で覚えられるので、文字を読まなくても今どの食事に追加するかが分かる。
+struct MealTypeSelector: View {
+  @Binding var selection: MealType
+
+  @Environment(\.colorSchemeContrast) private var contrast
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Namespace private var highlight
+
+  var body: some View {
+    HStack(spacing: 6) {
+      ForEach(MealType.allCases) { type in
+        segment(type)
+      }
+    }
+    .accessibilityElement(children: .contain)
+    .accessibilityLabel(NSLocalizedString("Meal Type", comment: "Meal type picker"))
+  }
+
+  private func segment(_ type: MealType) -> some View {
+    let isSelected = type == selection
+    let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+
+    return Button {
+      withAnimation(.snappy(duration: 0.25)) { selection = type }
+    } label: {
+      VStack(spacing: 4) {
+        Image(systemName: type.iconName)
+          .font(.title3)
+          .symbolEffect(.bounce, value: isSelected)
+          // 大きな文字では形だけで足りる。文字と並べると4つが入りきらない
+        if !dynamicTypeSize.isAccessibilitySize {
+          Text(type.localizedName)
+            .font(.subheadline.weight(.semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+        }
+      }
+      .foregroundStyle(isSelected ? AnyShapeStyle(.white) : AnyShapeStyle(type.accentColor))
+      .padding(.horizontal, 4)
+      .frame(maxWidth: .infinity, minHeight: 64)
+      .background {
+        if isSelected {
+          shape
+            .fill(type.accentColor.gradient)
+            .shadow(color: type.accentColor.opacity(0.35), radius: 6, x: 0, y: 3)
+            .matchedGeometryEffect(id: "selected", in: highlight)
+        } else {
+          shape
+            .fill(type.accentColor.opacity(contrast == .increased ? 0.25 : 0.12))
+        }
+      }
+      .contentShape(shape)
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel(type.localizedName)
+    .accessibilityAddTraits(isSelected ? .isSelected : [])
   }
 }

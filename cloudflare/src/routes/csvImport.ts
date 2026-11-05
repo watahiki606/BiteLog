@@ -5,7 +5,9 @@ import { authMiddleware } from '../middleware/auth';
 const csvImport = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 csvImport.use('*', authMiddleware);
 
-const VALID_MEAL_TYPES = new Set(['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Other']);
+const VALID_MEAL_TYPES = new Set(['Breakfast', 'Lunch', 'Dinner', 'Snack']);
+// 「その他」は廃止した。以前に書き出した CSV に残っていても読み飛ばさず、アプリと同じく間食として取り込む
+const LEGACY_MEAL_TYPES: Record<string, string> = { Other: 'Snack' };
 const BATCH_SIZE = 100;
 
 function parseCSVLine(line: string): string[] {
@@ -84,7 +86,8 @@ csvImport.post('/import', async (c) => {
     if (cols.length < 9) { skipped++; continue; }
 
     const dateStr  = cols[dateI]?.trim();
-    const mealType = cols[mealTypeI]?.trim();
+    const rawMealType = cols[mealTypeI]?.trim();
+    const mealType = rawMealType ? (LEGACY_MEAL_TYPES[rawMealType] ?? rawMealType) : rawMealType;
     if (!dateStr || !mealType || !VALID_MEAL_TYPES.has(mealType)) { skipped++; continue; }
 
     const date = new Date(dateStr + 'T00:00:00Z');

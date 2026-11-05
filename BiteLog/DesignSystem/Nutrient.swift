@@ -59,14 +59,16 @@ enum Nutrient: String, CaseIterable, Identifiable {
     }
   }
 
+  /// 色と一緒に出す形。色だけだと、色の見分けにくい人や
+  /// 小さく表示したときに栄養素を取り違える。頭文字の丸ではなく中身を連想できる形にする。
   var symbolName: String {
     switch self {
     case .calories: return "flame.fill"
-    case .protein: return "p.circle.fill"
-    case .fat: return "f.circle.fill"
-    case .netCarbs: return "s.circle.fill"
-    case .fiber: return "leaf.circle.fill"
-    case .carbs: return "c.circle.fill"
+    case .protein: return "dumbbell.fill"
+    case .fat: return "drop.fill"
+    case .netCarbs: return "cube.fill"
+    case .fiber: return "leaf.fill"
+    case .carbs: return "square.stack.3d.up.fill"
     }
   }
 

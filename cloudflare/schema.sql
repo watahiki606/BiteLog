@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS log_items (
   user_id TEXT NOT NULL,
   timestamp TEXT NOT NULL,
   log_date TEXT NOT NULL,
-  meal_type TEXT NOT NULL CHECK(meal_type IN ('Breakfast','Lunch','Dinner','Snack','Other')),
+  meal_type TEXT NOT NULL CHECK(meal_type IN ('Breakfast','Lunch','Dinner','Snack')),
   number_of_servings REAL NOT NULL DEFAULT 1.0,
   food_master_id TEXT COLLATE NOCASE REFERENCES food_masters(id) ON DELETE SET NULL,
   nutrition_snapshot_json TEXT,

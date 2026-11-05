@@ -76,6 +76,13 @@ struct EditItemView: View {
 
         if foodMaster != nil || item.isMasterDeleted {
           Section {
+            NutritionOverview(values: totalNutrition)
+              // カードの地は NutritionOverview が持つ。フォームの行の地を敷くと二重になる
+              .listRowInsets(EdgeInsets())
+              .listRowBackground(Color.clear)
+          }
+
+          Section {
             EditNutrientRow(
               nutrient: .calories, perPortion: perPortionCalories, total: totalCalories)
             EditNutrientRow(
@@ -276,6 +283,7 @@ struct FoodSearchView: View {
             FoodMasterRow(foodMaster: item)
           }
           .buttonStyle(.plain)
+          .cardRow()
           .onAppear {
             if item.id == searchResults.last?.id && hasMoreData {
               Task { await loadMoreItems() }

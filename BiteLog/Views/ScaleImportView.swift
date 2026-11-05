@@ -16,6 +16,8 @@ struct ScaleImportView: View {
   @State private var personalKey = TanitaScaleConnection.personalKey()
   /// 個人データの画面から戻るたびに読み直す
   @State private var profile = TanitaScaleConnection.profile()
+  @State private var personal = PersonalProfile.load()
+  @State private var scaleSettings = TanitaScaleConnection.scaleSettings()
 
   @State private var received: [TanitaBodyMeasurement] = []
   @State private var savedCount = 0
@@ -54,17 +56,17 @@ struct ScaleImportView: View {
       }
 
       Section {
+        // 自分についての情報はプロフィールの持ち物。体組成計を使わない人も入れるので、
+        // ここでは同じ画面へつなぐだけにする
+        NavigationLink(destination: PersonalProfileView()) {
+          entryStatusRow(
+            NSLocalizedString("About Me", comment: "Personal profile title"),
+            isEntered: personal != nil)
+        }
         NavigationLink(destination: ScaleProfileView()) {
-          HStack {
-            Text(NSLocalizedString("Personal Data", comment: "Scale profile title"))
-            Spacer()
-            Text(
-              profile == nil
-                ? NSLocalizedString("Not Entered", comment: "Scale profile missing")
-                : NSLocalizedString("Entered", comment: "Scale profile entered")
-            )
-            .foregroundColor(.secondary)
-          }
+          entryStatusRow(
+            NSLocalizedString("Scale Settings", comment: "Scale settings title"),
+            isEntered: scaleSettings != nil)
         }
       } header: {
         Text(NSLocalizedString("Personal Data", comment: "Scale profile title"))
@@ -124,7 +126,7 @@ struct ScaleImportView: View {
           if profile == nil {
             Text(
               NSLocalizedString(
-                "Enter your personal data first.", comment: "Scale register needs profile")
+                "Enter About Me and Scale Settings first.", comment: "Scale register needs profile")
             )
             .foregroundColor(.secondary)
           }
@@ -165,6 +167,8 @@ struct ScaleImportView: View {
     .navigationBarTitleDisplayMode(.inline)
     .onAppear {
       profile = TanitaScaleConnection.profile()
+      personal = PersonalProfile.load()
+      scaleSettings = TanitaScaleConnection.scaleSettings()
       connection.onMeasurement = { measurement in
         received.append(measurement)
         Task { await upload(measurement) }
@@ -176,6 +180,19 @@ struct ScaleImportView: View {
     .onChange(of: connection.state) {
       // 登録が通ったときと、登録が外れていると分かったときに切り替わる
       isRegistered = TanitaScaleConnection.isPaired()
+    }
+  }
+
+  private func entryStatusRow(_ title: String, isEntered: Bool) -> some View {
+    HStack {
+      Text(title)
+      Spacer()
+      Text(
+        isEntered
+          ? NSLocalizedString("Entered", comment: "Scale profile entered")
+          : NSLocalizedString("Not Entered", comment: "Scale profile missing")
+      )
+      .foregroundColor(.secondary)
     }
   }
 
