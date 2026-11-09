@@ -267,7 +267,9 @@ private struct ScreenPartsGalleryView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 20) {
       group("Week Strip") {
-        WeekStripView(
+        // 週の帯は ScrollView なので ImageRenderer で描けない。中の1週間ぶんを描く
+        WeekRowView(
+          days: WeekStripView.days(containing: Self.galleryToday),
           selectedDate: Self.galleryToday,
           caloriesByDate: Self.weekCalories,
           targetCalories: 2000,
