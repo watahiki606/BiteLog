@@ -1,9 +1,5 @@
-The Log screen has been redesigned so you can see where you stand without comparing numbers.
+The week strip on the Log screen is easier to use.
 
-- A week strip at the top shows each day's calories as a ring. Tap a day to jump to it
-- The daily total shows calories large, with the main nutrients below
-- Each logged food is now its own card, with calories shown large under the name
-- Adding food is now one button at the bottom left. You can switch between breakfast, lunch, and other meals on the add screen, so logging several meals at once no longer means reopening it
-- A new Profile tab brings together your date of birth, height, goals, and scale settings
-- The Statistics screen now shows everything from top to bottom once you pick a period
-- The "Other" meal type has been removed
+- Swipe the strip and the rings follow your finger, then glide to the previous or next week
+- The ring for the day you are viewing is now filled with color so it stands out
+- Fixed an error message that could appear when switching between days quickly
