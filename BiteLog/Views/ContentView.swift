@@ -182,10 +182,13 @@ enum DateLabel {
 
 extension View {
   /// ナビゲーションの副題。iOS 26 より前には副題の置き場所が無いので何もしない。
+  ///
+  /// 副題が無いときも修飾子は外さない。外すと別のビューとして作り直され、
+  /// 「今日」から別の日へ移るたびに記録の画面の状態と週の帯の位置が失われる。
   @ViewBuilder
   fileprivate func dateSubtitle(_ subtitle: String?) -> some View {
-    if #available(iOS 26.0, *), let subtitle {
-      navigationSubtitle(subtitle)
+    if #available(iOS 26.0, *) {
+      navigationSubtitle(subtitle ?? "")
     } else {
       self
     }

@@ -19,8 +19,10 @@ struct DayContentView: View {
   @State private var editMode: EditMode = .inactive
   @State private var selectedItemIDs: Set<UUID> = []
   @State private var showsAllNutrients = false
-  /// 週の帯に出す、日ごとの摂取カロリー。
+  /// 週の帯に出す、日ごとの摂取カロリー。めくる先のリングも出せるよう、前後の週も持つ。
   @State private var weekCalories: [String: Double] = [:]
+  /// `dayLogItems` がどの日の記録か。日を移った直後はまだ前の日の記録が入っている。
+  @State private var loadedLogDate: String?
 
   @State private var deleteAllTrigger = 0
   @State private var deletedCount = 0
@@ -157,9 +159,10 @@ struct DayContentView: View {
 
   /// 表示中の日は、手元の記録から出した合計で上書きする。
   /// 週の集計は読み込んだ時点のものなので、この画面で消した記録が反映されない。
+  /// 別の日の合計で上書きしないよう、その日の記録を読み終えてから行う。
   private var weekCaloriesIncludingToday: [String: Double] {
     var merged = weekCalories
-    if !dayLogItems.isEmpty || !isLoading {
+    if loadedLogDate == logDateString {
       merged[logDateString] = dailyTotals.calories
     }
     return merged
@@ -380,8 +383,11 @@ struct DayContentView: View {
     defer { isLoading = false }
     do {
       dayLogItems = try await APIClient.shared.fetchLogItems(logDate: logDateString)
+      loadedLogDate = logDateString
       loadFailed = false
     } catch {
+      // 続けて日を移ると前の読み込みが取り消される。これは失敗ではない
+      guard !Task.isCancelled else { return }
       // 握りつぶすと、その日が「何も食べていない日」に見えて二重記録を招く。
       if dayLogItems.isEmpty {
         loadFailed = true
@@ -394,13 +400,19 @@ struct DayContentView: View {
   /// 週の帯のリングは補助の表示なので、読めなくても画面を差し替えたり
   /// アラートを出したりはしない。リングが空のまま、記録の表示はそのまま使える。
   private func loadWeekCalories() async {
-    guard let first = weekDays.first, let last = weekDays.last else { return }
+    let calendar = Calendar.current
+    guard let first = weekDays.first, let last = weekDays.last,
+      let from = calendar.date(byAdding: .weekOfYear, value: -1, to: first),
+      let to = calendar.date(byAdding: .weekOfYear, value: 1, to: last)
+    else { return }
     do {
       let summary = try await APIClient.shared.fetchDailySummary(
-        from: LogItemDTO.formatLogDate(first), to: LogItemDTO.formatLogDate(last))
+        from: LogItemDTO.formatLogDate(from), to: LogItemDTO.formatLogDate(to))
       weekCalories = Dictionary(
         summary.map { ($0.logDate, $0.calories) }, uniquingKeysWith: +)
     } catch {
+      // 続けてめくると読み込みが取り消される。その失敗で今のリングを消さない
+      guard !Task.isCancelled else { return }
       weekCalories = [:]
     }
   }
