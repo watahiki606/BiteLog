@@ -105,7 +105,7 @@ platform :ios do
     UI.important("#{version} (#{build_number}) を App Store に出します")
     UI.important("審査に提出: #{submit} / 通過後に自動公開: #{auto_release}")
 
-    answer_age_rating_questions(api_key)
+    answer_age_rating_questions(api_key, version)
 
     upload_to_app_store(
       **app_store_options(api_key, version, build_number),
@@ -150,14 +150,18 @@ platform :ios do
   AGE_RATING_ANSWERS = { "socialMedia" => false }.freeze
 
   # 次の版のための App情報 の年齢制限に回答を書く。公開中の版の App情報 は書き換えられない。
+  # 編集できる App情報 は新しい版を作ると現れるので、回答の前に版を用意する。
+  # upload_to_app_store も同じ ensure_version! を呼ぶので、版が二重にできることはない。
   # spaceship がまだ知らない項目でも送れるよう、属性をそのまま PATCH する。
-  def answer_age_rating_questions(api_key)
+  def answer_age_rating_questions(api_key, version)
     Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.from(hash: api_key)
     app = Spaceship::ConnectAPI::App.find("com.watahiki.BiteLog")
     UI.user_error!("App Store Connect に BiteLog が見つかりません") unless app
 
+    app.ensure_version!(version, platform: Spaceship::ConnectAPI::Platform::IOS)
+
     app_info = app.fetch_edit_app_info
-    UI.user_error!("編集できる App情報 がありません。先に新しい版を作ってください") unless app_info
+    UI.user_error!("編集できる App情報 がありません") unless app_info
 
     declaration = app_info.fetch_age_rating_declaration
     UI.user_error!("年齢制限の申告が見つかりません") unless declaration
