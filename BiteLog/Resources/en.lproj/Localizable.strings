@@ -418,3 +418,6 @@
 "Metric" = "Metric";
 "Goal %@ kcal · On target %d of %d days" = "Goal %@ kcal · On target %d of %d days";
 "Nutrients per Day" = "Nutrients per Day";
+
+// The VoiceOver action on the Log screen add button that does what a long press does
+"Measure Weight" = "Measure Weight";

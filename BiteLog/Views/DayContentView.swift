@@ -36,23 +36,26 @@ struct DayContentView: View {
   }
 
   var body: some View {
-    Group {
-      // 読み込めず手元に何も無いときだけ画面を差し替える。
-      // 既に出せている内容があるなら残し、失敗はアラートで伝える。
-      if loadFailed && dayLogItems.isEmpty {
-        LoadFailureView { await loadLogItems() }
-      } else {
-        logList
+    ScrollViewReader { proxy in
+      Group {
+        // 読み込めず手元に何も無いときだけ画面を差し替える。
+        // 既に出せている内容があるなら残し、失敗はアラートで伝える。
+        if loadFailed && dayLogItems.isEmpty {
+          LoadFailureView { await loadLogItems() }
+        } else {
+          logList
+        }
       }
-    }
-    // スクロールしなくても届くよう、追加の入口を画面の左下に固定する。
-    // 食事の種類は時刻から仮に選び、追加画面の上部で切り替えてもらう
-    .overlay(alignment: .bottomLeading) {
-      AddMealButton {
-        onAddTapped(date, MealType.suggested())
+      // スクロールしなくても届くよう、追加の入口を画面の左下に固定する。
+      // 食事の種類は時刻から仮に選び、追加画面の上部で切り替えてもらう
+      .overlay(alignment: .bottomLeading) {
+        AddMealButton(
+          onAdd: { onAddTapped(date, MealType.suggested()) },
+          onMeasure: bodyComposition.canMeasure ? { measureByLongPress(scrollingWith: proxy) } : nil
+        )
+        .padding(.leading, 20)
+        .padding(.bottom, 16)
       }
-      .padding(.leading, 20)
-      .padding(.bottom, 16)
     }
     // 広告はスクロール内容に混ぜず画面下端に固定する。
     // 高さは AdaptiveBannerView が幅に合わせて決めるので、ここで固定しない。
@@ -239,12 +242,28 @@ struct DayContentView: View {
             onStop: { bodyComposition.stop() }
           )
           .cardRow()
+          .id(Self.bodyActionRowID)
         }
       } header: {
         Text(NSLocalizedString("Body Composition", comment: "Body composition section"))
           .sectionHeaderAlignedToCard()
       }
       .headerProminence(.increased)
+    }
+  }
+
+  /// 体組成カードの下段の行。左下のボタンから測り始めたときにここまで送る
+  private static let bodyActionRowID = "bodyCompositionAction"
+
+  /// 左下のボタンの長押しから測り始める。
+  ///
+  /// 探している間も「乗ってください」も、体組成カードの下段にしか出ない。
+  /// 下へスクロールしたまま始めると、何が起きているか見えないまま待たされる。
+  /// 既に探しているときに長押ししても、カードを見せるだけで始め直しはしない。
+  private func measureByLongPress(scrollingWith proxy: ScrollViewProxy) {
+    bodyComposition.measureByHand()
+    withAnimation {
+      proxy.scrollTo(Self.bodyActionRowID, anchor: .center)
     }
   }
 
@@ -480,8 +499,20 @@ struct DayContentView: View {
 // MARK: - 追加ボタン
 
 /// 画面の左下に浮かべる、食事を追加する丸いボタン。
+///
+/// タップは食事の追加だけにする。1日に何度も押すので、メニューを挟んで手数を増やさない。
+/// 体重を測れる日は、長押しですぐ測り始める。
+///
+/// 長押しは `onTapGesture` と重ねず、ボタンと同時に受ける。重ねると長押しは、
+/// タップが諦める約0.75秒後まで待たされ、秒数を縮めても速くならない。
 private struct AddMealButton: View {
-  let action: () -> Void
+  let onAdd: () -> Void
+  /// 体重を測れる日だけ渡す。渡さない日は長押ししても何もしない
+  var onMeasure: (() -> Void)?
+
+  /// 長押しが成立したか。長押しして離したときにもボタンの動作が走るので、
+  /// それを1回だけ止めるために持つ
+  @State private var didLongPress = false
 
   @ScaledMetric(relativeTo: .title2) private var scaledSize: CGFloat = 60
 
@@ -489,7 +520,13 @@ private struct AddMealButton: View {
   private var size: CGFloat { min(scaledSize, 76) }
 
   var body: some View {
-    Button(action: action) {
+    Button {
+      if didLongPress {
+        didLongPress = false
+        return
+      }
+      onAdd()
+    } label: {
       Image(systemName: "plus")
         .font(.title2.weight(.semibold))
         .foregroundStyle(.white)
@@ -499,7 +536,27 @@ private struct AddMealButton: View {
         .contentShape(Circle())
     }
     .buttonStyle(.plain)
+    .simultaneousGesture(
+      // 毎朝のことなので、標準の0.5秒では待たされる感じが残る
+      LongPressGesture(minimumDuration: 0.35)
+        // 押し始めに印を消す。長押しのあと指をボタンの外へずらして離すと
+        // ボタンの動作が来ないので、印が残ったままだと次のタップが無視される
+        .onChanged { _ in didLongPress = false }
+        .onEnded { _ in
+          // 測れない日も印は立てる。長押しして離しただけで食事の追加画面を開かない
+          didLongPress = true
+          onMeasure?()
+        }
+    )
     .accessibilityLabel(NSLocalizedString("Add Meal", comment: "Navigation title"))
+    // 長押しは読み上げでは届かないので、同じ操作を項目の動作として選べるようにする
+    .accessibilityActions {
+      if let onMeasure {
+        Button(
+          NSLocalizedString("Measure Weight", comment: "Add button accessibility action"),
+          action: onMeasure)
+      }
+    }
   }
 }
 
