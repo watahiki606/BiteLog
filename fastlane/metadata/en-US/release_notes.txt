@@ -1,5 +1,5 @@
-The week strip on the Log screen is easier to use.
+You can now start a body composition measurement from the button in the bottom-left corner of the Log screen.
 
-- Swipe the strip and the rings follow your finger, then glide to the previous or next week
-- The ring for the day you are viewing is now filled with color so it stands out
-- Fixed an error message that could appear when switching between days quickly
+- Press and hold the button to start measuring right away. The screen scrolls to the Body Composition card
+- Tapping the button still opens Add Meal as before
+- Measuring is available on today's Log once your scale is registered
