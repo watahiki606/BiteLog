@@ -504,7 +504,7 @@ struct DayContentView: View {
 /// 体重を測れる日は、長押しですぐ測り始める。
 ///
 /// 長押しは `onTapGesture` と重ねず、ボタンと同時に受ける。重ねると長押しは、
-/// タップが諦める約0.75秒後まで待たされる。同時に受ければ0.5秒で始まる。
+/// タップが諦める約0.75秒後まで待たされ、秒数を縮めても速くならない。
 private struct AddMealButton: View {
   let onAdd: () -> Void
   /// 体重を測れる日だけ渡す。渡さない日は長押ししても何もしない
@@ -537,7 +537,8 @@ private struct AddMealButton: View {
     }
     .buttonStyle(.plain)
     .simultaneousGesture(
-      LongPressGesture(minimumDuration: 0.5)
+      // 毎朝のことなので、標準の0.5秒では待たされる感じが残る
+      LongPressGesture(minimumDuration: 0.35)
         // 押し始めに印を消す。長押しのあと指をボタンの外へずらして離すと
         // ボタンの動作が来ないので、印が残ったままだと次のタップが無視される
         .onChanged { _ in didLongPress = false }
