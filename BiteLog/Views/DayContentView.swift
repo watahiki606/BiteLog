@@ -503,12 +503,16 @@ struct DayContentView: View {
 /// タップは食事の追加だけにする。1日に何度も押すので、メニューを挟んで手数を増やさない。
 /// 体重を測れる日は、長押しですぐ測り始める。
 ///
-/// `Button` に長押しを重ねないのは、長押しして離したときにもボタンの動作が走り、
-/// 測り始めると同時に食事の追加画面まで開いてしまうから。
+/// 長押しは `onTapGesture` と重ねず、ボタンと同時に受ける。重ねると長押しは、
+/// タップが諦める約0.75秒後まで待たされる。同時に受ければ0.5秒で始まる。
 private struct AddMealButton: View {
   let onAdd: () -> Void
   /// 体重を測れる日だけ渡す。渡さない日は長押ししても何もしない
   var onMeasure: (() -> Void)?
+
+  /// 長押しが成立したか。長押しして離したときにもボタンの動作が走るので、
+  /// それを1回だけ止めるために持つ
+  @State private var didLongPress = false
 
   @ScaledMetric(relativeTo: .title2) private var scaledSize: CGFloat = 60
 
@@ -516,27 +520,42 @@ private struct AddMealButton: View {
   private var size: CGFloat { min(scaledSize, 76) }
 
   var body: some View {
-    Image(systemName: "plus")
-      .font(.title2.weight(.semibold))
-      .foregroundStyle(.white)
-      .frame(width: size, height: size)
-      .background(Circle().fill(.tint))
-      .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
-      .contentShape(Circle())
-      .onTapGesture(perform: onAdd)
-      .onLongPressGesture { onMeasure?() }
-      .accessibilityElement(children: .ignore)
-      .accessibilityLabel(NSLocalizedString("Add Meal", comment: "Navigation title"))
-      .accessibilityAddTraits(.isButton)
-      .accessibilityAction { onAdd() }
-      // 長押しは読み上げでは届かないので、同じ操作を項目の動作として選べるようにする
-      .accessibilityActions {
-        if let onMeasure {
-          Button(
-            NSLocalizedString("Measure Weight", comment: "Add button accessibility action"),
-            action: onMeasure)
-        }
+    Button {
+      if didLongPress {
+        didLongPress = false
+        return
       }
+      onAdd()
+    } label: {
+      Image(systemName: "plus")
+        .font(.title2.weight(.semibold))
+        .foregroundStyle(.white)
+        .frame(width: size, height: size)
+        .background(Circle().fill(.tint))
+        .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
+        .contentShape(Circle())
+    }
+    .buttonStyle(.plain)
+    .simultaneousGesture(
+      LongPressGesture(minimumDuration: 0.5)
+        // 押し始めに印を消す。長押しのあと指をボタンの外へずらして離すと
+        // ボタンの動作が来ないので、印が残ったままだと次のタップが無視される
+        .onChanged { _ in didLongPress = false }
+        .onEnded { _ in
+          // 測れない日も印は立てる。長押しして離しただけで食事の追加画面を開かない
+          didLongPress = true
+          onMeasure?()
+        }
+    )
+    .accessibilityLabel(NSLocalizedString("Add Meal", comment: "Navigation title"))
+    // 長押しは読み上げでは届かないので、同じ操作を項目の動作として選べるようにする
+    .accessibilityActions {
+      if let onMeasure {
+        Button(
+          NSLocalizedString("Measure Weight", comment: "Add button accessibility action"),
+          action: onMeasure)
+      }
+    }
   }
 }
 
