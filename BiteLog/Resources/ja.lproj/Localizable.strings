@@ -433,3 +433,7 @@
 "Metric" = "指標";
 "Goal %@ kcal · On target %d of %d days" = "目標 %@ kcal · 達成 %d / %d 日";
 "Nutrients per Day" = "栄養素の1日平均";
+
+// 記録の画面の左下のボタンを長押ししたときのメニュー
+"Add a Meal" = "食事を追加";
+"Measure Weight" = "体重を測る";

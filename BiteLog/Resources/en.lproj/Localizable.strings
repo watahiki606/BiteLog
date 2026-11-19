@@ -418,3 +418,7 @@
 "Metric" = "Metric";
 "Goal %@ kcal · On target %d of %d days" = "Goal %@ kcal · On target %d of %d days";
 "Nutrients per Day" = "Nutrients per Day";
+
+// The menu shown when long-pressing the add button on the Log screen
+"Add a Meal" = "Add a Meal";
+"Measure Weight" = "Measure Weight";

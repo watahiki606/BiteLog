@@ -36,23 +36,26 @@ struct DayContentView: View {
   }
 
   var body: some View {
-    Group {
-      // 読み込めず手元に何も無いときだけ画面を差し替える。
-      // 既に出せている内容があるなら残し、失敗はアラートで伝える。
-      if loadFailed && dayLogItems.isEmpty {
-        LoadFailureView { await loadLogItems() }
-      } else {
-        logList
+    ScrollViewReader { proxy in
+      Group {
+        // 読み込めず手元に何も無いときだけ画面を差し替える。
+        // 既に出せている内容があるなら残し、失敗はアラートで伝える。
+        if loadFailed && dayLogItems.isEmpty {
+          LoadFailureView { await loadLogItems() }
+        } else {
+          logList
+        }
       }
-    }
-    // スクロールしなくても届くよう、追加の入口を画面の左下に固定する。
-    // 食事の種類は時刻から仮に選び、追加画面の上部で切り替えてもらう
-    .overlay(alignment: .bottomLeading) {
-      AddMealButton {
-        onAddTapped(date, MealType.suggested())
+      // スクロールしなくても届くよう、追加の入口を画面の左下に固定する。
+      // 食事の種類は時刻から仮に選び、追加画面の上部で切り替えてもらう
+      .overlay(alignment: .bottomLeading) {
+        AddMealButton(
+          onAdd: { onAddTapped(date, MealType.suggested()) },
+          onMeasure: bodyComposition.canMeasure ? { measureFromMenu(scrollingWith: proxy) } : nil
+        )
+        .padding(.leading, 20)
+        .padding(.bottom, 16)
       }
-      .padding(.leading, 20)
-      .padding(.bottom, 16)
     }
     // 広告はスクロール内容に混ぜず画面下端に固定する。
     // 高さは AdaptiveBannerView が幅に合わせて決めるので、ここで固定しない。
@@ -239,12 +242,28 @@ struct DayContentView: View {
             onStop: { bodyComposition.stop() }
           )
           .cardRow()
+          .id(Self.bodyActionRowID)
         }
       } header: {
         Text(NSLocalizedString("Body Composition", comment: "Body composition section"))
           .sectionHeaderAlignedToCard()
       }
       .headerProminence(.increased)
+    }
+  }
+
+  /// 体組成カードの下段の行。左下のボタンから測り始めたときにここまで送る
+  private static let bodyActionRowID = "bodyCompositionAction"
+
+  /// 左下のボタンの長押しから測り始める。
+  ///
+  /// 探している間も「乗ってください」も、体組成カードの下段にしか出ない。
+  /// 下へスクロールしたまま始めると、何が起きているか見えないまま待たされる。
+  /// 既に探しているときに選んでも、カードを見せるだけで始め直しはしない。
+  private func measureFromMenu(scrollingWith proxy: ScrollViewProxy) {
+    bodyComposition.measureByHand()
+    withAnimation {
+      proxy.scrollTo(Self.bodyActionRowID, anchor: .center)
     }
   }
 
@@ -480,8 +499,14 @@ struct DayContentView: View {
 // MARK: - 追加ボタン
 
 /// 画面の左下に浮かべる、食事を追加する丸いボタン。
+///
+/// タップは食事の追加だけにする。1日に何度も押すので、メニューを挟んで手数を増やさない。
+/// 体重を測れる日は、長押しで測る入口も出す。
 private struct AddMealButton: View {
-  let action: () -> Void
+  let onAdd: () -> Void
+  /// 体重を測れる日だけ渡す。渡さない日は長押ししても何も出さない。
+  /// 「食事を追加」だけのメニューは、タップと同じことを遠回りさせるだけになる
+  var onMeasure: (() -> Void)?
 
   @ScaledMetric(relativeTo: .title2) private var scaledSize: CGFloat = 60
 
@@ -489,17 +514,40 @@ private struct AddMealButton: View {
   private var size: CGFloat { min(scaledSize, 76) }
 
   var body: some View {
-    Button(action: action) {
-      Image(systemName: "plus")
-        .font(.title2.weight(.semibold))
-        .foregroundStyle(.white)
-        .frame(width: size, height: size)
-        .background(Circle().fill(.tint))
-        .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
-        .contentShape(Circle())
+    Group {
+      if let onMeasure {
+        Menu {
+          Button(action: onAdd) {
+            Label(
+              NSLocalizedString("Add a Meal", comment: "Add button menu"),
+              systemImage: "fork.knife")
+          }
+          Button(action: onMeasure) {
+            Label(
+              NSLocalizedString("Measure Weight", comment: "Add button menu"),
+              systemImage: "scalemass")
+          }
+        } label: {
+          circle
+        } primaryAction: {
+          onAdd()
+        }
+      } else {
+        Button(action: onAdd) { circle }
+      }
     }
     .buttonStyle(.plain)
     .accessibilityLabel(NSLocalizedString("Add Meal", comment: "Navigation title"))
+  }
+
+  private var circle: some View {
+    Image(systemName: "plus")
+      .font(.title2.weight(.semibold))
+      .foregroundStyle(.white)
+      .frame(width: size, height: size)
+      .background(Circle().fill(.tint))
+      .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
+      .contentShape(Circle())
   }
 }
 
