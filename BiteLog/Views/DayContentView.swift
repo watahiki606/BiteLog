@@ -51,7 +51,7 @@ struct DayContentView: View {
       .overlay(alignment: .bottomLeading) {
         AddMealButton(
           onAdd: { onAddTapped(date, MealType.suggested()) },
-          onMeasure: bodyComposition.canMeasure ? { measureFromMenu(scrollingWith: proxy) } : nil
+          onMeasure: bodyComposition.canMeasure ? { measureByLongPress(scrollingWith: proxy) } : nil
         )
         .padding(.leading, 20)
         .padding(.bottom, 16)
@@ -259,8 +259,8 @@ struct DayContentView: View {
   ///
   /// 探している間も「乗ってください」も、体組成カードの下段にしか出ない。
   /// 下へスクロールしたまま始めると、何が起きているか見えないまま待たされる。
-  /// 既に探しているときに選んでも、カードを見せるだけで始め直しはしない。
-  private func measureFromMenu(scrollingWith proxy: ScrollViewProxy) {
+  /// 既に探しているときに長押ししても、カードを見せるだけで始め直しはしない。
+  private func measureByLongPress(scrollingWith proxy: ScrollViewProxy) {
     bodyComposition.measureByHand()
     withAnimation {
       proxy.scrollTo(Self.bodyActionRowID, anchor: .center)
@@ -501,11 +501,13 @@ struct DayContentView: View {
 /// 画面の左下に浮かべる、食事を追加する丸いボタン。
 ///
 /// タップは食事の追加だけにする。1日に何度も押すので、メニューを挟んで手数を増やさない。
-/// 体重を測れる日は、長押しで測る入口も出す。
+/// 体重を測れる日は、長押しですぐ測り始める。
+///
+/// `Button` に長押しを重ねないのは、長押しして離したときにもボタンの動作が走り、
+/// 測り始めると同時に食事の追加画面まで開いてしまうから。
 private struct AddMealButton: View {
   let onAdd: () -> Void
-  /// 体重を測れる日だけ渡す。渡さない日は長押ししても何も出さない。
-  /// 「食事を追加」だけのメニューは、タップと同じことを遠回りさせるだけになる
+  /// 体重を測れる日だけ渡す。渡さない日は長押ししても何もしない
   var onMeasure: (() -> Void)?
 
   @ScaledMetric(relativeTo: .title2) private var scaledSize: CGFloat = 60
@@ -514,33 +516,6 @@ private struct AddMealButton: View {
   private var size: CGFloat { min(scaledSize, 76) }
 
   var body: some View {
-    Group {
-      if let onMeasure {
-        Menu {
-          Button(action: onAdd) {
-            Label(
-              NSLocalizedString("Add a Meal", comment: "Add button menu"),
-              systemImage: "fork.knife")
-          }
-          Button(action: onMeasure) {
-            Label(
-              NSLocalizedString("Measure Weight", comment: "Add button menu"),
-              systemImage: "scalemass")
-          }
-        } label: {
-          circle
-        } primaryAction: {
-          onAdd()
-        }
-      } else {
-        Button(action: onAdd) { circle }
-      }
-    }
-    .buttonStyle(.plain)
-    .accessibilityLabel(NSLocalizedString("Add Meal", comment: "Navigation title"))
-  }
-
-  private var circle: some View {
     Image(systemName: "plus")
       .font(.title2.weight(.semibold))
       .foregroundStyle(.white)
@@ -548,6 +523,20 @@ private struct AddMealButton: View {
       .background(Circle().fill(.tint))
       .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
       .contentShape(Circle())
+      .onTapGesture(perform: onAdd)
+      .onLongPressGesture { onMeasure?() }
+      .accessibilityElement(children: .ignore)
+      .accessibilityLabel(NSLocalizedString("Add Meal", comment: "Navigation title"))
+      .accessibilityAddTraits(.isButton)
+      .accessibilityAction { onAdd() }
+      // 長押しは読み上げでは届かないので、同じ操作を項目の動作として選べるようにする
+      .accessibilityActions {
+        if let onMeasure {
+          Button(
+            NSLocalizedString("Measure Weight", comment: "Add button accessibility action"),
+            action: onMeasure)
+        }
+      }
   }
 }
 

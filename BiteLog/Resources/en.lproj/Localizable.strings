@@ -419,6 +419,5 @@
 "Goal %@ kcal · On target %d of %d days" = "Goal %@ kcal · On target %d of %d days";
 "Nutrients per Day" = "Nutrients per Day";
 
-// The menu shown when long-pressing the add button on the Log screen
-"Add a Meal" = "Add a Meal";
+// The VoiceOver action on the Log screen add button that does what a long press does
 "Measure Weight" = "Measure Weight";
