@@ -42,6 +42,24 @@ enum BodyMetric: String, CaseIterable, Identifiable {
     }
   }
 
+  /// 項目名の前に置くアイコン。
+  ///
+  /// 栄養素と意味が重なる項目は同じ形にする。脂肪は脂質と同じしずく、筋肉量はたんぱく質と同じ
+  /// ダンベル、基礎代謝はカロリーと同じ炎。同じものを指す形が画面ごとに違うと覚えられない。
+  var symbolName: String {
+    switch self {
+    case .weightKg: return "scalemass.fill"
+    case .bodyFatPercent: return "drop.fill"
+    case .muscleMassKg: return "dumbbell.fill"
+    case .muscleScore: return "gauge.medium"
+    case .visceralFatLevel: return "circle.hexagongrid.fill"
+    case .basalMetabolismKcal: return "flame.fill"
+    case .metabolicAge: return "hourglass"
+    case .boneMassKg: return "figure.arms.open"
+    case .bodyWaterPercent: return "humidity.fill"
+    }
+  }
+
   /// 小数の桁数。体重は 0.1kg 刻みで意味があるが、基礎代謝や体内年齢は整数で足りる。
   var fractionDigits: Int {
     switch self {

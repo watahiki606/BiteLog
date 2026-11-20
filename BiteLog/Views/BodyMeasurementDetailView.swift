@@ -124,14 +124,9 @@ struct BodyMeasurementDetailContent: View {
   private var summaryCard: some View {
     VStack(alignment: .leading, spacing: 20) {
       if let measuredAt = measurement.measuredAtDate {
-        Label {
-          Text(measuredAt.formatted(.dateTime.month().day().weekday().hour().minute()))
-        } icon: {
-          Image(systemName: "scalemass.fill")
-            .foregroundStyle(Color("BodyMetric"))
-        }
-        .font(.subheadline)
-        .foregroundStyle(.secondary)
+        Text(measuredAt.formatted(.dateTime.month().day().weekday().hour().minute()))
+          .font(.subheadline)
+          .foregroundStyle(.secondary)
       }
 
       if let weight = row(.weightKg) {
@@ -197,9 +192,8 @@ private struct BodyHeadlineWeight: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
-      Text(row.metric.localizedName)
+      BodyMetricLabel(metric: row.metric)
         .font(.subheadline.weight(.semibold))
-        .foregroundStyle(.secondary)
 
       HStack(alignment: .firstTextBaseline, spacing: 4) {
         Text(row.value.map(row.metric.format) ?? "–")
@@ -228,9 +222,8 @@ private struct BodyMetricSummaryValue: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
-      Text(row.metric.localizedName)
+      BodyMetricLabel(metric: row.metric)
         .font(.subheadline)
-        .foregroundStyle(.secondary)
       BodyMetricNumber(row: row, font: .system(.title, design: .rounded, weight: .bold))
       if let change = row.change {
         BodyChangeBadge(metric: row.metric, change: change)
@@ -247,9 +240,8 @@ private struct BodyMetricTile: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
-      Text(row.metric.localizedName)
+      BodyMetricLabel(metric: row.metric)
         .font(.subheadline)
-        .foregroundStyle(.secondary)
         .lineLimit(2)
         .fixedSize(horizontal: false, vertical: true)
       BodyMetricNumber(row: row, font: .system(.title2, design: .rounded, weight: .semibold))
@@ -263,6 +255,23 @@ private struct BodyMetricTile: View {
       Color(UIColor.secondarySystemGroupedBackground),
       in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     .accessibilityElement(children: .combine)
+  }
+}
+
+/// アイコンと項目名。栄養素の名前と同じ形で、アイコンだけに色を付ける。
+///
+/// 色は体組成の1色にそろえる。項目ごとに色を変えると9色が並び、増減の緑と橙が埋もれる。
+private struct BodyMetricLabel: View {
+  let metric: BodyMetric
+
+  var body: some View {
+    HStack(alignment: .firstTextBaseline, spacing: 5) {
+      Image(systemName: metric.symbolName)
+        .foregroundStyle(Color("BodyMetric"))
+        .accessibilityHidden(true)
+      Text(metric.localizedName)
+        .foregroundStyle(.secondary)
+    }
   }
 }
 

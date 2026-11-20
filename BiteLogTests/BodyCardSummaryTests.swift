@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import UIKit
 
 @testable import BiteLog
 
@@ -288,5 +289,21 @@ struct BodyMetricChangeTests {
   @Test func 表示の桁で0になる差には色を付けない() {
     // 「±0.0」が緑だと良くなったように見える
     #expect(BodyMetric.muscleMassKg.changeColor(0.04) == nil)
+  }
+}
+
+/// 1件の画面で項目名の前に置くアイコン。
+struct BodyMetricSymbolTests {
+
+  @Test func どの項目にもOSにあるアイコンが付く() {
+    for metric in BodyMetric.allCases {
+      #expect(UIImage(systemName: metric.symbolName) != nil, "\(metric) の \(metric.symbolName)")
+    }
+  }
+
+  @Test func 項目ごとに別のアイコンにする() {
+    // 同じ形が2つあると、どちらの値か見分けがつかない
+    let symbols = BodyMetric.allCases.map(\.symbolName)
+    #expect(Set(symbols).count == symbols.count)
   }
 }
