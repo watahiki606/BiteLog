@@ -123,7 +123,6 @@ struct DayContentView: View {
     ) {
       newResultSheet
     }
-    .sensoryFeedback(.success, trigger: bodyComposition.newResult?.id) { _, new in new != nil }
     .onReceive(NotificationCenter.default.publisher(for: .allDataDeleted)) { _ in
       dayLogItems = []
       deleteAllTrigger += 1
