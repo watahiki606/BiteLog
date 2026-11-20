@@ -42,6 +42,24 @@ enum BodyMetric: String, CaseIterable, Identifiable {
     }
   }
 
+  /// 項目名の前に置くアイコン。
+  ///
+  /// 栄養素と意味が重なる項目は同じ形にする。脂肪は脂質と同じしずく、筋肉量はたんぱく質と同じ
+  /// ダンベル、基礎代謝はカロリーと同じ炎。同じものを指す形が画面ごとに違うと覚えられない。
+  var symbolName: String {
+    switch self {
+    case .weightKg: return "scalemass.fill"
+    case .bodyFatPercent: return "drop.fill"
+    case .muscleMassKg: return "dumbbell.fill"
+    case .muscleScore: return "gauge.medium"
+    case .visceralFatLevel: return "circle.hexagongrid.fill"
+    case .basalMetabolismKcal: return "flame.fill"
+    case .metabolicAge: return "hourglass"
+    case .boneMassKg: return "figure.arms.open"
+    case .bodyWaterPercent: return "humidity.fill"
+    }
+  }
+
   /// 小数の桁数。体重は 0.1kg 刻みで意味があるが、基礎代謝や体内年齢は整数で足りる。
   var fractionDigits: Int {
     switch self {
@@ -67,6 +85,27 @@ enum BodyMetric: String, CaseIterable, Identifiable {
     case .bodyFatPercent, .visceralFatLevel, .metabolicAge: return false
     case .weightKg, .basalMetabolismKcal, .boneMassKg: return nil
     }
+  }
+
+  /// 差を符号付きで書く。増減の向きが一目で分かるよう、マイナス記号は全角の −
+  func formatChange(_ change: Double) -> String {
+    let rounded = roundedForDisplay(change)
+    let sign = rounded > 0 ? "+" : rounded < 0 ? "−" : "±"
+    return sign + format(abs(rounded))
+  }
+
+  /// 差の色。良し悪しが決まる項目だけ色を付け、決まらなければ `nil`。
+  /// 体重の増減は目標次第で良くも悪くもなるので、色を付けない。
+  /// 表示の桁で 0 になる差にも付けない。「±0.0」が緑だと良くなったように見える。
+  func changeColor(_ change: Double) -> Color? {
+    let rounded = roundedForDisplay(change)
+    guard rounded != 0, let increaseIsGood else { return nil }
+    return (rounded > 0) == increaseIsGood ? .green : .orange
+  }
+
+  private func roundedForDisplay(_ value: Double) -> Double {
+    let scale = pow(10, Double(fractionDigits))
+    return (value * scale).rounded() / scale
   }
 
   func value(of measurement: BodyMeasurementDTO) -> Double? {

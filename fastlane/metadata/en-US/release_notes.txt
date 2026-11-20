@@ -1,5 +1,5 @@
-You can now start a body composition measurement from the button in the bottom-left corner of the Log screen.
+When you finish measuring on your body composition scale, the result now opens right away.
 
-- Press and hold the button to start measuring right away. The screen scrolls to the Body Composition card
-- Tapping the button still opens Add Meal as before
-- Measuring is available on today's Log once your scale is registered
+- The result screen opens as soon as the measurement is done. Step on again while it is open to switch to the next result
+- The result screen is easier to read. Your weight is shown large, along with the change from a measurement taken around the same time on an earlier day
+- Each measurement now has an icon so you can spot it at a glance

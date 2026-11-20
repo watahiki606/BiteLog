@@ -71,6 +71,15 @@ struct BodyCompositionModelTests {
       createAttempts += 1
       if let createError { throw createError }
       created.append(dto)
+      // サーバーに入ったものは、次に取りに行ったときに返ってくる
+      stored.append(
+        BodyMeasurementDTO(
+          id: UUID().uuidString, sourceDate: dto.sourceDate, measuredAt: dto.measuredAt,
+          weightKg: dto.weightKg, bodyFatPercent: dto.bodyFatPercent,
+          muscleMassKg: dto.muscleMassKg, muscleScore: dto.muscleScore,
+          visceralFatLevel: dto.visceralFatLevel, basalMetabolismKcal: dto.basalMetabolismKcal,
+          metabolicAge: dto.metabolicAge, boneMassKg: dto.boneMassKg,
+          bodyWaterPercent: dto.bodyWaterPercent))
     }
 
     var deleted: [String] = []
@@ -86,9 +95,9 @@ struct BodyCompositionModelTests {
   private static let now = Date(timeIntervalSince1970: 1_767_306_600)
 
   /// 体重計から受け取った測定1件
-  private static func received(weight: Double) -> TanitaBodyMeasurement {
+  private static func received(weight: Double, at date: Date = now) -> TanitaBodyMeasurement {
     var measurement = TanitaBodyMeasurement()
-    measurement.measuredAt = now
+    measurement.measuredAt = date
     measurement.weightKg = weight
     measurement.bodyFatPercent = 20.0
     return measurement
@@ -388,6 +397,117 @@ struct BodyCompositionModelTests {
 
     #expect(!model.isVisible)
     #expect(model.manualFailure == nil)
+  }
+
+  // MARK: - 測り終えたら結果を開く
+
+  @Test func 測り終えたらいま入った測定を開く() async throws {
+    let scale = FakeScale()
+    let store = FakeStore()
+    let model = Self.model(scale: scale, store: store, paired: true)
+    await Self.appear(model)
+    model.measureByHand()
+
+    scale.onMeasurement?(Self.received(weight: 61.2))
+    scale.subject.send(.finished)
+    try await Self.settle { model.newResult != nil }
+
+    #expect(model.newResult?.weightKg == 61.2)
+    // 開いても待ち受けは続ける。続けて乗る人がいる
+    #expect(scale.startedWith == [.manual, .automatic])
+  }
+
+  @Test func 引き取り済みの測定が返ってきただけなら開かない() async throws {
+    // 体重計は引き取り済みのぶんも送ってくる。前に見た結果をまた開くことになる
+    let scale = FakeScale()
+    let store = FakeStore()
+    store.createError = APIError.serverError(409)
+    let model = Self.model(scale: scale, store: store, paired: true)
+    await Self.appear(model)
+    model.measureByHand()
+
+    scale.onMeasurement?(Self.received(weight: 61.2))
+    scale.subject.send(.finished)
+    try await Self.settle { store.createAttempts == 1 && store.requestedRanges.count == 2 }
+
+    #expect(model.newResult == nil)
+  }
+
+  @Test func 開いている間に続けて乗ったら新しい測定に切り替える() async throws {
+    let scale = FakeScale()
+    let store = FakeStore()
+    let model = Self.model(scale: scale, store: store, paired: true)
+    await Self.appear(model)
+    model.measureByHand()
+    scale.onMeasurement?(Self.received(weight: 61.2))
+    scale.subject.send(.finished)
+    try await Self.settle { model.newResult != nil }
+
+    // 待ち受けに入ったまま、もう一人が乗る
+    scale.onMeasurement?(Self.received(weight: 54.8, at: Self.now.addingTimeInterval(90)))
+    scale.subject.send(.finished)
+    try await Self.settle { model.newResult?.weightKg == 54.8 }
+
+    #expect(scale.startedWith == [.manual, .automatic, .automatic])
+  }
+
+  @Test func 受け取りの途中でやめたら開かずに待ち直しもしない() async throws {
+    // 画面を離れると探すのをやめる。離れた先で結果が開いたり、Bluetooth が動き続けたりしない
+    let scale = FakeScale()
+    let store = FakeStore()
+    let model = Self.model(scale: scale, store: store, paired: true)
+    await Self.appear(model)
+    model.measureByHand()
+
+    scale.onMeasurement?(Self.received(weight: 61.2))
+    model.stop()
+    try await Self.settle { store.created.count == 1 && model.summary?.measurements.count == 1 }
+
+    #expect(model.newResult == nil)
+    #expect(scale.startedWith == [.manual])
+  }
+
+  @Test func 保存まで済んでから切れても結果は開く() async throws {
+    // 終わりの合図を送る前に切れることがある。測定は入っているので見せる
+    let scale = FakeScale()
+    let store = FakeStore()
+    let model = Self.model(scale: scale, store: store, paired: true)
+    await Self.appear(model)
+    model.measureByHand()
+
+    scale.onMeasurement?(Self.received(weight: 61.2))
+    try await Self.settle { store.created.count == 1 && model.summary?.measurements.count == 1 }
+    scale.subject.send(.failed("通信中に切断されました"))
+
+    #expect(model.newResult?.weightKg == 61.2)
+    // 切れたあとは待ち直さない
+    #expect(scale.startedWith == [.manual])
+  }
+
+  @Test func 開いた測定は前日の同じ頃の回と比べる() async throws {
+    let scale = FakeScale()
+    // 2026-01-01 の 07:20 JST と 22:00 JST
+    let morning = BodyMeasurementDTO(
+      id: "morning", sourceDate: "2026-01-01", measuredAt: "2025-12-31T22:20:00.000Z",
+      weightKg: 61.6, bodyFatPercent: 20, muscleMassKg: nil, muscleScore: nil,
+      visceralFatLevel: nil, basalMetabolismKcal: nil, metabolicAge: nil, boneMassKg: nil,
+      bodyWaterPercent: nil)
+    let night = BodyMeasurementDTO(
+      id: "night", sourceDate: "2026-01-01", measuredAt: "2026-01-01T13:00:00.000Z",
+      weightKg: 62.4, bodyFatPercent: 20, muscleMassKg: nil, muscleScore: nil,
+      visceralFatLevel: nil, basalMetabolismKcal: nil, metabolicAge: nil, boneMassKg: nil,
+      bodyWaterPercent: nil)
+    let store = FakeStore(stored: [morning, night])
+    let model = Self.model(scale: scale, store: store, paired: true)
+    await Self.appear(model)
+    model.measureByHand()
+
+    scale.onMeasurement?(Self.received(weight: 61.2))
+    scale.subject.send(.finished)
+    try await Self.settle { model.newResult != nil }
+
+    // 07:30 に乗ったので、前日の 07:20 と比べる
+    #expect(model.reference(for: model.newResult!) == morning)
   }
 
   /// `onMeasurement` は `Task` を作って抜けるので、結果が揃うまで待つ

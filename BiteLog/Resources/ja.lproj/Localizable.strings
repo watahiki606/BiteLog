@@ -368,7 +368,10 @@
 "Last measured %d days ago" = "前回は%d日前";
 
 // 測定1件の画面
-"Change is against the last measurement of the day before." = "差は前日の最後に測ったものとの比較です。";
+"Other measurements" = "そのほかの項目";
+"Compared with %@" = "%@の測定と比べた変化";
+"Changes appear once you have a measurement from an earlier day." = "前の日に測った回があると、ここに変化が出ます。";
+"Step on again to see the next result" = "続けて乗ると、次の結果に切り替わります";
 "Delete Measurement" = "この測定を削除";
 "Delete this measurement?" = "この測定を削除しますか？";
 "The scale keeps its own copy, so it may come back the next time you connect." = "体組成計にも同じ測定が残っているので、次につないだときに戻ってくることがあります。";

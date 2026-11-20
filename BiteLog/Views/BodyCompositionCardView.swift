@@ -3,7 +3,7 @@ import SwiftUI
 /// 記録の画面の体組成カードの1行。測定1回ぶん。
 ///
 /// 体重計には同じ日に何度も乗るので、1つの数字にまとめず、乗った回数だけ行を並べる。
-/// 出すのは時刻と、毎日見る3項目だけ。残りの6項目と前日との差は開いた先にある。
+/// 出すのは時刻と、毎日見る3項目だけ。残りの6項目と前の日との差は開いた先にある。
 ///
 /// 差をここに添えない。1日の上下は食事と水分で大きく振れるので、
 /// 並んだ数字の横に差を置くと、読めないものを読ませることになる。
@@ -122,6 +122,9 @@ struct BodyCompositionActionView: View {
   /// いまから測れる日か。過去の日には測る導線を出さない
   let canMeasure: Bool
   let failure: String?
+  /// 測り終えた結果を開いたまま、次に乗るのを待っているか。
+  /// 結果を見ている人に「乗ってください」と出すと、測れていなかったように読める
+  var isWaitingForNext = false
   let onMeasure: () -> Void
   let onStop: () -> Void
 
@@ -183,7 +186,10 @@ struct BodyCompositionActionView: View {
     case .searching:
       return NSLocalizedString("Looking for the scale", comment: "Scale import status")
     case .waitingForStep:
-      return NSLocalizedString("Step on the scale", comment: "Scale import status")
+      return isWaitingForNext
+        ? NSLocalizedString(
+          "Step on again to see the next result", comment: "Scale import status")
+        : NSLocalizedString("Step on the scale", comment: "Scale import status")
     case .reading:
       return NSLocalizedString("Receiving measurements", comment: "Scale import status")
     }

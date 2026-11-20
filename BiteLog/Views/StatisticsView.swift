@@ -449,10 +449,10 @@ struct StatisticsView: View {
       Spacer()
       if let change = delta.change {
         HStack(alignment: .firstTextBaseline, spacing: 2) {
-          Text(signedChange(change, digits: delta.metric.fractionDigits))
+          Text(delta.metric.formatChange(change))
             .font(.system(.title3, design: .rounded, weight: .bold))
             .monospacedDigit()
-            .foregroundStyle(bodyChangeColor(delta.metric, change))
+            .foregroundStyle(delta.metric.changeColor(change) ?? .primary)
           if !delta.metric.unit.isEmpty {
             Text(delta.metric.unit)
               .font(.footnote)
@@ -467,21 +467,6 @@ struct StatisticsView: View {
       }
     }
     .accessibilityElement(children: .combine)
-  }
-
-  /// 良し悪しが決まる項目だけ色を付ける。
-  /// 体重の増減は目標次第で良くも悪くもなるので、色を付けない。
-  private func bodyChangeColor(_ metric: BodyMetric, _ change: Double) -> Color {
-    guard change != 0, let increaseIsGood = metric.increaseIsGood else { return .primary }
-    return (change > 0) == increaseIsGood ? .green : .orange
-  }
-
-  /// 増減の向きが一目で分かる形にする。マイナス記号は全角の −
-  private func signedChange(_ value: Double, digits: Int) -> String {
-    let scale = pow(10, Double(digits))
-    let rounded = (value * scale).rounded() / scale
-    let sign = rounded > 0 ? "+" : rounded < 0 ? "−" : "±"
-    return sign + String(format: "%.\(digits)f", abs(rounded))
   }
 
   /// グラフの X 軸が覆う範囲。取得済みバッファの全体を明示的に指定する。
