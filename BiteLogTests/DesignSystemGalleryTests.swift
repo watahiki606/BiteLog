@@ -34,6 +34,13 @@ struct DesignSystemGalleryTests {
       // 体組成は別の絵にする。1枚にまとめると AX5 で PNG に書き出せない高さになる
       try render(ScreenPartsGalleryView(), to: base, name: "parts-\(name)", scheme: scheme, typeSize: typeSize)
       try render(BodyGalleryView(), to: base, name: "body-\(name)", scheme: scheme, typeSize: typeSize)
+      // 1件の画面は2通りを別の絵にする。並べると AX5 で書き出せない高さになる
+      try render(
+        BodyDetailGalleryView(withReference: true), to: base, name: "body-detail-\(name)",
+        scheme: scheme, typeSize: typeSize)
+      try render(
+        BodyDetailGalleryView(withReference: false), to: base, name: "body-detail-partial-\(name)",
+        scheme: scheme, typeSize: typeSize)
     }
   }
 
@@ -245,6 +252,44 @@ private struct BodyGalleryView: View {
         .foregroundStyle(.secondary)
       content()
     }
+  }
+}
+
+/// 測定1件の画面。前の日と比べられる回と、比べる相手が無く項目も欠けた回。
+private struct BodyDetailGalleryView: View {
+  let withReference: Bool
+
+  var body: some View {
+    Group {
+      if withReference {
+        BodyMeasurementDetailContent(
+          measurement: Self.measurement(
+            "2026-09-25", at: "22:12", weight: 63.4, bodyFat: 19.8, muscle: 48.1, age: 33),
+          reference: Self.measurement(
+            "2026-09-24", at: "22:05", weight: 63.8, bodyFat: 20.3, muscle: 48.0, age: 34))
+      } else {
+        // 体脂肪率から先が取れなかった回。初めて測った日なので差も無い
+        BodyMeasurementDetailContent(
+          measurement: BodyMeasurementDTO(
+            id: "partial", sourceDate: "2026-09-26", measuredAt: "2026-09-26T11:40:00.000Z",
+            weightKg: 63.1, bodyFatPercent: nil, muscleMassKg: nil, muscleScore: nil,
+            visceralFatLevel: nil, basalMetabolismKcal: nil, metabolicAge: nil, boneMassKg: nil,
+            bodyWaterPercent: nil),
+          reference: nil)
+      }
+    }
+    .padding()
+  }
+
+  /// 値は架空。前の日と同じ値の項目も混ぜる
+  private static func measurement(
+    _ day: String, at time: String, weight: Double, bodyFat: Double, muscle: Double, age: Int
+  ) -> BodyMeasurementDTO {
+    BodyMeasurementDTO(
+      id: "\(day)T\(time)", sourceDate: day, measuredAt: "\(day)T\(time):00.000Z",
+      weightKg: weight, bodyFatPercent: bodyFat, muscleMassKg: muscle, muscleScore: 1,
+      visceralFatLevel: 7.5, basalMetabolismKcal: 1480, metabolicAge: age, boneMassKg: 2.7,
+      bodyWaterPercent: 56.2)
   }
 }
 

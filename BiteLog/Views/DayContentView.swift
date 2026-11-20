@@ -110,6 +110,20 @@ struct DayContentView: View {
       // 画面を離れたら探すのをやめる。つないだまま残すと Bluetooth を掴み続ける
       bodyComposition.stop()
     }
+    // 測り終えたら結果をその場で開く。
+    //
+    // 一覧から開くときのように画面を進めると、この画面の onDisappear が走って
+    // 続けて乗るための待ち受けが止まる。シートなら下の画面は残るので、待ち受けを
+    // 続けたまま結果を見せられる。閉じればカードに戻り、待ち受けもそこに出ている。
+    .sheet(
+      isPresented: Binding(
+        get: { bodyComposition.newResult != nil },
+        set: { if !$0 { bodyComposition.newResult = nil } }
+      )
+    ) {
+      newResultSheet
+    }
+    .sensoryFeedback(.success, trigger: bodyComposition.newResult?.id) { _, new in new != nil }
     .onReceive(NotificationCenter.default.publisher(for: .allDataDeleted)) { _ in
       dayLogItems = []
       deleteAllTrigger += 1
@@ -208,7 +222,7 @@ struct DayContentView: View {
           CardNavigationLink {
             BodyMeasurementDetailView(
               measurement: measurement,
-              previousDayLast: bodyComposition.summary?.previousDayLast,
+              reference: bodyComposition.reference(for: measurement),
               onDelete: { await bodyComposition.delete(measurement) }
             )
           } label: {
@@ -249,6 +263,50 @@ struct DayContentView: View {
           .sectionHeaderAlignedToCard()
       }
       .headerProminence(.increased)
+    }
+  }
+
+  /// 測り終えたときに開く結果。
+  ///
+  /// 開いている間も続けて乗るのを待っているので、そのことを下に出す。
+  /// 次に乗れば、開いたまま新しい結果に切り替わる。
+  @ViewBuilder
+  private var newResultSheet: some View {
+    if let result = bodyComposition.newResult {
+      NavigationStack {
+        BodyMeasurementDetailView(
+          measurement: result,
+          reference: bodyComposition.reference(for: result),
+          onDelete: { await bodyComposition.delete(result) }
+        )
+        .toolbar {
+          ToolbarItem(placement: .confirmationAction) {
+            Button(NSLocalizedString("Done", comment: "Done button")) {
+              bodyComposition.newResult = nil
+            }
+          }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+          if bodyComposition.isRunning {
+            BodyCompositionActionView(
+              hasMeasurementToday: true,
+              activity: bodyComposition.activity,
+              canMeasure: false,
+              failure: nil,
+              isWaitingForNext: true,
+              onMeasure: {},
+              onStop: { bodyComposition.stop() }
+            )
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .background {
+              Rectangle()
+                .fill(.bar)
+                .ignoresSafeArea(edges: .bottom)
+            }
+          }
+        }
+      }
     }
   }
 

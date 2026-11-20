@@ -351,9 +351,12 @@ extension BodyMeasurementDTO {
   /// 計測時刻。
   ///
   /// 書き込んだ経路によって小数秒の有無が揃っていないので、両方を試す。
-  var measuredAtDate: Date? {
-    for formatter in Self.timestampFormatters {
-      if let date = formatter.date(from: measuredAt) { return date }
+  var measuredAtDate: Date? { Self.date(fromTimestamp: measuredAt) }
+
+  /// サーバーとやり取りする時刻の文字列を読む。小数秒の有無はどちらでもよい
+  static func date(fromTimestamp timestamp: String) -> Date? {
+    for formatter in timestampFormatters {
+      if let date = formatter.date(from: timestamp) { return date }
     }
     return nil
   }

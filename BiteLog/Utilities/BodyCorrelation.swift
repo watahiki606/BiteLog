@@ -69,6 +69,27 @@ enum BodyMetric: String, CaseIterable, Identifiable {
     }
   }
 
+  /// 差を符号付きで書く。増減の向きが一目で分かるよう、マイナス記号は全角の −
+  func formatChange(_ change: Double) -> String {
+    let rounded = roundedForDisplay(change)
+    let sign = rounded > 0 ? "+" : rounded < 0 ? "−" : "±"
+    return sign + format(abs(rounded))
+  }
+
+  /// 差の色。良し悪しが決まる項目だけ色を付け、決まらなければ `nil`。
+  /// 体重の増減は目標次第で良くも悪くもなるので、色を付けない。
+  /// 表示の桁で 0 になる差にも付けない。「±0.0」が緑だと良くなったように見える。
+  func changeColor(_ change: Double) -> Color? {
+    let rounded = roundedForDisplay(change)
+    guard rounded != 0, let increaseIsGood else { return nil }
+    return (rounded > 0) == increaseIsGood ? .green : .orange
+  }
+
+  private func roundedForDisplay(_ value: Double) -> Double {
+    let scale = pow(10, Double(fractionDigits))
+    return (value * scale).rounded() / scale
+  }
+
   func value(of measurement: BodyMeasurementDTO) -> Double? {
     switch self {
     case .weightKg: return measurement.weightKg
