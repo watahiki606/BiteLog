@@ -90,7 +90,8 @@ export default function FoodMasterPage({ onToast, isAdmin }: Props) {
         const id = crypto.randomUUID();
         const uniqueKey = `${form.brandName}|${form.productName}|${form.portionUnit}`;
         const res = await client.api['food-masters'].$post({
-          json: { ...form, id, uniqueKey },
+          // reject を付けないと、同じ名前と単位の食品があるとき既存の食品が返り、追加できたように見える
+          json: { ...form, id, uniqueKey, onConflict: 'reject' },
         });
         if (res.status === 409) {
           onToast({ message: '同じブランド名・商品名・単位の食品が登録済みです', type: 'error' });

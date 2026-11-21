@@ -135,10 +135,10 @@ describe('POST /api/food-masters', () => {
     expect(body.calories).toBe(650);
   });
 
-  it('同じブランド名・商品名・単位の別の食品があれば、上書きせず 409 と既存の食品を返す', async () => {
+  it('onConflict が reject なら、同じブランド名・商品名・単位の別の食品があるとき上書きせず 409 と既存の食品を返す', async () => {
     await create(curry('11111111-1111-1111-1111-111111111111', 650));
 
-    const res = await create(curry('22222222-2222-2222-2222-222222222222', 800));
+    const res = await create({ ...curry('22222222-2222-2222-2222-222222222222', 800), onConflict: 'reject' });
 
     expect(res.status).toBe(409);
     const body = await res.json<{ existing: { id: string; calories: number } }>();
@@ -146,13 +146,24 @@ describe('POST /api/food-masters', () => {
     expect(body.existing.calories).toBe(650);
   });
 
-  it('同じ id で送り直したときは作成済みの食品を 201 で返す', async () => {
+  it('onConflict が reject でも、同じ id で送り直したときは作成済みの食品を 201 で返す', async () => {
     await create(curry('11111111-1111-1111-1111-111111111111', 650));
 
-    const res = await create(curry('11111111-1111-1111-1111-111111111111', 650));
+    const res = await create({ ...curry('11111111-1111-1111-1111-111111111111', 650), onConflict: 'reject' });
 
     expect(res.status).toBe(201);
     const body = await res.json<{ id: string }>();
     expect(body.id).toBe('11111111-1111-1111-1111-111111111111');
+  });
+
+  it('onConflict が無ければ、公開中の古い版のアプリのために既存の食品を 201 で返す', async () => {
+    await create(curry('11111111-1111-1111-1111-111111111111', 650));
+
+    const res = await create(curry('22222222-2222-2222-2222-222222222222', 800));
+
+    expect(res.status).toBe(201);
+    const body = await res.json<{ id: string; calories: number }>();
+    expect(body.id).toBe('11111111-1111-1111-1111-111111111111');
+    expect(body.calories).toBe(650);
   });
 });

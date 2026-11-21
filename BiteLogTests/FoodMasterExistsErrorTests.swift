@@ -47,4 +47,27 @@ struct FoodMasterExistsErrorTests {
         == NSLocalizedString(
           "A food with the same brand, name, and unit is already registered.", comment: "Food master conflict"))
   }
+
+  @Test func 作成の本文は重なりを409で知らせるよう求める() throws {
+    let json = try Self.encodedJSON(Self.dto.rejectingDuplicate())
+
+    #expect(json["onConflict"] as? String == "reject")
+  }
+
+  @Test func 印を付けなければ本文に含めない() throws {
+    // 印は作成の API だけが読む。付けない本文は今までと同じ形にしておく
+    let json = try Self.encodedJSON(Self.dto)
+
+    #expect(json["onConflict"] == nil)
+  }
+
+  private static let dto = FoodMasterCreateDTO(
+    id: "11111111-1111-1111-1111-111111111111", brandName: "AI", productName: "カレーライス",
+    calories: 650, dietaryFiber: 3, netCarbs: 90, fat: 20, protein: 15,
+    portionSize: 1, portionUnit: "皿", uniqueKey: "AI|カレーライス|皿")
+
+  private static func encodedJSON(_ dto: FoodMasterCreateDTO) throws -> [String: Any] {
+    let data = try JSONEncoder().encode(dto)
+    return try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+  }
 }

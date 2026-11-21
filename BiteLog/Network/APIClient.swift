@@ -143,7 +143,7 @@ final class APIClient {
   /// 同じブランド名・商品名・単位の食品が既にあれば `FoodMasterExistsError` を投げる。
   func createFoodMaster(_ dto: FoodMasterCreateDTO) async throws -> FoodMasterDTO {
     do {
-      return try await request(path: "/api/food-masters", method: "POST", body: dto)
+      return try await request(path: "/api/food-masters", method: "POST", body: dto.rejectingDuplicate())
     } catch APIError.conflict(let body) {
       throw try FoodMasterExistsError(conflictBody: body)
     }
