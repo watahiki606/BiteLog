@@ -193,6 +193,8 @@ struct AIAnalysisResultView: View {
 
   @State private var showingSaveConfirmation = false
   @State private var saveError: String?
+  /// 同じ名前と単位で登録済みだった食品。写真の値で作れなかったので、どうするかを選ばせる
+  @State private var conflictingFood: FoodMasterDTO?
 
   /// 同じものが登録済みでないか。自分のものに限らず探す。
   ///
@@ -341,6 +343,27 @@ struct AIAnalysisResultView: View {
         Button(NSLocalizedString("OK", comment: "Button title"), role: .cancel) {}
       } message: {
         Text(saveError ?? "")
+      }
+      .alert(
+        NSLocalizedString("Already Registered", comment: "Alert title"),
+        isPresented: Binding(get: { conflictingFood != nil }, set: { if !$0 { conflictingFood = nil } }),
+        presenting: conflictingFood
+      ) { existing in
+        Button(NSLocalizedString("Log with Registered Values", comment: "Button title")) {
+          Task { await logExisting(existing) }
+        }
+        // 名前の欄はこの画面にあるので、閉じればそのまま直して保存し直せる
+        Button(NSLocalizedString("Change Name", comment: "Button title"), role: .cancel) {}
+      } message: { existing in
+        Text(
+          String(
+            format: NSLocalizedString(
+              "\"%1$@\" is already registered with %2$@ kcal per %3$@ %4$@. Log it with the registered values, or change the name and save again.",
+              comment: "Alert message"),
+            existing.productName,
+            String(format: "%.0f", existing.calories),
+            NutritionFormatter.formatNutrition(existing.portionSize),
+            existing.portionUnit))
       }
     }
   }
@@ -607,6 +630,8 @@ struct AIAnalysisResultView: View {
           onSave()
           dismiss()
         }
+      } catch let error as FoodMasterExistsError {
+        await MainActor.run { conflictingFood = error.existing }
       } catch {
         print("AIAnalysisResultView saveFoodItem error: \(error)")
         await MainActor.run {
