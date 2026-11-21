@@ -279,7 +279,7 @@ struct BodyCompositionModelTests {
     // 体重計は引き取り済みのぶんも送ってくる。待ち直しても何も増えないまま繰り返す
     let scale = FakeScale()
     let store = FakeStore()
-    store.createError = APIError.serverError(409)
+    store.createError = APIError.conflict(Data())
     let model = Self.model(scale: scale, store: store, paired: true)
     await Self.appear(model)
     model.measureByHand()
@@ -421,7 +421,7 @@ struct BodyCompositionModelTests {
     // 体重計は引き取り済みのぶんも送ってくる。前に見た結果をまた開くことになる
     let scale = FakeScale()
     let store = FakeStore()
-    store.createError = APIError.serverError(409)
+    store.createError = APIError.conflict(Data())
     let model = Self.model(scale: scale, store: store, paired: true)
     await Self.appear(model)
     model.measureByHand()

@@ -293,7 +293,7 @@ struct ScaleImportView: View {
     do {
       try await APIClient.shared.createBodyMeasurement(dto)
       savedCount += 1
-    } catch APIError.serverError(409) {
+    } catch APIError.conflict {
       // 同じ計測時刻の記録が既にある。体重計は引き取り済みのぶんも送ってくることがある
       duplicateCount += 1
     } catch {

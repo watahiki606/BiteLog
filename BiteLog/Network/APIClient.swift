@@ -77,6 +77,8 @@ final class APIClient {
       throw APIError.unauthorized
     case 404:
       throw APIError.notFound
+    case 409:
+      throw APIError.conflict(data)
     default:
       throw APIError.serverError(http.statusCode)
     }
@@ -105,9 +107,9 @@ final class APIClient {
       req.httpBody = try encoder.encode(body)
     }
 
-    let (_, response): (Data, URLResponse)
+    let (data, response): (Data, URLResponse)
     do {
-      (_, response) = try await session.data(for: req)
+      (data, response) = try await session.data(for: req)
     } catch {
       throw APIError.networkError(error)
     }
@@ -125,6 +127,7 @@ final class APIClient {
       await AuthManager.shared.signOut()
       throw APIError.unauthorized
     case 404: throw APIError.notFound
+    case 409: throw APIError.conflict(data)
     default: throw APIError.serverError(http.statusCode)
     }
   }
@@ -137,8 +140,13 @@ final class APIClient {
     return try await request(path: "/api/food-masters?q=\(q)&limit=\(limit)&offset=\(offset)\(mine)")
   }
 
+  /// 同じブランド名・商品名・単位の食品が既にあれば `FoodMasterExistsError` を投げる。
   func createFoodMaster(_ dto: FoodMasterCreateDTO) async throws -> FoodMasterDTO {
-    return try await request(path: "/api/food-masters", method: "POST", body: dto)
+    do {
+      return try await request(path: "/api/food-masters", method: "POST", body: dto)
+    } catch APIError.conflict(let body) {
+      throw try FoodMasterExistsError(conflictBody: body)
+    }
   }
 
   func updateFoodMaster(id: UUID, _ dto: FoodMasterUpdateDTO) async throws -> FoodMasterDTO {

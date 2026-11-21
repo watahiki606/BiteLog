@@ -101,8 +101,15 @@ const foodMasters = new Hono<{ Bindings: Bindings; Variables: Variables }>()
     const row = await c.env.DB.prepare(
       `SELECT ${FM_SELECT} ${FM_JOIN} WHERE fm.unique_key = ?`
     ).bind(userId, body.uniqueKey).first<FoodMasterRow>();
+    const existing = foodMasterToResponse(row!);
 
-    return c.json(foodMasterToResponse(row!), 201);
+    // 別の食品を返すと、呼ぶ側は送った値で作れたと思い込み、その値で記録してしまう。
+    // 既存の食品の値を書き換えるとそれを参照する他の人の記録まで変わるので、上書きもしない。
+    // 同じ id なら送り直しなので、作れたものとして返す。
+    if (existing.id.toLowerCase() !== body.id.toLowerCase()) {
+      return c.json({ error: 'A food with the same brand, name and unit already exists', existing }, 409);
+    }
+    return c.json(existing, 201);
   })
   .post('/batch', async (c) => {
     const userId = c.get('userId');

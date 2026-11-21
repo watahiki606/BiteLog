@@ -92,6 +92,10 @@ export default function FoodMasterPage({ onToast, isAdmin }: Props) {
         const res = await client.api['food-masters'].$post({
           json: { ...form, id, uniqueKey },
         });
+        if (res.status === 409) {
+          onToast({ message: '同じブランド名・商品名・単位の食品が登録済みです', type: 'error' });
+          return;
+        }
         if (!res.ok) throw new Error();
       }
       onToast({ message: editing ? '更新しました' : '追加しました', type: 'success' });
