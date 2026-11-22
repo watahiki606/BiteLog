@@ -45,7 +45,7 @@ struct FoodMasterExistsErrorTests {
     #expect(
       error.localizedDescription
         == NSLocalizedString(
-          "A food with the same brand, name, and unit is already registered.", comment: "Food master conflict"))
+          "A food with the same brand, name, and unit is already registered. Change one of them and save again.", comment: "Food master conflict"))
   }
 
   @Test func 作成の本文は重なりを409で知らせるよう求める() throws {

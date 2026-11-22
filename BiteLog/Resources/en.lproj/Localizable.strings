@@ -427,7 +427,7 @@
 
 /* 同じ名前と単位の食品が登録済み */
 "The same data is already registered." = "The same data is already registered.";
-"A food with the same brand, name, and unit is already registered." = "A food with the same brand, name, and unit is already registered.";
+"A food with the same brand, name, and unit is already registered. Change one of them and save again." = "A food with the same brand, name, and unit is already registered. Change one of them and save again.";
 "Already Registered" = "Already Registered";
 "Log with Registered Values" = "Log with Registered Values";
 "Change Name" = "Change Name";
