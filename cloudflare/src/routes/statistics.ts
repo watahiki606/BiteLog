@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { Bindings, Variables } from '../types';
 import { authMiddleware } from '../middleware/auth';
 import { NUTRITION_BASE_CTE, NUTRITION_SUM_COLUMNS } from '../lib/nutritionSql';
+import { NUTRIENTS } from '../lib/nutrients';
 
 // 体組成の集計対象カラム（DB snake_case → レスポンス camelCase）。
 // 体重等は合計に意味が無いため、同日複数計測は日次 AVG で集約する。
@@ -17,9 +18,7 @@ const BODY_AVG_FIELDS: { col: string; key: string }[] = [
   { col: 'body_water_percent',    key: 'bodyWaterPercent' },
 ];
 
-const NUTRIENT_KEYS = ['calories', 'protein', 'fat', 'netCarbs', 'dietaryFiber'] as const;
-
-type NutriRow = { log_date: string } & Record<(typeof NUTRIENT_KEYS)[number], number | null>;
+type NutriRow = { log_date: string } & Record<string, number | null>;
 type BodyRow = { date: string } & Record<string, number | null>;
 
 const statistics = new Hono<{ Bindings: Bindings; Variables: Variables }>()
@@ -65,7 +64,8 @@ const statistics = new Hono<{ Bindings: Bindings; Variables: Variables }>()
     const ensure = (date: string) => {
       let row = byDate.get(date);
       if (!row) {
-        row = { calories: 0, protein: 0, fat: 0, netCarbs: 0, dietaryFiber: 0 };
+        row = {};
+        for (const n of NUTRIENTS) row[n.id] = 0;
         for (const f of BODY_AVG_FIELDS) row[f.key] = null;
         byDate.set(date, row);
       }
@@ -74,7 +74,7 @@ const statistics = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
     for (const r of nutriRows) {
       const row = ensure(r.log_date);
-      for (const k of NUTRIENT_KEYS) row[k] = r[k] ?? 0;
+      for (const n of NUTRIENTS) row[n.id] = r[n.id] ?? 0;
     }
     for (const r of bodyRows) {
       const row = ensure(r.date);

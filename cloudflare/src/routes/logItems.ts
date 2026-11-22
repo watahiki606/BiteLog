@@ -3,16 +3,13 @@ import type { Bindings, Variables, LogItemRow, FoodMasterRow } from '../types';
 import { logItemToResponse } from '../types';
 import { authMiddleware } from '../middleware/auth';
 import { NUTRITION_BASE_CTE, NUTRITION_SUM_COLUMNS } from '../lib/nutritionSql';
+import { NUTRIENTS, NUTRIENT_COLUMNS, type CoreNutrients } from '../lib/nutrients';
+import { FM_NUTRIENT_SELECT } from '../lib/foodMasterSql';
 
 type LogItemJoinRow = LogItemRow & {
   fm_id: string | null;
   brand_name: string | null;
   product_name: string | null;
-  calories: number | null;
-  dietary_fiber: number | null;
-  net_carbs: number | null;
-  fat: number | null;
-  protein: number | null;
   portion_size: number | null;
   portion_unit: string | null;
   unique_key: string | null;
@@ -23,15 +20,15 @@ type LogItemJoinRow = LogItemRow & {
 
 function rowToFm(row: LogItemJoinRow): FoodMasterRow | null {
   if (!row.fm_id) return null;
+  // 結合した行には記録の列も混ざっているので、栄養素の列だけを移す
+  const nutrientColumns = Object.fromEntries(
+    NUTRIENT_COLUMNS.map((column) => [column, (row as Record<string, unknown>)[column]]),
+  );
   return {
+    ...nutrientColumns,
     id: row.fm_id,
     brand_name: row.brand_name!,
     product_name: row.product_name!,
-    calories: row.calories!,
-    dietary_fiber: row.dietary_fiber!,
-    net_carbs: row.net_carbs!,
-    fat: row.fat!,
-    protein: row.protein!,
     portion_size: row.portion_size!,
     portion_unit: row.portion_unit!,
     unique_key: row.unique_key!,
@@ -42,8 +39,7 @@ function rowToFm(row: LogItemJoinRow): FoodMasterRow | null {
   };
 }
 
-const JOIN_SELECT = `SELECT li.*, fm.id as fm_id, fm.brand_name, fm.product_name, fm.calories,
-        fm.dietary_fiber, fm.net_carbs, fm.fat, fm.protein,
+const JOIN_SELECT = `SELECT li.*, fm.id as fm_id, fm.brand_name, fm.product_name, ${FM_NUTRIENT_SELECT},
         fm.portion_size, fm.portion_unit, fm.unique_key,
         ufs.usage_count as ufs_usage_count,
         ufs.last_used_date as ufs_last_used_date,
@@ -95,20 +91,13 @@ const logItems = new Hono<{ Bindings: Bindings; Variables: Variables }>()
        FROM base
        GROUP BY log_date, meal_type
        ORDER BY log_date ASC`
-    ).bind(userId, from, to).all<{
-      log_date: string; meal_type: string;
-      calories: number; protein: number; fat: number; netCarbs: number; dietaryFiber: number;
-    }>();
+    ).bind(userId, from, to).all<{ log_date: string; meal_type: string } & Record<string, number | null>>();
 
-    const items = results.map(r => ({
-      logDate: r.log_date,
-      mealType: r.meal_type,
-      calories: r.calories ?? 0,
-      protein: r.protein ?? 0,
-      fat: r.fat ?? 0,
-      netCarbs: r.netCarbs ?? 0,
-      dietaryFiber: r.dietaryFiber ?? 0,
-    }));
+    const items = results.map(r => {
+      const totals: Record<string, number> = {};
+      for (const n of NUTRIENTS) totals[n.id] = r[n.id] ?? 0;
+      return { logDate: r.log_date, mealType: r.meal_type, ...(totals as CoreNutrients) };
+    });
     return c.json({ items });
   })
   .post('/', async (c) => {

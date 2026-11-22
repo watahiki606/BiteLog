@@ -1,31 +1,19 @@
-# 栄養素の定義ファイルと Swift の生成
+# Worker の栄養素の列と集計を定義ファイルから組み立てる
 
-設計は `~/research/bitelog-nutrients/design.md` の2章と7章の PR 1。栄養素の一覧を `shared/nutrients.json` の1か所にまとめ、iOS はそこから生成した Swift を使う。この PR では既存の5項目だけを書き、動きは変えない。生成物を使う置き換えは PR 4 で行う。
+設計は `~/research/bitelog-nutrients/design.md` の7章の PR 2。応答の形は変えない。
 
 ## 計画
 
-- [x] 食い違いを検出するテストを先に書く。JSON を `#filePath` から読み、生成済みの Swift と比べる
-  - 並びと id が `NutrientID.allCases` と一致する
-  - 列名、単位、桁数、グループ、core、表示での扱いが一致する
-  - 日本語と英語の表示名と短い名前が `Nutrients.strings` と一致する
-  - core の栄養素が、食品の JSON のキーとして今の DTO に揃っている
-- [x] `shared/nutrients.json` に既存の5項目を書く。表示名と短い名前は今の Localizable.strings と同じ値にする
-- [x] `shared/generate-swift.ts` を bun で書く。JSON の形を確かめてから、次を書き出す
-  - `BiteLog/Generated/NutrientDefinitions.swift`
-  - `BiteLog/Resources/{ja,en}.lproj/Nutrients.strings`
-- [x] ルートの package.json に `generate:nutrients` を足す
-- [x] 生成し、iOS の単体テストを全件通す
-- [x] 生成し直しても差分が出ないことを確かめる
-- [x] ios-development のスキルに、JSON を直したら生成してテストを流す手順を書く
-
-## 確かめたこと
-
-- iOS の単体テスト245件がすべて通った。新しいテストは4つで、表示名のテストは日本語と英語の2件ずつ流れる
-- JSON の列名だけを変えると属性のテストが、英語の短い名前だけを変えると英語の表示名のテストだけが落ちた
-- 生成し直しても3つのファイルに差分は出なかった
-- group に無い値を入れたり、日本語の短い名前を消したりすると、生成スクリプトは理由を並べて何も書かずに止まった
+- [x] 作り直しの前に、今の動きを押さえるテストを足す。5つの栄養素に別々の値を入れる
+  - 作成、一括作成、部分更新、削除のときのスナップショット、記録の一覧、日ごとと日次の集計、CSV の読み込み
+- [x] `lib/nutrients.ts` で定義ファイルを読む。行から応答への変換と、本文から列の並びへの変換を持つ
+- [x] `lib/foodMasterSql.ts` に食品の INSERT と、栄養素の UPDATE をまとめる。作成、一括作成、CSV で同じ文を使う
+- [x] `nutritionSql.ts`、`types.ts`、`foodMasters.ts`、`logItems.ts`、`statistics.ts`、`csvImport.ts` を定義から回す
+- [x] web の型が崩れないことを確かめる。Worker のソースを辿ると JSON を読むので、web にも `resolveJsonModule` を足す
+- [x] Worker のテスト、web のビルドと lint とテスト
 
 ## 振り返り
 
-- 新しい依存は無い。bun と Swift の標準機能だけで作った
-- 既存の `Nutrient` 型と Localizable.strings には触れていない。生成した型はまだテストからしか使っていない
+- JSON から読んだ id は型が string に広がり、web が Hono RPC で推論する応答の型から栄養素のキーが消える。最初の5項目だけ名前を型でも持ち、JSON の core と食い違えばテストで落ちるようにした
+- 送られた値と D1 の値は型を確かめずにそのまま渡す。今の動きを変えないため
+- AI 推定のスキーマ、CSV の列の読み方、目標値の表は、この PR では触れていない。PR 6 と 7 で扱う
