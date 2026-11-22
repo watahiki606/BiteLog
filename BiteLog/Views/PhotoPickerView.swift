@@ -213,6 +213,14 @@ struct AIAnalysisResultView: View {
   @State private var dietaryFiber: String
   @State private var portionAmount: String
   @State private var portionUnit: String
+  /// あとから足した栄養素。表示か公式の値から読めなかったものは空欄
+  @State private var addedValues: [NutrientID: String]
+
+  private static let addedNutrients = NutrientID.allCases.filter { !$0.definition.core }
+
+  private static func addedFields(_ result: FoodAnalysisResult) -> [NutrientID: String] {
+    result.addedNutrients.values.mapValues(NutritionFormatter.formatNutrition)
+  }
 
   init(
     result: FoodAnalysisResult, image: UIImage, note: String?, mealType: MealType, date: Date,
@@ -236,6 +244,7 @@ struct AIAnalysisResultView: View {
     _dietaryFiber = State(initialValue: NutritionFormatter.formatNutrition(result.dietaryFiber))
     _portionAmount = State(initialValue: NutritionFormatter.formatNutrition(result.portionAmount))
     _portionUnit = State(initialValue: result.portionUnit)
+    _addedValues = State(initialValue: Self.addedFields(result))
   }
   
   var body: some View {
@@ -291,6 +300,15 @@ struct AIAnalysisResultView: View {
               // 炭水化物は計算値として表示（編集不可）
               let carbs = (Double(netCarbs) ?? 0) + (Double(dietaryFiber) ?? 0)
               ResultRow(icon: "circle.fill", label: NSLocalizedString("Carbohydrates", comment: "Label"), value: "\(NutritionFormatter.formatNutrition(carbs))g", color: .purple)
+
+              // 写真の見た目からは推定させていない。表示や公式の値から読めなかったものは空欄のまま
+              ForEach(Self.addedNutrients, id: \.self) { id in
+                EditableField(
+                  icon: id.symbolName, label: id.localizedName,
+                  text: Binding(get: { addedValues[id] ?? "" }, set: { addedValues[id] = $0 }),
+                  unit: id.definition.unit, keyboardType: .decimalPad, color: id.color,
+                  placeholder: NSLocalizedString("Unknown", comment: "Placeholder for an unknown nutrient value"))
+              }
             }
             .padding()
             .background(Color(UIColor.secondarySystemBackground))
@@ -434,6 +452,7 @@ struct AIAnalysisResultView: View {
       dietaryFiber = NutritionFormatter.formatNutrition(looked.dietaryFiber)
       portionAmount = NutritionFormatter.formatNutrition(looked.portionAmount)
       portionUnit = looked.portionUnit
+      addedValues = Self.addedFields(looked)
       await findCandidates(for: looked)
     } catch {
       lookupError = error.localizedDescription
@@ -614,7 +633,14 @@ struct AIAnalysisResultView: View {
           uniqueKey: FoodMasterDTO.createUniqueKey(
             brandName: "AI", productName: productName, portionUnit: portionUnit)
         )
-        let fm = try await APIClient.shared.createFoodMaster(fmDTO)
+        var withAdded = fmDTO
+        for (id, text) in addedValues {
+          if let value = Double(text.trimmingCharacters(in: .whitespaces)) { withAdded.nutrients[id] = value }
+        }
+        let source = current.nutrientSource
+        withAdded.nutrientSource = source.source
+        withAdded.nutrientSourceRef = source.ref
+        let fm = try await APIClient.shared.createFoodMaster(withAdded)
 
         let logDTO = LogItemCreateDTO(
           id: UUID().uuidString,
@@ -677,7 +703,9 @@ struct EditableField: View {
   var unit: String = ""
   var keyboardType: UIKeyboardType = .default
   var color: Color = .primary
-  
+  /// 空欄のときに薄く出す文字。値の分からない栄養素で「0」と出すと、0 と読み違える
+  var placeholder: String = "0"
+
   var body: some View {
     HStack {
       Image(systemName: icon)
@@ -690,7 +718,7 @@ struct EditableField: View {
       
       Spacer()
       
-      TextField("0", text: $text)
+      TextField(placeholder, text: $text)
         .keyboardType(keyboardType)
         .multilineTextAlignment(.trailing)
         .fontWeight(.semibold)

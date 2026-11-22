@@ -1,5 +1,9 @@
-When you register a food from a photo or by hand, BiteLog now tells you if a food with the same name and unit already exists.
+You can now log salt equivalent and saturated fat.
 
-- Previously, the meal could be logged with the registered food's values instead of the values you entered
-- After a photo analysis, you can log the registered values or change the name and save again
-- When entering by hand, you are asked to change the brand, name, or unit and save again
+- The food form has a new Other Nutrients section for salt equivalent and saturated fat. Leave them blank if the label doesn't show them
+- When you photograph a nutrition label, the analysis reads these two as well
+- Daily totals and statistics show them. When some foods have no value, BiteLog tells you how many foods the total covers
+- Add your sex and birth date in Profile to compare them with the dietary goals in Statistics
+- CSV export adds two columns at the end
+
+When you register a food from a photo or by hand, BiteLog now tells you if a food with the same name and unit already exists.

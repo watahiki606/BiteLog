@@ -427,3 +427,15 @@
 "Log with Registered Values" = "Log with Registered Values";
 "Change Name" = "Change Name";
 "\"%1$@\" is already registered with %2$@ kcal per %3$@ %4$@. Log it with the registered values, or change the name and save again." = "\"%1$@\" is already registered with %2$@ kcal per %3$@ %4$@. Log it with the registered values, or change the name and save again.";
+
+/* Nutrients added after the first five: salt equivalent and saturated fat */
+"Other Nutrients" = "Other Nutrients";
+"Leave blank if the label doesn't show it. Enter 0 only when it is really 0." = "Leave blank if the label doesn't show it. Enter 0 only when it is really 0.";
+"Total of %1$d of %2$d items" = "Total of %1$d of %2$d items";
+"From %1$d of %2$d items" = "From %1$d of %2$d items";
+"Salt and Saturated Fat" = "Salt and Saturated Fat";
+"Add your sex and birth date in Profile to compare with the dietary goals." = "Add your sex and birth date in Profile to compare with the dietary goals.";
+"%@%% of energy" = "%@%% of energy";
+"%@ per day" = "%@ per day";
+"Goal: less than %@" = "Goal: less than %@";
+"Goal: %@%% of energy or less" = "Goal: %@%% of energy or less";

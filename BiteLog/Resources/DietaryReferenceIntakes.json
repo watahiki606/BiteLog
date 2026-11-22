@@ -1,0 +1,296 @@
+{
+  "edition": "日本人の食事摂取基準（2025年版）",
+  "note": "妊婦と授乳婦の値は、プロフィールで扱わないので載せていない。1歳未満は目標量が無い",
+  "goals": [
+    {
+      "nutrient": "saltEquivalent",
+      "indicator": "tentativeDietaryGoal",
+      "comparison": "lessThan",
+      "unit": "g",
+      "source": "多量ミネラル 001316468.pdf p39、報告書 p281 ナトリウムの表の括弧内",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 3.0
+        },
+        {
+          "sex": "male",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 3.5
+        },
+        {
+          "sex": "male",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 4.5
+        },
+        {
+          "sex": "male",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 5.0
+        },
+        {
+          "sex": "male",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 6.0
+        },
+        {
+          "sex": "male",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 7.0
+        },
+        {
+          "sex": "male",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 7.5
+        },
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 7.5
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 7.5
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 7.5
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 7.5
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 7.5
+        },
+        {
+          "sex": "female",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 2.5
+        },
+        {
+          "sex": "female",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 3.5
+        },
+        {
+          "sex": "female",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 4.5
+        },
+        {
+          "sex": "female",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 5.0
+        },
+        {
+          "sex": "female",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 6.0
+        },
+        {
+          "sex": "female",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 6.5
+        },
+        {
+          "sex": "female",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 6.5
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 6.5
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 6.5
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 6.5
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 6.5
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 6.5
+        }
+      ]
+    },
+    {
+      "nutrient": "saturatedFat",
+      "indicator": "tentativeDietaryGoal",
+      "comparison": "atMostPercentOfEnergy",
+      "unit": "%E",
+      "source": "脂質 001316463.pdf p24、報告書 p127",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 10
+        },
+        {
+          "sex": "male",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 10
+        },
+        {
+          "sex": "male",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 10
+        },
+        {
+          "sex": "male",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 10
+        },
+        {
+          "sex": "male",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 10
+        },
+        {
+          "sex": "male",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 9
+        },
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 7
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 7
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 7
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 7
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 7
+        },
+        {
+          "sex": "female",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 10
+        },
+        {
+          "sex": "female",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 10
+        },
+        {
+          "sex": "female",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 10
+        },
+        {
+          "sex": "female",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 10
+        },
+        {
+          "sex": "female",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 10
+        },
+        {
+          "sex": "female",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 9
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 7
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 7
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 7
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 7
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 7
+        }
+      ]
+    }
+  ]
+}

@@ -57,6 +57,14 @@ extension NutrientAmounts {
     self.init(values)
   }
 
+  /// 本文と同じ階層に、分からないに戻す栄養素を null で書く
+  static func encodeNulls(_ ids: Set<NutrientID>, to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: Key.self)
+    for id in NutrientID.allCases where ids.contains(id) {
+      try container.encodeNil(forKey: Key(id))
+    }
+  }
+
   /// 本文と同じ階層に、値の分かっている栄養素だけを書く
   func encodeFlat(to encoder: Encoder) throws {
     var container = encoder.container(keyedBy: Key.self)
