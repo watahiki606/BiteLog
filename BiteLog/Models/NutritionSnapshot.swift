@@ -96,11 +96,17 @@ struct NutritionValues {
   static let zero = NutritionValues(
     calories: 0, netCarbs: 0, dietaryFiber: 0, fat: 0, protein: 0)
 
-  /// 両方が値を持つ栄養素だけを足す。片方でも不明なら、足した結果も不明にする
+  /// 値の分かっている品だけを足す。どちらも分からない栄養素は、足した結果も分からないまま。
+  /// 分からない品を 0 として足したことにはしないので、何品ぶんの合計かは `NutrientTotals` で数える
   static func + (lhs: NutritionValues, rhs: NutritionValues) -> NutritionValues {
     var sum = NutrientAmounts()
     for id in NutrientID.allCases {
-      if let l = lhs.amounts[id], let r = rhs.amounts[id] { sum[id] = l + r }
+      switch (lhs.amounts[id], rhs.amounts[id]) {
+      case let (l?, r?): sum[id] = l + r
+      case let (l?, nil): sum[id] = l
+      case let (nil, r?): sum[id] = r
+      case (nil, nil): break
+      }
     }
     return NutritionValues(sum)
   }

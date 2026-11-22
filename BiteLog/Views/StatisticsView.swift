@@ -183,6 +183,21 @@ struct StatisticsView: View {
     return items.filter { $0.logDate >= fromStr && $0.logDate <= toStr }
   }
 
+  /// 期間の合計と、あとから足した栄養素ごとに値の分かっていた品数
+  private var settledTotals: NutrientTotals {
+    settledItems.map(\.totals).reduce(.empty, +)
+  }
+
+  /// プロフィールの性別と年齢で引いた目標量。プロフィールが無ければ空
+  private var addedNutrientGoals: [NutrientID: DietaryReferenceIntakes.Goal] {
+    guard let profile = PersonalProfile.load(), let intakes = DietaryReferenceIntakes.bundled else { return [:] }
+    var goals: [NutrientID: DietaryReferenceIntakes.Goal] = [:]
+    for id in NutrientID.allCases {
+      if let goal = intakes.goal(for: id, profile: profile) { goals[id] = goal }
+    }
+    return goals
+  }
+
   private var settledAverage: NutritionValues {
     StatisticsCalculator.dailyAverage(settledItems, dayCount: visibleDays)
   }
@@ -208,6 +223,11 @@ struct StatisticsView: View {
           // 上のカードの「1日平均」と同じ言葉だと、同じものが2回出ているように見える
           sectionTitle(NSLocalizedString("Nutrients per Day", comment: "Statistics section"))
           nutrientAverageCard
+
+          sectionTitle(NSLocalizedString("Salt and Saturated Fat", comment: "Statistics section"))
+          CardView {
+            AddedNutrientGoalsView(totals: settledTotals, dayCount: visibleDays, goals: addedNutrientGoals)
+          }
 
           sectionTitle(NSLocalizedString("PFC Balance", comment: "Statistics section"))
           pfcBalanceCard

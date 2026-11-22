@@ -1,7 +1,26 @@
 import SwiftUI
 
+/// 栄養素を1行で見せるのに要るもの。画面に並べる `Nutrient` と、定義ファイルの `NutrientID` の両方が持つ
+protocol NutrientDisplaying {
+  var localizedName: String { get }
+  var color: Color { get }
+  var symbolName: String { get }
+  var unit: String { get }
+  func format(_ value: Double) -> String
+  func accessibilityLabel(for value: Double) -> String
+}
+
+extension Nutrient: NutrientDisplaying {}
+
 /// 定義ファイルの栄養素の見た目。表示名と短い名前は生成した Nutrients.strings から引く。
-extension NutrientID {
+extension NutrientID: NutrientDisplaying {
+  var unit: String { definition.unit }
+
+  /// VoiceOver 用。「食塩相当量 2.5 グラム」のように単位を読み上げさせる
+  func accessibilityLabel(for value: Double) -> String {
+    "\(localizedName) \(format(value)) \(spokenUnit)"
+  }
+
   var localizedName: String {
     NSLocalizedString("\(rawValue).name", tableName: "Nutrients", comment: "Nutrient name")
   }

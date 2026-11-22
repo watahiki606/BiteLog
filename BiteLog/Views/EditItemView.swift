@@ -22,6 +22,10 @@ struct EditItemView: View {
   private var perPortionNetCarbs: Double { foodMaster?.netCarbs ?? item.nutritionSnapshot?.netCarbs ?? 0 }
   private var perPortionDietaryFiber: Double { foodMaster?.dietaryFiber ?? item.nutritionSnapshot?.dietaryFiber ?? 0 }
   private var portionSize: Double { foodMaster?.portionSize ?? item.nutritionSnapshot?.portionSize ?? 1.0 }
+  /// 1単位あたりの値。食品が残っていれば食品の、消えていればスナップショットの値
+  private var perPortionAmounts: NutrientAmounts {
+    foodMaster?.nutrients ?? item.nutritionSnapshot?.nutrients ?? NutrientAmounts()
+  }
 
   private var servingsValue: Double { Double(numberOfServings) ?? 1.0 }
 
@@ -96,6 +100,10 @@ struct EditItemView: View {
               nutrient: .carbs,
               perPortion: perPortionNetCarbs + perPortionDietaryFiber,
               total: totalCarbs)
+            ForEach(NutrientID.allCases.filter { !$0.definition.core }, id: \.self) { id in
+              EditNutrientRow(
+                addedNutrient: id, perPortion: perPortionAmounts[id], total: totalNutrition.amounts[id])
+            }
           } header: {
             Text(NSLocalizedString("Nutrition", comment: "Form section title"))
           } footer: {
@@ -185,9 +193,27 @@ struct EditItemView: View {
 
 /// 「1食あたり → 合計」を1行で示す。栄養素の名前・色・単位は `Nutrient` から引く。
 struct EditNutrientRow: View {
-  let nutrient: Nutrient
-  let perPortion: Double
-  let total: Double
+  let nutrient: any NutrientDisplaying
+  /// 分からなければ nil。あとから足した栄養素は、値の分からない食品がある
+  let perPortion: Double?
+  let total: Double?
+
+  init(nutrient: Nutrient, perPortion: Double, total: Double) {
+    self.nutrient = nutrient
+    self.perPortion = perPortion
+    self.total = total
+  }
+
+  init(addedNutrient: NutrientID, perPortion: Double?, total: Double?) {
+    self.nutrient = addedNutrient
+    self.perPortion = perPortion
+    self.total = total
+  }
+
+  private func text(_ value: Double?) -> String {
+    value.map { "\(nutrient.format($0))\(nutrient.unit)" }
+      ?? NSLocalizedString("Unknown", comment: "Unknown nutrient value")
+  }
 
   var body: some View {
     HStack(spacing: 6) {
@@ -199,7 +225,7 @@ struct EditNutrientRow: View {
 
       Spacer(minLength: 8)
 
-      Text("\(nutrient.format(perPortion))\(nutrient.unit)")
+      Text(text(perPortion))
         .monospacedDigit()
         .foregroundStyle(.secondary)
 
@@ -208,7 +234,7 @@ struct EditNutrientRow: View {
         .foregroundStyle(.secondary)
         .accessibilityHidden(true)
 
-      Text("\(nutrient.format(total))\(nutrient.unit)")
+      Text(text(total))
         .monospacedDigit()
         .fontWeight(.medium)
     }
@@ -219,7 +245,9 @@ struct EditNutrientRow: View {
       in: RoundedRectangle(cornerRadius: 10)
     )
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel(nutrient.accessibilityLabel(for: total))
+    .accessibilityLabel(
+      total.map(nutrient.accessibilityLabel(for:))
+        ?? "\(nutrient.localizedName) \(NSLocalizedString("Unknown", comment: "Unknown nutrient value"))")
   }
 }
 

@@ -16,6 +16,10 @@ struct FoodMasterDTO: Codable, Identifiable, Hashable {
   var usageCount: Int
   var lastUsedDate: Date?
   var lastNumberOfServings: Double
+  /// 値の出典。label、composition_table、ai_estimate、manual のどれか。分からなければ nil
+  var nutrientSource: String?
+  /// 出典の参照先。成分表の食品番号か URL
+  var nutrientSourceRef: String?
 
   init(
     id: UUID, brandName: String, productName: String, calories: Double, dietaryFiber: Double,
@@ -59,7 +63,7 @@ struct FoodMasterDTO: Codable, Identifiable, Hashable {
 
   private enum CodingKeys: String, CodingKey {
     case id, brandName, productName, portionSize, portionUnit, uniqueKey, createdBy, isMine
-    case usageCount, lastUsedDate, lastNumberOfServings
+    case usageCount, lastUsedDate, lastNumberOfServings, nutrientSource, nutrientSourceRef
   }
 
   // 栄養素は他の項目と同じ階層に平らに並ぶ。サーバーの応答と同じ形
@@ -77,6 +81,8 @@ struct FoodMasterDTO: Codable, Identifiable, Hashable {
     usageCount = try container.decode(Int.self, forKey: .usageCount)
     lastUsedDate = try container.decodeIfPresent(Date.self, forKey: .lastUsedDate)
     lastNumberOfServings = try container.decode(Double.self, forKey: .lastNumberOfServings)
+    nutrientSource = try container.decodeIfPresent(String.self, forKey: .nutrientSource)
+    nutrientSourceRef = try container.decodeIfPresent(String.self, forKey: .nutrientSourceRef)
   }
 
   func encode(to encoder: Encoder) throws {
@@ -93,6 +99,8 @@ struct FoodMasterDTO: Codable, Identifiable, Hashable {
     try container.encode(usageCount, forKey: .usageCount)
     try container.encodeIfPresent(lastUsedDate, forKey: .lastUsedDate)
     try container.encode(lastNumberOfServings, forKey: .lastNumberOfServings)
+    try container.encodeIfPresent(nutrientSource, forKey: .nutrientSource)
+    try container.encodeIfPresent(nutrientSourceRef, forKey: .nutrientSourceRef)
   }
 }
 
@@ -107,6 +115,10 @@ struct FoodMasterCreateDTO: Encodable {
   /// "reject" なら、同じブランド名・商品名・単位の別の食品があるときサーバーは 409 を返す。
   /// 無ければ既存の食品が返る。公開中の古い版はこの印を送らないので、その動きを残している
   var onConflict: String? = nil
+  /// 値の出典。label、composition_table、ai_estimate、manual のどれか
+  var nutrientSource: String? = nil
+  /// 出典の参照先。成分表の食品番号か URL
+  var nutrientSourceRef: String? = nil
 
   init(
     id: String, brandName: String, productName: String, calories: Double, dietaryFiber: Double,
@@ -125,6 +137,7 @@ struct FoodMasterCreateDTO: Encodable {
 
   private enum CodingKeys: String, CodingKey {
     case id, brandName, productName, portionSize, portionUnit, uniqueKey, onConflict
+    case nutrientSource, nutrientSourceRef
   }
 
   func encode(to encoder: Encoder) throws {
@@ -137,6 +150,8 @@ struct FoodMasterCreateDTO: Encodable {
     try container.encode(portionUnit, forKey: .portionUnit)
     try container.encode(uniqueKey, forKey: .uniqueKey)
     try container.encodeIfPresent(onConflict, forKey: .onConflict)
+    try container.encodeIfPresent(nutrientSource, forKey: .nutrientSource)
+    try container.encodeIfPresent(nutrientSourceRef, forKey: .nutrientSourceRef)
   }
 
   /// 重なりを 409 で知らせてもらう作成の本文。
@@ -153,6 +168,8 @@ struct FoodMasterUpdateDTO: Encodable {
   var productName: String?
   /// 送る栄養素だけを持つ。送らなかった栄養素はサーバーで今の値のまま残る
   var nutrients: NutrientAmounts
+  /// 分からないに戻す栄養素。null を送る。最初の5項目はサーバーが null を受け付けない
+  var clearedNutrients: Set<NutrientID> = []
   var portionSize: Double?
   var portionUnit: String?
 
@@ -183,6 +200,7 @@ struct FoodMasterUpdateDTO: Encodable {
     try container.encodeIfPresent(brandName, forKey: .brandName)
     try container.encodeIfPresent(productName, forKey: .productName)
     try nutrients.encodeFlat(to: encoder)
+    try NutrientAmounts.encodeNulls(clearedNutrients, to: encoder)
     try container.encodeIfPresent(portionSize, forKey: .portionSize)
     try container.encodeIfPresent(portionUnit, forKey: .portionUnit)
   }
@@ -265,6 +283,8 @@ struct DaySummaryDTO: Decodable, Identifiable, NutritionContributing {
   var logDate: String
   var mealType: MealType
   var nutrients: NutrientAmounts
+  /// 合計に入れた品の数と、あとから足した栄養素ごとに値の分かっていた品の数
+  var totals: NutrientTotals
 
   var id: String { "\(logDate)-\(mealType.rawValue)" }
 
@@ -277,7 +297,7 @@ struct DaySummaryDTO: Decodable, Identifiable, NutritionContributing {
   var dietaryFiber: Double { nutrients.core(.dietaryFiber) }
 
   private enum CodingKeys: String, CodingKey {
-    case logDate, mealType
+    case logDate, mealType, itemCount, knownCounts
   }
 
   init(from decoder: Decoder) throws {
@@ -285,6 +305,18 @@ struct DaySummaryDTO: Decodable, Identifiable, NutritionContributing {
     logDate = try container.decode(String.self, forKey: .logDate)
     mealType = try container.decode(MealType.self, forKey: .mealType)
     nutrients = try NutrientAmounts(fromFlat: decoder)
+    totals = try NutrientTotals(
+      values: NutritionValues(nutrients),
+      itemCount: container.decodeIfPresent(Int.self, forKey: .itemCount) ?? 0,
+      knownCounts: Self.knownCounts(container.decodeIfPresent([String: Int].self, forKey: .knownCounts)))
+  }
+
+  private static func knownCounts(_ raw: [String: Int]?) -> [NutrientID: Int] {
+    var counts: [NutrientID: Int] = [:]
+    for (key, count) in raw ?? [:] {
+      if let id = NutrientID(rawValue: key) { counts[id] = count }
+    }
+    return counts
   }
 }
 
@@ -373,6 +405,9 @@ struct AIAnalyzeResponse: Codable {
   var sourceUrl: String?
   /// 写真だけで解析したとき、ロゴや文字から読み取った店名とメニュー名
   var menuGuess: String?
+  /// 栄養成分表示か公式の値から読めたときだけ返る
+  var saltEquivalent: Double?
+  var saturatedFat: Double?
 }
 
 // MARK: - BodyMeasurement DTO

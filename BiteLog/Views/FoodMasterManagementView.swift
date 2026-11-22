@@ -358,10 +358,15 @@ struct FoodMasterFormView: View {
   @State private var protein = ""
   @State private var portionSize = ""
   @State private var portionUnit = ""
+  /// 最初の5項目のあとに足した栄養素の入力。空欄は分からないとして保存する
+  @State private var addedValues: [NutrientID: String] = [:]
   @State private var isSaving = false
   @State private var failure: OperationFailure?
 
   @FocusState private var focusedField: FocusedField?
+
+  /// 「その他の栄養素」に並べる栄養素。定義ファイルの並び
+  private static let addedNutrients = NutrientID.allCases.filter { !$0.definition.core }
 
   private var stateKey: String {
     switch mode {
@@ -374,10 +379,16 @@ struct FoodMasterFormView: View {
     }
   }
 
-  enum FocusedField {
+  enum FocusedField: Hashable {
     case brandName, productName, portionSize, portionUnit
     case calories, protein, fat, netCarbs, dietaryFiber
+    case added(NutrientID)
   }
+
+  /// キーボードの前後の欄へ移る順番。画面に並ぶ順
+  private static let fieldOrder: [FocusedField] =
+    [.brandName, .productName, .portionSize, .portionUnit, .calories, .protein, .fat, .netCarbs, .dietaryFiber]
+    + addedNutrients.map { .added($0) }
 
   var title: String {
     switch mode {
@@ -487,6 +498,31 @@ struct FoodMasterFormView: View {
         .headerProminence(.increased)
         .font(.subheadline)
         .foregroundColor(.secondary)
+
+        Section {
+          ForEach(Self.addedNutrients, id: \.self) { id in
+            HStack {
+              Text(id.localizedName)
+              Spacer()
+              TextField(
+                NSLocalizedString("Unknown", comment: "Placeholder for an unknown nutrient value"),
+                text: Binding(get: { addedValues[id] ?? "" }, set: { addedValues[id] = $0 })
+              )
+              .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
+              .focused($focusedField, equals: .added(id))
+              Text(id.definition.unit)
+            }
+          }
+        } header: {
+          Text(NSLocalizedString("Other Nutrients", comment: "Form section for nutrients added later"))
+        } footer: {
+          // 0 と入れれば 0 として、空欄なら分からないとして保存する。合計では分からない品を数えて添える
+          Text(NSLocalizedString(
+            "Leave blank if the label doesn't show it. Enter 0 only when it is really 0.",
+            comment: "Footer of other nutrients"))
+        }
+        .font(.subheadline)
+        .foregroundColor(.secondary)
       }
       .navigationTitle(title)
       .toolbar {
@@ -527,11 +563,12 @@ struct FoodMasterFormView: View {
       .onChange(of: protein) { _, _ in saveState() }
       .onChange(of: portionSize) { _, _ in saveState() }
       .onChange(of: portionUnit) { _, _ in saveState() }
+      .onChange(of: addedValues) { _, _ in saveState() }
     }
   }
 
   private func focusNextField() {
-    let allFields: [FocusedField] = [.brandName, .productName, .portionSize, .portionUnit, .calories, .protein, .fat, .netCarbs, .dietaryFiber]
+    let allFields = Self.fieldOrder
     guard let current = focusedField, let idx = allFields.firstIndex(of: current) else {
       focusedField = allFields.first; return
     }
@@ -539,7 +576,7 @@ struct FoodMasterFormView: View {
   }
 
   private func focusPreviousField() {
-    let allFields: [FocusedField] = [.brandName, .productName, .portionSize, .portionUnit, .calories, .protein, .fat, .netCarbs, .dietaryFiber]
+    let allFields = Self.fieldOrder
     guard let current = focusedField, let idx = allFields.firstIndex(of: current) else {
       focusedField = allFields.last; return
     }
@@ -577,10 +614,13 @@ struct FoodMasterFormView: View {
           portionUnit: portionUnit,
           uniqueKey: uniqueKey
         )
-        saved = try await APIClient.shared.createFoodMaster(dto)
+        var withAdded = dto
+        for (id, value) in enteredAddedValues { withAdded.nutrients[id] = value }
+        withAdded.nutrientSource = "manual"
+        saved = try await APIClient.shared.createFoodMaster(withAdded)
         clearSavedState()
       case .edit(let foodMaster):
-        let dto = FoodMasterUpdateDTO(
+        var dto = FoodMasterUpdateDTO(
           brandName: resolvedBrandName,
           productName: productName,
           calories: caloriesValue,
@@ -591,6 +631,15 @@ struct FoodMasterFormView: View {
           portionSize: portionSizeValue,
           portionUnit: portionUnit
         )
+        let entered = enteredAddedValues
+        for id in Self.addedNutrients {
+          if let value = entered[id] {
+            dto.nutrients[id] = value
+          } else {
+            // 空欄にした値は分からないに戻す。送らないとサーバーは前の値を残す
+            dto.clearedNutrients.insert(id)
+          }
+        }
         saved = try await APIClient.shared.updateFoodMaster(id: foodMaster.id, dto)
       }
       onSaved?(saved)
@@ -601,8 +650,16 @@ struct FoodMasterFormView: View {
     }
   }
 
+  /// 「その他の栄養素」で数として読めた値。空欄や読めない値は含めない
+  private var enteredAddedValues: [NutrientID: Double] {
+    addedValues.compactMapValues { Double($0.trimmingCharacters(in: .whitespaces)) }
+  }
+
   private func saveState() {
     guard case .quickAdd = mode else { return }
+    for id in Self.addedNutrients {
+      UserDefaults.standard.set(addedValues[id] ?? "", forKey: "\(stateKey)_\(id.rawValue)")
+    }
     UserDefaults.standard.set(brandName, forKey: "\(stateKey)_brandName")
     UserDefaults.standard.set(productName, forKey: "\(stateKey)_productName")
     UserDefaults.standard.set(calories, forKey: "\(stateKey)_calories")
@@ -626,6 +683,9 @@ struct FoodMasterFormView: View {
       protein = NutritionFormatter.formatNutrition(foodMaster.protein)
       portionSize = NutritionFormatter.formatNutrition(foodMaster.portionSize)
       portionUnit = foodMaster.portionUnit
+      for id in Self.addedNutrients {
+        addedValues[id] = foodMaster.nutrients[id].map(NutritionFormatter.formatNutrition)
+      }
     case .quickAdd(let initialProductName):
       brandName = UserDefaults.standard.string(forKey: "\(stateKey)_brandName") ?? ""
       productName = UserDefaults.standard.string(forKey: "\(stateKey)_productName") ?? initialProductName
@@ -636,6 +696,9 @@ struct FoodMasterFormView: View {
       protein = UserDefaults.standard.string(forKey: "\(stateKey)_protein") ?? ""
       portionSize = UserDefaults.standard.string(forKey: "\(stateKey)_portionSize") ?? ""
       portionUnit = UserDefaults.standard.string(forKey: "\(stateKey)_portionUnit") ?? ""
+      for id in Self.addedNutrients {
+        addedValues[id] = UserDefaults.standard.string(forKey: "\(stateKey)_\(id.rawValue)")
+      }
     case .add:
       break
     }
@@ -643,7 +706,8 @@ struct FoodMasterFormView: View {
 
   private func clearSavedState() {
     guard case .quickAdd = mode else { return }
-    ["_brandName", "_productName", "_calories", "_sugar", "_dietaryFiber", "_fat", "_protein", "_portionSize", "_portionUnit"].forEach {
+    (["_brandName", "_productName", "_calories", "_sugar", "_dietaryFiber", "_fat", "_protein", "_portionSize", "_portionUnit"]
+      + Self.addedNutrients.map { "_\($0.rawValue)" }).forEach {
       UserDefaults.standard.removeObject(forKey: "\(stateKey)\($0)")
     }
   }

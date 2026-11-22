@@ -198,7 +198,8 @@ struct DayContentView: View {
           fat: nutritionGoalsManager.targetFat,
           netCarbs: nutritionGoalsManager.targetNetCarbs,
           fiber: nutritionGoalsManager.targetFiber),
-        showsAllNutrients: $showsAllNutrients
+        showsAllNutrients: $showsAllNutrients,
+        addedTotals: NutrientTotals(items: dayLogItems.map(\.nutritionValues))
       )
       // カードの地と角丸は DailyTotalsView が持つ。リストの行の地を敷くと二重になる
       .listRowInsets(EdgeInsets())

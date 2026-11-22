@@ -30,6 +30,23 @@ class CSVExporter {
     return result
   }
 
+  /// 既存の列の並びは変えず、あとから足した栄養素の列を末尾に足す。
+  /// 古いアプリや表計算で作った CSV と、列の位置で読み合わせているため
+  static let header =
+    "date,meal_type,brand_name,product_name,calories,carbs,dietary_fiber,fat,protein,portion_amount,portion_unit"
+    + NutrientID.allCases.filter { !$0.definition.core }.map { ",\($0.definition.column)" }.joined()
+
+  /// 1件の記録の行。分からない栄養素は空のセルにする。0 と区別するため
+  static func row(for item: LogItemDTO, dateFormatter: DateFormatter) -> String {
+    let dateString = dateFormatter.string(from: item.timestamp)
+    let carbs = item.netCarbs + item.dietaryFiber
+    let added = NutrientID.allCases.filter { !$0.definition.core }
+      .map { id in item.nutritionValues.amounts[id].map { ",\($0)" } ?? "," }
+      .joined()
+    return "\(dateString),\(item.mealType.rawValue),\(escapeCSV(item.brandName)),\(escapeCSV(item.productName)),\(item.calories),\(carbs),\(item.dietaryFiber),\(item.fat),\(item.protein),\(item.numberOfServings),\(escapeCSV(item.portionUnit))"
+      + added
+  }
+
   static func exportLogItems(
     to url: URL, progressHandler: ProgressHandler? = nil
   ) async throws -> Int {
@@ -44,7 +61,6 @@ class CSVExporter {
       return 0
     }
 
-    let header = "date,meal_type,brand_name,product_name,calories,carbs,dietary_fiber,fat,protein,portion_amount,portion_unit"
     var csvString = header + "\n"
 
     let dateFormatter = DateFormatter()
@@ -58,10 +74,7 @@ class CSVExporter {
         }
       }
 
-      let dateString = dateFormatter.string(from: item.timestamp)
-      let carbs = item.netCarbs + item.dietaryFiber
-      let row = "\(dateString),\(item.mealType.rawValue),\(escapeCSV(item.brandName)),\(escapeCSV(item.productName)),\(item.calories),\(carbs),\(item.dietaryFiber),\(item.fat),\(item.protein),\(item.numberOfServings),\(escapeCSV(item.portionUnit))"
-      csvString += row + "\n"
+      csvString += row(for: item, dateFormatter: dateFormatter) + "\n"
     }
 
     do {
