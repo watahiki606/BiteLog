@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { Bindings, Variables } from '../types';
 import { authMiddleware } from '../middleware/auth';
+import { insertFoodMaster, type FoodMasterInput } from '../lib/foodMasterSql';
 
 const csvImport = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 csvImport.use('*', authMiddleware);
@@ -64,20 +65,13 @@ csvImport.post('/import', async (c) => {
   const portionAmtI  = colIdx(headers, 'portion_amount', 'portionamount') >= 0 ? colIdx(headers, 'portion_amount', 'portionamount') : 8;
   const portionUnitI = colIdx(headers, 'portion_unit', 'portionunit') >= 0  ? colIdx(headers, 'portion_unit', 'portionunit')  : 9;
 
-  type FoodMasterData = {
-    id: string; brandName: string; productName: string;
-    calories: number; dietaryFiber: number; netCarbs: number;
-    fat: number; protein: number; portionSize: number;
-    portionUnit: string; uniqueKey: string;
-  };
-
   type LogRow = {
     id: string; timestamp: string; logDate: string;
     mealType: string; numberOfServings: number;
     foodMasterUniqueKey: string; nutritionSnapshot: object;
   };
 
-  const foodMasterMap = new Map<string, FoodMasterData>();
+  const foodMasterMap = new Map<string, FoodMasterInput>();
   const logRows: LogRow[] = [];
   let skipped = 0;
 
@@ -132,16 +126,7 @@ csvImport.post('/import', async (c) => {
   let foodMastersCreated = 0;
   for (let i = 0; i < foodMasters.length; i += BATCH_SIZE) {
     const chunk = foodMasters.slice(i, i + BATCH_SIZE);
-    const results = await c.env.DB.batch(chunk.map(fm =>
-      c.env.DB.prepare(
-        `INSERT INTO food_masters
-          (id, brand_name, product_name, calories, dietary_fiber, net_carbs, fat, protein,
-           portion_size, portion_unit, unique_key, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(unique_key) DO NOTHING`
-      ).bind(fm.id, fm.brandName, fm.productName, fm.calories, fm.dietaryFiber,
-             fm.netCarbs, fm.fat, fm.protein, fm.portionSize, fm.portionUnit, fm.uniqueKey, userId)
-    ));
+    const results = await c.env.DB.batch(chunk.map(fm => insertFoodMaster(c.env.DB, fm, userId)));
     foodMastersCreated += results.filter(r => r.meta.changes > 0).length;
   }
 

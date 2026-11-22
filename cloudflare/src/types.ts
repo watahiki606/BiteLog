@@ -1,3 +1,5 @@
+import { nutrientsFromRow } from './lib/nutrients';
+
 export type Bindings = {
   DB: D1Database;
   WORKER_JWT_SECRET: string;
@@ -19,11 +21,6 @@ export type FoodMasterRow = {
   id: string;
   brand_name: string;
   product_name: string;
-  calories: number;
-  dietary_fiber: number;
-  net_carbs: number;
-  fat: number;
-  protein: number;
   portion_size: number;
   portion_unit: string;
   unique_key: string;
@@ -31,6 +28,8 @@ export type FoodMasterRow = {
   usage_count: number;
   last_used_date: string | null;
   last_number_of_servings: number;
+  /** 栄養素の列。並びと名前は定義ファイルが持つ */
+  [nutrientColumn: string]: unknown;
 };
 
 export type LogItemRow = {
@@ -103,11 +102,7 @@ export function foodMasterToResponse(row: FoodMasterRow) {
     id: row.id,
     brandName: row.brand_name,
     productName: row.product_name,
-    calories: row.calories,
-    dietaryFiber: row.dietary_fiber,
-    netCarbs: row.net_carbs,
-    fat: row.fat,
-    protein: row.protein,
+    ...nutrientsFromRow(row),
     portionSize: row.portion_size,
     portionUnit: row.portion_unit,
     uniqueKey: row.unique_key,
