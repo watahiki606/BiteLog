@@ -7,6 +7,8 @@ compatibility_flags = ["nodejs_compat"]
 binding = "DB"
 database_name = "bitelog"
 database_id = "cf39b710-956c-4f27-ae1a-6dbf7a6a0fef"
+# 適用は wrangler d1 migrations apply。手で流す手順書は runbooks/ に置く
+migrations_dir = "migrations"
 
 # WORKER_JWT_SECRET は wrangler secret put で設定する（平文varにすると同名secretを作れない）
 # ローカル開発・テスト用の値は .dev.vars / vitest.config.mts で渡す

@@ -44,6 +44,13 @@ cd apps/web && bun test              # pure functions under src/lib (tests live 
 cd apps/docs && bun run build        # SSG: tsc + vite-react-ssg build → apps/docs/dist/
 ```
 
+## D1 schema changes
+
+- Schema changes go in `cloudflare/migrations/` and are applied with `npx wrangler d1 migrations apply bitelog`. D1 records applied files in `d1_migrations`. Read `cloudflare/migrations/README.md` for naming and the production steps
+- Update `cloudflare/schema.sql` in the same PR. Tests and new environments start from it
+- Hand-run SQL that must be checked step by step lives in `cloudflare/runbooks/`. Never put it in `migrations/`: `apply` runs every unapplied `.sql` there
+- Before applying to production, note the Time Travel bookmark (`npx wrangler d1 time-travel info bitelog`). Apply the migration before deploying a Worker that reads new columns
+
 ## Deploy (manual — no git integration)
 
 Deploy the Worker first when the web app depends on new API endpoints.
