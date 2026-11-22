@@ -221,7 +221,7 @@ final class BodyCompositionModel: ObservableObject {
     do {
       try await api.createBodyMeasurement(dto)
       savedNew = true
-    } catch APIError.serverError(409) {
+    } catch APIError.conflict {
       // 体重計は引き取り済みのぶんも送ってくる。既にある測定は数えない
     } catch {
       if startedByHand { manualFailure = error.localizedDescription }

@@ -51,6 +51,17 @@ struct FoodMasterCreateDTO: Codable {
   var portionSize: Double
   var portionUnit: String
   var uniqueKey: String
+  /// "reject" なら、同じブランド名・商品名・単位の別の食品があるときサーバーは 409 を返す。
+  /// 無ければ既存の食品が返る。公開中の古い版はこの印を送らないので、その動きを残している
+  var onConflict: String? = nil
+
+  /// 重なりを 409 で知らせてもらう作成の本文。
+  /// 既存の食品が返ると、送った値で作れたと思い込んでその値で記録してしまうため。
+  func rejectingDuplicate() -> FoodMasterCreateDTO {
+    var dto = self
+    dto.onConflict = "reject"
+    return dto
+  }
 }
 
 struct FoodMasterUpdateDTO: Codable {
