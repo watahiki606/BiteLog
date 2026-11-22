@@ -1,5 +1,5 @@
-When you finish measuring on your body composition scale, the result now opens right away.
+When you register a food from a photo or by hand, BiteLog now tells you if a food with the same name and unit already exists.
 
-- The result screen opens as soon as the measurement is done. Step on again while it is open to switch to the next result
-- The result screen is easier to read. Your weight is shown large, along with the change from a measurement taken around the same time on an earlier day
-- Each measurement now has an icon so you can spot it at a glance
+- Previously, the meal could be logged with the registered food's values instead of the values you entered
+- After a photo analysis, you can log the registered values or change the name and save again
+- When entering by hand, you are asked to change the brand, name, or unit and save again
