@@ -3,7 +3,7 @@ import type { Bindings, Variables, FoodMasterRow } from '../types';
 import { foodMasterToResponse } from '../types';
 import { authMiddleware } from '../middleware/auth';
 import { nutrientsFromRow } from '../lib/nutrients';
-import { FM_NUTRIENT_SELECT, insertFoodMaster, nutrientUpdate, type FoodMasterInput } from '../lib/foodMasterSql';
+import { FM_NUTRIENT_SELECT, hasInvalidSource, insertFoodMaster, nutrientUpdate, type FoodMasterInput } from '../lib/foodMasterSql';
 
 const FM_SELECT = `
   fm.id, fm.brand_name, fm.product_name, ${FM_NUTRIENT_SELECT},
@@ -75,6 +75,7 @@ const foodMasters = new Hono<{ Bindings: Bindings; Variables: Variables }>()
   .post('/', async (c) => {
     const userId = c.get('userId');
     const body = await c.req.json<FoodMasterInput & { onConflict?: 'reject' }>();
+    if (hasInvalidSource(body)) return c.json({ error: 'Invalid nutrientSource' }, 400);
 
     await insertFoodMaster(c.env.DB, body, userId).run();
 
@@ -97,6 +98,7 @@ const foodMasters = new Hono<{ Bindings: Bindings; Variables: Variables }>()
   .post('/batch', async (c) => {
     const userId = c.get('userId');
     const body = await c.req.json<{ items: FoodMasterInput[] }>();
+    if (body.items.some(hasInvalidSource)) return c.json({ error: 'Invalid nutrientSource' }, 400);
 
     const statements = body.items.map(item => insertFoodMaster(c.env.DB, item, userId));
 
@@ -118,13 +120,14 @@ const foodMasters = new Hono<{ Bindings: Bindings; Variables: Variables }>()
     }
 
     const body = await c.req.json<Partial<FoodMasterInput>>();
+    if (hasInvalidSource(body)) return c.json({ error: 'Invalid nutrientSource' }, 400);
     const nutrients = nutrientUpdate(body);
 
     await c.env.DB.prepare(
       `UPDATE food_masters SET
         brand_name = COALESCE(?, brand_name),
         product_name = COALESCE(?, product_name),
-        ${nutrients.sql},
+        ${nutrients.sql.join(',\n        ')},
         portion_size = COALESCE(?, portion_size),
         portion_unit = COALESCE(?, portion_unit)
        WHERE id = ?`

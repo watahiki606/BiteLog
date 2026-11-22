@@ -1,12 +1,11 @@
 import { Hono } from 'hono';
 import type { Bindings, Variables } from '../types';
 import { authMiddleware } from '../middleware/auth';
-import { NUTRITION_BASE_CTE, NUTRITION_SUM_COLUMNS } from '../lib/nutritionSql';
-import { NUTRIENTS } from '../lib/nutrients';
+import { NUTRITION_BASE_CTE, NUTRITION_SUM_COLUMNS, emptyTotals, totalsFromRow, type NutritionTotals } from '../lib/nutritionSql';
 
 // 体組成の集計対象カラム（DB snake_case → レスポンス camelCase）。
 // 体重等は合計に意味が無いため、同日複数計測は日次 AVG で集約する。
-const BODY_AVG_FIELDS: { col: string; key: string }[] = [
+const BODY_AVG_FIELDS = [
   { col: 'weight_kg',             key: 'weightKg' },
   { col: 'body_fat_percent',      key: 'bodyFatPercent' },
   { col: 'muscle_mass_kg',        key: 'muscleMassKg' },
@@ -16,7 +15,10 @@ const BODY_AVG_FIELDS: { col: string; key: string }[] = [
   { col: 'metabolic_age',         key: 'metabolicAge' },
   { col: 'bone_mass_kg',          key: 'boneMassKg' },
   { col: 'body_water_percent',    key: 'bodyWaterPercent' },
-];
+] as const;
+
+type BodyKey = (typeof BODY_AVG_FIELDS)[number]['key'];
+type BodyAverages = Record<BodyKey, number | null>;
 
 type NutriRow = { log_date: string } & Record<string, number | null>;
 type BodyRow = { date: string } & Record<string, number | null>;
@@ -59,27 +61,23 @@ const statistics = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
     const [{ results: nutriRows }, { results: bodyRows }] = await Promise.all([nutritionQuery, bodyQuery]);
 
-    // 日付キーで両者をマージ（サーバー側）。栄養欠損は 0、体組成欠損は null。
-    const byDate = new Map<string, Record<string, number | null>>();
-    const ensure = (date: string) => {
-      let row = byDate.get(date);
-      if (!row) {
-        row = {};
-        for (const n of NUTRIENTS) row[n.id] = 0;
-        for (const f of BODY_AVG_FIELDS) row[f.key] = null;
-        byDate.set(date, row);
-      }
-      return row;
-    };
-
-    for (const r of nutriRows) {
-      const row = ensure(r.log_date);
-      for (const n of NUTRIENTS) row[n.id] = r[n.id] ?? 0;
-    }
+    // 日付キーで両者をマージ（サーバー側）。栄養は記録の無い日を 0 品の合計にし、体組成欠損は null。
+    const nutritionByDate = new Map<string, NutritionTotals>();
+    const bodyByDate = new Map<string, BodyAverages>();
+    for (const r of nutriRows) nutritionByDate.set(r.log_date, totalsFromRow(r));
     for (const r of bodyRows) {
-      const row = ensure(r.date);
-      for (const f of BODY_AVG_FIELDS) row[f.key] = r[f.key] ?? null;
+      const body = {} as BodyAverages;
+      for (const f of BODY_AVG_FIELDS) body[f.key] = r[f.key] ?? null;
+      bodyByDate.set(r.date, body);
     }
+    const emptyBody = Object.fromEntries(BODY_AVG_FIELDS.map((f) => [f.key, null])) as BodyAverages;
+    const dates = new Set([...nutritionByDate.keys(), ...bodyByDate.keys()]);
+    const byDate = new Map(
+      [...dates].map((date) => [
+        date,
+        { ...(nutritionByDate.get(date) ?? emptyTotals()), ...(bodyByDate.get(date) ?? emptyBody) },
+      ]),
+    );
 
     const items = [...byDate.entries()]
       .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))

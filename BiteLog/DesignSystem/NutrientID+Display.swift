@@ -20,6 +20,7 @@ extension NutrientID {
     case .fat: return Color("NutrientFat")
     case .netCarbs: return Color("NutrientNetCarbs")
     case .dietaryFiber: return Color("NutrientFiber")
+    default: return definition.group.color
     }
   }
 
@@ -31,6 +32,7 @@ extension NutrientID {
     case .fat: return "drop.fill"
     case .netCarbs: return "cube.fill"
     case .dietaryFiber: return "leaf.fill"
+    default: return definition.group.symbolName
     }
   }
 
@@ -45,6 +47,31 @@ extension NutrientID {
     case "kcal": return NSLocalizedString("Unit.Kilocalories", comment: "Spoken unit")
     case "g": return NSLocalizedString("Unit.Grams", comment: "Spoken unit")
     default: return definition.unit
+    }
+  }
+}
+
+extension NutrientGroup {
+  /// 最初の5項目のあとに足した栄養素の色。脂質の仲間は脂質と同じ系統にし、
+  /// それ以外は控えめな色にする。Asset Catalog の色はコントラストを確かめてあるので、それを使い回す
+  var color: Color {
+    switch self {
+    case .energy: return Color("NutrientCalories")
+    case .macro: return Color("NutrientProtein")
+    case .lipid: return Color("NutrientFat")
+    case .carbohydrate: return Color("NutrientNetCarbs")
+    case .vitamin, .mineral: return .secondary
+    }
+  }
+
+  var symbolName: String {
+    switch self {
+    case .energy: return "flame.fill"
+    case .macro: return "circle.fill"
+    case .lipid: return "drop.halffull"
+    case .carbohydrate: return "cube.fill"
+    case .vitamin: return "pills.fill"
+    case .mineral: return "circle.hexagongrid.fill"
     }
   }
 }

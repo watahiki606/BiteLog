@@ -7,6 +7,8 @@ enum NutrientID: String, CaseIterable, Codable, Sendable {
   case fat
   case netCarbs
   case dietaryFiber
+  case saltEquivalent
+  case saturatedFat
 }
 
 extension NutrientID {
@@ -32,6 +34,14 @@ extension NutrientID {
       return NutrientDefinition(
         id: .dietaryFiber, column: "dietary_fiber", unit: "g", fractionDigits: 1,
         group: .carbohydrate, core: true, label: .recommended)
+    case .saltEquivalent:
+      return NutrientDefinition(
+        id: .saltEquivalent, column: "salt_equivalent", unit: "g", fractionDigits: 1,
+        group: .mineral, core: false, label: .mandatory)
+    case .saturatedFat:
+      return NutrientDefinition(
+        id: .saturatedFat, column: "saturated_fat", unit: "g", fractionDigits: 1,
+        group: .lipid, core: false, label: .recommended)
     }
   }
 }

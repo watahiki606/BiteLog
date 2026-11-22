@@ -10,3 +10,7 @@
 "netCarbs.shortName" = "糖質";
 "dietaryFiber.name" = "食物繊維";
 "dietaryFiber.shortName" = "繊維";
+"saltEquivalent.name" = "食塩相当量";
+"saltEquivalent.shortName" = "食塩";
+"saturatedFat.name" = "飽和脂肪酸";
+"saturatedFat.shortName" = "飽和脂肪";
