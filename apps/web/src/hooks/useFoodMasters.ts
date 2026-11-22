@@ -1,8 +1,8 @@
 import useSWR from 'swr';
 import { createClient } from '@/lib/api';
-import type { CoreNutrients } from '@/lib/nutrients';
+import type { AddedNutrients, CoreNutrients } from '@/lib/nutrients';
 
-export type FoodMaster = CoreNutrients & {
+export type FoodMaster = CoreNutrients & AddedNutrients & {
   id: string;
   brandName: string;
   productName: string;

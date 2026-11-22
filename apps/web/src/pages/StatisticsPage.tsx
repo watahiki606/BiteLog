@@ -25,7 +25,7 @@ import {
 type BodyLine = BodyMetricKey | 'off';
 
 type Period = 'week' | 'month' | 'year';
-type Metric = 'calories' | 'protein' | 'fat' | 'carbs';
+type Metric = 'calories' | 'protein' | 'fat' | 'carbs' | 'saltEquivalent';
 type Aggregation = 'average' | 'total';
 
 interface Props {
@@ -37,6 +37,8 @@ const METRIC_CONFIG: Record<Metric, { label: string; unit: string; color: string
   protein:  { label: 'PROTEIN',  unit: 'g',    color: '#00ff41' },
   fat:      { label: 'FAT',      unit: 'g',    color: '#ff00ff' },
   carbs:    { label: 'CARBS',    unit: 'g',    color: '#00e5ff' },
+  // 値の分からない日は線を切る。平均は値の分かっている日だけで出す
+  saltEquivalent: { label: 'SALT', unit: 'g', color: '#c0c0ff' },
 };
 
 const MEAL_COLORS: Record<string, string> = {
@@ -357,11 +359,14 @@ export default function StatisticsPage({ onToast }: Props) {
                 <YAxis yAxisId="body" orientation="right" hide domain={['auto', 'auto']} />
                 <Tooltip
                   {...chartTooltipStyle}
-                  formatter={(v, name) =>
-                    name === metricConf.label
-                      ? [`${Math.round(Number(v) * 10) / 10} ${metricConf.unit}`, metricConf.label]
-                      : [`${Math.round(Number(v) * 10) / 10} ${bodyConf.unit}`, bodyConf.label]
-                  }
+                  formatter={(v, name) => {
+                    const isNutrient = name === metricConf.label;
+                    const label = isNutrient ? metricConf.label : bodyConf.label;
+                    // 値の分からない日を 0 と出さない
+                    if (v == null) return ['—', label];
+                    const unit = isNutrient ? metricConf.unit : bodyConf.unit;
+                    return [`${Math.round(Number(v) * 10) / 10} ${unit}`, label];
+                  }}
                   labelFormatter={(label) => xFormatter(String(label))}
                 />
                 {showGoalLine && (
@@ -381,7 +386,8 @@ export default function StatisticsPage({ onToast }: Props) {
                     name={metricConf.label}
                     stroke={metricConf.color}
                     strokeWidth={1.5}
-                    dot={corrData.length <= 14 ? { r: 3, fill: metricConf.color, stroke: 'none' } : false}
+                    // 値の分からない日で線が切れると、前後の無い1日は線にならず見えない。欠けがあれば点も描く
+                    dot={corrData.length <= 14 || corrData.some((p) => p.nutrient == null) ? { r: 3, fill: metricConf.color, stroke: 'none' } : false}
                     activeDot={{ r: 4, fill: metricConf.color, stroke: 'none' }}
                     style={{ filter: `drop-shadow(0 0 4px ${metricConf.color}80)` }}
                   />

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { createClient } from '@/lib/api';
 import type { ToastMessage } from '@/components/Toast';
 import { useLogItems, type LogItem } from '@/hooks/useLogItems';
+import { sumKnown } from '@/lib/nutrients';
 
 interface Props {
   onToast: (msg: Omit<ToastMessage, 'id'>) => void;
@@ -22,13 +23,15 @@ function today() {
 
 function getNutrition(item: LogItem) {
   const src = item.isMasterDeleted ? item.nutritionSnapshot : (item.foodMaster ?? item.nutritionSnapshot);
-  if (!src) return { calories: 0, protein: 0, fat: 0, netCarbs: 0, name: '—', brand: '' };
+  if (!src) return { calories: 0, protein: 0, fat: 0, netCarbs: 0, saltEquivalent: undefined, name: '—', brand: '' };
   const ratio = src.portionSize > 0 ? item.numberOfServings / src.portionSize : 0;
   return {
     calories: Math.round(src.calories * ratio),
     protein: Math.round(src.protein * ratio * 10) / 10,
     fat: Math.round(src.fat * ratio * 10) / 10,
     netCarbs: Math.round(src.netCarbs * ratio * 10) / 10,
+    // 値の分からない食品は undefined のまま。0 として足さない
+    saltEquivalent: src.saltEquivalent == null ? undefined : src.saltEquivalent * ratio,
     name: src.productName,
     brand: src.brandName,
   };
@@ -62,11 +65,21 @@ export default function MealLogPage({ onToast }: Props) {
     return { calories: acc.calories + n.calories, protein: acc.protein + n.protein, fat: acc.fat + n.fat, netCarbs: acc.netCarbs + n.netCarbs };
   }, { calories: 0, protein: 0, fat: 0, netCarbs: 0 });
 
+  const salt = sumKnown(items.map((item) => getNutrition(item).saltEquivalent));
+
   const stats = [
     { label: 'CALORIES', value: totals.calories, unit: 'kcal', color: '#ffff00' },
     { label: 'PROTEIN',  value: totals.protein,  unit: 'g',    color: '#00ff41' },
     { label: 'FAT',      value: totals.fat,       unit: 'g',    color: '#ff00ff' },
     { label: 'NET CARBS',value: totals.netCarbs,  unit: 'g',    color: '#00e5ff' },
+    {
+      label: 'SALT',
+      value: salt.total == null ? '—' : Math.round(salt.total * 10) / 10,
+      unit: salt.total == null ? '' : 'g',
+      color: '#c0c0ff',
+      // 値の分からない品があれば、何品ぶんの合計かを添える
+      note: salt.known > 0 && salt.known < items.length ? `${salt.known}/${items.length} items` : undefined,
+    },
   ];
 
   return (
@@ -82,7 +95,7 @@ export default function MealLogPage({ onToast }: Props) {
         />
       </div>
 
-      <div className="grid grid-cols-4 gap-3 px-6 py-4 border-b border-border-dim">
+      <div className="grid grid-cols-5 gap-3 px-6 py-4 border-b border-border-dim">
         {stats.map((s, i) => (
           <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
             className="bg-bg-card border border-border-dim p-3 relative overflow-hidden"
@@ -91,6 +104,7 @@ export default function MealLogPage({ onToast }: Props) {
             <div className="text-lg font-bold" style={{ color: s.color }}>
               {s.value}<span className="text-xs font-normal ml-1 text-muted-foreground">{s.unit}</span>
             </div>
+            {'note' in s && s.note && <div className="text-[10px] text-muted-foreground mt-0.5">{s.note}</div>}
             <div className="absolute bottom-0 left-0 right-0 h-0.5 opacity-40" style={{ background: s.color }} />
           </motion.div>
         ))}
