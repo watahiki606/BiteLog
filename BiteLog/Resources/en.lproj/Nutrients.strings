@@ -10,3 +10,7 @@
 "netCarbs.shortName" = "Sugar";
 "dietaryFiber.name" = "Dietary Fiber";
 "dietaryFiber.shortName" = "Fiber";
+"saltEquivalent.name" = "Salt equivalent";
+"saltEquivalent.shortName" = "Salt";
+"saturatedFat.name" = "Saturated fat";
+"saturatedFat.shortName" = "Sat. fat";

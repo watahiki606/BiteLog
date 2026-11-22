@@ -2,6 +2,7 @@
 import { SELF, env } from 'cloudflare:test';
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { issueSessionJwt } from '../middleware/auth';
+import { applySchema } from '../test/schema';
 
 // 栄養素の値が、食品の作成から記録、削除、集計まで取り違えずに通るか。
 // 5つの栄養素にすべて別の値を入れ、列名とキーの対応がずれたら落ちるようにしている。
@@ -10,70 +11,7 @@ const TEST_SECRET = 'dev-and-test-secret';
 
 const CURRY = { calories: 650, protein: 15, fat: 20, netCarbs: 90, dietaryFiber: 3 };
 
-beforeAll(async () => {
-  await env.DB.batch([
-    env.DB.prepare(
-      `CREATE TABLE IF NOT EXISTS food_masters (
-        id TEXT PRIMARY KEY COLLATE NOCASE,
-        brand_name TEXT NOT NULL DEFAULT '',
-        product_name TEXT NOT NULL,
-        calories REAL NOT NULL DEFAULT 0,
-        dietary_fiber REAL NOT NULL DEFAULT 0,
-        net_carbs REAL NOT NULL DEFAULT 0,
-        fat REAL NOT NULL DEFAULT 0,
-        protein REAL NOT NULL DEFAULT 0,
-        portion_size REAL NOT NULL DEFAULT 1.0,
-        portion_unit TEXT NOT NULL DEFAULT 'g',
-        unique_key TEXT NOT NULL UNIQUE,
-        created_by TEXT NOT NULL
-      )`),
-    env.DB.prepare(
-      `CREATE TABLE IF NOT EXISTS user_food_stats (
-        user_id TEXT NOT NULL,
-        food_master_id TEXT NOT NULL COLLATE NOCASE,
-        usage_count INTEGER NOT NULL DEFAULT 0,
-        last_used_date TEXT,
-        last_number_of_servings REAL NOT NULL DEFAULT 1.0,
-        PRIMARY KEY (user_id, food_master_id)
-      )`),
-    env.DB.prepare(
-      `CREATE TABLE IF NOT EXISTS log_items (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        timestamp TEXT NOT NULL,
-        log_date TEXT NOT NULL,
-        meal_type TEXT NOT NULL,
-        number_of_servings REAL NOT NULL DEFAULT 1.0,
-        food_master_id TEXT COLLATE NOCASE REFERENCES food_masters(id) ON DELETE SET NULL,
-        nutrition_snapshot_json TEXT,
-        is_master_deleted INTEGER NOT NULL DEFAULT 0
-      )`),
-    // 日次の統計は体組成も読むので、空の表だけ置く
-    env.DB.prepare(
-      `CREATE TABLE IF NOT EXISTS body_measurements (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        source_date TEXT,
-        measured_at TEXT NOT NULL,
-        measurement_date_raw TEXT,
-        measurement_time_raw TEXT,
-        measurement_index INTEGER,
-        item_count INTEGER,
-        input_method TEXT,
-        weight_kg REAL,
-        body_fat_percent REAL,
-        muscle_mass_kg REAL,
-        muscle_score REAL,
-        visceral_fat_level REAL,
-        basal_metabolism_kcal REAL,
-        metabolic_age INTEGER,
-        bone_mass_kg REAL,
-        body_water_percent REAL,
-        page_url TEXT,
-        UNIQUE(user_id, measured_at)
-      )`),
-  ]);
-});
+beforeAll(() => applySchema(env.DB));
 
 beforeEach(async () => {
   await env.DB.batch([
@@ -181,6 +119,7 @@ describe('記録の栄養素', () => {
     expect(summary.items).toEqual([{
       logDate: '2026-11-01', mealType: 'Lunch',
       calories: 1300, protein: 30, fat: 40, netCarbs: 180, dietaryFiber: 6,
+      itemCount: 1, knownCounts: { saltEquivalent: 0, saturatedFat: 0 },
     }]);
 
     const daily = await (await call('/api/statistics/daily?from=2026-11-01&to=2026-11-01')).json<{
@@ -199,7 +138,10 @@ describe('記録の栄養素', () => {
     const summary = await (await call('/api/log-items/summary?from=2026-11-01&to=2026-11-01')).json<{
       items: unknown[];
     }>();
-    expect(summary.items).toEqual([{ logDate: '2026-11-01', mealType: 'Lunch', ...CURRY }]);
+    expect(summary.items).toEqual([{
+      logDate: '2026-11-01', mealType: 'Lunch', ...CURRY,
+      itemCount: 1, knownCounts: { saltEquivalent: 0, saturatedFat: 0 },
+    }]);
   });
 });
 

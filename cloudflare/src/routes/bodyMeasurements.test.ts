@@ -2,35 +2,11 @@
 import { SELF, env } from 'cloudflare:test';
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { issueSessionJwt } from '../middleware/auth';
+import { applySchema } from '../test/schema';
 
 const TEST_SECRET = 'dev-and-test-secret';
 
-beforeAll(async () => {
-  await env.DB.prepare(
-    `CREATE TABLE IF NOT EXISTS body_measurements (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      source_date TEXT,
-      measured_at TEXT NOT NULL,
-      measurement_date_raw TEXT,
-      measurement_time_raw TEXT,
-      measurement_index INTEGER,
-      item_count INTEGER,
-      input_method TEXT,
-      weight_kg REAL,
-      body_fat_percent REAL,
-      muscle_mass_kg REAL,
-      muscle_score REAL,
-      visceral_fat_level REAL,
-      basal_metabolism_kcal REAL,
-      metabolic_age INTEGER,
-      bone_mass_kg REAL,
-      body_water_percent REAL,
-      page_url TEXT,
-      UNIQUE(user_id, measured_at)
-    )`
-  ).run();
-});
+beforeAll(() => applySchema(env.DB));
 
 beforeEach(async () => {
   await env.DB.prepare('DELETE FROM body_measurements').run();

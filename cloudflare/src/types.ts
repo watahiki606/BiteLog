@@ -28,6 +28,8 @@ export type FoodMasterRow = {
   usage_count: number;
   last_used_date: string | null;
   last_number_of_servings: number;
+  nutrient_source?: string | null;
+  nutrient_source_ref?: string | null;
   /** 栄養素の列。並びと名前は定義ファイルが持つ */
   [nutrientColumn: string]: unknown;
 };
@@ -109,6 +111,8 @@ export function foodMasterToResponse(row: FoodMasterRow) {
     usageCount: row.usage_count,
     lastUsedDate: row.last_used_date ? row.last_used_date.replace(' ', 'T') + 'Z' : null,
     lastNumberOfServings: row.last_number_of_servings,
+    nutrientSource: row.nutrient_source ?? null,
+    nutrientSourceRef: row.nutrient_source_ref ?? null,
   };
 }
 

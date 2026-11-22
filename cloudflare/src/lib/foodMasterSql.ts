@@ -1,22 +1,31 @@
 // 食品の表を読み書きする SQL。栄養素の列は定義ファイルの並びで組み立てる。
-import { NUTRIENTS, NUTRIENT_COLUMNS, nutrientBinds, type CoreNutrients } from './nutrients';
+import { NUTRIENTS, NUTRIENT_COLUMNS, isNutrientSource, nutrientBinds, type Nutrients, type NutrientSource } from './nutrients';
 
 /** 食品を作るときに送られてくる本文。栄養素は API のキーで並ぶ */
-export type FoodMasterInput = CoreNutrients & {
+export type FoodMasterInput = Nutrients & {
   id: string;
   brandName: string;
   productName: string;
   portionSize: number;
   portionUnit: string;
   uniqueKey: string;
+  nutrientSource?: NutrientSource | null;
+  nutrientSourceRef?: string | null;
 };
 
-/** fm を別名にした food_masters の栄養素の列。SELECT に並べる */
-export const FM_NUTRIENT_SELECT = NUTRIENT_COLUMNS.map((column) => `fm.${column}`).join(', ');
+/** fm を別名にした food_masters の栄養素と出典の列。SELECT に並べる */
+export const FM_NUTRIENT_SELECT = [...NUTRIENT_COLUMNS, 'nutrient_source', 'nutrient_source_ref']
+  .map((column) => `fm.${column}`)
+  .join(', ');
+
+/** 出典が送られていて、決まった種類のどれでもなければ true */
+export function hasInvalidSource(body: { nutrientSource?: unknown }): boolean {
+  return body.nutrientSource !== undefined && body.nutrientSource !== null && !isNutrientSource(body.nutrientSource);
+}
 
 const INSERT_COLUMNS = [
   'id', 'brand_name', 'product_name', ...NUTRIENT_COLUMNS,
-  'portion_size', 'portion_unit', 'unique_key', 'created_by',
+  'portion_size', 'portion_unit', 'unique_key', 'created_by', 'nutrient_source', 'nutrient_source_ref',
 ];
 
 const INSERT_SQL = `INSERT INTO food_masters
@@ -29,13 +38,33 @@ export function insertFoodMaster(db: D1Database, item: FoodMasterInput, userId: 
   return db.prepare(INSERT_SQL).bind(
     item.id, item.brandName, item.productName, ...nutrientBinds(item),
     item.portionSize, item.portionUnit, item.uniqueKey, userId,
+    item.nutrientSource ?? null, item.nutrientSourceRef ?? null,
   );
 }
 
-/** 送られた栄養素だけを変える SET 句の断片と、その並びの値。送られなかった栄養素は今の値のまま */
-export function nutrientUpdate(body: Record<string, unknown>): { sql: string; binds: unknown[] } {
-  return {
-    sql: NUTRIENTS.map((n) => `${n.column} = COALESCE(?, ${n.column})`).join(',\n        '),
-    binds: nutrientBinds(body),
-  };
+/**
+ * 送られた栄養素と出典だけを変える SET 句の断片と、その並びの値。
+ * 最初の5項目は必ず値を持つので、null が来ても今の値を残す。
+ * それ以外はキーがあれば変え、null なら分からないに戻す。キーが無ければ今の値のまま。
+ * 公開中の古い版のアプリは新しい栄養素のキーを送らないので、その値を消さずに済む
+ */
+export function nutrientUpdate(body: Record<string, unknown>): { sql: string[]; binds: unknown[] } {
+  const sql: string[] = [];
+  const binds: unknown[] = [];
+  for (const n of NUTRIENTS) {
+    if (n.core) {
+      sql.push(`${n.column} = COALESCE(?, ${n.column})`);
+      binds.push(body[n.id] ?? null);
+    } else if (n.id in body) {
+      sql.push(`${n.column} = ?`);
+      binds.push(body[n.id] ?? null);
+    }
+  }
+  for (const [key, column] of [['nutrientSource', 'nutrient_source'], ['nutrientSourceRef', 'nutrient_source_ref']]) {
+    if (key in body) {
+      sql.push(`${column} = ?`);
+      binds.push(body[key] ?? null);
+    }
+  }
+  return { sql, binds };
 }

@@ -2,8 +2,8 @@ import { Hono } from 'hono';
 import type { Bindings, Variables, LogItemRow, FoodMasterRow } from '../types';
 import { logItemToResponse } from '../types';
 import { authMiddleware } from '../middleware/auth';
-import { NUTRITION_BASE_CTE, NUTRITION_SUM_COLUMNS } from '../lib/nutritionSql';
-import { NUTRIENTS, NUTRIENT_COLUMNS, type CoreNutrients } from '../lib/nutrients';
+import { NUTRITION_BASE_CTE, NUTRITION_SUM_COLUMNS, totalsFromRow } from '../lib/nutritionSql';
+import { NUTRIENT_COLUMNS, snapshotForStorage } from '../lib/nutrients';
 import { FM_NUTRIENT_SELECT } from '../lib/foodMasterSql';
 
 type LogItemJoinRow = LogItemRow & {
@@ -11,6 +11,8 @@ type LogItemJoinRow = LogItemRow & {
   brand_name: string | null;
   product_name: string | null;
   portion_size: number | null;
+  nutrient_source: string | null;
+  nutrient_source_ref: string | null;
   portion_unit: string | null;
   unique_key: string | null;
   ufs_usage_count: number | null;
@@ -26,6 +28,8 @@ function rowToFm(row: LogItemJoinRow): FoodMasterRow | null {
   );
   return {
     ...nutrientColumns,
+    nutrient_source: row.nutrient_source,
+    nutrient_source_ref: row.nutrient_source_ref,
     id: row.fm_id,
     brand_name: row.brand_name!,
     product_name: row.product_name!,
@@ -93,11 +97,7 @@ const logItems = new Hono<{ Bindings: Bindings; Variables: Variables }>()
        ORDER BY log_date ASC`
     ).bind(userId, from, to).all<{ log_date: string; meal_type: string } & Record<string, number | null>>();
 
-    const items = results.map(r => {
-      const totals: Record<string, number> = {};
-      for (const n of NUTRIENTS) totals[n.id] = r[n.id] ?? 0;
-      return { logDate: r.log_date, mealType: r.meal_type, ...(totals as CoreNutrients) };
-    });
+    const items = results.map(r => ({ logDate: r.log_date, mealType: r.meal_type, ...totalsFromRow(r) }));
     return c.json({ items });
   })
   .post('/', async (c) => {
@@ -120,7 +120,7 @@ const logItems = new Hono<{ Bindings: Bindings; Variables: Variables }>()
     ).bind(
       body.id, userId, body.timestamp, body.logDate, body.mealType,
       body.numberOfServings, body.foodMasterId ?? null,
-      body.nutritionSnapshot ? JSON.stringify(body.nutritionSnapshot) : null
+      body.nutritionSnapshot ? JSON.stringify(snapshotForStorage(body.nutritionSnapshot)) : null
     ).run();
 
     if (body.foodMasterId) {
@@ -161,7 +161,7 @@ const logItems = new Hono<{ Bindings: Bindings; Variables: Variables }>()
       ).bind(
         item.id, userId, item.timestamp, item.logDate, item.mealType,
         item.numberOfServings, item.foodMasterId ?? null,
-        item.nutritionSnapshot ? JSON.stringify(item.nutritionSnapshot) : null
+        item.nutritionSnapshot ? JSON.stringify(snapshotForStorage(item.nutritionSnapshot)) : null
       )
     );
 

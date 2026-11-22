@@ -53,5 +53,27 @@
     "label": "recommended",
     "names": { "ja": "食物繊維", "en": "Dietary Fiber" },
     "shortNames": { "ja": "繊維", "en": "Fiber" }
+  },
+  {
+    "id": "saltEquivalent",
+    "column": "salt_equivalent",
+    "unit": "g",
+    "fractionDigits": 1,
+    "group": "mineral",
+    "core": false,
+    "label": "mandatory",
+    "names": { "ja": "食塩相当量", "en": "Salt equivalent" },
+    "shortNames": { "ja": "食塩", "en": "Salt" }
+  },
+  {
+    "id": "saturatedFat",
+    "column": "saturated_fat",
+    "unit": "g",
+    "fractionDigits": 1,
+    "group": "lipid",
+    "core": false,
+    "label": "recommended",
+    "names": { "ja": "飽和脂肪酸", "en": "Saturated fat" },
+    "shortNames": { "ja": "飽和脂肪", "en": "Sat. fat" }
   }
 ]

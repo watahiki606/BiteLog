@@ -2,40 +2,11 @@
 import { SELF, env } from 'cloudflare:test';
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { issueSessionJwt } from '../middleware/auth';
+import { applySchema } from '../test/schema';
 
 const TEST_SECRET = 'dev-and-test-secret';
 
-beforeAll(async () => {
-  await env.DB.prepare(
-    `CREATE TABLE IF NOT EXISTS food_masters (
-      id TEXT PRIMARY KEY COLLATE NOCASE,
-      brand_name TEXT NOT NULL DEFAULT '',
-      product_name TEXT NOT NULL,
-      calories REAL NOT NULL DEFAULT 0,
-      dietary_fiber REAL NOT NULL DEFAULT 0,
-      net_carbs REAL NOT NULL DEFAULT 0,
-      fat REAL NOT NULL DEFAULT 0,
-      protein REAL NOT NULL DEFAULT 0,
-      portion_size REAL NOT NULL DEFAULT 1.0,
-      portion_unit TEXT NOT NULL DEFAULT 'g',
-      unique_key TEXT NOT NULL UNIQUE,
-      created_by TEXT NOT NULL
-    )`
-  ).run();
-  await env.DB.prepare(
-    `CREATE TABLE IF NOT EXISTS log_items (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      timestamp TEXT NOT NULL,
-      log_date TEXT NOT NULL,
-      meal_type TEXT NOT NULL,
-      number_of_servings REAL NOT NULL DEFAULT 1.0,
-      food_master_id TEXT COLLATE NOCASE REFERENCES food_masters(id) ON DELETE SET NULL,
-      nutrition_snapshot_json TEXT,
-      is_master_deleted INTEGER NOT NULL DEFAULT 0
-    )`
-  ).run();
-});
+beforeAll(() => applySchema(env.DB));
 
 beforeEach(async () => {
   await env.DB.batch([
