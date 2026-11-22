@@ -4,58 +4,27 @@
 // エネルギー換算はアプリの目標カロリー式（NutritionGoals.targetCalories）と揃える:
 // タンパク質×4 + 脂質×9 + 糖質(netCarbs)×4 + 食物繊維×2 kcal。
 
+import { addNutrients, divideNutrients, pickNutrients, zeroNutrients, type CoreNutrients } from './nutrients';
+
 export const PROTEIN_KCAL = 4;
 export const FAT_KCAL = 9;
 export const NET_CARBS_KCAL = 4;
 export const FIBER_KCAL = 2;
 
 /** API の /log-items/summary が返す、日付×食事タイプの集計済み1行。 */
-export interface DaySummary {
+export type DaySummary = CoreNutrients & {
   logDate: string; // "yyyy-MM-dd"
   mealType: string;
-  calories: number;
-  protein: number;
-  fat: number;
-  netCarbs: number;
-  dietaryFiber: number;
-}
+};
 
 /** 計算済みの栄養素値。`carbs` は iOS と同じく netCarbs + dietaryFiber。 */
-export interface NutritionValues {
-  calories: number;
-  protein: number;
-  fat: number;
-  netCarbs: number;
-  dietaryFiber: number;
-}
+export type NutritionValues = CoreNutrients;
 
-export const ZERO_VALUES: NutritionValues = {
-  calories: 0, protein: 0, fat: 0, netCarbs: 0, dietaryFiber: 0,
-};
+export const ZERO_VALUES: NutritionValues = zeroNutrients();
 
 /** iOS の NutritionValues.carbs（netCarbs + dietaryFiber）。 */
 export function carbs(v: NutritionValues): number {
   return v.netCarbs + v.dietaryFiber;
-}
-
-function add(a: NutritionValues, b: NutritionValues): NutritionValues {
-  return {
-    calories: a.calories + b.calories,
-    protein: a.protein + b.protein,
-    fat: a.fat + b.fat,
-    netCarbs: a.netCarbs + b.netCarbs,
-    dietaryFiber: a.dietaryFiber + b.dietaryFiber,
-  };
-}
-
-function toValues(item: DaySummary): NutritionValues {
-  return {
-    calories: item.calories,
-    protein: item.protein,
-    fat: item.fat,
-    netCarbs: item.netCarbs,
-    dietaryFiber: item.dietaryFiber,
-  };
 }
 
 /** 1日分の集計結果（トレンドグラフ・平均・達成日数の素材）。 */
@@ -110,7 +79,7 @@ function daysInMonth(monthStart: string): number {
 export function dailyTotals(items: DaySummary[]): DailyNutrition[] {
   const map = new Map<string, NutritionValues>();
   for (const item of items) {
-    map.set(item.logDate, add(map.get(item.logDate) ?? ZERO_VALUES, toValues(item)));
+    map.set(item.logDate, addNutrients(map.get(item.logDate) ?? ZERO_VALUES, pickNutrients(item)));
   }
   return Array.from(map.entries())
     .map(([date, values]) => ({ date, values }))
@@ -149,43 +118,27 @@ export function bucketed(
     const date = parseDate(d.date);
     const start = by === 'week' ? startOfWeek(date) : startOfMonth(date);
     const key = formatDate(start);
-    groups.set(key, add(groups.get(key) ?? ZERO_VALUES, d.values));
+    groups.set(key, addNutrients(groups.get(key) ?? ZERO_VALUES, d.values));
   }
   return Array.from(groups.entries())
     .map(([key, sum]) => {
       if (!average) return { date: key, values: sum };
       const n = by === 'week' ? 7 : daysInMonth(key);
       const div = Math.max(n, 1);
-      return {
-        date: key,
-        values: {
-          calories: sum.calories / div,
-          protein: sum.protein / div,
-          fat: sum.fat / div,
-          netCarbs: sum.netCarbs / div,
-          dietaryFiber: sum.dietaryFiber / div,
-        },
-      };
+      return { date: key, values: divideNutrients(sum, div) };
     })
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 /** 期間全体の合計。 */
 export function periodTotal(items: DaySummary[]): NutritionValues {
-  return items.reduce((acc, item) => add(acc, toValues(item)), ZERO_VALUES);
+  return items.reduce((acc, item) => addNutrients(acc, pickNutrients(item)), ZERO_VALUES);
 }
 
 /** 1日平均（期間合計 ÷ 対象日数）。dayCount は記録の有無に依らない母数。 */
 export function dailyAverage(items: DaySummary[], dayCount: number): NutritionValues {
   if (dayCount <= 0) return ZERO_VALUES;
-  const total = periodTotal(items);
-  return {
-    calories: total.calories / dayCount,
-    protein: total.protein / dayCount,
-    fat: total.fat / dayCount,
-    netCarbs: total.netCarbs / dayCount,
-    dietaryFiber: total.dietaryFiber / dayCount,
-  };
+  return divideNutrients(periodTotal(items), dayCount);
 }
 
 /** 目標達成日数。各日の合計カロリーが目標 ±tolerance に収まる日を数える。 */
@@ -217,7 +170,7 @@ export function pfcBalance(items: DaySummary[]): PFCBalance {
 export function mealTypeTotals(items: DaySummary[]): Record<string, NutritionValues> {
   const map: Record<string, NutritionValues> = {};
   for (const item of items) {
-    map[item.mealType] = add(map[item.mealType] ?? ZERO_VALUES, toValues(item));
+    map[item.mealType] = addNutrients(map[item.mealType] ?? ZERO_VALUES, pickNutrients(item));
   }
   return map;
 }
