@@ -6,11 +6,8 @@ struct FoodMasterDTO: Codable, Identifiable, Hashable {
   var id: UUID
   var brandName: String
   var productName: String
-  var calories: Double
-  var dietaryFiber: Double
-  var netCarbs: Double
-  var fat: Double
-  var protein: Double
+  /// portionSize 分の量に対する値
+  var nutrients: NutrientAmounts
   var portionSize: Double
   var portionUnit: String
   var uniqueKey: String
@@ -20,6 +17,32 @@ struct FoodMasterDTO: Codable, Identifiable, Hashable {
   var lastUsedDate: Date?
   var lastNumberOfServings: Double
 
+  init(
+    id: UUID, brandName: String, productName: String, calories: Double, dietaryFiber: Double,
+    netCarbs: Double, fat: Double, protein: Double, portionSize: Double, portionUnit: String,
+    uniqueKey: String, createdBy: String? = nil, isMine: Bool? = nil, usageCount: Int,
+    lastUsedDate: Date? = nil, lastNumberOfServings: Double
+  ) {
+    self.id = id
+    self.brandName = brandName
+    self.productName = productName
+    self.nutrients = NutrientAmounts(
+      calories: calories, protein: protein, fat: fat, netCarbs: netCarbs, dietaryFiber: dietaryFiber)
+    self.portionSize = portionSize
+    self.portionUnit = portionUnit
+    self.uniqueKey = uniqueKey
+    self.createdBy = createdBy
+    self.isMine = isMine
+    self.usageCount = usageCount
+    self.lastUsedDate = lastUsedDate
+    self.lastNumberOfServings = lastNumberOfServings
+  }
+
+  var calories: Double { nutrients.core(.calories) }
+  var dietaryFiber: Double { nutrients.core(.dietaryFiber) }
+  var netCarbs: Double { nutrients.core(.netCarbs) }
+  var fat: Double { nutrients.core(.fat) }
+  var protein: Double { nutrients.core(.protein) }
   var carbohydrates: Double { netCarbs + dietaryFiber }
 
   /// 選んで記録するときの量。サーバーは使ったことが無い食品の前回量を 1 で返すので、
@@ -28,32 +51,93 @@ struct FoodMasterDTO: Codable, Identifiable, Hashable {
   var servingsToLog: Double { usageCount > 0 ? lastNumberOfServings : portionSize }
 
   /// 1食分 (portionSize 分) の栄養素値。表示コンポーネントに渡すためのまとめ。
-  var portionNutritionValues: NutritionValues {
-    NutritionValues(
-      calories: calories, netCarbs: netCarbs, dietaryFiber: dietaryFiber, fat: fat,
-      protein: protein)
-  }
+  var portionNutritionValues: NutritionValues { NutritionValues(nutrients) }
 
   static func createUniqueKey(brandName: String, productName: String, portionUnit: String) -> String {
     "\(brandName)|\(productName)|\(portionUnit)"
   }
+
+  private enum CodingKeys: String, CodingKey {
+    case id, brandName, productName, portionSize, portionUnit, uniqueKey, createdBy, isMine
+    case usageCount, lastUsedDate, lastNumberOfServings
+  }
+
+  // 栄養素は他の項目と同じ階層に平らに並ぶ。サーバーの応答と同じ形
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    id = try container.decode(UUID.self, forKey: .id)
+    brandName = try container.decode(String.self, forKey: .brandName)
+    productName = try container.decode(String.self, forKey: .productName)
+    nutrients = try NutrientAmounts(fromFlat: decoder)
+    portionSize = try container.decode(Double.self, forKey: .portionSize)
+    portionUnit = try container.decode(String.self, forKey: .portionUnit)
+    uniqueKey = try container.decode(String.self, forKey: .uniqueKey)
+    createdBy = try container.decodeIfPresent(String.self, forKey: .createdBy)
+    isMine = try container.decodeIfPresent(Bool.self, forKey: .isMine)
+    usageCount = try container.decode(Int.self, forKey: .usageCount)
+    lastUsedDate = try container.decodeIfPresent(Date.self, forKey: .lastUsedDate)
+    lastNumberOfServings = try container.decode(Double.self, forKey: .lastNumberOfServings)
+  }
+
+  func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encode(brandName, forKey: .brandName)
+    try container.encode(productName, forKey: .productName)
+    try nutrients.encodeFlat(to: encoder)
+    try container.encode(portionSize, forKey: .portionSize)
+    try container.encode(portionUnit, forKey: .portionUnit)
+    try container.encode(uniqueKey, forKey: .uniqueKey)
+    try container.encodeIfPresent(createdBy, forKey: .createdBy)
+    try container.encodeIfPresent(isMine, forKey: .isMine)
+    try container.encode(usageCount, forKey: .usageCount)
+    try container.encodeIfPresent(lastUsedDate, forKey: .lastUsedDate)
+    try container.encode(lastNumberOfServings, forKey: .lastNumberOfServings)
+  }
 }
 
-struct FoodMasterCreateDTO: Codable {
+struct FoodMasterCreateDTO: Encodable {
   var id: String
   var brandName: String
   var productName: String
-  var calories: Double
-  var dietaryFiber: Double
-  var netCarbs: Double
-  var fat: Double
-  var protein: Double
+  var nutrients: NutrientAmounts
   var portionSize: Double
   var portionUnit: String
   var uniqueKey: String
   /// "reject" なら、同じブランド名・商品名・単位の別の食品があるときサーバーは 409 を返す。
   /// 無ければ既存の食品が返る。公開中の古い版はこの印を送らないので、その動きを残している
   var onConflict: String? = nil
+
+  init(
+    id: String, brandName: String, productName: String, calories: Double, dietaryFiber: Double,
+    netCarbs: Double, fat: Double, protein: Double, portionSize: Double, portionUnit: String,
+    uniqueKey: String
+  ) {
+    self.id = id
+    self.brandName = brandName
+    self.productName = productName
+    self.nutrients = NutrientAmounts(
+      calories: calories, protein: protein, fat: fat, netCarbs: netCarbs, dietaryFiber: dietaryFiber)
+    self.portionSize = portionSize
+    self.portionUnit = portionUnit
+    self.uniqueKey = uniqueKey
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case id, brandName, productName, portionSize, portionUnit, uniqueKey, onConflict
+  }
+
+  func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encode(brandName, forKey: .brandName)
+    try container.encode(productName, forKey: .productName)
+    try nutrients.encodeFlat(to: encoder)
+    try container.encode(portionSize, forKey: .portionSize)
+    try container.encode(portionUnit, forKey: .portionUnit)
+    try container.encode(uniqueKey, forKey: .uniqueKey)
+    try container.encodeIfPresent(onConflict, forKey: .onConflict)
+  }
 
   /// 重なりを 409 で知らせてもらう作成の本文。
   /// 既存の食品が返ると、送った値で作れたと思い込んでその値で記録してしまうため。
@@ -64,16 +148,44 @@ struct FoodMasterCreateDTO: Codable {
   }
 }
 
-struct FoodMasterUpdateDTO: Codable {
+struct FoodMasterUpdateDTO: Encodable {
   var brandName: String?
   var productName: String?
-  var calories: Double?
-  var dietaryFiber: Double?
-  var netCarbs: Double?
-  var fat: Double?
-  var protein: Double?
+  /// 送る栄養素だけを持つ。送らなかった栄養素はサーバーで今の値のまま残る
+  var nutrients: NutrientAmounts
   var portionSize: Double?
   var portionUnit: String?
+
+  init(
+    brandName: String? = nil, productName: String? = nil, calories: Double? = nil,
+    dietaryFiber: Double? = nil, netCarbs: Double? = nil, fat: Double? = nil, protein: Double? = nil,
+    portionSize: Double? = nil, portionUnit: String? = nil
+  ) {
+    self.brandName = brandName
+    self.productName = productName
+    var nutrients = NutrientAmounts()
+    nutrients[.calories] = calories
+    nutrients[.dietaryFiber] = dietaryFiber
+    nutrients[.netCarbs] = netCarbs
+    nutrients[.fat] = fat
+    nutrients[.protein] = protein
+    self.nutrients = nutrients
+    self.portionSize = portionSize
+    self.portionUnit = portionUnit
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case brandName, productName, portionSize, portionUnit
+  }
+
+  func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encodeIfPresent(brandName, forKey: .brandName)
+    try container.encodeIfPresent(productName, forKey: .productName)
+    try nutrients.encodeFlat(to: encoder)
+    try container.encodeIfPresent(portionSize, forKey: .portionSize)
+    try container.encodeIfPresent(portionUnit, forKey: .portionUnit)
+  }
 }
 
 struct FoodMasterListResponse: Codable {
@@ -149,25 +261,34 @@ protocol NutritionContributing {
 extension LogItemDTO: NutritionContributing {}
 
 /// GET /api/log-items/summary の1行（特定日・特定食事タイプの栄養合計）。
-struct DaySummaryDTO: Codable, Identifiable, NutritionContributing {
+struct DaySummaryDTO: Decodable, Identifiable, NutritionContributing {
   var logDate: String
   var mealType: MealType
-  var calories: Double
-  var protein: Double
-  var fat: Double
-  var netCarbs: Double
-  var dietaryFiber: Double
+  var nutrients: NutrientAmounts
 
   var id: String { "\(logDate)-\(mealType.rawValue)" }
 
-  var nutritionValues: NutritionValues {
-    NutritionValues(
-      calories: calories, netCarbs: netCarbs, dietaryFiber: dietaryFiber, fat: fat,
-      protein: protein)
+  var nutritionValues: NutritionValues { NutritionValues(nutrients) }
+
+  var calories: Double { nutrients.core(.calories) }
+  var protein: Double { nutrients.core(.protein) }
+  var fat: Double { nutrients.core(.fat) }
+  var netCarbs: Double { nutrients.core(.netCarbs) }
+  var dietaryFiber: Double { nutrients.core(.dietaryFiber) }
+
+  private enum CodingKeys: String, CodingKey {
+    case logDate, mealType
+  }
+
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    logDate = try container.decode(String.self, forKey: .logDate)
+    mealType = try container.decode(MealType.self, forKey: .mealType)
+    nutrients = try NutrientAmounts(fromFlat: decoder)
   }
 }
 
-struct DaySummaryListResponse: Codable {
+struct DaySummaryListResponse: Decodable {
   var items: [DaySummaryDTO]
 }
 
@@ -220,11 +341,7 @@ extension NutritionSnapshot {
     NutritionSnapshot(
       brandName: dto.brandName,
       productName: dto.productName,
-      calories: dto.calories,
-      netCarbs: dto.netCarbs,
-      dietaryFiber: dto.dietaryFiber,
-      fat: dto.fat,
-      protein: dto.protein,
+      nutrients: dto.nutrients,
       portionSize: dto.portionSize,
       portionUnit: dto.portionUnit
     )
@@ -399,13 +516,9 @@ extension BodyMeasurementDTO {
 ///
 /// 栄養は記録の無い日を 0 で返すが、体組成は測っていない日を `nil` で返す。
 /// この違いは意図したもので、0 で埋めると「その日は体重が 0 だった」になる。
-struct DailyStatDTO: Codable, Identifiable, Equatable {
+struct DailyStatDTO: Decodable, Identifiable, Equatable {
   let date: String
-  let calories: Double
-  let protein: Double
-  let fat: Double
-  let netCarbs: Double
-  let dietaryFiber: Double
+  let nutrients: NutrientAmounts
   let weightKg: Double?
   let bodyFatPercent: Double?
   let muscleMassKg: Double?
@@ -417,4 +530,31 @@ struct DailyStatDTO: Codable, Identifiable, Equatable {
   let bodyWaterPercent: Double?
 
   var id: String { date }
+
+  var calories: Double { nutrients.core(.calories) }
+  var protein: Double { nutrients.core(.protein) }
+  var fat: Double { nutrients.core(.fat) }
+  var netCarbs: Double { nutrients.core(.netCarbs) }
+  var dietaryFiber: Double { nutrients.core(.dietaryFiber) }
+
+  private enum CodingKeys: String, CodingKey {
+    case date, weightKg, bodyFatPercent, muscleMassKg, muscleScore, visceralFatLevel
+    case basalMetabolismKcal, metabolicAge, boneMassKg, bodyWaterPercent
+  }
+
+  // 栄養素は日付や体組成と同じ階層に平らに並ぶ
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    date = try container.decode(String.self, forKey: .date)
+    nutrients = try NutrientAmounts(fromFlat: decoder)
+    weightKg = try container.decodeIfPresent(Double.self, forKey: .weightKg)
+    bodyFatPercent = try container.decodeIfPresent(Double.self, forKey: .bodyFatPercent)
+    muscleMassKg = try container.decodeIfPresent(Double.self, forKey: .muscleMassKg)
+    muscleScore = try container.decodeIfPresent(Double.self, forKey: .muscleScore)
+    visceralFatLevel = try container.decodeIfPresent(Double.self, forKey: .visceralFatLevel)
+    basalMetabolismKcal = try container.decodeIfPresent(Double.self, forKey: .basalMetabolismKcal)
+    metabolicAge = try container.decodeIfPresent(Double.self, forKey: .metabolicAge)
+    boneMassKg = try container.decodeIfPresent(Double.self, forKey: .boneMassKg)
+    bodyWaterPercent = try container.decodeIfPresent(Double.self, forKey: .bodyWaterPercent)
+  }
 }
