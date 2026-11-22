@@ -6,6 +6,9 @@
     "apps/docs",
     "cloudflare"
   ],
+  "scripts": {
+    "generate:nutrients": "bun shared/generate-swift.ts"
+  },
   "dependencies": {
     "hono": "^4.12.23"
   },

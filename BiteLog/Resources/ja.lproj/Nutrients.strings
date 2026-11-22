@@ -1,0 +1,12 @@
+/* 生成したファイル。shared/nutrients.json を直して bun run generate:nutrients で作り直す */
+
+"calories.name" = "カロリー";
+"calories.shortName" = "カロリー";
+"protein.name" = "タンパク質";
+"protein.shortName" = "タンパク";
+"fat.name" = "脂質";
+"fat.shortName" = "脂質";
+"netCarbs.name" = "糖質";
+"netCarbs.shortName" = "糖質";
+"dietaryFiber.name" = "食物繊維";
+"dietaryFiber.shortName" = "繊維";
