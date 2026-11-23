@@ -214,14 +214,19 @@ struct AIAnalysisResultView: View {
   @State private var dietaryFiber: String
   @State private var portionAmount: String
   @State private var portionUnit: String
-  /// あとから足した栄養素。表示か公式の値から読めなかったものは空欄
+  /// あとから足した栄養素。表示か公式の値から読めなかったものは空欄。
+  /// 欄を出さない詳しい栄養素も持ち、解析の値のまま保存する
   @State private var addedValues: [NutrientID: String]
 
-  /// 欄に出す栄養素。詳しい栄養素は保存のあとサーバーが食材の成分表から補う
+  /// 欄に出す栄養素。詳しい栄養素は数が多く、写真から直すこともまずないので出さない。
+  /// 保存したあと、食品の編集で直せる
   private static let addedNutrients = NutrientID.labelNutrients
 
+  /// 栄養素ごとの桁で文字にする。1桁に丸めると、ビタミン B1 の 0.05 mg が 0.1 mg になる
   private static func addedFields(_ result: FoodAnalysisResult) -> [NutrientID: String] {
-    result.addedNutrients.values.mapValues(NutritionFormatter.formatNutrition)
+    Dictionary(uniqueKeysWithValues: result.addedNutrients.values.map { id, value in
+      (id, NutritionFormatter.format(value, fractionDigits: id.definition.fractionDigits))
+    })
   }
 
   init(
@@ -325,10 +330,10 @@ struct AIAnalysisResultView: View {
             .background(Color(UIColor.secondarySystemBackground))
             .cornerRadius(12)
 
-            // 料理を分けた成分表の食材。保存のときに食品とひも付け、ミネラルやビタミンの値の元になる
+            // 料理を分けた成分表の食材。上の値はこの食材と重さから成分表で引いた
             if let components = current.components, !components.isEmpty {
               VStack(alignment: .leading, spacing: 8) {
-                Text(NSLocalizedString("Food Composition Table", comment: "Composition link section"))
+                Text(NSLocalizedString("Ingredients behind the values", comment: "Ingredients the photo analysis looked up in the composition table"))
                   .font(.headline)
                 ForEach(components) { component in
                   HStack(alignment: .firstTextBaseline) {
@@ -676,7 +681,6 @@ struct AIAnalysisResultView: View {
         let source = current.nutrientSource
         withAdded.nutrientSource = source.source
         withAdded.nutrientSourceRef = source.ref
-        withAdded.components = current.components
         let fm = try await APIClient.shared.createFoodMaster(withAdded)
 
         let logDTO = LogItemCreateDTO(

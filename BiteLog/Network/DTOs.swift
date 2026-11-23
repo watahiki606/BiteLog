@@ -2,11 +2,11 @@ import Foundation
 
 // MARK: - FoodMaster DTO
 
-/// 食品にひも付けた成分表の食品と重さ。grams は食品の1回分に含まれる、その食材の可食部の重さ
+/// 写真の解析で、料理を分けた成分表の食材と重さ。grams は1回分に含まれる、その食材の可食部の重さ
 struct FoodComponent: Codable, Hashable, Identifiable {
   var foodNumber: String
   var grams: Double
-  /// 成分表の食品名。送るときはサーバーが読まない
+  /// 成分表の食品名
   var name: String?
 
   var id: String { foodNumber }
@@ -43,13 +43,6 @@ struct FoodMasterDTO: Codable, Identifiable, Hashable {
   var nutrientSource: String?
   /// 出典の参照先。成分表の食品番号か URL
   var nutrientSourceRef: String?
-  /// 食品の出典と違う出典の栄養素。成分表で補った栄養素は "composition_table"
-  var nutrientSources: [String: String] = [:]
-  /// 成分表とのひも付け。1件を読んだときだけ返る。一覧では nil
-  var components: [FoodComponent]?
-
-  /// 成分表で補った値か
-  func isSupplemented(_ id: NutrientID) -> Bool { nutrientSources[id.rawValue] == "composition_table" }
 
   init(
     id: UUID, brandName: String, productName: String, calories: Double, dietaryFiber: Double,
@@ -94,7 +87,6 @@ struct FoodMasterDTO: Codable, Identifiable, Hashable {
   private enum CodingKeys: String, CodingKey {
     case id, brandName, productName, portionSize, portionUnit, uniqueKey, createdBy, isMine
     case usageCount, lastUsedDate, lastNumberOfServings, nutrientSource, nutrientSourceRef
-    case nutrientSources, components
   }
 
   // 栄養素は他の項目と同じ階層に平らに並ぶ。サーバーの応答と同じ形
@@ -114,8 +106,6 @@ struct FoodMasterDTO: Codable, Identifiable, Hashable {
     lastNumberOfServings = try container.decode(Double.self, forKey: .lastNumberOfServings)
     nutrientSource = try container.decodeIfPresent(String.self, forKey: .nutrientSource)
     nutrientSourceRef = try container.decodeIfPresent(String.self, forKey: .nutrientSourceRef)
-    nutrientSources = try container.decodeIfPresent([String: String].self, forKey: .nutrientSources) ?? [:]
-    components = try container.decodeIfPresent([FoodComponent].self, forKey: .components)
   }
 
   func encode(to encoder: Encoder) throws {
@@ -134,8 +124,6 @@ struct FoodMasterDTO: Codable, Identifiable, Hashable {
     try container.encode(lastNumberOfServings, forKey: .lastNumberOfServings)
     try container.encodeIfPresent(nutrientSource, forKey: .nutrientSource)
     try container.encodeIfPresent(nutrientSourceRef, forKey: .nutrientSourceRef)
-    if !nutrientSources.isEmpty { try container.encode(nutrientSources, forKey: .nutrientSources) }
-    try container.encodeIfPresent(components, forKey: .components)
   }
 }
 
@@ -154,8 +142,6 @@ struct FoodMasterCreateDTO: Encodable {
   var nutrientSource: String? = nil
   /// 出典の参照先。成分表の食品番号か URL
   var nutrientSourceRef: String? = nil
-  /// 成分表とのひも付け。サーバーが値を計算し、分からない栄養素を補う
-  var components: [FoodComponent]? = nil
 
   init(
     id: String, brandName: String, productName: String, calories: Double, dietaryFiber: Double,
@@ -174,7 +160,7 @@ struct FoodMasterCreateDTO: Encodable {
 
   private enum CodingKeys: String, CodingKey {
     case id, brandName, productName, portionSize, portionUnit, uniqueKey, onConflict
-    case nutrientSource, nutrientSourceRef, components
+    case nutrientSource, nutrientSourceRef
   }
 
   func encode(to encoder: Encoder) throws {
@@ -189,7 +175,6 @@ struct FoodMasterCreateDTO: Encodable {
     try container.encodeIfPresent(onConflict, forKey: .onConflict)
     try container.encodeIfPresent(nutrientSource, forKey: .nutrientSource)
     try container.encodeIfPresent(nutrientSourceRef, forKey: .nutrientSourceRef)
-    try container.encodeIfPresent(components, forKey: .components)
   }
 
   /// 重なりを 409 で知らせてもらう作成の本文。
@@ -210,8 +195,6 @@ struct FoodMasterUpdateDTO: Encodable {
   var clearedNutrients: Set<NutrientID> = []
   var portionSize: Double?
   var portionUnit: String?
-  /// 成分表とのひも付け。nil なら送らず、サーバーは今のひも付けを残す。空の配列はひも付けを外す
-  var components: [FoodComponent]?
 
   init(
     brandName: String? = nil, productName: String? = nil, calories: Double? = nil,
@@ -232,7 +215,7 @@ struct FoodMasterUpdateDTO: Encodable {
   }
 
   private enum CodingKeys: String, CodingKey {
-    case brandName, productName, portionSize, portionUnit, components
+    case brandName, productName, portionSize, portionUnit
   }
 
   func encode(to encoder: Encoder) throws {
@@ -243,7 +226,6 @@ struct FoodMasterUpdateDTO: Encodable {
     try NutrientAmounts.encodeNulls(clearedNutrients, to: encoder)
     try container.encodeIfPresent(portionSize, forKey: .portionSize)
     try container.encodeIfPresent(portionUnit, forKey: .portionUnit)
-    try container.encodeIfPresent(components, forKey: .components)
   }
 }
 

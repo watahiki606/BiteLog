@@ -2,7 +2,50 @@
 // AI に微量栄養素の数値を直接答えさせると大きく外れる。成分表を引く形のほうが誤差が小さいと報告されている。
 import { NUTRIENTS } from './nutrients';
 import { COMPOSITION_NUTRIENTS } from './composition';
-import { parseComponents, sumComponents, type Per100g } from './foodComposition';
+
+/** 食材の1行。grams は1回分に含まれる、その食材の可食部の重さ */
+export type ComponentInput = { foodNumber: string; grams: number };
+
+/** 1回分に入る食材の数の上限。料理を食材に分けても、これを超えることはまず無い */
+export const MAX_COMPONENTS = 30;
+
+/** AI が答えた食材の形を確かめる。おかしければ null */
+export function parseComponents(value: unknown): ComponentInput[] | null {
+  if (!Array.isArray(value) || value.length > MAX_COMPONENTS) return null;
+  const components: ComponentInput[] = [];
+  for (const item of value) {
+    const foodNumber = (item as { foodNumber?: unknown })?.foodNumber;
+    const grams = Number((item as { grams?: unknown })?.grams);
+    if (typeof foodNumber !== 'string' || !/^\d{5}$/.test(foodNumber)) return null;
+    if (!Number.isFinite(grams) || grams <= 0) return null;
+    components.push({ foodNumber, grams });
+  }
+  return components;
+}
+
+/** 成分表の1食品の100 g あたりの値。列名で引く。未測定は null */
+export type Per100g = Record<string, number | null>;
+
+/**
+ * 食材ごとの値を重さで足す。1つでも値の分からない食材があれば、その栄養素は分からないにする。
+ * 分かる食材の分だけを足すと、小さな値が分かっているように見えてしまうため
+ */
+export function sumComponents(components: readonly { grams: number; per100g: Per100g | null }[]): Record<string, number | null> {
+  const totals: Record<string, number | null> = {};
+  for (const n of COMPOSITION_NUTRIENTS) {
+    let total: number | null = components.length > 0 ? 0 : null;
+    for (const c of components) {
+      const v = c.per100g?.[n.column];
+      if (v === null || v === undefined || total === null) {
+        total = null;
+        continue;
+      }
+      total += (v * c.grams) / 100;
+    }
+    totals[n.column] = total === null ? null : Math.round(total * 10_000) / 10_000;
+  }
+  return totals;
+}
 
 /** 指示に足す規則。成分表の一覧はこの後ろに置く */
 export const COMPONENT_RULES = `

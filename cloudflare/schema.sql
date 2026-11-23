@@ -46,9 +46,7 @@ CREATE TABLE IF NOT EXISTS food_masters (
   -- 値の出典。label、composition_table、ai_estimate、manual のどれか。NULL は分からない
   nutrient_source TEXT,
   -- 出典の参照先。成分表の食品番号か URL
-  nutrient_source_ref TEXT,
-  -- 食品の出典と違う出典の栄養素だけを並べた JSON。例 {"potassium":"composition_table"}
-  nutrient_sources TEXT
+  nutrient_source_ref TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_food_masters_product_name ON food_masters(product_name);
@@ -96,17 +94,6 @@ CREATE TABLE IF NOT EXISTS composition_foods (
   n6_fatty_acids REAL,
   raw_json TEXT NOT NULL
 );
-
--- food_master_components: 食品を成分表の食品と重さの組にひも付ける
-CREATE TABLE IF NOT EXISTS food_master_components (
-  food_master_id TEXT NOT NULL COLLATE NOCASE REFERENCES food_masters(id) ON DELETE CASCADE,
-  position INTEGER NOT NULL,
-  food_number TEXT NOT NULL REFERENCES composition_foods(food_number),
-  grams REAL NOT NULL CHECK (grams > 0),
-  PRIMARY KEY (food_master_id, position)
-);
-
-CREATE INDEX IF NOT EXISTS idx_food_master_components_food_number ON food_master_components(food_number);
 
 -- log_items: ユーザーごとの食事ログ（user_idで分離）
 CREATE TABLE IF NOT EXISTS log_items (

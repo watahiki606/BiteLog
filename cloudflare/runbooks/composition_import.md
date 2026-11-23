@@ -32,11 +32,9 @@ npx wrangler d1 execute bitelog --remote --command "SELECT calories, net_carbs, 
 1. 新しい Excel の URL とハッシュ、`edition`、`erratumDate` で `scripts/composition/manifest.json` を直す
 2. 上の手順で SQL を作り、手元で流す
 3. 前の版と比べる。手元に前の版を入れた D1 を残しておき、値が変わった食品、増えた食品、消えた食品を数える
-4. 消えた食品番号が `food_master_components` で使われていれば止まる。行は消さずに残し、ひも付けを直してから消す
-5. 本番に流したあと、管理者で `POST /api/admin/composition/recompute` を呼び、ひも付けのある食品の値を計算し直す
-6. アプリとサイトの出典の表示にある正誤表の日付を直す
+4. アプリとサイトの出典の表示にある正誤表の日付を直す
 
-計算し直すと、その食品を使った過去の記録の値も変わる。記録の値は食品に追従させる決まりで、正誤表は誤りを直すものなので、変わってよい。
+食品の値は、成分表から選んで書き込んだときの値のまま残る。版を入れ替えても食品と記録の値は変わらない。
 
 ## 戻す
 

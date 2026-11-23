@@ -10,9 +10,6 @@ export type CompositionFood = {
   per100g: Record<string, number>;
 };
 
-/** 食品にひも付けた成分表の食品と重さ */
-export type FoodComponent = { foodNumber: string; grams: number; name: string | null };
-
 async function searchComposition([, q]: [string, string]): Promise<CompositionFood[]> {
   const res = await createClient().api['composition-foods'].$get({ query: { q, limit: '20' } });
   if (!res.ok) throw new Error('composition-foods');
@@ -25,18 +22,4 @@ export function useCompositionSearch(q: string) {
     revalidateOnFocus: false,
     keepPreviousData: true,
   });
-}
-
-export type FoodDetail = { components: FoodComponent[]; nutrientSources: Record<string, string> };
-
-async function fetchFoodDetail([, id]: [string, string]): Promise<FoodDetail> {
-  const res = await createClient().api['food-masters'][':id'].$get({ param: { id } });
-  if (!res.ok) throw new Error('food-master');
-  const body = (await res.json()) as Partial<FoodDetail>;
-  return { components: body.components ?? [], nutrientSources: body.nutrientSources ?? {} };
-}
-
-/** 食品のひも付けと、栄養素ごとの出典。一覧には付かないので、編集を開いたときに読む */
-export function useFoodDetail(id: string | null) {
-  return useSWR<FoodDetail>(id ? ['food-master-detail', id] : null, fetchFoodDetail, { revalidateOnFocus: false });
 }

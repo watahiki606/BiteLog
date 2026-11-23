@@ -258,7 +258,7 @@ export default function Support() {
                 日本食品標準成分表（八訂）増補2023年（文部科学省）をもとに BiteLog が加工して作成。2026年3月27日の正誤表を反映しています。
               </p>
               <p className="text-xs text-fg-muted leading-relaxed mt-3">
-                食品を成分表の食品と重さで結ぶと、ラベルに書かれていない栄養素を成分表の値で補います。補った値は、食品の詳細で分かるように示します。
+                食品を入力するときに成分表の食品と重さを選ぶと、その値を栄養素の欄に入れます。入れた値は手で直せます。写真の解析でも、料理を成分表の食材に分けて値を計算します。
               </p>
               <a href="https://www.mext.go.jp/a_menu/syokuhinseibun/mext_00001.html" className="text-xs text-neon-cyan underline mt-3 inline-block">文部科学省 日本食品標準成分表</a>
             </div>

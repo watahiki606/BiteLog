@@ -487,18 +487,20 @@
 "Vitamins" = "ビタミン";
 "Fatty acids" = "脂肪酸";
 
-/* 食品成分表とのひも付け */
+/* 食品の入力で、成分表から選んで値を欄に入れる */
 "Enter the product name to see candidates." = "商品名を入れると候補が出ます。";
 "No match in the food composition table." = "成分表に合う食品がありません。";
-"Links this food" = "この食品と結びます";
-"Remove the link" = "結び付けを外す";
-"Food Composition Table" = "食品成分表";
-"Nutrients not on the label are filled from the table. The weight is the edible part in one portion." = "ラベルに無い栄養素を成分表の値で補います。重さは1回分に含まれる食べられる部分の重さです。";
-"Filled from the food composition table" = "食品成分表で補った値";
+"Pick from the Composition Table" = "成分表から選ぶ";
+"Search the table" = "成分表を探す";
+"Edible weight" = "重さ";
+"Fills the nutrient fields with its values" = "この食品の値を栄養素の欄に入れます";
+"Filled with %@, %@ g. You can edit the values." = "%1$@ %2$@ g の値を入れました。値は直せます。";
+"Fills empty fields with the values for this weight. The weight is the edible part in one portion." = "空いている欄に、この重さの分の値を入れます。重さは1回分に含まれる食べられる部分の重さです。";
+"Ingredients behind the values" = "値の元にした食材";
 "Data Sources" = "データの出典";
 
 /* データの出典 */
-"DataSources.Composition" = "日本食品標準成分表（八訂）増補2023年（文部科学省）をもとに BiteLog が加工して作成。2026年3月27日の正誤表を反映しています。食品を成分表の食品と重さで結ぶと、ラベルに書かれていない栄養素を成分表の値で補います。ナイアシンはナイアシン当量、ビタミンEはα-トコフェロールの値です。";
+"DataSources.Composition" = "日本食品標準成分表（八訂）増補2023年（文部科学省）をもとに BiteLog が加工して作成。2026年3月27日の正誤表を反映しています。食品を入力するときに成分表の食品と重さを選ぶと、その値を栄養素の欄に入れます。写真の解析でも、料理を成分表の食材に分けて値を計算します。ナイアシンはナイアシン当量、ビタミンEはα-トコフェロールの値です。";
 "DataSources.DRI" = "日本人の食事摂取基準（2025年版）（厚生労働省）の値を、プロフィールの性別と年齢で選んで並べます。基準は習慣的な摂取量に対するものなので、選んだ期間の1日平均と比べます。";
 "Ministry of Education: Standard Tables of Food Composition" = "文部科学省 日本食品標準成分表";
 "Ministry of Health: Dietary Reference Intakes for Japanese 2025" = "厚生労働省 日本人の食事摂取基準（2025年版）";
@@ -524,5 +526,5 @@
 "Murakami K, et al. Nutrients 2019" = "Murakami K, et al. Nutrients 2019";
 "Score Method" = "スコアの方法";
 
-/* 成分表から補うだけの詳しい栄養素。畳んだ中に並べる */
+/* 食品表示に載ることがまれな詳しい栄養素。畳んだ中に並べる */
 "Detailed Nutrients" = "詳しい栄養素";

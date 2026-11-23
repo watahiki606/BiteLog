@@ -105,7 +105,7 @@ struct EditItemView: View {
                 addedNutrient: id, perPortion: perPortionAmounts[id], total: totalNutrition.amounts[id])
             }
             DisclosureGroup(
-              NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients filled from the composition table")
+              NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients rarely on food labels")
             ) {
               ForEach(NutrientID.detailNutrients, id: \.self) { id in
                 EditNutrientRow(

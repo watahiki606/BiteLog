@@ -1,4 +1,4 @@
-// 日本食品標準成分表の食品を探す。食品を成分表にひも付けるときと、写真の解析で使う。
+// 日本食品標準成分表の食品を探す。食品の入力で成分表から値を選ぶときに使う。
 import { Hono } from 'hono';
 import type { Bindings, Variables } from '../types';
 import { authMiddleware } from '../middleware/auth';
