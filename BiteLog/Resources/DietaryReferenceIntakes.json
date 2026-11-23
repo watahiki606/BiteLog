@@ -1342,6 +1342,445 @@
           "value": 100
         }
       ]
+    },
+    {
+      "nutrient": "protein",
+      "indicator": "recommendedDietaryAllowance",
+      "comparison": "reference",
+      "unit": "g",
+      "source": "たんぱく質 001316462.pdf p18、報告書 p103",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 20
+        },
+        {
+          "sex": "male",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 25
+        },
+        {
+          "sex": "male",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 30
+        },
+        {
+          "sex": "male",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 40
+        },
+        {
+          "sex": "male",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 45
+        },
+        {
+          "sex": "male",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 60
+        },
+        {
+          "sex": "male",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 65
+        },
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 65
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 65
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 65
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 60
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 60
+        },
+        {
+          "sex": "female",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 20
+        },
+        {
+          "sex": "female",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 25
+        },
+        {
+          "sex": "female",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 30
+        },
+        {
+          "sex": "female",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 40
+        },
+        {
+          "sex": "female",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 50
+        },
+        {
+          "sex": "female",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 55
+        },
+        {
+          "sex": "female",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 55
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 50
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 50
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 50
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 50
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 50
+        }
+      ]
+    },
+    {
+      "nutrient": "dietaryFiber",
+      "indicator": "tentativeDietaryGoal",
+      "comparison": "atLeast",
+      "unit": "g",
+      "source": "炭水化物 001316464.pdf p16、報告書 p144",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 8
+        },
+        {
+          "sex": "male",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 10
+        },
+        {
+          "sex": "male",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 11
+        },
+        {
+          "sex": "male",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 13
+        },
+        {
+          "sex": "male",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 17
+        },
+        {
+          "sex": "male",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 19
+        },
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 20
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 22
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 22
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 21
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 20
+        },
+        {
+          "sex": "female",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 8
+        },
+        {
+          "sex": "female",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 9
+        },
+        {
+          "sex": "female",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 11
+        },
+        {
+          "sex": "female",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 13
+        },
+        {
+          "sex": "female",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 16
+        },
+        {
+          "sex": "female",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 18
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 18
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 18
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 18
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 18
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 17
+        }
+      ]
     }
-  ]
+  ],
+  "estimatedEnergyRequirement": {
+    "physicalActivityLevel": "ふつう",
+    "unit": "kcal",
+    "source": "総論 001316461.pdf p27 参考表2、報告書 p78",
+    "bands": [
+      {
+        "sex": "male",
+        "minAge": 1,
+        "maxAge": 2,
+        "value": 950
+      },
+      {
+        "sex": "male",
+        "minAge": 3,
+        "maxAge": 5,
+        "value": 1300
+      },
+      {
+        "sex": "male",
+        "minAge": 6,
+        "maxAge": 7,
+        "value": 1550
+      },
+      {
+        "sex": "male",
+        "minAge": 8,
+        "maxAge": 9,
+        "value": 1850
+      },
+      {
+        "sex": "male",
+        "minAge": 10,
+        "maxAge": 11,
+        "value": 2250
+      },
+      {
+        "sex": "male",
+        "minAge": 12,
+        "maxAge": 14,
+        "value": 2600
+      },
+      {
+        "sex": "male",
+        "minAge": 15,
+        "maxAge": 17,
+        "value": 2850
+      },
+      {
+        "sex": "male",
+        "minAge": 18,
+        "maxAge": 29,
+        "value": 2600
+      },
+      {
+        "sex": "male",
+        "minAge": 30,
+        "maxAge": 49,
+        "value": 2750
+      },
+      {
+        "sex": "male",
+        "minAge": 50,
+        "maxAge": 64,
+        "value": 2650
+      },
+      {
+        "sex": "male",
+        "minAge": 65,
+        "maxAge": 74,
+        "value": 2350
+      },
+      {
+        "sex": "male",
+        "minAge": 75,
+        "value": 2250
+      },
+      {
+        "sex": "female",
+        "minAge": 1,
+        "maxAge": 2,
+        "value": 900
+      },
+      {
+        "sex": "female",
+        "minAge": 3,
+        "maxAge": 5,
+        "value": 1250
+      },
+      {
+        "sex": "female",
+        "minAge": 6,
+        "maxAge": 7,
+        "value": 1450
+      },
+      {
+        "sex": "female",
+        "minAge": 8,
+        "maxAge": 9,
+        "value": 1700
+      },
+      {
+        "sex": "female",
+        "minAge": 10,
+        "maxAge": 11,
+        "value": 2100
+      },
+      {
+        "sex": "female",
+        "minAge": 12,
+        "maxAge": 14,
+        "value": 2400
+      },
+      {
+        "sex": "female",
+        "minAge": 15,
+        "maxAge": 17,
+        "value": 2300
+      },
+      {
+        "sex": "female",
+        "minAge": 18,
+        "maxAge": 29,
+        "value": 1950
+      },
+      {
+        "sex": "female",
+        "minAge": 30,
+        "maxAge": 49,
+        "value": 2050
+      },
+      {
+        "sex": "female",
+        "minAge": 50,
+        "maxAge": 64,
+        "value": 1950
+      },
+      {
+        "sex": "female",
+        "minAge": 65,
+        "maxAge": 74,
+        "value": 1850
+      },
+      {
+        "sex": "female",
+        "minAge": 75,
+        "value": 1750
+      }
+    ]
+  }
 }

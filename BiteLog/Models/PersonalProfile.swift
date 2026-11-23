@@ -29,12 +29,16 @@ struct PersonalProfile: Equatable, Codable {
     defaults.set(data, forKey: storageKey)
   }
 
+  /// その日の満年齢
+  func age(on today: Date = Date(), calendar: Calendar = .current) -> Int? {
+    guard let birth = calendar.date(from: birthDate) else { return nil }
+    return calendar.dateComponents([.year], from: birth, to: today).year
+  }
+
   /// 「42歳 · 166.0 cm」。プロフィールの一覧に添える要約
   func summary(today: Date = Date(), calendar: Calendar = .current) -> String {
     var parts: [String] = []
-    if let birth = calendar.date(from: birthDate),
-      let age = calendar.dateComponents([.year], from: birth, to: today).year
-    {
+    if let age = age(on: today, calendar: calendar) {
       parts.append(String(format: NSLocalizedString("%d years old", comment: "Age"), age))
     }
     parts.append(ScaleProfileFormat.height(heightCm))

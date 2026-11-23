@@ -161,7 +161,7 @@ struct AddedNutrientsTests {
   }
 
   @Test func 目標量の無い栄養素は引けない() {
-    #expect(Self.intakes.goal(for: .protein, sex: .male, age: 40) == nil)
+    #expect(Self.intakes.goal(for: .calories, sex: .male, age: 40) == nil)
   }
 
   // MARK: CSV
