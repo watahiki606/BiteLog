@@ -4,8 +4,8 @@ import { createClient } from '@/lib/api';
 import type { ToastMessage } from '@/components/Toast';
 import { useFoodMasters, FOOD_MASTER_LIMIT as LIMIT, type FoodMaster } from '@/hooks/useFoodMasters';
 import {
-  ADDED_NUTRIENTS, NUTRIENTS, addedInputsFrom, addedInputsToBody, emptyAddedInputs, inputStep, pickNutrients,
-  zeroNutrients, type AddedInputs, type AddedNutrientId, type CoreNutrientId,
+  ADDED_NUTRIENTS, NUTRIENTS, addedInputsFrom, addedInputsToBody, carbohydrateOf, emptyAddedInputs, inputStep, pickNutrients,
+  withCarbohydrate, withFiber, zeroNutrients, type AddedInputs, type AddedNutrientId, type CoreNutrientId,
 } from '@/lib/nutrients';
 
 interface Props {
@@ -26,8 +26,9 @@ const FIELD_LABELS: Record<CoreNutrientId, string> = {
   calories: 'Calories',
   protein: 'Protein',
   fat: 'Fat',
-  netCarbs: 'Net Carbs',
-  dietaryFiber: 'Fiber',
+  // 入力欄はラベルと同じ並びの炭水化物とうち食物繊維。保存は糖質と食物繊維のまま
+  netCarbs: 'Carbs',
+  dietaryFiber: 'of which Fiber',
 };
 
 const NUTRIENT_FIELDS = NUTRIENTS.filter((n) => n.core).map((n) => ({
@@ -91,6 +92,10 @@ export default function FoodMasterPage({ onToast, isAdmin }: Props) {
   }
 
   async function handleSave() {
+    if (form.netCarbs < 0) {
+      onToast({ message: '食物繊維は炭水化物より多くできません', type: 'error' });
+      return;
+    }
     try {
       const client = createClient();
       if (editing) {
@@ -149,6 +154,17 @@ export default function FoodMasterPage({ onToast, isAdmin }: Props) {
 
   function setField<K extends keyof FormData>(key: K, val: FormData[K]) {
     setForm((f) => ({ ...f, [key]: val }));
+  }
+
+  // 糖質の欄には炭水化物を出す。食物繊維を直しても炭水化物は保ち、糖質を計算し直す
+  function fieldValue(id: CoreNutrientId): number {
+    return id === 'netCarbs' ? carbohydrateOf(form) : form[id];
+  }
+
+  function setNutrient(id: CoreNutrientId, value: number) {
+    if (id === 'netCarbs') setForm((f) => withCarbohydrate(f, value));
+    else if (id === 'dietaryFiber') setForm((f) => withFiber(f, value));
+    else setField(id, value);
   }
 
   const totalPages = Math.ceil(total / LIMIT);
@@ -235,8 +251,9 @@ export default function FoodMasterPage({ onToast, isAdmin }: Props) {
               <Field label="Product Name" colSpan={2}><input type="text" value={form.productName} onChange={(e) => setField('productName', e.target.value)} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
               <Field label="Brand Name" colSpan={2}><input type="text" value={form.brandName} onChange={(e) => setField('brandName', e.target.value)} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
               {NUTRIENT_FIELDS.map((f) => (
-                <Field key={f.id} label={f.label}><input type="number" step={f.step} value={form[f.id]} onChange={(e) => setField(f.id, Number(e.target.value))} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
+                <Field key={f.id} label={f.label}><input type="number" step={f.step} value={fieldValue(f.id)} onChange={(e) => setNutrient(f.id, Number(e.target.value))} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
               ))}
+              <Field label="Net Carbs (g)" colSpan={2}><p className="px-3 py-1.5 text-xs text-muted-foreground">{form.netCarbs < 0 ? '—' : form.netCarbs}</p></Field>
               {ADDED_FIELDS.map((f) => (
                 <Field key={f.id} label={f.label}><input type="number" step={f.step} placeholder="unknown" value={addedForm[f.id]} onChange={(e) => setAddedForm((a) => ({ ...a, [f.id]: e.target.value }))} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
               ))}

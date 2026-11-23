@@ -439,3 +439,8 @@
 "%@ per day" = "%@ per day";
 "Goal: less than %@" = "Goal: less than %@";
 "Goal: %@%% of energy or less" = "Goal: %@%% of energy or less";
+
+/* Carbohydrates and the fiber within them. Net carbs are computed */
+"Of which dietary fiber" = "Of which dietary fiber";
+"Sugar (Carbohydrates − Fiber)" = "Net carbs (Carbs − Fiber)";
+"Dietary fiber can't be more than carbohydrates." = "Dietary fiber can't be more than carbohydrates.";

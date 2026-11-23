@@ -81,3 +81,28 @@ export function addedInputsToBody(inputs: AddedInputs, clearEmpty: boolean): Par
   }
   return body;
 }
+
+/** 引き算で出る 0.19999… のような誤差を丸める */
+function roundSmall(value: number): number {
+  return Math.round(value * 10_000) / 10_000;
+}
+
+type CarbParts = { netCarbs: number; dietaryFiber: number };
+
+/**
+ * 入力欄に出す炭水化物。食品表示の義務は炭水化物なので、入力欄はラベルと同じ並びにする。
+ * 保存の形は糖質と食物繊維のまま。公開中の古い版のアプリが食物繊維を必須の数値として読むため
+ */
+export function carbohydrateOf(v: CarbParts): number {
+  return roundSmall(v.netCarbs + v.dietaryFiber);
+}
+
+/** 炭水化物を入れたら、食物繊維を引いた値を糖質にする */
+export function withCarbohydrate<T extends CarbParts>(v: T, carbohydrate: number): T {
+  return { ...v, netCarbs: roundSmall(carbohydrate - v.dietaryFiber) };
+}
+
+/** 食物繊維は炭水化物の内訳なので、炭水化物を保ったまま糖質を減らす */
+export function withFiber<T extends CarbParts>(v: T, fiber: number): T {
+  return { ...v, dietaryFiber: fiber, netCarbs: roundSmall(carbohydrateOf(v) - fiber) };
+}
