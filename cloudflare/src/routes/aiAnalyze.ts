@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { Bindings, Variables } from '../types';
 import { authMiddleware } from '../middleware/auth';
+import { COMPONENTS_SCHEMA, COMPONENT_RULES, loadCatalog, mergeNutrients, resolveComponents } from '../lib/aiComposition';
 
 const aiAnalyze = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 aiAnalyze.use('*', authMiddleware);
@@ -155,9 +156,20 @@ const PHOTO_RESPONSE_FORMAT = {
   },
 };
 
-function optionalNutrient<K extends string>(parsed: Record<string, unknown>, key: K): Partial<Record<K, number>> {
-  const value = parsed[key];
-  return typeof value === 'number' ? ({ [key]: value } as Record<K, number>) : {};
+/** 成分表の一覧があるときは、食材と重さも答えさせる */
+function withComponents<T extends { schema: { properties: object; required: string[] } }>(format: T): T {
+  return {
+    ...format,
+    schema: {
+      ...format.schema,
+      properties: { ...format.schema.properties, components: COMPONENTS_SCHEMA },
+      required: [...format.schema.required, 'components'],
+    },
+  };
+}
+
+function numberOrNull(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
 type OpenAIOutputItem = {
@@ -192,12 +204,17 @@ aiAnalyze.post('/analyze-food', async (c) => {
     detail: 'high',
   });
 
+  // 成分表の一覧は、写真だけの解析と店名付きの解析で同じ文にし、前方一致のキャッシュを共有させる
+  const catalog = await loadCatalog(c.env.DB);
+  const base = catalog ? SYSTEM_PROMPT + COMPONENT_RULES + catalog.text : SYSTEM_PROMPT;
+  const format = <T extends { schema: { properties: object; required: string[] } }>(f: T) => (catalog ? withComponents(f) : f);
+
   const request = menuName
     ? {
         // none のまま検索させると、成分表示が写っていても調べ直して個数を変えることがあった
         reasoning: { effort: 'low' },
-        instructions: SYSTEM_PROMPT + NAMED_RULES,
-        text: { format: NAMED_RESPONSE_FORMAT },
+        instructions: base + NAMED_RULES,
+        text: { format: format(NAMED_RESPONSE_FORMAT) },
         tools: [{ type: 'web_search' }],
         include: ['web_search_call.action.sources'],
       }
@@ -205,8 +222,8 @@ aiAnalyze.post('/analyze-food', async (c) => {
         // 公式の移行ガイドは minimal なら low から比べるよう勧めている。実写真で比べると
         // none のほうが速く安く、成分表示の読み違いも少なかった
         reasoning: { effort: 'none' },
-        instructions: SYSTEM_PROMPT + GUESS_RULES,
-        text: { format: PHOTO_RESPONSE_FORMAT },
+        instructions: base + GUESS_RULES,
+        text: { format: format(PHOTO_RESPONSE_FORMAT) },
       };
 
   let openaiRes: Response;
@@ -251,19 +268,30 @@ aiAnalyze.post('/analyze-food', async (c) => {
     return c.json({ error: 'Failed to parse AI response' }, 500);
   }
 
+  const confidence = (parsed['confidence'] as string) ?? 'medium';
+  const basis = menuName ? ((parsed['basis'] as string) ?? 'estimate') : undefined;
+  // 写真だけの解析は根拠を返さない。信頼度が high なのは値を栄養成分表示から読んだときだけ
+  const fromLabel = basis ? basis !== 'estimate' : confidence === 'high';
+  const resolved = catalog && c.env.DB ? await resolveComponents(c.env.DB, catalog, parsed['components']) : null;
+  // 読めなかった栄養素は null で返ってくる。成分表でも分からなければ、キーごと省く
+  const { values } = mergeNutrients({
+    calories: numberOrNull(parsed['calories']),
+    protein: numberOrNull(parsed['protein']),
+    fat: numberOrNull(parsed['fat']),
+    netCarbs: numberOrNull(parsed['sugar']),
+    dietaryFiber: numberOrNull(parsed['dietaryFiber']),
+    saltEquivalent: numberOrNull(parsed['saltEquivalent']),
+    saturatedFat: numberOrNull(parsed['saturatedFat']),
+  }, resolved, fromLabel);
+
   const result = {
-    calories: (parsed['calories'] as number) ?? 0,
-    protein: (parsed['protein'] as number) ?? 0,
-    fat: (parsed['fat'] as number) ?? 0,
-    netCarbs: (parsed['sugar'] as number) ?? 0,
-    dietaryFiber: (parsed['dietaryFiber'] as number) ?? 0,
+    ...values,
     portionAmount: (parsed['portion'] as number) ?? 1,
     portionUnit: (parsed['portionUnit'] as string) ?? '人前',
-    confidence: (parsed['confidence'] as string) ?? 'medium',
+    confidence,
     productName: (parsed['productName'] as string) ?? '不明な料理',
-    // 読めなかった栄養素は null で返ってくる。分からないとしてキーごと省く
-    ...optionalNutrient(parsed, 'saltEquivalent'),
-    ...optionalNutrient(parsed, 'saturatedFat'),
+    // 成分表の食材と重さ。アプリは食品を作るときにそのまま送り、ひも付けにする
+    ...(resolved ? { components: resolved.components } : {}),
   };
   if (!menuName) {
     const menuGuess = typeof parsed['menuGuess'] === 'string' ? parsed['menuGuess'].trim() : '';
@@ -279,7 +307,7 @@ aiAnalyze.post('/analyze-food', async (c) => {
   const sourceUrl = parsed['sourceUrl'];
   return c.json({
     ...result,
-    basis: (parsed['basis'] as string) ?? 'estimate',
+    basis,
     ...(typeof sourceUrl === 'string' && searchedUrls.has(sourceUrl) ? { sourceUrl } : {}),
   });
 });
