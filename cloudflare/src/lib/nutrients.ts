@@ -42,8 +42,9 @@ export const CORE_NUTRIENT_IDS = ['calories', 'protein', 'fat', 'netCarbs', 'die
 export const ADDED_NUTRIENT_IDS = [
   'saltEquivalent', 'saturatedFat',
   'potassium', 'calcium', 'magnesium', 'iron', 'vitaminA', 'vitaminD', 'vitaminC',
-  'phosphorus', 'zinc', 'copper', 'manganese',
+  'phosphorus', 'zinc', 'copper', 'manganese', 'iodine', 'selenium', 'chromium', 'molybdenum',
   'vitaminE', 'vitaminK', 'vitaminB1', 'vitaminB2', 'niacin', 'vitaminB6', 'vitaminB12', 'folate', 'pantothenicAcid',
+  'biotin',
   'n3FattyAcids', 'n6FattyAcids',
 ] as const;
 export type CoreNutrientId = (typeof CORE_NUTRIENT_IDS)[number];

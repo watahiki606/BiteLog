@@ -41,13 +41,13 @@ extension NutrientID: NutrientDisplaying {
     case .fat, .saturatedFat, .n3FattyAcids, .n6FattyAcids: return Color("NutrientFat")
     case .netCarbs: return Color("NutrientNetCarbs")
     case .dietaryFiber: return Color("NutrientFiber")
-    case .saltEquivalent: return Color("NutrientSlate")
-    case .potassium, .phosphorus: return Color("NutrientIndigo")
+    case .saltEquivalent, .iodine: return Color("NutrientSlate")
+    case .potassium, .phosphorus, .selenium: return Color("NutrientIndigo")
     case .calcium, .manganese: return Color("NutrientCyan")
-    case .magnesium, .zinc: return Color("NutrientTeal")
-    case .iron, .copper: return Color("NutrientPurple")
+    case .magnesium, .zinc, .chromium: return Color("NutrientTeal")
+    case .iron, .copper, .molybdenum: return Color("NutrientPurple")
     case .vitaminA, .vitaminB1, .vitaminB6, .pantothenicAcid: return Color("NutrientPink")
-    case .vitaminD, .vitaminE, .vitaminB2, .vitaminB12: return Color("NutrientYellow")
+    case .vitaminD, .vitaminE, .vitaminB2, .vitaminB12, .biotin: return Color("NutrientYellow")
     case .vitaminC, .vitaminK, .niacin, .folate: return Color("NutrientLime")
     }
   }
@@ -74,6 +74,10 @@ extension NutrientID: NutrientDisplaying {
     case .zinc: return .text("Zn")
     case .copper: return .text("Cu")
     case .manganese: return .text("Mn")
+    case .iodine: return .text("I")
+    case .selenium: return .text("Se")
+    case .chromium: return .text("Cr")
+    case .molybdenum: return .text("Mo")
     case .vitaminA: return .text("A")
     case .vitaminD: return .text("D")
     case .vitaminC: return .text("C")
@@ -86,6 +90,7 @@ extension NutrientID: NutrientDisplaying {
     case .vitaminB12: return .text("B12")
     case .folate: return .text("B9")
     case .pantothenicAcid: return .text("B5")
+    case .biotin: return .text("B7")
     }
   }
 

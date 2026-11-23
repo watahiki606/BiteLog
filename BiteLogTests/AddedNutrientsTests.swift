@@ -173,6 +173,20 @@ struct AddedNutrientsTests {
     }
   }
 
+  @Test func ヨウ素セレンクロムモリブデンビオチンの基準値() {
+    #expect(Self.intakes.goal(for: .iodine, sex: .female, age: 40)?.value == 140)
+    #expect(Self.intakes.goal(for: .iodine, sex: .male, age: 4)?.value == 60)
+    #expect(Self.intakes.goal(for: .selenium, sex: .male, age: 40)?.value == 35)
+    #expect(Self.intakes.goal(for: .selenium, sex: .female, age: 40)?.value == 25)
+    #expect(Self.intakes.goal(for: .molybdenum, sex: .male, age: 40)?.value == 30)
+    #expect(Self.intakes.goal(for: .molybdenum, sex: .female, age: 8)?.value == 15)
+    #expect(Self.intakes.goal(for: .biotin, sex: .male, age: 40)?.indicator == .adequateIntake)
+    #expect(Self.intakes.goal(for: .biotin, sex: .male, age: 40)?.value == 50)
+    #expect(Self.intakes.goal(for: .chromium, sex: .female, age: 40)?.value == 10)
+    // クロムは1〜17歳の値が表に無い
+    #expect(Self.intakes.goal(for: .chromium, sex: .female, age: 15) == nil)
+  }
+
   @Test func どの栄養素も最初の5項目か入力欄に出すものか詳しい栄養素のどれか1つ() {
     for id in NutrientID.allCases {
       let kinds = [id.definition.core, NutrientID.labelNutrients.contains(id), NutrientID.detailNutrients.contains(id)]

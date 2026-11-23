@@ -234,6 +234,58 @@
     "composition": { "table": "main", "tag": "MN" }
   },
   {
+    "id": "iodine",
+    "column": "iodine",
+    "unit": "µg",
+    "fractionDigits": 0,
+    "group": "mineral",
+    "core": false,
+    "detail": true,
+    "label": "optional",
+    "names": { "ja": "ヨウ素", "en": "Iodine" },
+    "shortNames": { "ja": "ヨウ素", "en": "I" },
+    "composition": { "table": "main", "tag": "ID" }
+  },
+  {
+    "id": "selenium",
+    "column": "selenium",
+    "unit": "µg",
+    "fractionDigits": 0,
+    "group": "mineral",
+    "core": false,
+    "detail": true,
+    "label": "optional",
+    "names": { "ja": "セレン", "en": "Selenium" },
+    "shortNames": { "ja": "セレン", "en": "Se" },
+    "composition": { "table": "main", "tag": "SE" }
+  },
+  {
+    "id": "chromium",
+    "column": "chromium",
+    "unit": "µg",
+    "fractionDigits": 0,
+    "group": "mineral",
+    "core": false,
+    "detail": true,
+    "label": "optional",
+    "names": { "ja": "クロム", "en": "Chromium" },
+    "shortNames": { "ja": "クロム", "en": "Cr" },
+    "composition": { "table": "main", "tag": "CR" }
+  },
+  {
+    "id": "molybdenum",
+    "column": "molybdenum",
+    "unit": "µg",
+    "fractionDigits": 0,
+    "group": "mineral",
+    "core": false,
+    "detail": true,
+    "label": "optional",
+    "names": { "ja": "モリブデン", "en": "Molybdenum" },
+    "shortNames": { "ja": "モリブデン", "en": "Mo" },
+    "composition": { "table": "main", "tag": "MO" }
+  },
+  {
     "id": "vitaminE",
     "column": "vitamin_e",
     "unit": "mg",
@@ -349,6 +401,19 @@
     "names": { "ja": "パントテン酸", "en": "Pantothenic acid" },
     "shortNames": { "ja": "パントテン酸", "en": "Pant. acid" },
     "composition": { "table": "main", "tag": "PANTAC" }
+  },
+  {
+    "id": "biotin",
+    "column": "biotin",
+    "unit": "µg",
+    "fractionDigits": 1,
+    "group": "vitamin",
+    "core": false,
+    "detail": true,
+    "label": "optional",
+    "names": { "ja": "ビオチン", "en": "Biotin" },
+    "shortNames": { "ja": "ビオチン", "en": "Biotin" },
+    "composition": { "table": "main", "tag": "BIOT" }
   },
   {
     "id": "n3FattyAcids",
