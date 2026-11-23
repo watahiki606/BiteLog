@@ -36,6 +36,14 @@
 "copper.shortName" = "銅";
 "manganese.name" = "マンガン";
 "manganese.shortName" = "マンガン";
+"iodine.name" = "ヨウ素";
+"iodine.shortName" = "ヨウ素";
+"selenium.name" = "セレン";
+"selenium.shortName" = "セレン";
+"chromium.name" = "クロム";
+"chromium.shortName" = "クロム";
+"molybdenum.name" = "モリブデン";
+"molybdenum.shortName" = "モリブデン";
 "vitaminE.name" = "ビタミンE";
 "vitaminE.shortName" = "ビタミンE";
 "vitaminK.name" = "ビタミンK";
@@ -54,6 +62,8 @@
 "folate.shortName" = "葉酸";
 "pantothenicAcid.name" = "パントテン酸";
 "pantothenicAcid.shortName" = "パントテン酸";
+"biotin.name" = "ビオチン";
+"biotin.shortName" = "ビオチン";
 "n3FattyAcids.name" = "n-3系脂肪酸";
 "n3FattyAcids.shortName" = "n-3系";
 "n6FattyAcids.name" = "n-6系脂肪酸";

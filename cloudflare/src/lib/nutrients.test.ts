@@ -17,6 +17,12 @@ describe('栄養素の定義', () => {
     expect(LABEL_NUTRIENTS.map((n) => n.id)).not.toContain('zinc');
   });
 
+  it('ヨウ素、セレン、クロム、モリブデン、ビオチンは成分表から補うだけの詳しい栄養素', () => {
+    for (const id of ['iodine', 'selenium', 'chromium', 'molybdenum', 'biotin']) {
+      expect(NUTRIENTS.find((n) => n.id === id)).toMatchObject({ detail: true, unit: 'µg', composition: { table: 'main' } });
+    }
+  });
+
   it('D1 の行の列から、API のキーで値を取り出す', () => {
     const row = { id: 'x', calories: 650, protein: 15, fat: 20, net_carbs: 90, dietary_fiber: 3 };
 

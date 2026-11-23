@@ -58,6 +58,11 @@ describe('1食品の栄養素', () => {
     expect(compositionNutrients({ ...rice, VITD: '-' }).vitamin_d).toBeNull();
   });
 
+  it('ヨウ素やセレンのように未測定の多い栄養素も、未測定なら 0 にせず分からない', () => {
+    const v = compositionNutrients({ ...rice, ID: '-', SE: '1', CR: '-', MO: '30', BIOT: '(0.5)' });
+    expect(v).toMatchObject({ iodine: null, selenium: 1, chromium: null, molybdenum: 30, biotin: 0.5 });
+  });
+
   it('成分表の値を持つ栄養素は、定義のすべての栄養素', () => {
     expect(COMPOSITION_NUTRIENTS.map((n) => n.id)).toEqual(NUTRIENTS.map((n) => n.id));
   });

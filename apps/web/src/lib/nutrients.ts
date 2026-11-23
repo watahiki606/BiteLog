@@ -43,17 +43,11 @@ export function inputStep(n: NutrientDefinition): number {
 
 /**
  * 値の分かっているものだけを足す。あとから足した栄養素は値の分からない品があり、
- * 0 として足すと少なく見えるので、何品ぶんの合計かを添える
+ * 0 として足すと少なく見えてしまう。どの品も分からなければ null
  */
-export function sumKnown(values: readonly (number | null | undefined)[]): { total: number | null; known: number } {
-  let total = 0;
-  let known = 0;
-  for (const v of values) {
-    if (v == null) continue;
-    total += v;
-    known += 1;
-  }
-  return { total: known > 0 ? total : null, known };
+export function sumKnown(values: readonly (number | null | undefined)[]): number | null {
+  const known = values.filter((v): v is number => v != null);
+  return known.length > 0 ? known.reduce((a, b) => a + b, 0) : null;
 }
 
 /** あとから足した栄養素の入力欄の中身。空欄は「分からない」 */

@@ -3897,6 +3897,677 @@
           "value": 8
         }
       ]
+    },
+    {
+      "nutrient": "biotin",
+      "indicator": "adequateIntake",
+      "comparison": "reference",
+      "unit": "µg",
+      "source": "水溶性ビタミン 001316467.pdf p57、報告書 p241",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 20
+        },
+        {
+          "sex": "male",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 20
+        },
+        {
+          "sex": "male",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 30
+        },
+        {
+          "sex": "male",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 30
+        },
+        {
+          "sex": "male",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 40
+        },
+        {
+          "sex": "male",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 50
+        },
+        {
+          "sex": "male",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 50
+        },
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 50
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 50
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 50
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 50
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 50
+        },
+        {
+          "sex": "female",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 20
+        },
+        {
+          "sex": "female",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 20
+        },
+        {
+          "sex": "female",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 30
+        },
+        {
+          "sex": "female",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 30
+        },
+        {
+          "sex": "female",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 40
+        },
+        {
+          "sex": "female",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 50
+        },
+        {
+          "sex": "female",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 50
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 50
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 50
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 50
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 50
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 50
+        }
+      ]
+    },
+    {
+      "nutrient": "iodine",
+      "indicator": "recommendedDietaryAllowance",
+      "comparison": "reference",
+      "unit": "µg",
+      "source": "微量ミネラル 001316469.pdf p64、報告書 p349",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 50
+        },
+        {
+          "sex": "male",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 60
+        },
+        {
+          "sex": "male",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 75
+        },
+        {
+          "sex": "male",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 90
+        },
+        {
+          "sex": "male",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 110
+        },
+        {
+          "sex": "male",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 140
+        },
+        {
+          "sex": "male",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 140
+        },
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 140
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 140
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 140
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 140
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 140
+        },
+        {
+          "sex": "female",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 50
+        },
+        {
+          "sex": "female",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 60
+        },
+        {
+          "sex": "female",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 75
+        },
+        {
+          "sex": "female",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 90
+        },
+        {
+          "sex": "female",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 110
+        },
+        {
+          "sex": "female",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 140
+        },
+        {
+          "sex": "female",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 140
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 140
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 140
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 140
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 140
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 140
+        }
+      ]
+    },
+    {
+      "nutrient": "selenium",
+      "indicator": "recommendedDietaryAllowance",
+      "comparison": "reference",
+      "unit": "µg",
+      "source": "微量ミネラル 001316469.pdf p65、報告書 p350",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 10
+        },
+        {
+          "sex": "male",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 15
+        },
+        {
+          "sex": "male",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 15
+        },
+        {
+          "sex": "male",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 20
+        },
+        {
+          "sex": "male",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 25
+        },
+        {
+          "sex": "male",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 30
+        },
+        {
+          "sex": "male",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 35
+        },
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 30
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 35
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 30
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 30
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 30
+        },
+        {
+          "sex": "female",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 10
+        },
+        {
+          "sex": "female",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 10
+        },
+        {
+          "sex": "female",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 15
+        },
+        {
+          "sex": "female",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 20
+        },
+        {
+          "sex": "female",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 25
+        },
+        {
+          "sex": "female",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 30
+        },
+        {
+          "sex": "female",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 25
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 25
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 25
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 25
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 25
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 25
+        }
+      ]
+    },
+    {
+      "nutrient": "chromium",
+      "indicator": "adequateIntake",
+      "comparison": "reference",
+      "unit": "µg",
+      "source": "微量ミネラル 001316469.pdf p66、報告書 p351。1〜17歳は値が無い",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 10
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 10
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 10
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 10
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 10
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 10
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 10
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 10
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 10
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 10
+        }
+      ]
+    },
+    {
+      "nutrient": "molybdenum",
+      "indicator": "recommendedDietaryAllowance",
+      "comparison": "reference",
+      "unit": "µg",
+      "source": "微量ミネラル 001316469.pdf p67、報告書 p352",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 10
+        },
+        {
+          "sex": "male",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 10
+        },
+        {
+          "sex": "male",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 15
+        },
+        {
+          "sex": "male",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 20
+        },
+        {
+          "sex": "male",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 20
+        },
+        {
+          "sex": "male",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 25
+        },
+        {
+          "sex": "male",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 30
+        },
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 30
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 30
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 30
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 30
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 25
+        },
+        {
+          "sex": "female",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 10
+        },
+        {
+          "sex": "female",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 10
+        },
+        {
+          "sex": "female",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 15
+        },
+        {
+          "sex": "female",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 15
+        },
+        {
+          "sex": "female",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 20
+        },
+        {
+          "sex": "female",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 25
+        },
+        {
+          "sex": "female",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 25
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 25
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 25
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 25
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 25
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 25
+        }
+      ]
     }
   ],
   "estimatedEnergyRequirement": {

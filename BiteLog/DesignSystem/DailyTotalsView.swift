@@ -3,7 +3,7 @@ import SwiftUI
 /// 1日の摂取量を目標と並べて示す要約。
 ///
 /// カロリーのリングを主役にし、主要3栄養素はその下に添える。毎日は追わない
-/// 食物繊維と炭水化物は畳んでおく。
+/// 食物繊維、炭水化物、ミネラルやビタミンは畳んでおく。
 /// 全部を開いたままにすると要約だけで画面の3分の1を使う。
 ///
 /// 下に続く食事の一覧とは別の面として、余白を広く取った1枚のカードにする。
@@ -14,6 +14,8 @@ struct DailyTotalsView: View {
   @Binding var showsAllNutrients: Bool
   /// あとから足した栄養素の合計と、値の分かっていた品数
   var addedTotals: NutrientTotals = .empty
+  /// プロフィールの性別と年齢で引いた基準値。プロフィールが無ければ空で、値だけを出す
+  var referenceGoals: [NutrientID: DietaryReferenceIntakes.Goal] = [:]
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.colorScheme) private var colorScheme
@@ -89,10 +91,20 @@ struct DailyTotalsView: View {
             Text(NSLocalizedString("Carbs (Sugar + Fiber)", comment: "Nutrient label"))
           }
 
-          // 詳しい栄養素は1日の値で見比べる意味が薄いので、統計の期間で見せる
-          ForEach(NutrientID.labelNutrients, id: \.self) { id in
-            AddedNutrientTotalRow(id: id, totals: addedTotals)
+          ringGrid(NutrientID.labelNutrients)
+            .padding(.top, 4)
+
+          // 統計と同じく、詳しい栄養素は畳んだ中に同じカードで並べる。
+          // 統計にだけ出すと、同じ栄養素がどこで見られるのか迷う
+          DisclosureGroup {
+            ringGrid(NutrientID.detailNutrients)
+              .padding(.top, 12)
+          } label: {
+            Text(NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients filled from the composition table"))
+              .font(.subheadline.weight(.semibold))
+              .foregroundStyle(.secondary)
           }
+          .tint(.secondary)
         }
         .padding(.top, 8)
       } label: {
@@ -107,6 +119,17 @@ struct DailyTotalsView: View {
   }
 }
 
+extension DailyTotalsView {
+  /// 飽和脂肪酸の目標量はエネルギーの割合なので、目標のカロリーに掛けて g に直す
+  fileprivate func ringGrid(_ nutrients: [NutrientID]) -> some View {
+    NutrientRingGrid(
+      nutrients: nutrients, totals: addedTotals, aggregation: .dayTotal, goals: referenceGoals,
+      energy: goals.calories,
+      // 合計のカードの上に重ねるので、一段明るい地にする
+      cardBackground: Color(UIColor.tertiarySystemGroupedBackground))
+  }
+}
+
 /// 1日の目標値。`NutritionGoalsManager` から表示側へ渡すための素の値。
 struct NutritionGoalsTargets {
   let calories: Double
@@ -114,58 +137,4 @@ struct NutritionGoalsTargets {
   let fat: Double
   let netCarbs: Double
   let fiber: Double
-}
-
-/// あとから足した栄養素の合計。値の分からない品があれば、何品ぶんの合計かを添える。
-///
-/// 分からない品を 0 として足すと少なく見えるので、分かっている品だけの合計だと分かるようにする。
-struct AddedNutrientTotalRow: View {
-  let id: NutrientID
-  let totals: NutrientTotals
-
-  private var known: Int { totals.knownCount(id) }
-
-  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
-  var body: some View {
-    Group {
-      // 大きな文字で名前と値を横に並べると、どちらも語の途中で折れる。縦に積む
-      if dynamicTypeSize.isAccessibilitySize {
-        VStack(alignment: .leading, spacing: 2) {
-          Text(id.localizedName)
-          value(alignment: .leading)
-        }
-      } else {
-        // 同じ畳みの炭水化物の行と見た目をそろえ、アイコンは付けない
-        LabeledContent {
-          value(alignment: .trailing)
-        } label: {
-          Text(id.localizedName)
-        }
-      }
-    }
-    .accessibilityElement(children: .combine)
-  }
-
-  private func value(alignment: HorizontalAlignment) -> some View {
-    VStack(alignment: alignment, spacing: 2) {
-      Text(valueText).monospacedDigit()
-      if known > 0 && !totals.isComplete(id) {
-        Text(partialText).font(.caption).foregroundStyle(.secondary)
-      }
-    }
-  }
-
-  private var valueText: String {
-    guard known > 0, let value = totals.values.amounts[id] else {
-      return NSLocalizedString("Unknown", comment: "Unknown nutrient value")
-    }
-    return "\(id.format(value))\(id.unit)"
-  }
-
-  private var partialText: String {
-    String(
-      format: NSLocalizedString("Total of %1$d of %2$d items", comment: "Partial total of a nutrient"),
-      known, totals.itemCount)
-  }
 }

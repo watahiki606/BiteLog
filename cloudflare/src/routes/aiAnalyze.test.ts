@@ -317,7 +317,7 @@ describe('食塩相当量と飽和脂肪酸', () => {
     await analyzeFood({ imageBase64: 'dummy' }, await authHeader());
 
     const { properties, required } = lastOpenaiRequestBody.text.format.schema;
-    for (const key of ['zinc', 'folate', 'n3FattyAcids']) {
+    for (const key of ['zinc', 'folate', 'n3FattyAcids', 'iodine', 'biotin']) {
       expect(properties).not.toHaveProperty(key);
       expect(required).not.toContain(key);
     }

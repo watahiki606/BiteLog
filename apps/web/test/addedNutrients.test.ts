@@ -14,12 +14,12 @@ function stat(date: string, over: Partial<DailyStat> = {}): DailyStat {
 }
 
 describe('分かっている値だけを足す', () => {
-  it('分からない値を飛ばし、足した数を返す', () => {
-    expect(sumKnown([2.1, undefined, 1.3, null])).toEqual({ total: 3.4000000000000004, known: 2 });
+  it('分からない値を飛ばして足す', () => {
+    expect(sumKnown([2.1, undefined, 1.3, null])).toBeCloseTo(3.4);
   });
 
   it('どれも分からなければ合計も分からない', () => {
-    expect(sumKnown([undefined, null])).toEqual({ total: null, known: 0 });
+    expect(sumKnown([undefined, null])).toBeNull();
   });
 });
 

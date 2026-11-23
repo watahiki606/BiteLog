@@ -4,7 +4,7 @@ import SwiftUI
 protocol NutrientDisplaying {
   var localizedName: String { get }
   var color: Color { get }
-  var symbolName: String { get }
+  var glyph: NutrientGlyph { get }
   var unit: String { get }
   func format(_ value: Double) -> String
   func accessibilityLabel(for value: Double) -> String
@@ -31,27 +31,66 @@ extension NutrientID: NutrientDisplaying {
   }
 
   /// ライト/ダークそれぞれでコントラストを確かめた色を Asset Catalog から引く。
-  /// 栄養素を足すときは個別の色を作らず、グループで共通の色にする。数十色に増えると見分けがつかない
+  ///
+  /// 並べて見分けられるよう、同じ見出しの中で隣り合う栄養素は別の色にする。赤は上限を超えた印に取っておき、
+  /// 主要な栄養素の色とも分ける。ミネラルは寒色、ビタミンは暖色で、脂肪酸は脂質と同じ色にする
   var color: Color {
     switch self {
     case .calories: return Color("NutrientCalories")
     case .protein: return Color("NutrientProtein")
-    case .fat: return Color("NutrientFat")
+    case .fat, .saturatedFat, .n3FattyAcids, .n6FattyAcids: return Color("NutrientFat")
     case .netCarbs: return Color("NutrientNetCarbs")
     case .dietaryFiber: return Color("NutrientFiber")
-    default: return definition.group.color
+    case .saltEquivalent, .iodine: return Color("NutrientSlate")
+    case .potassium, .phosphorus, .selenium: return Color("NutrientIndigo")
+    case .calcium, .manganese: return Color("NutrientCyan")
+    case .magnesium, .zinc, .chromium: return Color("NutrientTeal")
+    case .iron, .copper, .molybdenum: return Color("NutrientPurple")
+    case .vitaminA, .vitaminB1, .vitaminB6, .pantothenicAcid: return Color("NutrientPink")
+    case .vitaminD, .vitaminE, .vitaminB2, .vitaminB12, .biotin: return Color("NutrientYellow")
+    case .vitaminC, .vitaminK, .niacin, .folate: return Color("NutrientLime")
     }
   }
 
-  /// 色と一緒に出す形。頭文字の丸ではなく中身を連想できる形にする
-  var symbolName: String {
+  /// 色と一緒に出す印。主要な栄養素は中身を連想できる形にする。
+  /// ミネラルは元素記号、ビタミンは A や B1 のような記号にする。形で描き分けられる数ではなく、記号のほうが読み取れる
+  var glyph: NutrientGlyph {
     switch self {
-    case .calories: return "flame.fill"
-    case .protein: return "dumbbell.fill"
-    case .fat: return "drop.fill"
-    case .netCarbs: return "cube.fill"
-    case .dietaryFiber: return "leaf.fill"
-    default: return definition.group.symbolName
+    case .calories: return .symbol("flame.fill")
+    case .protein: return .symbol("dumbbell.fill")
+    case .fat: return .symbol("drop.fill")
+    case .netCarbs: return .symbol("cube.fill")
+    case .dietaryFiber: return .symbol("leaf.fill")
+    case .saltEquivalent: return .text("NaCl")
+    // 脂質の仲間なので、脂質の滴の形を半分にする
+    case .saturatedFat: return .symbol("drop.halffull")
+    case .n3FattyAcids: return .text("n-3")
+    case .n6FattyAcids: return .text("n-6")
+    case .potassium: return .text("K")
+    case .calcium: return .text("Ca")
+    case .magnesium: return .text("Mg")
+    case .iron: return .text("Fe")
+    case .phosphorus: return .text("P")
+    case .zinc: return .text("Zn")
+    case .copper: return .text("Cu")
+    case .manganese: return .text("Mn")
+    case .iodine: return .text("I")
+    case .selenium: return .text("Se")
+    case .chromium: return .text("Cr")
+    case .molybdenum: return .text("Mo")
+    case .vitaminA: return .text("A")
+    case .vitaminD: return .text("D")
+    case .vitaminC: return .text("C")
+    case .vitaminE: return .text("E")
+    case .vitaminK: return .text("K")
+    case .vitaminB1: return .text("B1")
+    case .vitaminB2: return .text("B2")
+    case .niacin: return .text("B3")
+    case .vitaminB6: return .text("B6")
+    case .vitaminB12: return .text("B12")
+    case .folate: return .text("B9")
+    case .pantothenicAcid: return .text("B5")
+    case .biotin: return .text("B7")
     }
   }
 
@@ -72,27 +111,8 @@ extension NutrientID: NutrientDisplaying {
   }
 }
 
-extension NutrientGroup {
-  /// 最初の5項目のあとに足した栄養素の色。脂質の仲間は脂質と同じ系統にし、
-  /// それ以外は控えめな色にする。Asset Catalog の色はコントラストを確かめてあるので、それを使い回す
-  var color: Color {
-    switch self {
-    case .energy: return Color("NutrientCalories")
-    case .macro: return Color("NutrientProtein")
-    case .lipid: return Color("NutrientFat")
-    case .carbohydrate: return Color("NutrientNetCarbs")
-    case .vitamin, .mineral: return .secondary
-    }
-  }
-
-  var symbolName: String {
-    switch self {
-    case .energy: return "flame.fill"
-    case .macro: return "circle.fill"
-    case .lipid: return "drop.halffull"
-    case .carbohydrate: return "cube.fill"
-    case .vitamin: return "pills.fill"
-    case .mineral: return "circle.hexagongrid.fill"
-    }
-  }
+/// 栄養素の印。SF Symbols の形か、元素記号のような短い文字
+enum NutrientGlyph: Equatable {
+  case symbol(String)
+  case text(String)
 }

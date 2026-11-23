@@ -70,7 +70,7 @@ struct MetricSelector: View {
       withAnimation(.snappy(duration: 0.2)) { selection = metric }
     } label: {
       HStack(spacing: 3) {
-        Image(systemName: metric.nutrient.symbolName)
+        NutrientGlyphView(glyph: metric.nutrient.glyph)
           .font(.caption2)
           .accessibilityHidden(true)
         Text(metric.localizedName)

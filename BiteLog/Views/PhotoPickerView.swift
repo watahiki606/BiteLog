@@ -315,7 +315,7 @@ struct AIAnalysisResultView: View {
               // 表示や公式の値から読んだ値と、成分表の食材から引いた値。どちらでも分からなければ空欄
               ForEach(Self.addedNutrients, id: \.self) { id in
                 EditableField(
-                  icon: id.symbolName, label: id.localizedName,
+                  icon: "", glyph: id.glyph, label: id.localizedName,
                   text: Binding(get: { addedValues[id] ?? "" }, set: { addedValues[id] = $0 }),
                   unit: id.definition.unit, keyboardType: .decimalPad, color: id.color,
                   placeholder: NSLocalizedString("Unknown", comment: "Placeholder for an unknown nutrient value"))
@@ -735,6 +735,8 @@ struct ResultRow: View {
 // 編集可能フィールドコンポーネント
 struct EditableField: View {
   let icon: String
+  /// 栄養素の印。あれば `icon` の代わりに描く
+  var glyph: NutrientGlyph? = nil
   let label: String
   @Binding var text: String
   var unit: String = ""
@@ -745,7 +747,7 @@ struct EditableField: View {
 
   var body: some View {
     HStack {
-      Image(systemName: icon)
+      NutrientGlyphView(glyph: glyph ?? .symbol(icon))
         .foregroundStyle(color)
         .frame(width: 24)
         .accessibilityHidden(true)

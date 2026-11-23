@@ -108,7 +108,7 @@ struct FoodRow: View {
   /// 形が無いのがカロリーだけだと、数字が何の値か一瞬迷う。
   private var calorieWithIcon: some View {
     HStack(alignment: .firstTextBaseline, spacing: 4) {
-      Image(systemName: Nutrient.calories.symbolName)
+      NutrientGlyphView(glyph: Nutrient.calories.glyph)
         .font(.subheadline)
         .foregroundStyle(Nutrient.calories.color)
         .accessibilityHidden(true)

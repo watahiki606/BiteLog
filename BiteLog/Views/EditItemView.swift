@@ -199,7 +199,7 @@ struct EditItemView: View {
   }
 }
 
-/// 「1食あたり → 合計」を1行で示す。栄養素の名前・色・単位は `Nutrient` から引く。
+/// 「1食あたり → 合計」を1行のカードで示す。栄養素の名前・色・単位・印は栄養素の型から引く。
 struct EditNutrientRow: View {
   let nutrient: any NutrientDisplaying
   /// 分からなければ nil。あとから足した栄養素は、値の分からない食品がある
@@ -224,34 +224,22 @@ struct EditNutrientRow: View {
   }
 
   var body: some View {
-    HStack(spacing: 6) {
-      Image(systemName: nutrient.symbolName)
-        .foregroundStyle(nutrient.color)
-        .accessibilityHidden(true)
+    NutrientCardRow(nutrient: nutrient) {
+      HStack(spacing: 6) {
+        Text(text(perPortion))
+          .monospacedDigit()
+          .foregroundStyle(.secondary)
 
-      Text(nutrient.localizedName)
+        Image(systemName: "arrow.right")
+          .font(.caption2)
+          .foregroundStyle(.secondary)
+          .accessibilityHidden(true)
 
-      Spacer(minLength: 8)
-
-      Text(text(perPortion))
-        .monospacedDigit()
-        .foregroundStyle(.secondary)
-
-      Image(systemName: "arrow.right")
-        .font(.caption2)
-        .foregroundStyle(.secondary)
-        .accessibilityHidden(true)
-
-      Text(text(total))
-        .monospacedDigit()
-        .fontWeight(.medium)
+        Text(text(total))
+          .monospacedDigit()
+          .fontWeight(.medium)
+      }
     }
-    .font(.subheadline)
-    .padding(12)
-    .background(
-      Color(UIColor.tertiarySystemGroupedBackground),
-      in: RoundedRectangle(cornerRadius: 10)
-    )
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(
       total.map(nutrient.accessibilityLabel(for:))

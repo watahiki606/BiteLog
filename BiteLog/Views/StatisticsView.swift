@@ -190,12 +190,7 @@ struct StatisticsView: View {
 
   /// プロフィールの性別と年齢で引いた目標量。プロフィールが無ければ空
   private var addedNutrientGoals: [NutrientID: DietaryReferenceIntakes.Goal] {
-    guard let profile = PersonalProfile.load(), let intakes = DietaryReferenceIntakes.bundled else { return [:] }
-    var goals: [NutrientID: DietaryReferenceIntakes.Goal] = [:]
-    for id in NutrientID.allCases {
-      if let goal = intakes.goal(for: id, profile: profile) { goals[id] = goal }
-    }
-    return goals
+    DietaryReferenceIntakes.goalsForSavedProfile()
   }
 
   /// 選んだ期間の食事の質のスコア。記録の無い日は「何も食べなかった日」とみなさず、記録のある日として数えない
@@ -233,10 +228,10 @@ struct StatisticsView: View {
           sectionTitle(NSLocalizedString("Nutrients per Day", comment: "Statistics section"))
           nutrientAverageCard
 
-          sectionTitle(NSLocalizedString("Other Nutrients", comment: "Statistics section"))
-          CardView {
-            AddedNutrientGoalsView(totals: settledTotals, dayCount: visibleDays, goals: addedNutrientGoals)
-          }
+          // 値は期間の1日平均。上の主要な栄養素の見出しと書き方をそろえる
+          sectionTitle(NSLocalizedString("Other Nutrients per Day", comment: "Statistics section"))
+          // 栄養素ごとのカードを地の上に直接並べる。1枚のカードに入れると、カードの中にカードが重なる
+          AddedNutrientGoalsView(totals: settledTotals, dayCount: visibleDays, goals: addedNutrientGoals)
 
           dietQualityTitle
           CardView {
@@ -611,7 +606,7 @@ struct StatisticsView: View {
   private func pfcLegend(_ nutrient: Nutrient, _ pct: Double) -> some View {
     VStack(alignment: .leading, spacing: 2) {
       HStack(spacing: 4) {
-        Image(systemName: nutrient.symbolName)
+        NutrientGlyphView(glyph: nutrient.glyph)
           .foregroundStyle(nutrient.color)
           .accessibilityHidden(true)
         Text(nutrient.localizedName)

@@ -20,6 +20,10 @@ enum NutrientID: String, CaseIterable, Codable, Sendable {
   case zinc
   case copper
   case manganese
+  case iodine
+  case selenium
+  case chromium
+  case molybdenum
   case vitaminE
   case vitaminK
   case vitaminB1
@@ -29,6 +33,7 @@ enum NutrientID: String, CaseIterable, Codable, Sendable {
   case vitaminB12
   case folate
   case pantothenicAcid
+  case biotin
   case n3FattyAcids
   case n6FattyAcids
 }
@@ -108,6 +113,22 @@ extension NutrientID {
       return NutrientDefinition(
         id: .manganese, column: "manganese", unit: "mg", fractionDigits: 2,
         group: .mineral, core: false, detail: true, label: .optional)
+    case .iodine:
+      return NutrientDefinition(
+        id: .iodine, column: "iodine", unit: "µg", fractionDigits: 0,
+        group: .mineral, core: false, detail: true, label: .optional)
+    case .selenium:
+      return NutrientDefinition(
+        id: .selenium, column: "selenium", unit: "µg", fractionDigits: 0,
+        group: .mineral, core: false, detail: true, label: .optional)
+    case .chromium:
+      return NutrientDefinition(
+        id: .chromium, column: "chromium", unit: "µg", fractionDigits: 0,
+        group: .mineral, core: false, detail: true, label: .optional)
+    case .molybdenum:
+      return NutrientDefinition(
+        id: .molybdenum, column: "molybdenum", unit: "µg", fractionDigits: 0,
+        group: .mineral, core: false, detail: true, label: .optional)
     case .vitaminE:
       return NutrientDefinition(
         id: .vitaminE, column: "vitamin_e", unit: "mg", fractionDigits: 1,
@@ -143,6 +164,10 @@ extension NutrientID {
     case .pantothenicAcid:
       return NutrientDefinition(
         id: .pantothenicAcid, column: "pantothenic_acid", unit: "mg", fractionDigits: 2,
+        group: .vitamin, core: false, detail: true, label: .optional)
+    case .biotin:
+      return NutrientDefinition(
+        id: .biotin, column: "biotin", unit: "µg", fractionDigits: 1,
         group: .vitamin, core: false, detail: true, label: .optional)
     case .n3FattyAcids:
       return NutrientDefinition(

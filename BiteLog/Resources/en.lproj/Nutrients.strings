@@ -36,6 +36,14 @@
 "copper.shortName" = "Cu";
 "manganese.name" = "Manganese";
 "manganese.shortName" = "Mn";
+"iodine.name" = "Iodine";
+"iodine.shortName" = "I";
+"selenium.name" = "Selenium";
+"selenium.shortName" = "Se";
+"chromium.name" = "Chromium";
+"chromium.shortName" = "Cr";
+"molybdenum.name" = "Molybdenum";
+"molybdenum.shortName" = "Mo";
 "vitaminE.name" = "Vitamin E";
 "vitaminE.shortName" = "Vit E";
 "vitaminK.name" = "Vitamin K";
@@ -54,6 +62,8 @@
 "folate.shortName" = "Folate";
 "pantothenicAcid.name" = "Pantothenic acid";
 "pantothenicAcid.shortName" = "Pant. acid";
+"biotin.name" = "Biotin";
+"biotin.shortName" = "Biotin";
 "n3FattyAcids.name" = "Omega-3 fatty acids";
 "n3FattyAcids.shortName" = "Omega-3";
 "n6FattyAcids.name" = "Omega-6 fatty acids";
