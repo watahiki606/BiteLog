@@ -432,27 +432,27 @@
 
 /* Nutrients added after the first five: salt equivalent and saturated fat */
 "Other Nutrients" = "Other Nutrients";
+"Other Nutrients per Day" = "Other Nutrients per Day";
 "Leave blank if the label doesn't show it. Enter 0 only when it is really 0." = "Leave blank if the label doesn't show it. Enter 0 only when it is really 0.";
 "Total of %1$d of %2$d items" = "Total of %1$d of %2$d items";
 "From %1$d of %2$d items" = "From %1$d of %2$d items";
 "Salt and Saturated Fat" = "Salt and Saturated Fat";
 "Add your sex and birth date in Profile to compare with the dietary goals." = "Add your sex and birth date in Profile to compare with the dietary goals.";
-"%@%% of energy" = "%@%% of energy";
-"%@ per day" = "%@ per day";
-"Goal: less than %@" = "Goal: less than %@";
-"Goal: %@%% of energy or less" = "Goal: %@%% of energy or less";
 
 /* Carbohydrates and the fiber within them. Net carbs are computed */
 "Of which dietary fiber" = "Of which dietary fiber";
 "Sugar (Carbohydrates − Fiber)" = "Net carbs (Carbs − Fiber)";
 "Dietary fiber can't be more than carbohydrates." = "Dietary fiber can't be more than carbohydrates.";
 
-/* ミネラルとビタミンの基準値。推奨量は割合を添え、目安量は値だけ */
-"Goal: %@ or more" = "Goal: %@ or more";
-"Adequate intake %@" = "Adequate intake %@";
-"Recommended %1$@, %2$@ if menstruating" = "Recommended %1$@, %2$@ if menstruating";
-"Recommended %1$@: %2$d%%" = "%2$d%% of the recommended %1$@";
-"Recommended %@" = "Recommended %@";
+/* 栄養素のリングのカード。基準値に対する割合と、ミネラルとビタミンの見出し */
+"%d%% of the recommended amount" = "%d%% of recommended";
+"%d%% of the adequate intake" = "%d%% of the adequate intake";
+"%@ if menstruating" = "%@ if menstruating";
+"Over by %@" = "Over by %@";
+"Reached" = "Reached";
+"Minerals" = "Minerals";
+"Vitamins" = "Vitamins";
+"Fatty acids" = "Fatty acids";
 
 /* 食品成分表とのひも付け */
 "Enter the product name to see candidates." = "Enter the product name to see candidates.";

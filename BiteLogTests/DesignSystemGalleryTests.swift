@@ -35,7 +35,14 @@ struct DesignSystemGalleryTests {
       try render(ScreenPartsGalleryView(), to: base, name: "parts-\(name)", scheme: scheme, typeSize: typeSize)
       try render(BodyGalleryView(), to: base, name: "body-\(name)", scheme: scheme, typeSize: typeSize)
       // 統計の「食塩と飽和脂肪酸」は別の絵にする。合計のカードと並べると AX5 で書き出せない高さになる
-      try render(AddedNutrientGoalsGalleryView(), to: base, name: "added-\(name)", scheme: scheme, typeSize: typeSize)
+      try render(
+        AddedNutrientGoalsGalleryView(withGoals: true), to: base, name: "added-\(name)", scheme: scheme,
+        typeSize: typeSize)
+      try render(
+        AddedNutrientGoalsGalleryView(withGoals: false), to: base, name: "added-noprofile-\(name)",
+        scheme: scheme, typeSize: typeSize)
+      try render(DayRingGalleryView(), to: base, name: "day-rings-\(name)", scheme: scheme, typeSize: typeSize)
+      try render(NutrientRowsGalleryView(), to: base, name: "nutrient-rows-\(name)", scheme: scheme, typeSize: typeSize)
       try render(DietQualityScoreGalleryView(), to: base, name: "score-\(name)", scheme: scheme, typeSize: typeSize)
       // 1件の画面は2通りを別の絵にする。並べると AX5 で書き出せない高さになる
       try render(
@@ -180,17 +187,49 @@ private struct GalleryView: View {
 
 /// 要約ビューは Binding を持つので、確認用に State を持つ入れ物を挟む。
 private struct DailyTotalsSample: View {
-  @State private var showsAllNutrients = true
+  /// 畳みの中は DayRingGalleryView で描く。開くと AX5 で書き出せない高さになる
+  @State private var showsAllNutrients = false
 
-  /// 食塩は5品中3品だけ分かっていて、飽和脂肪酸はどの品も分からない日
+  /// 食塩は5品中3品だけ分かっていて目標量を超え、カルシウムは推奨量に届き、ビタミン D はどの品も分からない日
   static let addedTotals: NutrientTotals = {
-    func item(salt: Double?) -> NutritionValues {
+    func item(salt: Double?, calcium: Double?) -> NutritionValues {
       var amounts = NutrientAmounts(calories: 300, protein: 10, fat: 10, netCarbs: 30, dietaryFiber: 2)
       amounts[.saltEquivalent] = salt
+      amounts[.saturatedFat] = 2.4
+      amounts[.potassium] = 420
+      amounts[.calcium] = calcium
+      amounts[.magnesium] = 48
+      amounts[.iron] = 1.1
+      amounts[.vitaminA] = 120
+      amounts[.vitaminC] = 18
+      amounts[.zinc] = 1.6
+      amounts[.folate] = 44
       return NutritionValues(amounts)
     }
-    return NutrientTotals(items: [item(salt: 2.1), item(salt: 1.3), item(salt: nil), item(salt: 0.8), item(salt: nil)])
+    return NutrientTotals(items: [
+      item(salt: 3.1, calcium: 220), item(salt: 2.8, calcium: 180), item(salt: nil, calcium: 150),
+      item(salt: 2.4, calcium: 90), item(salt: nil, calcium: 60),
+    ])
   }()
+
+  /// 30〜49歳の女性の基準値
+  static let goals: [NutrientID: DietaryReferenceIntakes.Goal] = [
+    .saltEquivalent: .init(nutrient: .saltEquivalent, indicator: .tentativeDietaryGoal, comparison: .lessThan, value: 6.5),
+    .saturatedFat: .init(
+      nutrient: .saturatedFat, indicator: .tentativeDietaryGoal, comparison: .atMostPercentOfEnergy, value: 7),
+    .potassium: .init(nutrient: .potassium, indicator: .tentativeDietaryGoal, comparison: .atLeast, value: 2600),
+    .calcium: .init(nutrient: .calcium, indicator: .recommendedDietaryAllowance, comparison: .reference, value: 650),
+    .magnesium: .init(nutrient: .magnesium, indicator: .recommendedDietaryAllowance, comparison: .reference, value: 290),
+    .iron: .init(
+      nutrient: .iron, indicator: .recommendedDietaryAllowance, comparison: .reference, value: 6.0,
+      menstruatingValue: 10.5),
+    .vitaminA: .init(nutrient: .vitaminA, indicator: .recommendedDietaryAllowance, comparison: .reference, value: 700),
+    .vitaminD: .init(nutrient: .vitaminD, indicator: .adequateIntake, comparison: .reference, value: 9),
+    .vitaminC: .init(nutrient: .vitaminC, indicator: .recommendedDietaryAllowance, comparison: .reference, value: 100),
+    .zinc: .init(nutrient: .zinc, indicator: .recommendedDietaryAllowance, comparison: .reference, value: 8),
+    .folate: .init(nutrient: .folate, indicator: .recommendedDietaryAllowance, comparison: .reference, value: 240),
+    .vitaminE: .init(nutrient: .vitaminE, indicator: .adequateIntake, comparison: .reference, value: 6),
+  ]
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
@@ -200,7 +239,7 @@ private struct DailyTotalsSample: View {
         goals: NutritionGoalsTargets(
           calories: 2000, protein: 120, fat: 60, netCarbs: 250, fiber: 20),
         showsAllNutrients: $showsAllNutrients,
-        addedTotals: Self.addedTotals)
+        addedTotals: Self.addedTotals, referenceGoals: Self.goals)
     }
   }
 }
@@ -382,25 +421,45 @@ private struct ScreenPartsGalleryView: View {
   }
 }
 
-/// 統計の「その他の栄養素」。基準値があるときと、プロフィールが無いとき
+/// 統計の「その他の栄養素」。基準値があるときと、プロフィールが無いとき。詳しい栄養素は畳んである
 private struct AddedNutrientGoalsGalleryView: View {
+  let withGoals: Bool
+
   var body: some View {
-    VStack(alignment: .leading, spacing: 24) {
-      AddedNutrientGoalsView(
-        totals: DailyTotalsSample.addedTotals, dayCount: 1,
-        goals: [
-          .saltEquivalent: .init(nutrient: .saltEquivalent, indicator: .tentativeDietaryGoal, comparison: .lessThan, value: 7.5),
-          .saturatedFat: .init(
-            nutrient: .saturatedFat, indicator: .tentativeDietaryGoal, comparison: .atMostPercentOfEnergy, value: 7),
-          .potassium: .init(nutrient: .potassium, indicator: .tentativeDietaryGoal, comparison: .atLeast, value: 2600),
-          .calcium: .init(nutrient: .calcium, indicator: .recommendedDietaryAllowance, comparison: .reference, value: 650),
-          .iron: .init(
-            nutrient: .iron, indicator: .recommendedDietaryAllowance, comparison: .reference, value: 6.0,
-            menstruatingValue: 10.5),
-          .vitaminD: .init(nutrient: .vitaminD, indicator: .adequateIntake, comparison: .reference, value: 9),
-        ])
-      Divider()
-      AddedNutrientGoalsView(totals: DailyTotalsSample.addedTotals, dayCount: 1, goals: [:])
+    AddedNutrientGoalsView(
+      totals: DailyTotalsSample.addedTotals, dayCount: 1, goals: withGoals ? DailyTotalsSample.goals : [:]
+    )
+    .padding()
+  }
+}
+
+/// 1日の合計の「その他の栄養素」だけを、合計のカードと同じ地の上に並べる。
+/// 合計のカードごと描くと AX5 で書き出せない高さになる
+private struct DayRingGalleryView: View {
+  var body: some View {
+    NutrientRingGrid(
+      nutrients: NutrientID.labelNutrients, totals: DailyTotalsSample.addedTotals, aggregation: .dayTotal,
+      goals: DailyTotalsSample.goals, energy: 1800,
+      cardBackground: Color(UIColor.tertiarySystemGroupedBackground))
+    .padding(16)
+    .background(Color(UIColor.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 24))
+    .padding()
+  }
+}
+
+/// 記録の編集と食品の詳細の行
+private struct NutrientRowsGalleryView: View {
+  var body: some View {
+    VStack(spacing: 8) {
+      EditNutrientRow(nutrient: .calories, perPortion: 240, total: 360)
+      EditNutrientRow(nutrient: .fiber, perPortion: 2.1, total: 3.2)
+      EditNutrientRow(addedNutrient: .saltEquivalent, perPortion: 1.2, total: 1.8)
+      EditNutrientRow(addedNutrient: .saturatedFat, perPortion: 2.4, total: 3.6)
+      EditNutrientRow(addedNutrient: .calcium, perPortion: nil, total: nil)
+      EditNutrientRow(addedNutrient: .vitaminB12, perPortion: 0.4, total: 0.6)
+      NutrientCardRow(nutrient: NutrientID.potassium, note: "Filled from the food composition table") {
+        Text("420mg")
+      }
     }
     .padding()
   }

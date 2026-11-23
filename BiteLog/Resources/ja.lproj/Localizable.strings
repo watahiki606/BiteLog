@@ -467,28 +467,28 @@
 
 /* あとから足した栄養素。食塩相当量と飽和脂肪酸 */
 "Other Nutrients" = "その他の栄養素";
+"Other Nutrients per Day" = "その他の栄養素の1日平均";
 "Leave blank if the label doesn't show it. Enter 0 only when it is really 0." = "表示に無ければ空欄のままにしてください。0 は、本当に 0 のときだけ入れます。";
 // 値の分からない品があるときの合計。%1$d が値の分かっていた品数、%2$d が全品数
 "Total of %1$d of %2$d items" = "%2$d品中%1$d品の合計";
 "From %1$d of %2$d items" = "%2$d品中%1$d品の値から";
 "Salt and Saturated Fat" = "食塩と飽和脂肪酸";
 "Add your sex and birth date in Profile to compare with the dietary goals." = "プロフィールに性別と生年月日を入れると、食事摂取基準の目標量と並べます。";
-"%@%% of energy" = "エネルギーの%@%%";
-"%@ per day" = "1日 %@";
-"Goal: less than %@" = "目標 %@未満";
-"Goal: %@%% of energy or less" = "目標 エネルギーの%@%%以下";
 
 /* 入力欄は炭水化物とうち食物繊維。糖質は引き算で出す */
 "Of which dietary fiber" = "うち食物繊維";
 "Sugar (Carbohydrates − Fiber)" = "糖質（炭水化物 − 食物繊維）";
 "Dietary fiber can't be more than carbohydrates." = "食物繊維は炭水化物より多くできません。";
 
-/* ミネラルとビタミンの基準値。推奨量は割合を添え、目安量は値だけ */
-"Goal: %@ or more" = "目標 %@以上";
-"Adequate intake %@" = "目安量 %@";
-"Recommended %1$@, %2$@ if menstruating" = "推奨量 %1$@、月経がある場合は %2$@";
-"Recommended %1$@: %2$d%%" = "推奨量 %1$@ に対して %2$d%%";
-"Recommended %@" = "推奨量 %@";
+/* 栄養素のリングのカード。基準値に対する割合と、ミネラルとビタミンの見出し */
+"%d%% of the recommended amount" = "推奨量の %d%%";
+"%d%% of the adequate intake" = "目安量の %d%%";
+"%@ if menstruating" = "月経がある場合は %@";
+"Over by %@" = "%@ 超過";
+"Reached" = "基準に到達";
+"Minerals" = "ミネラル";
+"Vitamins" = "ビタミン";
+"Fatty acids" = "脂肪酸";
 
 /* 食品成分表とのひも付け */
 "Enter the product name to see candidates." = "商品名を入れると候補が出ます。";

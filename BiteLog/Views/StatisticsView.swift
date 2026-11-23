@@ -228,10 +228,10 @@ struct StatisticsView: View {
           sectionTitle(NSLocalizedString("Nutrients per Day", comment: "Statistics section"))
           nutrientAverageCard
 
-          sectionTitle(NSLocalizedString("Other Nutrients", comment: "Statistics section"))
-          CardView {
-            AddedNutrientGoalsView(totals: settledTotals, dayCount: visibleDays, goals: addedNutrientGoals)
-          }
+          // 値は期間の1日平均。上の主要な栄養素の見出しと書き方をそろえる
+          sectionTitle(NSLocalizedString("Other Nutrients per Day", comment: "Statistics section"))
+          // 栄養素ごとのカードを地の上に直接並べる。1枚のカードに入れると、カードの中にカードが重なる
+          AddedNutrientGoalsView(totals: settledTotals, dayCount: visibleDays, goals: addedNutrientGoals)
 
           dietQualityTitle
           CardView {
