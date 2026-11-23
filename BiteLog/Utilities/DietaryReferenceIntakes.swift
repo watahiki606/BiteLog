@@ -47,13 +47,20 @@ struct DietaryReferenceIntakes {
       let comparison: Comparison
       let bands: [Band]
     }
+    struct EnergyRequirement: Decodable {
+      let bands: [Entry.Band]
+    }
     let goals: [Entry]
+    let estimatedEnergyRequirement: EnergyRequirement
   }
 
   private let entries: [File.Entry]
+  private let energyBands: [File.Entry.Band]
 
   init(data: Data) throws {
-    entries = try JSONDecoder().decode(File.self, from: data).goals
+    let file = try JSONDecoder().decode(File.self, from: data)
+    entries = file.goals
+    energyBands = file.estimatedEnergyRequirement.bands
   }
 
   /// 同梱のファイル。読めなければ目標量を出さない
@@ -66,11 +73,8 @@ struct DietaryReferenceIntakes {
 
   /// 目標量。その性別と年齢に目標量が無ければ nil
   func goal(for nutrient: NutrientID, sex: TanitaProfile.Sex, age: Int) -> Goal? {
-    let sexName = sex == .male ? "male" : "female"
     guard let entry = entries.first(where: { $0.nutrient == nutrient }),
-      let band = entry.bands.first(where: {
-        $0.sex == sexName && age >= $0.minAge && age <= ($0.maxAge ?? Int.max)
-      })
+      let band = Self.band(entry.bands, sex: sex, age: age)
     else { return nil }
     return Goal(
       nutrient: nutrient, indicator: entry.indicator, comparison: entry.comparison, value: band.value,
@@ -81,9 +85,17 @@ struct DietaryReferenceIntakes {
   func goal(for nutrient: NutrientID, profile: PersonalProfile, today: Date = Date(), calendar: Calendar = .current)
     -> Goal?
   {
-    guard let birth = calendar.date(from: profile.birthDate),
-      let age = calendar.dateComponents([.year], from: birth, to: today).year
-    else { return nil }
+    guard let age = profile.age(on: today, calendar: calendar) else { return nil }
     return goal(for: nutrient, sex: profile.sex, age: age)
+  }
+
+  /// 推定エネルギー必要量。身体活動レベル「ふつう」の値。1歳未満は nil
+  func estimatedEnergyRequirement(sex: TanitaProfile.Sex, age: Int) -> Double? {
+    Self.band(energyBands, sex: sex, age: age)?.value
+  }
+
+  private static func band(_ bands: [File.Entry.Band], sex: TanitaProfile.Sex, age: Int) -> File.Entry.Band? {
+    let sexName = sex == .male ? "male" : "female"
+    return bands.first { $0.sex == sexName && age >= $0.minAge && age <= ($0.maxAge ?? Int.max) }
   }
 }

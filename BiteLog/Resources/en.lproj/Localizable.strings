@@ -471,3 +471,22 @@
 "Ministry of Health: Dietary Reference Intakes for Japanese 2025" = "Dietary Reference Intakes for Japanese (2025)";
 "Food Nutrients" = "Food Nutrients";
 "Reference Values" = "Reference Values";
+
+/* Diet quality score. Shown for reference, without judging good or bad */
+"Diet Quality Score" = "Diet Quality Score";
+"For reference" = "For reference";
+"%1$d of %2$d points" = "%1$d of %2$d points";
+"%d%% of the goal" = "%d%% of the goal";
+"ListSeparator" = ", ";
+"Add your sex and birth date in Profile to see the score." = "Add your sex and birth date in Profile to see the score.";
+"The score is for people aged 18 and over." = "The score is for people aged 18 and over.";
+"Choose a period of 7 days or more to see the score." = "Choose a period of 7 days or more to see the score.";
+"The score needs meals logged on 5 days or more in the period." = "The score needs meals logged on 5 days or more in the period.";
+"Too many items have unknown values for %@." = "Too many items have unknown values for %@.";
+"No calories are logged in this period." = "No calories are logged in this period.";
+"DietQualityScore.Note.Reference" = "A reference score from comparing nutrients with the dietary reference intakes. It is not a diagnosis.";
+"DietQualityScore.Note.AddedSugar" = "It leaves added sugars out of the NRF9.3 used in research, so it can't be compared with scores in studies.";
+"DietQualityScore.Note.Consult" = "If you are pregnant or have a medical condition, talk to a professional.";
+"DataSources.Score" = "The diet quality score follows the Japanese version of NRF9.3 by Murakami et al. (2019), without added sugars. Intakes are adjusted for energy and scaled to the estimated energy requirement at a moderate activity level before comparing with the reference values.";
+"Murakami K, et al. Nutrients 2019" = "Murakami K, et al. Nutrients 2019";
+"Score Method" = "Score Method";

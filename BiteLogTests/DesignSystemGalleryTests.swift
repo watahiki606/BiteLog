@@ -36,6 +36,7 @@ struct DesignSystemGalleryTests {
       try render(BodyGalleryView(), to: base, name: "body-\(name)", scheme: scheme, typeSize: typeSize)
       // 統計の「食塩と飽和脂肪酸」は別の絵にする。合計のカードと並べると AX5 で書き出せない高さになる
       try render(AddedNutrientGoalsGalleryView(), to: base, name: "added-\(name)", scheme: scheme, typeSize: typeSize)
+      try render(DietQualityScoreGalleryView(), to: base, name: "score-\(name)", scheme: scheme, typeSize: typeSize)
       // 1件の画面は2通りを別の絵にする。並べると AX5 で書き出せない高さになる
       try render(
         BodyDetailGalleryView(withReference: true), to: base, name: "body-detail-\(name)",
@@ -400,6 +401,32 @@ private struct AddedNutrientGoalsGalleryView: View {
         ])
       Divider()
       AddedNutrientGoalsView(totals: DailyTotalsSample.addedTotals, dayCount: 1, goals: [:])
+    }
+    .padding()
+  }
+}
+
+/// 統計の「食事の質スコア」。点が出るときと、出せないとき
+private struct DietQualityScoreGalleryView: View {
+  private static let score = DietQualityScore(components: [
+    .init(nutrient: .protein, role: .encouraged, percentOfReference: 118),
+    .init(nutrient: .dietaryFiber, role: .encouraged, percentOfReference: 64),
+    .init(nutrient: .vitaminA, role: .encouraged, percentOfReference: 55),
+    .init(nutrient: .vitaminC, role: .encouraged, percentOfReference: 81),
+    .init(nutrient: .vitaminD, role: .encouraged, percentOfReference: 92),
+    .init(nutrient: .calcium, role: .encouraged, percentOfReference: 60),
+    .init(nutrient: .iron, role: .encouraged, percentOfReference: 103),
+    .init(nutrient: .potassium, role: .encouraged, percentOfReference: 77),
+    .init(nutrient: .magnesium, role: .encouraged, percentOfReference: 85),
+    .init(nutrient: .saturatedFat, role: .limited, percentOfReference: 131),
+    .init(nutrient: .saltEquivalent, role: .limited, percentOfReference: 124),
+  ])
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 24) {
+      DietQualityScoreView(result: .score(Self.score))
+      Divider()
+      DietQualityScoreView(result: .unavailable([.tooFewLoggedDays, .manyUnknownItems([.vitaminD, .potassium])]))
     }
     .padding()
   }
