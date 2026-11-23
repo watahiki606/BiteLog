@@ -10,6 +10,10 @@ export const COMPONENT_RULES = `
 components
 - Split what the user eats in this sitting into foods from the composition table at the end of these instructions. For each, give the food number exactly as listed and the edible grams in this portion.
 - Choose the form as eaten: cooked rice is めし, boiled noodles are ゆで, grilled meat is 焼き. Include cooking oil, dressing, sauce and soup when they are clearly part of the meal.
+- grams is a weight, never a count. When only the count is known, estimate the weight of one piece, e.g. one wafer is about 10 g and one egg about 50 g.
+- Do not leave out the rice, noodles or bread under or beside the topping. A 丼 or curry rice includes the rice even when the topping hides it, about 250 g for one serving.
+- For granular or powdered seasonings such as 顆粒和風だし, give the grams of the dry powder, usually 2 to 10 g. For a liquid stock, prefer the ready-to-use form such as かつおだし.
+- Build soups and sauces from the table as served. For noodle soup, count half of the soup, since most people leave the rest.
 - A dish listed in the table, such as 親子丼の具 or とん汁, may be used as one food.
 - For a packaged product with a nutrition label, give the closest table food for the product with the package weight. The app uses it only to fill nutrients the label does not show.
 - If no food in the table fits, return an empty array.`;
@@ -23,7 +27,11 @@ let cached: Catalog | null = null;
 export async function loadCatalog(db: D1Database | undefined): Promise<Catalog | null> {
   if (cached) return cached;
   if (!db) return null;
-  const { results } = await db.prepare('SELECT food_number, name FROM composition_foods ORDER BY food_number')
+  // 濃縮の食品は薄める前の値で、そのまま重さを掛けると食塩が何倍にもなる。評価でラーメンが 58 g になったので一覧から外す。
+  // 濃縮還元のジュースはそのまま飲む形なので残す
+  const { results } = await db.prepare(
+    "SELECT food_number, name FROM composition_foods WHERE name NOT LIKE '%濃縮%' OR name LIKE '%濃縮還元%' ORDER BY food_number",
+  )
     .all<{ food_number: string; name: string }>();
   if (results.length === 0) return null;
   cached = {
@@ -73,11 +81,15 @@ export async function resolveComponents(db: D1Database, catalog: Catalog, raw: u
     r.food_number as string, Object.fromEntries(columns.map((col) => [col, r[col] as number | null])),
   ]));
 
-  return {
-    components: components.map((c) => ({ ...c, name: catalog.names.get(c.foodNumber)! })),
-    totals: sumComponents(components.map((c) => ({ grams: c.grams, per100g: per100g.get(c.foodNumber) ?? null }))),
-  };
+  const totals = sumComponents(components.map((c) => ({ grams: c.grams, per100g: per100g.get(c.foodNumber) ?? null })));
+  // 1食で食塩が 20 g を超えるのは、粉の調味料をスープの量で数えたような読み違い。評価で顆粒だし 100 g が出た。
+  // 外れた値を成分表の値として出すより、AI の答えた数値に戻す
+  if ((totals.salt_equivalent ?? 0) > MAX_PLAUSIBLE_SALT) return null;
+  return { components: components.map((c) => ({ ...c, name: catalog.names.get(c.foodNumber)! })), totals };
 }
+
+/** 1回分の食塩相当量として考えられる上限。ラーメンの汁を全部飲んでも 10 g 前後 */
+export const MAX_PLAUSIBLE_SALT = 20;
 
 /**
  * 応答の栄養素の値を決める。キーは API の id。

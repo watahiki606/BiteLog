@@ -89,3 +89,13 @@ describe('写真の解析と成分表', () => {
     expect(body).not.toHaveProperty('potassium');
   });
 });
+
+describe('読み違いの安全策', () => {
+  it('1食で食塩が 20 g を超える食材の組は使わず、AI の答えた値に戻す', async () => {
+    // 親子丼の具 2.5 kg は食塩 25 g になる
+    answer = { ...OYAKODON, components: [{ foodNumber: '18030', grams: 2500 }] };
+    const body = await analyze();
+    expect(body).toMatchObject({ calories: 700 });
+    expect(body).not.toHaveProperty('components');
+  });
+});
