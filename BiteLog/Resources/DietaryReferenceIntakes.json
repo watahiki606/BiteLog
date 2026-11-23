@@ -1632,6 +1632,2271 @@
           "value": 17
         }
       ]
+    },
+    {
+      "nutrient": "phosphorus",
+      "indicator": "adequateIntake",
+      "comparison": "reference",
+      "unit": "mg",
+      "source": "多量ミネラル 001316468.pdf p43、報告書 p285",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 600
+        },
+        {
+          "sex": "male",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 700
+        },
+        {
+          "sex": "male",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 900
+        },
+        {
+          "sex": "male",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 1000
+        },
+        {
+          "sex": "male",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 1100
+        },
+        {
+          "sex": "male",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 1200
+        },
+        {
+          "sex": "male",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 1200
+        },
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 1000
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 1000
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 1000
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 1000
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 1000
+        },
+        {
+          "sex": "female",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 500
+        },
+        {
+          "sex": "female",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 700
+        },
+        {
+          "sex": "female",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 800
+        },
+        {
+          "sex": "female",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 900
+        },
+        {
+          "sex": "female",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 1000
+        },
+        {
+          "sex": "female",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 1100
+        },
+        {
+          "sex": "female",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 1000
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 800
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 800
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 800
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 800
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 800
+        }
+      ]
+    },
+    {
+      "nutrient": "zinc",
+      "indicator": "recommendedDietaryAllowance",
+      "comparison": "reference",
+      "unit": "mg",
+      "source": "微量ミネラル 001316469.pdf p61、報告書 p346",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 3.5
+        },
+        {
+          "sex": "male",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 4.0
+        },
+        {
+          "sex": "male",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 5.0
+        },
+        {
+          "sex": "male",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 5.5
+        },
+        {
+          "sex": "male",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 8.0
+        },
+        {
+          "sex": "male",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 8.5
+        },
+        {
+          "sex": "male",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 10.0
+        },
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 9.0
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 9.5
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 9.5
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 9.0
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 9.0
+        },
+        {
+          "sex": "female",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 3.0
+        },
+        {
+          "sex": "female",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 3.5
+        },
+        {
+          "sex": "female",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 4.5
+        },
+        {
+          "sex": "female",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 5.5
+        },
+        {
+          "sex": "female",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 7.5
+        },
+        {
+          "sex": "female",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 8.5
+        },
+        {
+          "sex": "female",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 8.0
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 7.5
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 8.0
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 8.0
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 7.5
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 7.0
+        }
+      ]
+    },
+    {
+      "nutrient": "copper",
+      "indicator": "recommendedDietaryAllowance",
+      "comparison": "reference",
+      "unit": "mg",
+      "source": "微量ミネラル 001316469.pdf p62、報告書 p347",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 0.3
+        },
+        {
+          "sex": "male",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 0.4
+        },
+        {
+          "sex": "male",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 0.4
+        },
+        {
+          "sex": "male",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 0.5
+        },
+        {
+          "sex": "male",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 0.6
+        },
+        {
+          "sex": "male",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 0.8
+        },
+        {
+          "sex": "male",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 0.9
+        },
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 0.8
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 0.9
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 0.9
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 0.8
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 0.8
+        },
+        {
+          "sex": "female",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 0.3
+        },
+        {
+          "sex": "female",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 0.3
+        },
+        {
+          "sex": "female",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 0.4
+        },
+        {
+          "sex": "female",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 0.5
+        },
+        {
+          "sex": "female",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 0.6
+        },
+        {
+          "sex": "female",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 0.8
+        },
+        {
+          "sex": "female",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 0.7
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 0.7
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 0.7
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 0.7
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 0.7
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 0.7
+        }
+      ]
+    },
+    {
+      "nutrient": "manganese",
+      "indicator": "adequateIntake",
+      "comparison": "reference",
+      "unit": "mg",
+      "source": "微量ミネラル 001316469.pdf p63、報告書 p348",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 1.5
+        },
+        {
+          "sex": "male",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 2.0
+        },
+        {
+          "sex": "male",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 2.0
+        },
+        {
+          "sex": "male",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 2.5
+        },
+        {
+          "sex": "male",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 3.0
+        },
+        {
+          "sex": "male",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 3.5
+        },
+        {
+          "sex": "male",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 3.5
+        },
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 3.5
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 3.5
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 3.5
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 3.5
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 3.5
+        },
+        {
+          "sex": "female",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 1.5
+        },
+        {
+          "sex": "female",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 2.0
+        },
+        {
+          "sex": "female",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 2.0
+        },
+        {
+          "sex": "female",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 2.5
+        },
+        {
+          "sex": "female",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 3.0
+        },
+        {
+          "sex": "female",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 3.0
+        },
+        {
+          "sex": "female",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 3.0
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 3.0
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 3.0
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 3.0
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 3.0
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 3.0
+        }
+      ]
+    },
+    {
+      "nutrient": "vitaminE",
+      "indicator": "adequateIntake",
+      "comparison": "reference",
+      "unit": "mg",
+      "source": "脂溶性ビタミン 001316466.pdf p34、報告書 p183。α-トコフェロール",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 3.0
+        },
+        {
+          "sex": "male",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 4.0
+        },
+        {
+          "sex": "male",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 4.5
+        },
+        {
+          "sex": "male",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 5.0
+        },
+        {
+          "sex": "male",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 5.0
+        },
+        {
+          "sex": "male",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 6.5
+        },
+        {
+          "sex": "male",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 7.0
+        },
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 6.5
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 6.5
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 6.5
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 7.5
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 7.0
+        },
+        {
+          "sex": "female",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 3.0
+        },
+        {
+          "sex": "female",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 4.0
+        },
+        {
+          "sex": "female",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 4.0
+        },
+        {
+          "sex": "female",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 5.0
+        },
+        {
+          "sex": "female",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 5.5
+        },
+        {
+          "sex": "female",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 6.0
+        },
+        {
+          "sex": "female",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 6.0
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 5.0
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 6.0
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 6.0
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 7.0
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 6.0
+        }
+      ]
+    },
+    {
+      "nutrient": "vitaminK",
+      "indicator": "adequateIntake",
+      "comparison": "reference",
+      "unit": "µg",
+      "source": "脂溶性ビタミン 001316466.pdf p35、報告書 p184",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 50
+        },
+        {
+          "sex": "male",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 60
+        },
+        {
+          "sex": "male",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 80
+        },
+        {
+          "sex": "male",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 90
+        },
+        {
+          "sex": "male",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 110
+        },
+        {
+          "sex": "male",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 140
+        },
+        {
+          "sex": "male",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 150
+        },
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 150
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 150
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 150
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 150
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 150
+        },
+        {
+          "sex": "female",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 60
+        },
+        {
+          "sex": "female",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 70
+        },
+        {
+          "sex": "female",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 90
+        },
+        {
+          "sex": "female",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 110
+        },
+        {
+          "sex": "female",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 130
+        },
+        {
+          "sex": "female",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 150
+        },
+        {
+          "sex": "female",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 150
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 150
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 150
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 150
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 150
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 150
+        }
+      ]
+    },
+    {
+      "nutrient": "vitaminB1",
+      "indicator": "recommendedDietaryAllowance",
+      "comparison": "reference",
+      "unit": "mg",
+      "source": "水溶性ビタミン 001316467.pdf p50、報告書 p234",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 0.4
+        },
+        {
+          "sex": "male",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 0.5
+        },
+        {
+          "sex": "male",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 0.7
+        },
+        {
+          "sex": "male",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 0.8
+        },
+        {
+          "sex": "male",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 0.9
+        },
+        {
+          "sex": "male",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 1.1
+        },
+        {
+          "sex": "male",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 1.2
+        },
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 1.1
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 1.2
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 1.1
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 1.0
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 1.0
+        },
+        {
+          "sex": "female",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 0.4
+        },
+        {
+          "sex": "female",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 0.5
+        },
+        {
+          "sex": "female",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 0.6
+        },
+        {
+          "sex": "female",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 0.7
+        },
+        {
+          "sex": "female",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 0.9
+        },
+        {
+          "sex": "female",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 1.0
+        },
+        {
+          "sex": "female",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 1.0
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 0.8
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 0.9
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 0.8
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 0.8
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 0.7
+        }
+      ]
+    },
+    {
+      "nutrient": "vitaminB2",
+      "indicator": "recommendedDietaryAllowance",
+      "comparison": "reference",
+      "unit": "mg",
+      "source": "水溶性ビタミン 001316467.pdf p51、報告書 p235",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 0.6
+        },
+        {
+          "sex": "male",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 0.8
+        },
+        {
+          "sex": "male",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 0.9
+        },
+        {
+          "sex": "male",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 1.1
+        },
+        {
+          "sex": "male",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 1.4
+        },
+        {
+          "sex": "male",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 1.6
+        },
+        {
+          "sex": "male",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 1.7
+        },
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 1.6
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 1.7
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 1.6
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 1.4
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 1.4
+        },
+        {
+          "sex": "female",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 0.5
+        },
+        {
+          "sex": "female",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 0.8
+        },
+        {
+          "sex": "female",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 0.9
+        },
+        {
+          "sex": "female",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 1.0
+        },
+        {
+          "sex": "female",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 1.3
+        },
+        {
+          "sex": "female",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 1.4
+        },
+        {
+          "sex": "female",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 1.4
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 1.2
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 1.2
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 1.2
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 1.1
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 1.1
+        }
+      ]
+    },
+    {
+      "nutrient": "niacin",
+      "indicator": "recommendedDietaryAllowance",
+      "comparison": "reference",
+      "unit": "mg",
+      "source": "水溶性ビタミン 001316467.pdf p52、報告書 p236。ナイアシン当量",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 6
+        },
+        {
+          "sex": "male",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 8
+        },
+        {
+          "sex": "male",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 9
+        },
+        {
+          "sex": "male",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 11
+        },
+        {
+          "sex": "male",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 13
+        },
+        {
+          "sex": "male",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 15
+        },
+        {
+          "sex": "male",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 16
+        },
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 15
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 16
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 15
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 14
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 13
+        },
+        {
+          "sex": "female",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 5
+        },
+        {
+          "sex": "female",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 7
+        },
+        {
+          "sex": "female",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 8
+        },
+        {
+          "sex": "female",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 10
+        },
+        {
+          "sex": "female",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 12
+        },
+        {
+          "sex": "female",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 14
+        },
+        {
+          "sex": "female",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 13
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 11
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 12
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 11
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 11
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 10
+        }
+      ]
+    },
+    {
+      "nutrient": "vitaminB6",
+      "indicator": "recommendedDietaryAllowance",
+      "comparison": "reference",
+      "unit": "mg",
+      "source": "水溶性ビタミン 001316467.pdf p53、報告書 p237",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 0.5
+        },
+        {
+          "sex": "male",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 0.6
+        },
+        {
+          "sex": "male",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 0.7
+        },
+        {
+          "sex": "male",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 0.9
+        },
+        {
+          "sex": "male",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 1.0
+        },
+        {
+          "sex": "male",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 1.4
+        },
+        {
+          "sex": "male",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 1.5
+        },
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 1.5
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 1.5
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 1.5
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 1.4
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 1.4
+        },
+        {
+          "sex": "female",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 0.5
+        },
+        {
+          "sex": "female",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 0.6
+        },
+        {
+          "sex": "female",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 0.7
+        },
+        {
+          "sex": "female",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 0.9
+        },
+        {
+          "sex": "female",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 1.2
+        },
+        {
+          "sex": "female",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 1.3
+        },
+        {
+          "sex": "female",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 1.3
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 1.2
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 1.2
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 1.2
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 1.2
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 1.2
+        }
+      ]
+    },
+    {
+      "nutrient": "vitaminB12",
+      "indicator": "adequateIntake",
+      "comparison": "reference",
+      "unit": "µg",
+      "source": "水溶性ビタミン 001316467.pdf p54、報告書 p238",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 1.5
+        },
+        {
+          "sex": "male",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 1.5
+        },
+        {
+          "sex": "male",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 2.0
+        },
+        {
+          "sex": "male",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 2.5
+        },
+        {
+          "sex": "male",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 3.0
+        },
+        {
+          "sex": "male",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 4.0
+        },
+        {
+          "sex": "male",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 4.0
+        },
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 4.0
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 4.0
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 4.0
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 4.0
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 4.0
+        },
+        {
+          "sex": "female",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 1.5
+        },
+        {
+          "sex": "female",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 1.5
+        },
+        {
+          "sex": "female",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 2.0
+        },
+        {
+          "sex": "female",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 2.5
+        },
+        {
+          "sex": "female",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 3.0
+        },
+        {
+          "sex": "female",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 4.0
+        },
+        {
+          "sex": "female",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 4.0
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 4.0
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 4.0
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 4.0
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 4.0
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 4.0
+        }
+      ]
+    },
+    {
+      "nutrient": "folate",
+      "indicator": "recommendedDietaryAllowance",
+      "comparison": "reference",
+      "unit": "µg",
+      "source": "水溶性ビタミン 001316467.pdf p55、報告書 p239",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 90
+        },
+        {
+          "sex": "male",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 100
+        },
+        {
+          "sex": "male",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 130
+        },
+        {
+          "sex": "male",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 150
+        },
+        {
+          "sex": "male",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 180
+        },
+        {
+          "sex": "male",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 230
+        },
+        {
+          "sex": "male",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 240
+        },
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 240
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 240
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 240
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 240
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 240
+        },
+        {
+          "sex": "female",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 90
+        },
+        {
+          "sex": "female",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 100
+        },
+        {
+          "sex": "female",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 130
+        },
+        {
+          "sex": "female",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 150
+        },
+        {
+          "sex": "female",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 180
+        },
+        {
+          "sex": "female",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 230
+        },
+        {
+          "sex": "female",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 240
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 240
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 240
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 240
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 240
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 240
+        }
+      ]
+    },
+    {
+      "nutrient": "pantothenicAcid",
+      "indicator": "adequateIntake",
+      "comparison": "reference",
+      "unit": "mg",
+      "source": "水溶性ビタミン 001316467.pdf p56、報告書 p240",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 3
+        },
+        {
+          "sex": "male",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 4
+        },
+        {
+          "sex": "male",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 5
+        },
+        {
+          "sex": "male",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 6
+        },
+        {
+          "sex": "male",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 6
+        },
+        {
+          "sex": "male",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 7
+        },
+        {
+          "sex": "male",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 7
+        },
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 6
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 6
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 6
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 6
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 6
+        },
+        {
+          "sex": "female",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 3
+        },
+        {
+          "sex": "female",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 4
+        },
+        {
+          "sex": "female",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 5
+        },
+        {
+          "sex": "female",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 6
+        },
+        {
+          "sex": "female",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 6
+        },
+        {
+          "sex": "female",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 6
+        },
+        {
+          "sex": "female",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 6
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 5
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 5
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 5
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 5
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 5
+        }
+      ]
+    },
+    {
+      "nutrient": "n3FattyAcids",
+      "indicator": "adequateIntake",
+      "comparison": "reference",
+      "unit": "g",
+      "source": "脂質 001316463.pdf p25、報告書 p128",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 0.7
+        },
+        {
+          "sex": "male",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 1.2
+        },
+        {
+          "sex": "male",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 1.4
+        },
+        {
+          "sex": "male",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 1.5
+        },
+        {
+          "sex": "male",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 1.7
+        },
+        {
+          "sex": "male",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 2.2
+        },
+        {
+          "sex": "male",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 2.2
+        },
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 2.2
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 2.2
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 2.3
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 2.3
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 2.3
+        },
+        {
+          "sex": "female",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 0.7
+        },
+        {
+          "sex": "female",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 1.0
+        },
+        {
+          "sex": "female",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 1.2
+        },
+        {
+          "sex": "female",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 1.4
+        },
+        {
+          "sex": "female",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 1.7
+        },
+        {
+          "sex": "female",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 1.7
+        },
+        {
+          "sex": "female",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 1.7
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 1.7
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 1.7
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 1.9
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 2.0
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 2.0
+        }
+      ]
+    },
+    {
+      "nutrient": "n6FattyAcids",
+      "indicator": "adequateIntake",
+      "comparison": "reference",
+      "unit": "g",
+      "source": "脂質 001316463.pdf p25、報告書 p128",
+      "bands": [
+        {
+          "sex": "male",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 4
+        },
+        {
+          "sex": "male",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 6
+        },
+        {
+          "sex": "male",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 8
+        },
+        {
+          "sex": "male",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 8
+        },
+        {
+          "sex": "male",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 9
+        },
+        {
+          "sex": "male",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 11
+        },
+        {
+          "sex": "male",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 13
+        },
+        {
+          "sex": "male",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 12
+        },
+        {
+          "sex": "male",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 11
+        },
+        {
+          "sex": "male",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 11
+        },
+        {
+          "sex": "male",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 10
+        },
+        {
+          "sex": "male",
+          "minAge": 75,
+          "value": 9
+        },
+        {
+          "sex": "female",
+          "minAge": 1,
+          "maxAge": 2,
+          "value": 4
+        },
+        {
+          "sex": "female",
+          "minAge": 3,
+          "maxAge": 5,
+          "value": 6
+        },
+        {
+          "sex": "female",
+          "minAge": 6,
+          "maxAge": 7,
+          "value": 7
+        },
+        {
+          "sex": "female",
+          "minAge": 8,
+          "maxAge": 9,
+          "value": 8
+        },
+        {
+          "sex": "female",
+          "minAge": 10,
+          "maxAge": 11,
+          "value": 9
+        },
+        {
+          "sex": "female",
+          "minAge": 12,
+          "maxAge": 14,
+          "value": 11
+        },
+        {
+          "sex": "female",
+          "minAge": 15,
+          "maxAge": 17,
+          "value": 11
+        },
+        {
+          "sex": "female",
+          "minAge": 18,
+          "maxAge": 29,
+          "value": 9
+        },
+        {
+          "sex": "female",
+          "minAge": 30,
+          "maxAge": 49,
+          "value": 9
+        },
+        {
+          "sex": "female",
+          "minAge": 50,
+          "maxAge": 64,
+          "value": 9
+        },
+        {
+          "sex": "female",
+          "minAge": 65,
+          "maxAge": 74,
+          "value": 9
+        },
+        {
+          "sex": "female",
+          "minAge": 75,
+          "value": 8
+        }
+      ]
     }
   ],
   "estimatedEnergyRequirement": {

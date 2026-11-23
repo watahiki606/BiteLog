@@ -89,7 +89,8 @@ struct DailyTotalsView: View {
             Text(NSLocalizedString("Carbs (Sugar + Fiber)", comment: "Nutrient label"))
           }
 
-          ForEach(NutrientID.allCases.filter { !$0.definition.core }, id: \.self) { id in
+          // 詳しい栄養素は1日の値で見比べる意味が薄いので、統計の期間で見せる
+          ForEach(NutrientID.labelNutrients, id: \.self) { id in
             AddedNutrientTotalRow(id: id, totals: addedTotals)
           }
         }

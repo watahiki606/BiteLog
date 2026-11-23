@@ -160,6 +160,29 @@ struct AddedNutrientsTests {
     #expect(Self.intakes.goal(for: .iron, sex: .male, age: 40)?.menstruatingValue == nil)
   }
 
+  @Test func 詳しい栄養素は推奨量か目安量と並べる() {
+    #expect(Self.intakes.goal(for: .zinc, sex: .male, age: 40)?.value == 9.5)
+    #expect(Self.intakes.goal(for: .zinc, sex: .male, age: 40)?.indicator == .recommendedDietaryAllowance)
+    #expect(Self.intakes.goal(for: .folate, sex: .female, age: 40)?.value == 240)
+    #expect(Self.intakes.goal(for: .niacin, sex: .female, age: 40)?.value == 12)
+    #expect(Self.intakes.goal(for: .vitaminK, sex: .female, age: 40)?.indicator == .adequateIntake)
+    #expect(Self.intakes.goal(for: .n3FattyAcids, sex: .male, age: 55)?.value == 2.3)
+    #expect(Self.intakes.goal(for: .pantothenicAcid, sex: .female, age: 13)?.value == 6)
+    #expect(Self.intakes.goal(for: .vitaminE, sex: .female, age: 20)?.value == 5.0)
+    for id in NutrientID.detailNutrients {
+      #expect(Self.intakes.goal(for: id, sex: .female, age: 40)?.comparison == .reference, "\(id)")
+    }
+  }
+
+  @Test func どの栄養素も最初の5項目か入力欄に出すものか詳しい栄養素のどれか1つ() {
+    for id in NutrientID.allCases {
+      let kinds = [id.definition.core, NutrientID.labelNutrients.contains(id), NutrientID.detailNutrients.contains(id)]
+      #expect(kinds.filter { $0 }.count == 1, "\(id)")
+    }
+    #expect(NutrientID.labelNutrients.contains(.vitaminC))
+    #expect(NutrientID.detailNutrients.contains(.zinc))
+  }
+
   @Test func 目標量の無い栄養素は引けない() {
     #expect(Self.intakes.goal(for: .calories, sex: .male, age: 40) == nil)
   }
@@ -181,11 +204,14 @@ struct AddedNutrientsTests {
         numberOfServings: 1, isMasterDeleted: false, foodMaster: food, nutritionSnapshot: nil)
     }
 
+    let added = NutrientID.allCases.filter { !$0.definition.core }
+    #expect(added.first == .saltEquivalent)
+    #expect(CSVExporter.header.hasSuffix("portion_unit," + added.map(\.definition.column).joined(separator: ",")))
+    // 食塩の後ろに、分からない栄養素の空のセルが続く
     #expect(
-      CSVExporter.header.hasSuffix(
-        "portion_unit,salt_equivalent,saturated_fat,potassium,calcium,magnesium,iron,vitamin_a,vitamin_d,vitamin_c"))
-    // 食塩の後ろに、分からない8つの栄養素の空のセルが続く
-    #expect(CSVExporter.row(for: item(withSalt), dateFormatter: formatter).hasSuffix(",皿,2.5" + String(repeating: ",", count: 8)))
-    #expect(CSVExporter.row(for: item(food), dateFormatter: formatter).hasSuffix(",皿" + String(repeating: ",", count: 9)))
+      CSVExporter.row(for: item(withSalt), dateFormatter: formatter)
+        .hasSuffix(",皿,2.5" + String(repeating: ",", count: added.count - 1)))
+    #expect(
+      CSVExporter.row(for: item(food), dateFormatter: formatter).hasSuffix(",皿" + String(repeating: ",", count: added.count)))
   }
 }
