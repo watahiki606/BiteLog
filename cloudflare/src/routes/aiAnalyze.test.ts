@@ -299,3 +299,44 @@ describe('POST /api/ai/analyze-food に menuName を付けたとき', () => {
     expect(body).not.toHaveProperty('sourceUrl');
   });
 });
+
+describe('食塩相当量と飽和脂肪酸', () => {
+  it('写真だけの解析でも、店名を付けた解析でも、数値か null で答えさせる', async () => {
+    for (const body of [{ imageBase64: 'dummy' }, { imageBase64: 'dummy', menuName: 'スシロー' }]) {
+      await analyzeFood(body, await authHeader());
+
+      const { properties, required } = lastOpenaiRequestBody.text.format.schema;
+      for (const key of ['saltEquivalent', 'saturatedFat']) {
+        expect(properties[key]).toMatchObject({ type: ['number', 'null'] });
+        expect(required).toContain(key);
+      }
+    }
+  });
+
+  it('表示や公式の値から読めたときだけ数値にし、ナトリウムは食塩相当量に換えるよう指示する', async () => {
+    await analyzeFood({ imageBase64: 'dummy' }, await authHeader());
+
+    const { instructions } = lastOpenaiRequestBody;
+    expect(instructions).toContain('食塩相当量');
+    expect(instructions).toContain('飽和脂肪酸');
+    expect(instructions).toContain('2.54');
+    expect(instructions).toMatch(/otherwise return null/i);
+  });
+
+  it('読めた値は返す', async () => {
+    openaiHandler = async () => openaiResponse({ ...VALID_ANALYSIS, saltEquivalent: 1.2, saturatedFat: 0.3 });
+
+    const res = await analyzeFood({ imageBase64: 'dummy' }, await authHeader());
+
+    expect(await res.json()).toMatchObject({ saltEquivalent: 1.2, saturatedFat: 0.3 });
+  });
+
+  it('null なら分からないとして応答から省く', async () => {
+    openaiHandler = async () => openaiResponse({ ...VALID_ANALYSIS, saltEquivalent: null, saturatedFat: 0 });
+
+    const body = await (await analyzeFood({ imageBase64: 'dummy' }, await authHeader())).json<Record<string, unknown>>();
+
+    expect(body).not.toHaveProperty('saltEquivalent');
+    expect(body).toMatchObject({ saturatedFat: 0 });
+  });
+});

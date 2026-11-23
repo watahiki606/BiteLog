@@ -2,10 +2,12 @@ import { Hono } from 'hono';
 import type { Bindings, Variables, FoodMasterRow } from '../types';
 import { foodMasterToResponse } from '../types';
 import { authMiddleware } from '../middleware/auth';
+import { nutrientsFromRow } from '../lib/nutrients';
+import { FM_NUTRIENT_SELECT, hasInvalidSource, insertFoodMaster, nutrientUpdate, type FoodMasterInput } from '../lib/foodMasterSql';
 
 const FM_SELECT = `
-  fm.id, fm.brand_name, fm.product_name, fm.calories, fm.dietary_fiber,
-  fm.net_carbs, fm.fat, fm.protein, fm.portion_size, fm.portion_unit, fm.unique_key, fm.created_by,
+  fm.id, fm.brand_name, fm.product_name, ${FM_NUTRIENT_SELECT},
+  fm.portion_size, fm.portion_unit, fm.unique_key, fm.created_by,
   COALESCE(ufs.usage_count, 0) as usage_count,
   ufs.last_used_date,
   COALESCE(ufs.last_number_of_servings, 1.0) as last_number_of_servings`;
@@ -72,67 +74,33 @@ const foodMasters = new Hono<{ Bindings: Bindings; Variables: Variables }>()
   })
   .post('/', async (c) => {
     const userId = c.get('userId');
-    const body = await c.req.json<{
-      id: string;
-      brandName: string;
-      productName: string;
-      calories: number;
-      dietaryFiber: number;
-      netCarbs: number;
-      fat: number;
-      protein: number;
-      portionSize: number;
-      portionUnit: string;
-      uniqueKey: string;
-    }>();
+    const body = await c.req.json<FoodMasterInput & { onConflict?: 'reject' }>();
+    if (hasInvalidSource(body)) return c.json({ error: 'Invalid nutrientSource' }, 400);
 
-    await c.env.DB.prepare(
-      `INSERT INTO food_masters
-        (id, brand_name, product_name, calories, dietary_fiber, net_carbs, fat, protein,
-         portion_size, portion_unit, unique_key, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(unique_key) DO NOTHING`
-    ).bind(
-      body.id, body.brandName, body.productName, body.calories,
-      body.dietaryFiber, body.netCarbs, body.fat, body.protein,
-      body.portionSize, body.portionUnit, body.uniqueKey, userId
-    ).run();
+    await insertFoodMaster(c.env.DB, body, userId).run();
 
     const row = await c.env.DB.prepare(
       `SELECT ${FM_SELECT} ${FM_JOIN} WHERE fm.unique_key = ?`
     ).bind(userId, body.uniqueKey).first<FoodMasterRow>();
+    const existing = foodMasterToResponse(row!);
 
-    return c.json(foodMasterToResponse(row!), 201);
+    // 別の食品を返すと、呼ぶ側は送った値で作れたと思い込み、その値で記録してしまう。
+    // 既存の食品の値を書き換えるとそれを参照する他の人の記録まで変わるので、上書きもしない。
+    // 同じ id なら送り直しなので、作れたものとして返す。
+    // 409 は onConflict: 'reject' を送ってきたときだけ返す。公開中の古い版のアプリは
+    // 409 を扱えず、名前が重なった食品を保存できなくなるため、印が無ければ既存の食品を返す。
+    const isAnotherFood = existing.id.toLowerCase() !== body.id.toLowerCase();
+    if (body.onConflict === 'reject' && isAnotherFood) {
+      return c.json({ error: 'A food with the same brand, name and unit already exists', existing }, 409);
+    }
+    return c.json(existing, 201);
   })
   .post('/batch', async (c) => {
     const userId = c.get('userId');
-    const body = await c.req.json<{ items: Array<{
-      id: string;
-      brandName: string;
-      productName: string;
-      calories: number;
-      dietaryFiber: number;
-      netCarbs: number;
-      fat: number;
-      protein: number;
-      portionSize: number;
-      portionUnit: string;
-      uniqueKey: string;
-    }> }>();
+    const body = await c.req.json<{ items: FoodMasterInput[] }>();
+    if (body.items.some(hasInvalidSource)) return c.json({ error: 'Invalid nutrientSource' }, 400);
 
-    const statements = body.items.map(item =>
-      c.env.DB.prepare(
-        `INSERT INTO food_masters
-          (id, brand_name, product_name, calories, dietary_fiber, net_carbs, fat, protein,
-           portion_size, portion_unit, unique_key, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(unique_key) DO NOTHING`
-      ).bind(
-        item.id, item.brandName, item.productName, item.calories,
-        item.dietaryFiber, item.netCarbs, item.fat, item.protein,
-        item.portionSize, item.portionUnit, item.uniqueKey, userId
-      )
-    );
+    const statements = body.items.map(item => insertFoodMaster(c.env.DB, item, userId));
 
     const results = await c.env.DB.batch(statements);
     const created = results.filter(r => r.meta.changes > 0).length;
@@ -151,34 +119,21 @@ const foodMasters = new Hono<{ Bindings: Bindings; Variables: Variables }>()
       return c.json({ error: 'Forbidden' }, 403);
     }
 
-    const body = await c.req.json<Partial<{
-      brandName: string;
-      productName: string;
-      calories: number;
-      dietaryFiber: number;
-      netCarbs: number;
-      fat: number;
-      protein: number;
-      portionSize: number;
-      portionUnit: string;
-    }>>();
+    const body = await c.req.json<Partial<FoodMasterInput>>();
+    if (hasInvalidSource(body)) return c.json({ error: 'Invalid nutrientSource' }, 400);
+    const nutrients = nutrientUpdate(body);
 
     await c.env.DB.prepare(
       `UPDATE food_masters SET
         brand_name = COALESCE(?, brand_name),
         product_name = COALESCE(?, product_name),
-        calories = COALESCE(?, calories),
-        dietary_fiber = COALESCE(?, dietary_fiber),
-        net_carbs = COALESCE(?, net_carbs),
-        fat = COALESCE(?, fat),
-        protein = COALESCE(?, protein),
+        ${nutrients.sql.join(',\n        ')},
         portion_size = COALESCE(?, portion_size),
         portion_unit = COALESCE(?, portion_unit)
        WHERE id = ?`
     ).bind(
-      body.brandName ?? null, body.productName ?? null, body.calories ?? null,
-      body.dietaryFiber ?? null, body.netCarbs ?? null, body.fat ?? null,
-      body.protein ?? null, body.portionSize ?? null, body.portionUnit ?? null,
+      body.brandName ?? null, body.productName ?? null, ...nutrients.binds,
+      body.portionSize ?? null, body.portionUnit ?? null,
       c.req.param('id')
     ).run();
 
@@ -207,8 +162,7 @@ const foodMasters = new Hono<{ Bindings: Bindings; Variables: Variables }>()
     }
 
     const { results: relatedLogs } = await c.env.DB.prepare(
-      `SELECT li.*, fm.brand_name, fm.product_name, fm.calories,
-              fm.dietary_fiber, fm.net_carbs, fm.fat, fm.protein,
+      `SELECT li.*, fm.brand_name, fm.product_name, ${FM_NUTRIENT_SELECT},
               fm.portion_size, fm.portion_unit
        FROM log_items li
        JOIN food_masters fm ON fm.id = li.food_master_id
@@ -219,11 +173,7 @@ const foodMasters = new Hono<{ Bindings: Bindings; Variables: Variables }>()
       const snapshot = JSON.stringify({
         brandName: log.brand_name,
         productName: log.product_name,
-        calories: log.calories,
-        dietaryFiber: log.dietary_fiber,
-        netCarbs: log.net_carbs,
-        fat: log.fat,
-        protein: log.protein,
+        ...nutrientsFromRow(log),
         portionSize: log.portion_size,
         portionUnit: log.portion_unit,
       });

@@ -4,6 +4,8 @@ enum APIError: LocalizedError {
   case unauthorized
   case notFound
   case serverError(Int)
+  /// 409。何と重なったかを呼ぶ側が読めるよう、本文を持たせる
+  case conflict(Data)
   case networkError(Error)
   case decodingError(Error)
   case invalidURL
@@ -20,6 +22,8 @@ enum APIError: LocalizedError {
     case .serverError(let code):
       return String(
         format: NSLocalizedString("The server returned an error (%d).", comment: "API error"), code)
+    case .conflict:
+      return NSLocalizedString("The same data is already registered.", comment: "API error")
     case .networkError:
       return NSLocalizedString(
         "Couldn't reach the server. Check your connection.", comment: "API error")
@@ -28,5 +32,25 @@ enum APIError: LocalizedError {
     case .invalidURL:
       return NSLocalizedString("The request address is invalid.", comment: "API error")
     }
+  }
+}
+
+/// 食品を作ろうとしたら、同じブランド名・商品名・単位の食品が既にあった。
+///
+/// 送った値で作れたことにはならないので、呼ぶ側は登録済みの食品を使うか、
+/// 名前か単位を変えて作り直すかを選ばせる。
+struct FoodMasterExistsError: LocalizedError {
+  let existing: FoodMasterDTO
+
+  init(conflictBody: Data) throws {
+    struct Body: Decodable { let existing: FoodMasterDTO }
+    let decoder = JSONDecoder()
+    decoder.dateDecodingStrategy = .iso8601
+    existing = try decoder.decode(Body.self, from: conflictBody).existing
+  }
+
+  var errorDescription: String? {
+    NSLocalizedString(
+      "A food with the same brand, name, and unit is already registered. Change one of them and save again.", comment: "Food master conflict")
   }
 }

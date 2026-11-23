@@ -2,37 +2,11 @@
 import { SELF, env } from 'cloudflare:test';
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { issueSessionJwt } from '../middleware/auth';
+import { applySchema } from '../test/schema';
 
 const TEST_SECRET = 'dev-and-test-secret';
 
-beforeAll(async () => {
-  await env.DB.prepare(
-    `CREATE TABLE IF NOT EXISTS food_masters (
-      id TEXT PRIMARY KEY COLLATE NOCASE,
-      brand_name TEXT NOT NULL DEFAULT '',
-      product_name TEXT NOT NULL,
-      calories REAL NOT NULL DEFAULT 0,
-      dietary_fiber REAL NOT NULL DEFAULT 0,
-      net_carbs REAL NOT NULL DEFAULT 0,
-      fat REAL NOT NULL DEFAULT 0,
-      protein REAL NOT NULL DEFAULT 0,
-      portion_size REAL NOT NULL DEFAULT 1.0,
-      portion_unit TEXT NOT NULL DEFAULT 'g',
-      unique_key TEXT NOT NULL UNIQUE,
-      created_by TEXT NOT NULL
-    )`
-  ).run();
-  await env.DB.prepare(
-    `CREATE TABLE IF NOT EXISTS user_food_stats (
-      user_id TEXT NOT NULL,
-      food_master_id TEXT NOT NULL COLLATE NOCASE,
-      usage_count INTEGER NOT NULL DEFAULT 0,
-      last_used_date TEXT,
-      last_number_of_servings REAL NOT NULL DEFAULT 1.0,
-      PRIMARY KEY (user_id, food_master_id)
-    )`
-  ).run();
-});
+beforeAll(() => applySchema(env.DB));
 
 beforeEach(async () => {
   await env.DB.batch([
@@ -104,5 +78,66 @@ describe('GET /api/food-masters の q', () => {
   it('1語なら、ブランド名か商品名に含まれるものをすべて返す', async () => {
     const { names } = await search(`q=${encodeURIComponent('サーモン')}`);
     expect(names).toEqual(['|サーモンアボカド丼', 'スシロー|サーモンアボカド']);
+  });
+});
+
+describe('POST /api/food-masters', () => {
+  async function create(body: Record<string, unknown>) {
+    return SELF.fetch('http://localhost/api/food-masters', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${await issueSessionJwt('user-a', TEST_SECRET)}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+  }
+
+  function curry(id: string, calories: number) {
+    return {
+      id, brandName: 'AI', productName: 'カレーライス',
+      calories, dietaryFiber: 3, netCarbs: 90, fat: 20, protein: 15,
+      portionSize: 1, portionUnit: '皿', uniqueKey: 'AI|カレーライス|皿',
+    };
+  }
+
+  it('新しい食品を作って 201 で返す', async () => {
+    const res = await create(curry('11111111-1111-1111-1111-111111111111', 650));
+    expect(res.status).toBe(201);
+    const body = await res.json<{ id: string; calories: number }>();
+    expect(body.id).toBe('11111111-1111-1111-1111-111111111111');
+    expect(body.calories).toBe(650);
+  });
+
+  it('onConflict が reject なら、同じブランド名・商品名・単位の別の食品があるとき上書きせず 409 と既存の食品を返す', async () => {
+    await create(curry('11111111-1111-1111-1111-111111111111', 650));
+
+    const res = await create({ ...curry('22222222-2222-2222-2222-222222222222', 800), onConflict: 'reject' });
+
+    expect(res.status).toBe(409);
+    const body = await res.json<{ existing: { id: string; calories: number } }>();
+    expect(body.existing.id).toBe('11111111-1111-1111-1111-111111111111');
+    expect(body.existing.calories).toBe(650);
+  });
+
+  it('onConflict が reject でも、同じ id で送り直したときは作成済みの食品を 201 で返す', async () => {
+    await create(curry('11111111-1111-1111-1111-111111111111', 650));
+
+    const res = await create({ ...curry('11111111-1111-1111-1111-111111111111', 650), onConflict: 'reject' });
+
+    expect(res.status).toBe(201);
+    const body = await res.json<{ id: string }>();
+    expect(body.id).toBe('11111111-1111-1111-1111-111111111111');
+  });
+
+  it('onConflict が無ければ、公開中の古い版のアプリのために既存の食品を 201 で返す', async () => {
+    await create(curry('11111111-1111-1111-1111-111111111111', 650));
+
+    const res = await create(curry('22222222-2222-2222-2222-222222222222', 800));
+
+    expect(res.status).toBe(201);
+    const body = await res.json<{ id: string; calories: number }>();
+    expect(body.id).toBe('11111111-1111-1111-1111-111111111111');
+    expect(body.calories).toBe(650);
   });
 });

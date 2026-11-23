@@ -1,9 +1,11 @@
 import SwiftUI
 
-/// アプリで扱う栄養素。表示名・色・単位・短縮ラベルをここに集約する。
+/// 画面に並べる栄養素。表示名・色・単位・短縮ラベルをここに集約する。
 ///
 /// 栄養素の見た目は必ずこの型を経由させる。View 側で色や略号を直書きすると、
 /// 同じ食品が画面ごとに違う見た目になる。
+/// 定義ファイルにある栄養素は `NutrientID` から引く。炭水化物は糖質と食物繊維の合計で、
+/// 定義ファイルには無いので、ここで持つ。
 enum Nutrient: String, CaseIterable, Identifiable {
   case calories
   case protein
@@ -19,84 +21,50 @@ enum Nutrient: String, CaseIterable, Identifiable {
   /// 一覧の行に並べる内訳。合計である炭水化物は内訳と混ざるので含めない。
   static let chipNutrients: [Nutrient] = [.protein, .fat, .netCarbs, .fiber]
 
-  var localizedName: String {
+  /// 定義ファイルの栄養素。合計である炭水化物は定義に無いので nil
+  var nutrientID: NutrientID? {
     switch self {
-    case .calories: return NSLocalizedString("Calories", comment: "Nutrient")
-    case .protein: return NSLocalizedString("Protein", comment: "Nutrient")
-    case .fat: return NSLocalizedString("Fat", comment: "Nutrient")
-    case .netCarbs: return NSLocalizedString("Sugar", comment: "Nutrient")
-    case .fiber: return NSLocalizedString("Dietary Fiber", comment: "Nutrient")
-    case .carbs: return NSLocalizedString("Carbs", comment: "Nutrient")
+    case .calories: return .calories
+    case .protein: return .protein
+    case .fat: return .fat
+    case .netCarbs: return .netCarbs
+    case .fiber: return .dietaryFiber
+    case .carbs: return nil
     }
+  }
+
+  var localizedName: String {
+    nutrientID?.localizedName ?? NSLocalizedString("Carbs", comment: "Nutrient")
   }
 
   /// 横幅が取れない場所で使う短い名前。
   /// 1文字に詰めると糖質と食物繊維が区別できないので、言語ごとに読める語を置く。
   var shortLabel: String {
-    switch self {
-    case .calories: return NSLocalizedString("Nutrient.Short.Calories", comment: "Short nutrient label")
-    case .protein: return NSLocalizedString("Nutrient.Short.Protein", comment: "Short nutrient label")
-    case .fat: return NSLocalizedString("Nutrient.Short.Fat", comment: "Short nutrient label")
-    case .netCarbs: return NSLocalizedString("Nutrient.Short.NetCarbs", comment: "Short nutrient label")
-    case .fiber: return NSLocalizedString("Nutrient.Short.Fiber", comment: "Short nutrient label")
-    case .carbs: return NSLocalizedString("Nutrient.Short.Carbs", comment: "Short nutrient label")
-    }
+    nutrientID?.shortName ?? NSLocalizedString("Nutrient.Short.Carbs", comment: "Short nutrient label")
   }
 
-  var unit: String { self == .calories ? "kcal" : "g" }
+  var unit: String { nutrientID?.definition.unit ?? "g" }
 
-  /// ライト/ダークそれぞれでコントラストを確保した色を Asset Catalog から引く。
-  /// SwiftUI 標準の .yellow / .brown は白背景でコントラストが足りない。
-  var color: Color {
-    switch self {
-    case .calories: return Color("NutrientCalories")
-    case .protein: return Color("NutrientProtein")
-    case .fat: return Color("NutrientFat")
-    case .netCarbs: return Color("NutrientNetCarbs")
-    case .fiber: return Color("NutrientFiber")
-    // 炭水化物は糖質と同じ系統の指標なので色も揃える。
-    case .carbs: return Color("NutrientNetCarbs")
-    }
-  }
+  /// SwiftUI 標準の .yellow / .brown は白背景でコントラストが足りないので、Asset Catalog の色を使う。
+  /// 炭水化物は糖質と同じ系統の指標なので色も揃える。
+  var color: Color { (nutrientID ?? .netCarbs).color }
 
   /// 色と一緒に出す形。色だけだと、色の見分けにくい人や
-  /// 小さく表示したときに栄養素を取り違える。頭文字の丸ではなく中身を連想できる形にする。
-  var symbolName: String {
-    switch self {
-    case .calories: return "flame.fill"
-    case .protein: return "dumbbell.fill"
-    case .fat: return "drop.fill"
-    case .netCarbs: return "cube.fill"
-    case .fiber: return "leaf.fill"
-    case .carbs: return "square.stack.3d.up.fill"
-    }
-  }
+  /// 小さく表示したときに栄養素を取り違える。
+  var symbolName: String { nutrientID?.symbolName ?? "square.stack.3d.up.fill" }
 
-  /// 栄養素ごとに妥当な桁数で整形する。カロリーだけ小数を落とす。
+  /// 栄養素ごとに妥当な桁数で整形する。炭水化物は糖質と食物繊維と同じ桁にする
   func format(_ value: Double) -> String {
-    self == .calories
-      ? NutritionFormatter.formatCalories(value)
-      : NutritionFormatter.formatNutrition(value)
+    (nutrientID ?? .netCarbs).format(value)
   }
 
   func value(of values: NutritionValues) -> Double {
-    switch self {
-    case .calories: return values.calories
-    case .protein: return values.protein
-    case .fat: return values.fat
-    case .netCarbs: return values.netCarbs
-    case .fiber: return values.dietaryFiber
-    case .carbs: return values.carbs
-    }
+    nutrientID.map { values.amounts.core($0) } ?? values.carbs
   }
 
   /// VoiceOver 用。「タンパク質 45グラム」のように単位を読み上げさせる。
   func accessibilityLabel(for value: Double) -> String {
-    let formatted = format(value)
-    let unitName =
-      self == .calories
-      ? NSLocalizedString("Unit.Kilocalories", comment: "Spoken unit")
-      : NSLocalizedString("Unit.Grams", comment: "Spoken unit")
-    return "\(localizedName) \(formatted) \(unitName)"
+    let unitName = (nutrientID ?? .netCarbs).spokenUnit
+    return "\(localizedName) \(format(value)) \(unitName)"
   }
 }

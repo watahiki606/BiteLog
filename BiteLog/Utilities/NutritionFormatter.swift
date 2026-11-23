@@ -24,4 +24,11 @@ enum NutritionFormatter {
   static func formatCalories(_ value: Double) -> String {
     String(format: "%.0f", value.rounded())
   }
+
+  /// 栄養素の定義の桁数で整形する。0 桁なら整数に丸め、それ以外は整数なら小数を付けない
+  static func format(_ value: Double, fractionDigits: Int) -> String {
+    if fractionDigits == 0 { return formatCalories(value) }
+    if value.truncatingRemainder(dividingBy: 1) == 0 { return String(format: "%.0f", value) }
+    return String(format: "%.\(fractionDigits)f", value)
+  }
 }

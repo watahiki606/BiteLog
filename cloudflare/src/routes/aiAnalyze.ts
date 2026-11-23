@@ -18,6 +18,12 @@ Reading a nutrition label
 - Energy is エネルギー or 熱量. Protein is たんぱく質 or 蛋白質. Fat is 脂質.
 - sugar means 糖質, the net carbohydrates. If 糖質 and 食物繊維 are printed, use them. If only 炭水化物 and 食物繊維 are printed, sugar is 炭水化物 minus 食物繊維. If only 炭水化物 is printed, sugar is 炭水化物 and dietaryFiber is 0.
 
+saltEquivalent and saturatedFat
+- saltEquivalent is 食塩相当量 in grams. saturatedFat is 飽和脂肪酸 in grams.
+- Give a number only when the value is printed on a nutrition label in the photo, or appears in official values published by the restaurant or manufacturer. Scale it to the portion like the other values.
+- If the label shows ナトリウム in mg but not 食塩相当量, saltEquivalent is ナトリウム (mg) × 2.54 ÷ 1000.
+- Otherwise return null. Do not estimate these two from how the food looks.
+
 productName
 - Write it in Japanese. Start with the general name of the food, such as 親子丼, 鮭おにぎり or 缶コーヒー, and put the product name or details after it in （）. The app looks up the user's past logs with the text before the first space or bracket.
 - Use a name printed on the package as written. Do not add a brand, flavor or product line you cannot see. Do not add words such as 推定.
@@ -79,6 +85,15 @@ const RESPONSE_FORMAT = {
         type: 'number',
         description: '食物繊維 in grams for the portion',
       },
+      // 写真の見た目からの推定は誤差が大きいので、読めなかったら null を返させる
+      saltEquivalent: {
+        type: ['number', 'null'],
+        description: '食塩相当量 in grams for the portion, or null when not printed or published',
+      },
+      saturatedFat: {
+        type: ['number', 'null'],
+        description: '飽和脂肪酸 in grams for the portion, or null when not printed or published',
+      },
       portion: {
         type: 'number',
         description: 'The amount the user is eating now',
@@ -99,6 +114,8 @@ const RESPONSE_FORMAT = {
       'fat',
       'sugar',
       'dietaryFiber',
+      'saltEquivalent',
+      'saturatedFat',
       'portion',
       'portionUnit',
       'confidence',
@@ -137,6 +154,11 @@ const PHOTO_RESPONSE_FORMAT = {
     required: [...RESPONSE_FORMAT.schema.required, 'menuGuess'],
   },
 };
+
+function optionalNutrient<K extends string>(parsed: Record<string, unknown>, key: K): Partial<Record<K, number>> {
+  const value = parsed[key];
+  return typeof value === 'number' ? ({ [key]: value } as Record<K, number>) : {};
+}
 
 type OpenAIOutputItem = {
   type: string;
@@ -239,6 +261,9 @@ aiAnalyze.post('/analyze-food', async (c) => {
     portionUnit: (parsed['portionUnit'] as string) ?? '人前',
     confidence: (parsed['confidence'] as string) ?? 'medium',
     productName: (parsed['productName'] as string) ?? '不明な料理',
+    // 読めなかった栄養素は null で返ってくる。分からないとしてキーごと省く
+    ...optionalNutrient(parsed, 'saltEquivalent'),
+    ...optionalNutrient(parsed, 'saturatedFat'),
   };
   if (!menuName) {
     const menuGuess = typeof parsed['menuGuess'] === 'string' ? parsed['menuGuess'].trim() : '';

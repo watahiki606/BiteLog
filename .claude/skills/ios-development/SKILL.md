@@ -52,6 +52,12 @@ SweetPad: Generate Build Server Config
 - **LogItem**: Meal records. References FoodMaster with backup data (protection on deletion)
 - **MealType**: Meal types (breakfast, lunch, dinner, snack, other)
 
+### Nutrient definitions
+
+- The list of nutrients lives in `shared/nutrients.json`. The Xcode project cannot read files outside `BiteLog/`, so the iOS side uses generated files: `BiteLog/Generated/NutrientDefinitions.swift` and `BiteLog/Resources/{ja,en}.lproj/Nutrients.strings`
+- After editing the JSON, run `bun run generate:nutrients` from the repo root and commit the generated files with it. Never edit the generated files by hand
+- `NutrientDefinitionsTests` fails when the JSON and the generated files disagree. CI does not run the iOS tests, so run it before opening a PR
+
 ### Main View Structure
 
 - **ContentView**: Tab-based navigation (Log tab, Food tab)

@@ -220,12 +220,7 @@
 "Failed to load statistics" = "Failed to load statistics";
 "Retry" = "Retry";
 
-// Design System - short nutrient labels for narrow places such as list chips
-"Nutrient.Short.Calories" = "Cal";
-"Nutrient.Short.Protein" = "P";
-"Nutrient.Short.Fat" = "F";
-"Nutrient.Short.NetCarbs" = "Sugar";
-"Nutrient.Short.Fiber" = "Fiber";
+// Design System - short label for carbs. Other nutrients have short names in Nutrients.strings
 "Nutrient.Short.Carbs" = "Carbs";
 
 // Design System - VoiceOver
@@ -424,3 +419,23 @@
 
 // The VoiceOver action on the Log screen add button that does what a long press does
 "Measure Weight" = "Measure Weight";
+
+/* 同じ名前と単位の食品が登録済み */
+"The same data is already registered." = "The same data is already registered.";
+"A food with the same brand, name, and unit is already registered. Change one of them and save again." = "A food with the same brand, name, and unit is already registered. Change one of them and save again.";
+"Already Registered" = "Already Registered";
+"Log with Registered Values" = "Log with Registered Values";
+"Change Name" = "Change Name";
+"\"%1$@\" is already registered with %2$@ kcal per %3$@ %4$@. Log it with the registered values, or change the name and save again." = "\"%1$@\" is already registered with %2$@ kcal per %3$@ %4$@. Log it with the registered values, or change the name and save again.";
+
+/* Nutrients added after the first five: salt equivalent and saturated fat */
+"Other Nutrients" = "Other Nutrients";
+"Leave blank if the label doesn't show it. Enter 0 only when it is really 0." = "Leave blank if the label doesn't show it. Enter 0 only when it is really 0.";
+"Total of %1$d of %2$d items" = "Total of %1$d of %2$d items";
+"From %1$d of %2$d items" = "From %1$d of %2$d items";
+"Salt and Saturated Fat" = "Salt and Saturated Fat";
+"Add your sex and birth date in Profile to compare with the dietary goals." = "Add your sex and birth date in Profile to compare with the dietary goals.";
+"%@%% of energy" = "%@%% of energy";
+"%@ per day" = "%@ per day";
+"Goal: less than %@" = "Goal: less than %@";
+"Goal: %@%% of energy or less" = "Goal: %@%% of energy or less";

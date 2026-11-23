@@ -1,5 +1,9 @@
-When you finish measuring on your body composition scale, the result now opens right away.
+You can now log salt equivalent and saturated fat.
 
-- The result screen opens as soon as the measurement is done. Step on again while it is open to switch to the next result
-- The result screen is easier to read. Your weight is shown large, along with the change from a measurement taken around the same time on an earlier day
-- Each measurement now has an icon so you can spot it at a glance
+- The food form has a new Other Nutrients section for salt equivalent and saturated fat. Leave them blank if the label doesn't show them
+- When you photograph a nutrition label, the analysis reads these two as well
+- Daily totals and statistics show them. When some foods have no value, BiteLog tells you how many foods the total covers
+- Add your sex and birth date in Profile to compare them with the dietary goals in Statistics
+- CSV export adds two columns at the end
+
+When you register a food from a photo or by hand, BiteLog now tells you if a food with the same name and unit already exists.

@@ -28,7 +28,10 @@ struct JapaneseLocalizationTests {
     }
     #expect(!keys.isEmpty)
 
-    let missing = keys.subtracting(Self.sameInJapanese).filter { key in
+    // 文字列補間を含むキーは実行時に決まるので、ソースからは引けない。
+    // 栄養素の名前がこれに当たり、Nutrients.strings との突き合わせは NutrientDefinitionsTests が受け持つ
+    let staticKeys = keys.filter { !$0.contains(#"\("#) }
+    let missing = staticKeys.subtracting(Self.sameInJapanese).filter { key in
       // Swift のリテラルのエスケープを戻してから引く
       let unescaped = key.replacingOccurrences(of: #"\""#, with: "\"")
       return japanese.localizedString(forKey: unescaped, value: "\u{0}missing", table: nil) == "\u{0}missing"

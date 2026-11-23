@@ -34,6 +34,8 @@ struct DesignSystemGalleryTests {
       // 体組成は別の絵にする。1枚にまとめると AX5 で PNG に書き出せない高さになる
       try render(ScreenPartsGalleryView(), to: base, name: "parts-\(name)", scheme: scheme, typeSize: typeSize)
       try render(BodyGalleryView(), to: base, name: "body-\(name)", scheme: scheme, typeSize: typeSize)
+      // 統計の「食塩と飽和脂肪酸」は別の絵にする。合計のカードと並べると AX5 で書き出せない高さになる
+      try render(AddedNutrientGoalsGalleryView(), to: base, name: "added-\(name)", scheme: scheme, typeSize: typeSize)
       // 1件の画面は2通りを別の絵にする。並べると AX5 で書き出せない高さになる
       try render(
         BodyDetailGalleryView(withReference: true), to: base, name: "body-detail-\(name)",
@@ -179,6 +181,16 @@ private struct GalleryView: View {
 private struct DailyTotalsSample: View {
   @State private var showsAllNutrients = true
 
+  /// 食塩は5品中3品だけ分かっていて、飽和脂肪酸はどの品も分からない日
+  static let addedTotals: NutrientTotals = {
+    func item(salt: Double?) -> NutritionValues {
+      var amounts = NutrientAmounts(calories: 300, protein: 10, fat: 10, netCarbs: 30, dietaryFiber: 2)
+      amounts[.saltEquivalent] = salt
+      return NutritionValues(amounts)
+    }
+    return NutrientTotals(items: [item(salt: 2.1), item(salt: 1.3), item(salt: nil), item(salt: 0.8), item(salt: nil)])
+  }()
+
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
       DailyTotalsView(
@@ -186,7 +198,8 @@ private struct DailyTotalsSample: View {
           calories: 1642, netCarbs: 186.3, dietaryFiber: 14.2, fat: 52.8, protein: 94.5),
         goals: NutritionGoalsTargets(
           calories: 2000, protein: 120, fat: 60, netCarbs: 250, fiber: 20),
-        showsAllNutrients: $showsAllNutrients)
+        showsAllNutrients: $showsAllNutrients,
+        addedTotals: Self.addedTotals)
     }
   }
 }
@@ -365,5 +378,22 @@ private struct ScreenPartsGalleryView: View {
         .foregroundStyle(.secondary)
       content()
     }
+  }
+}
+
+/// 統計の「食塩と飽和脂肪酸」。目標量があるときと、プロフィールが無いとき
+private struct AddedNutrientGoalsGalleryView: View {
+  var body: some View {
+    VStack(alignment: .leading, spacing: 24) {
+      AddedNutrientGoalsView(
+        totals: DailyTotalsSample.addedTotals, dayCount: 1,
+        goals: [
+          .saltEquivalent: .init(nutrient: .saltEquivalent, comparison: .lessThan, value: 7.5),
+          .saturatedFat: .init(nutrient: .saturatedFat, comparison: .atMostPercentOfEnergy, value: 7),
+        ])
+      Divider()
+      AddedNutrientGoalsView(totals: DailyTotalsSample.addedTotals, dayCount: 1, goals: [:])
+    }
+    .padding()
   }
 }

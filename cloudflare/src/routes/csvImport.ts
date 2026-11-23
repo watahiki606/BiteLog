@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
 import type { Bindings, Variables } from '../types';
 import { authMiddleware } from '../middleware/auth';
+import { insertFoodMaster, type FoodMasterInput } from '../lib/foodMasterSql';
+import { ADDED_NUTRIENTS, type AddedNutrients } from '../lib/nutrients';
 
 const csvImport = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 csvImport.use('*', authMiddleware);
@@ -63,13 +65,11 @@ csvImport.post('/import', async (c) => {
   const proteinI     = colIdx(headers, 'protein') >= 0             ? colIdx(headers, 'protein')             : 7;
   const portionAmtI  = colIdx(headers, 'portion_amount', 'portionamount') >= 0 ? colIdx(headers, 'portion_amount', 'portionamount') : 8;
   const portionUnitI = colIdx(headers, 'portion_unit', 'portionunit') >= 0  ? colIdx(headers, 'portion_unit', 'portionunit')  : 9;
-
-  type FoodMasterData = {
-    id: string; brandName: string; productName: string;
-    calories: number; dietaryFiber: number; netCarbs: number;
-    fat: number; protein: number; portionSize: number;
-    portionUnit: string; uniqueKey: string;
-  };
+  // あとから足した栄養素は、見出しに列があるときだけ読む。上の列のように位置で補うと、
+  // 列の無い古い CSV の別の値を読んでしまう
+  const addedColumns = ADDED_NUTRIENTS
+    .map((n) => ({ id: n.id, index: colIdx(headers, n.column) }))
+    .filter((c) => c.index >= 0);
 
   type LogRow = {
     id: string; timestamp: string; logDate: string;
@@ -77,7 +77,7 @@ csvImport.post('/import', async (c) => {
     foodMasterUniqueKey: string; nutritionSnapshot: object;
   };
 
-  const foodMasterMap = new Map<string, FoodMasterData>();
+  const foodMasterMap = new Map<string, FoodMasterInput>();
   const logRows: LogRow[] = [];
   let skipped = 0;
 
@@ -104,11 +104,18 @@ csvImport.post('/import', async (c) => {
     const brandName   = cols[brandI]?.trim()           || '';
     const productName = cols[productI]?.trim()         || '';
     const uniqueKey   = `${brandName}|${productName}|${portionUnit}`;
+    // 空のセルは分からないとして持たない。0 と書かれていれば 0
+    const added: AddedNutrients = {};
+    for (const c of addedColumns) {
+      const cell = cols[c.index]?.trim();
+      const value = cell ? parseFloat(cell) : NaN;
+      if (!Number.isNaN(value)) added[c.id as keyof AddedNutrients] = value;
+    }
 
     if (!foodMasterMap.has(uniqueKey)) {
       foodMasterMap.set(uniqueKey, {
         id: crypto.randomUUID(), brandName, productName,
-        calories, dietaryFiber: fiber, netCarbs, fat, protein,
+        calories, dietaryFiber: fiber, netCarbs, fat, protein, ...added,
         portionSize: portionAmt, portionUnit, uniqueKey,
       });
     }
@@ -122,7 +129,7 @@ csvImport.post('/import', async (c) => {
       foodMasterUniqueKey: uniqueKey,
       nutritionSnapshot: {
         brandName, productName, calories, dietaryFiber: fiber,
-        netCarbs, fat, protein, portionSize: portionAmt, portionUnit,
+        netCarbs, fat, protein, ...added, portionSize: portionAmt, portionUnit,
       },
     });
   }
@@ -132,16 +139,7 @@ csvImport.post('/import', async (c) => {
   let foodMastersCreated = 0;
   for (let i = 0; i < foodMasters.length; i += BATCH_SIZE) {
     const chunk = foodMasters.slice(i, i + BATCH_SIZE);
-    const results = await c.env.DB.batch(chunk.map(fm =>
-      c.env.DB.prepare(
-        `INSERT INTO food_masters
-          (id, brand_name, product_name, calories, dietary_fiber, net_carbs, fat, protein,
-           portion_size, portion_unit, unique_key, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(unique_key) DO NOTHING`
-      ).bind(fm.id, fm.brandName, fm.productName, fm.calories, fm.dietaryFiber,
-             fm.netCarbs, fm.fat, fm.protein, fm.portionSize, fm.portionUnit, fm.uniqueKey, userId)
-    ));
+    const results = await c.env.DB.batch(chunk.map(fm => insertFoodMaster(c.env.DB, fm, userId)));
     foodMastersCreated += results.filter(r => r.meta.changes > 0).length;
   }
 

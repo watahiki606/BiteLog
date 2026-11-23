@@ -3,6 +3,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { createClient } from '@/lib/api';
 import type { ToastMessage } from '@/components/Toast';
 import { useFoodMasters, FOOD_MASTER_LIMIT as LIMIT, type FoodMaster } from '@/hooks/useFoodMasters';
+import {
+  ADDED_NUTRIENTS, NUTRIENTS, addedInputsFrom, addedInputsToBody, emptyAddedInputs, inputStep, pickNutrients,
+  zeroNutrients, type AddedInputs, type AddedNutrientId, type CoreNutrientId,
+} from '@/lib/nutrients';
 
 interface Props {
   onToast: (msg: Omit<ToastMessage, 'id'>) => void;
@@ -12,14 +16,33 @@ interface Props {
 const emptyForm = {
   brandName: '',
   productName: '',
-  calories: 0,
-  protein: 0,
-  fat: 0,
-  netCarbs: 0,
-  dietaryFiber: 0,
+  ...zeroNutrients(),
   portionSize: 100,
   portionUnit: 'g',
 };
+
+// 入力欄に出す名前。web は独自の英語の言葉で並べているので、定義の表示名ではなくこちらを使う
+const FIELD_LABELS: Record<CoreNutrientId, string> = {
+  calories: 'Calories',
+  protein: 'Protein',
+  fat: 'Fat',
+  netCarbs: 'Net Carbs',
+  dietaryFiber: 'Fiber',
+};
+
+const NUTRIENT_FIELDS = NUTRIENTS.filter((n) => n.core).map((n) => ({
+  id: n.id as CoreNutrientId,
+  label: `${FIELD_LABELS[n.id as CoreNutrientId]} (${n.unit})`,
+  // 整数だけの栄養素は刻みを付けない。ブラウザの既定の 1 になる
+  step: n.fractionDigits > 0 ? String(inputStep(n)) : undefined,
+}));
+
+// あとから足した栄養素。空欄は「分からない」として保存する
+const ADDED_FIELDS = ADDED_NUTRIENTS.map((n) => ({
+  id: n.id as AddedNutrientId,
+  label: `${n.names.en} (${n.unit})`,
+  step: String(inputStep(n)),
+}));
 
 type FormData = typeof emptyForm;
 
@@ -30,6 +53,7 @@ export default function FoodMasterPage({ onToast, isAdmin }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<FoodMaster | null>(null);
   const [form, setForm] = useState<FormData>(emptyForm);
+  const [addedForm, setAddedForm] = useState<AddedInputs>(emptyAddedInputs);
   const [deleteTarget, setDeleteTarget] = useState<FoodMaster | null>(null);
 
   // 入力をデバウンスして検索語を確定。確定時に1ページ目へ戻す。
@@ -49,6 +73,7 @@ export default function FoodMasterPage({ onToast, isAdmin }: Props) {
   function openAdd() {
     setEditing(null);
     setForm(emptyForm);
+    setAddedForm(emptyAddedInputs());
     setModalOpen(true);
   }
 
@@ -57,14 +82,11 @@ export default function FoodMasterPage({ onToast, isAdmin }: Props) {
     setForm({
       brandName: item.brandName,
       productName: item.productName,
-      calories: item.calories,
-      protein: item.protein,
-      fat: item.fat,
-      netCarbs: item.netCarbs,
-      dietaryFiber: item.dietaryFiber,
+      ...pickNutrients(item),
       portionSize: item.portionSize,
       portionUnit: item.portionUnit,
     });
+    setAddedForm(addedInputsFrom(item));
     setModalOpen(true);
   }
 
@@ -79,7 +101,7 @@ export default function FoodMasterPage({ onToast, isAdmin }: Props) {
         // サーバは c.req.json() で読み、Content-Type を見ないため body のみで十分。
         const res = await client.api['food-masters'][':id'].$put(
           { param: { id: editing.id } },
-          { init: { body: JSON.stringify(form) } }
+          { init: { body: JSON.stringify({ ...form, ...addedInputsToBody(addedForm, true) }) } }
         );
         if (res.status === 403) {
           onToast({ message: '他のユーザーが作成した食品は編集できません', type: 'error' });
@@ -90,8 +112,13 @@ export default function FoodMasterPage({ onToast, isAdmin }: Props) {
         const id = crypto.randomUUID();
         const uniqueKey = `${form.brandName}|${form.productName}|${form.portionUnit}`;
         const res = await client.api['food-masters'].$post({
-          json: { ...form, id, uniqueKey },
+          // reject を付けないと、同じ名前と単位の食品があるとき既存の食品が返り、追加できたように見える
+          json: { ...form, ...addedInputsToBody(addedForm, false), nutrientSource: 'manual', id, uniqueKey, onConflict: 'reject' },
         });
+        if (res.status === 409) {
+          onToast({ message: '同じブランド名・商品名・単位の食品が登録済みです', type: 'error' });
+          return;
+        }
         if (!res.ok) throw new Error();
       }
       onToast({ message: editing ? '更新しました' : '追加しました', type: 'success' });
@@ -207,11 +234,12 @@ export default function FoodMasterPage({ onToast, isAdmin }: Props) {
             <div className="grid grid-cols-2 gap-3">
               <Field label="Product Name" colSpan={2}><input type="text" value={form.productName} onChange={(e) => setField('productName', e.target.value)} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
               <Field label="Brand Name" colSpan={2}><input type="text" value={form.brandName} onChange={(e) => setField('brandName', e.target.value)} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
-              <Field label="Calories (kcal)"><input type="number" value={form.calories} onChange={(e) => setField('calories', Number(e.target.value))} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
-              <Field label="Protein (g)"><input type="number" step="0.1" value={form.protein} onChange={(e) => setField('protein', Number(e.target.value))} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
-              <Field label="Fat (g)"><input type="number" step="0.1" value={form.fat} onChange={(e) => setField('fat', Number(e.target.value))} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
-              <Field label="Net Carbs (g)"><input type="number" step="0.1" value={form.netCarbs} onChange={(e) => setField('netCarbs', Number(e.target.value))} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
-              <Field label="Fiber (g)"><input type="number" step="0.1" value={form.dietaryFiber} onChange={(e) => setField('dietaryFiber', Number(e.target.value))} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
+              {NUTRIENT_FIELDS.map((f) => (
+                <Field key={f.id} label={f.label}><input type="number" step={f.step} value={form[f.id]} onChange={(e) => setField(f.id, Number(e.target.value))} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
+              ))}
+              {ADDED_FIELDS.map((f) => (
+                <Field key={f.id} label={f.label}><input type="number" step={f.step} placeholder="unknown" value={addedForm[f.id]} onChange={(e) => setAddedForm((a) => ({ ...a, [f.id]: e.target.value }))} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
+              ))}
               <Field label="Portion Size"><input type="number" step="0.1" value={form.portionSize} onChange={(e) => setField('portionSize', Number(e.target.value))} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
               <Field label="Portion Unit"><input type="text" value={form.portionUnit} onChange={(e) => setField('portionUnit', e.target.value)} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
             </div>

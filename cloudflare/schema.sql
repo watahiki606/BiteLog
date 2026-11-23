@@ -11,7 +11,14 @@ CREATE TABLE IF NOT EXISTS food_masters (
   portion_size REAL NOT NULL DEFAULT 1.0,
   portion_unit TEXT NOT NULL DEFAULT 'g',
   unique_key TEXT NOT NULL UNIQUE,
-  created_by TEXT NOT NULL
+  created_by TEXT NOT NULL,
+  -- 最初の5項目より後に足した栄養素。NULL は「分からない」
+  salt_equivalent REAL,
+  saturated_fat REAL,
+  -- 値の出典。label、composition_table、ai_estimate、manual のどれか。NULL は分からない
+  nutrient_source TEXT,
+  -- 出典の参照先。成分表の食品番号か URL
+  nutrient_source_ref TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_food_masters_product_name ON food_masters(product_name);

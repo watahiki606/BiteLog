@@ -1,21 +1,17 @@
 import useSWR from 'swr';
 import { createClient } from '@/lib/api';
+import type { AddedNutrients, CoreNutrients } from '@/lib/nutrients';
 
-export interface FoodMaster {
+export type FoodMaster = CoreNutrients & AddedNutrients & {
   id: string;
   brandName: string;
   productName: string;
-  calories: number;
-  protein: number;
-  fat: number;
-  netCarbs: number;
-  dietaryFiber: number;
   portionSize: number;
   portionUnit: string;
   usageCount: number;
   isMine: boolean;
   createdBy?: string;
-}
+};
 
 export const FOOD_MASTER_LIMIT = 30;
 

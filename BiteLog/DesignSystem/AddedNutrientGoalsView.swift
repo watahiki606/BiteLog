@@ -1,0 +1,98 @@
+import SwiftUI
+
+/// あとから足した栄養素の期間の1日平均を、食事摂取基準の目標量と並べる。
+///
+/// 値の分からない品があると平均は少なく出る。少なく出たまま「目標を守れている」とは書けないので、
+/// 良し悪しは書かず、何品ぶんの値から出したかを添えるだけにする。
+struct AddedNutrientGoalsView: View {
+  let totals: NutrientTotals
+  /// 平均の母数にする日数。記録の無い日も含める
+  let dayCount: Int
+  /// プロフィールの性別と年齢で引いた目標量。プロフィールが無ければ空
+  let goals: [NutrientID: DietaryReferenceIntakes.Goal]
+
+  private static let nutrients = NutrientID.allCases.filter { !$0.definition.core }
+
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 14) {
+      ForEach(Self.nutrients, id: \.self) { id in
+        row(id)
+      }
+      if goals.isEmpty {
+        Text(NSLocalizedString(
+          "Add your sex and birth date in Profile to compare with the dietary goals.",
+          comment: "Hint when no profile for dietary goals"))
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+    }
+  }
+
+  private func row(_ id: NutrientID) -> some View {
+    let known = totals.knownCount(id)
+    let name = Label {
+      Text(id.localizedName)
+    } icon: {
+      Image(systemName: id.symbolName).foregroundStyle(id.color)
+    }
+    let value = Text(known > 0 ? averageText(id) : NSLocalizedString("Unknown", comment: "Unknown nutrient value"))
+      .monospacedDigit()
+      .fontWeight(.medium)
+    return VStack(alignment: .leading, spacing: 4) {
+      // 大きな文字で名前と値を横に並べると、どちらも語の途中で折れる。縦に積む
+      if dynamicTypeSize.isAccessibilitySize {
+        // 親が提案した高さに縮められて「Salt equival…」と切れるので、要る行数ぶんの高さを取る
+        name.fixedSize(horizontal: false, vertical: true)
+        value
+      } else {
+        HStack(alignment: .firstTextBaseline) {
+          name
+          Spacer(minLength: 8)
+          value
+        }
+      }
+      if let goal = goals[id] {
+        Text(goalText(goal))
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+      if known > 0 && !totals.isComplete(id) {
+        Text(String(
+          format: NSLocalizedString("From %1$d of %2$d items", comment: "Partial average of a nutrient"),
+          known, totals.itemCount))
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+    }
+    .font(.subheadline)
+    .accessibilityElement(children: .combine)
+  }
+
+  private func averageText(_ id: NutrientID) -> String {
+    let total = totals.values.amounts[id] ?? 0
+    // 飽和脂肪酸の目標量はエネルギーに占める割合なので、比べられる形で出す
+    if goals[id]?.comparison == .atMostPercentOfEnergy, totals.values.calories > 0 {
+      let percent = total * 9 / totals.values.calories * 100
+      return String(
+        format: NSLocalizedString("%@%% of energy", comment: "Share of energy"),
+        NutritionFormatter.formatNutrition((percent * 10).rounded() / 10))
+    }
+    let perDay = total / Double(max(dayCount, 1))
+    return String(
+      format: NSLocalizedString("%@ per day", comment: "Average per day"), "\(id.format(perDay))\(id.unit)")
+  }
+
+  private func goalText(_ goal: DietaryReferenceIntakes.Goal) -> String {
+    let value = NutritionFormatter.formatNutrition(goal.value)
+    switch goal.comparison {
+    case .lessThan:
+      return String(
+        format: NSLocalizedString("Goal: less than %@", comment: "Dietary goal"), "\(value)\(goal.nutrient.unit)")
+    case .atMostPercentOfEnergy:
+      return String(
+        format: NSLocalizedString("Goal: %@%% of energy or less", comment: "Dietary goal"), value)
+    }
+  }
+}

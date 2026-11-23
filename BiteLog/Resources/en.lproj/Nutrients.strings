@@ -1,0 +1,16 @@
+/* 生成したファイル。shared/nutrients.json を直して bun run generate:nutrients で作り直す */
+
+"calories.name" = "Calories";
+"calories.shortName" = "Cal";
+"protein.name" = "Protein";
+"protein.shortName" = "P";
+"fat.name" = "Fat";
+"fat.shortName" = "F";
+"netCarbs.name" = "Sugar";
+"netCarbs.shortName" = "Sugar";
+"dietaryFiber.name" = "Dietary Fiber";
+"dietaryFiber.shortName" = "Fiber";
+"saltEquivalent.name" = "Salt equivalent";
+"saltEquivalent.shortName" = "Salt";
+"saturatedFat.name" = "Saturated fat";
+"saturatedFat.shortName" = "Sat. fat";

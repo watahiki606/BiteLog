@@ -1,16 +1,12 @@
 import useSWR from 'swr';
 import { createClient } from '@/lib/api';
+import type { AddedNutrients, CoreNutrients } from '@/lib/nutrients';
 
-export interface NutritionSource {
+export type NutritionSource = CoreNutrients & AddedNutrients & {
   productName: string;
   brandName: string;
-  calories: number;
-  protein: number;
-  fat: number;
-  netCarbs: number;
-  dietaryFiber: number;
   portionSize: number;
-}
+};
 
 export interface LogItem {
   id: string;
