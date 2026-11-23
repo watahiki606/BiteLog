@@ -3,48 +3,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { createClient } from '@/lib/api';
 import type { ToastMessage } from '@/components/Toast';
 import { useFoodMasters, FOOD_MASTER_LIMIT as LIMIT, type FoodMaster } from '@/hooks/useFoodMasters';
-import {
-  ADDED_NUTRIENTS, NUTRIENTS, addedInputsFrom, addedInputsToBody, emptyAddedInputs, inputStep, pickNutrients,
-  zeroNutrients, type AddedInputs, type AddedNutrientId, type CoreNutrientId,
-} from '@/lib/nutrients';
+import { Modal } from '@/components/Modal';
+import FoodEditModal from '@/components/FoodEditModal';
 
 interface Props {
   onToast: (msg: Omit<ToastMessage, 'id'>) => void;
   isAdmin: boolean;
 }
-
-const emptyForm = {
-  brandName: '',
-  productName: '',
-  ...zeroNutrients(),
-  portionSize: 100,
-  portionUnit: 'g',
-};
-
-// 入力欄に出す名前。web は独自の英語の言葉で並べているので、定義の表示名ではなくこちらを使う
-const FIELD_LABELS: Record<CoreNutrientId, string> = {
-  calories: 'Calories',
-  protein: 'Protein',
-  fat: 'Fat',
-  netCarbs: 'Net Carbs',
-  dietaryFiber: 'Fiber',
-};
-
-const NUTRIENT_FIELDS = NUTRIENTS.filter((n) => n.core).map((n) => ({
-  id: n.id as CoreNutrientId,
-  label: `${FIELD_LABELS[n.id as CoreNutrientId]} (${n.unit})`,
-  // 整数だけの栄養素は刻みを付けない。ブラウザの既定の 1 になる
-  step: n.fractionDigits > 0 ? String(inputStep(n)) : undefined,
-}));
-
-// あとから足した栄養素。空欄は「分からない」として保存する
-const ADDED_FIELDS = ADDED_NUTRIENTS.map((n) => ({
-  id: n.id as AddedNutrientId,
-  label: `${n.names.en} (${n.unit})`,
-  step: String(inputStep(n)),
-}));
-
-type FormData = typeof emptyForm;
 
 export default function FoodMasterPage({ onToast, isAdmin }: Props) {
   const [offset, setOffset] = useState(0);
@@ -52,8 +17,6 @@ export default function FoodMasterPage({ onToast, isAdmin }: Props) {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<FoodMaster | null>(null);
-  const [form, setForm] = useState<FormData>(emptyForm);
-  const [addedForm, setAddedForm] = useState<AddedInputs>(emptyAddedInputs);
   const [deleteTarget, setDeleteTarget] = useState<FoodMaster | null>(null);
 
   // 入力をデバウンスして検索語を確定。確定時に1ページ目へ戻す。
@@ -72,61 +35,12 @@ export default function FoodMasterPage({ onToast, isAdmin }: Props) {
 
   function openAdd() {
     setEditing(null);
-    setForm(emptyForm);
-    setAddedForm(emptyAddedInputs());
     setModalOpen(true);
   }
 
   function openEdit(item: FoodMaster) {
     setEditing(item);
-    setForm({
-      brandName: item.brandName,
-      productName: item.productName,
-      ...pickNutrients(item),
-      portionSize: item.portionSize,
-      portionUnit: item.portionUnit,
-    });
-    setAddedForm(addedInputsFrom(item));
     setModalOpen(true);
-  }
-
-  async function handleSave() {
-    try {
-      const client = createClient();
-      if (editing) {
-        // PUT は Hono RPC がバリデータなしで json ボディを型推論できないため、
-        // param だけ渡し、ボディは init で送る。
-        // init.headers は渡さない: Hono クライアントが {headers, ...opt.init} の順で
-        // 展開するため、init.headers を渡すと Authorization ごと上書きされ 401 になる。
-        // サーバは c.req.json() で読み、Content-Type を見ないため body のみで十分。
-        const res = await client.api['food-masters'][':id'].$put(
-          { param: { id: editing.id } },
-          { init: { body: JSON.stringify({ ...form, ...addedInputsToBody(addedForm, true) }) } }
-        );
-        if (res.status === 403) {
-          onToast({ message: '他のユーザーが作成した食品は編集できません', type: 'error' });
-          return;
-        }
-        if (!res.ok) throw new Error();
-      } else {
-        const id = crypto.randomUUID();
-        const uniqueKey = `${form.brandName}|${form.productName}|${form.portionUnit}`;
-        const res = await client.api['food-masters'].$post({
-          // reject を付けないと、同じ名前と単位の食品があるとき既存の食品が返り、追加できたように見える
-          json: { ...form, ...addedInputsToBody(addedForm, false), nutrientSource: 'manual', id, uniqueKey, onConflict: 'reject' },
-        });
-        if (res.status === 409) {
-          onToast({ message: '同じブランド名・商品名・単位の食品が登録済みです', type: 'error' });
-          return;
-        }
-        if (!res.ok) throw new Error();
-      }
-      onToast({ message: editing ? '更新しました' : '追加しました', type: 'success' });
-      setModalOpen(false);
-      mutate();
-    } catch {
-      onToast({ message: '保存に失敗しました', type: 'error' });
-    }
   }
 
   async function handleDelete(item: FoodMaster) {
@@ -145,10 +59,6 @@ export default function FoodMasterPage({ onToast, isAdmin }: Props) {
     } catch {
       onToast({ message: '削除に失敗しました', type: 'error' });
     }
-  }
-
-  function setField<K extends keyof FormData>(key: K, val: FormData[K]) {
-    setForm((f) => ({ ...f, [key]: val }));
   }
 
   const totalPages = Math.ceil(total / LIMIT);
@@ -230,20 +140,8 @@ export default function FoodMasterPage({ onToast, isAdmin }: Props) {
 
       <AnimatePresence>
         {modalOpen && (
-          <Modal title={editing ? 'EDIT FOOD' : 'ADD FOOD'} onClose={() => setModalOpen(false)} onSave={handleSave}>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Product Name" colSpan={2}><input type="text" value={form.productName} onChange={(e) => setField('productName', e.target.value)} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
-              <Field label="Brand Name" colSpan={2}><input type="text" value={form.brandName} onChange={(e) => setField('brandName', e.target.value)} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
-              {NUTRIENT_FIELDS.map((f) => (
-                <Field key={f.id} label={f.label}><input type="number" step={f.step} value={form[f.id]} onChange={(e) => setField(f.id, Number(e.target.value))} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
-              ))}
-              {ADDED_FIELDS.map((f) => (
-                <Field key={f.id} label={f.label}><input type="number" step={f.step} placeholder="unknown" value={addedForm[f.id]} onChange={(e) => setAddedForm((a) => ({ ...a, [f.id]: e.target.value }))} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
-              ))}
-              <Field label="Portion Size"><input type="number" step="0.1" value={form.portionSize} onChange={(e) => setField('portionSize', Number(e.target.value))} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
-              <Field label="Portion Unit"><input type="text" value={form.portionUnit} onChange={(e) => setField('portionUnit', e.target.value)} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
-            </div>
-          </Modal>
+          <FoodEditModal key={editing?.id ?? 'new'} editing={editing} onToast={onToast}
+            onClose={() => setModalOpen(false)} onSaved={() => { setModalOpen(false); mutate(); }} />
         )}
       </AnimatePresence>
 
@@ -259,41 +157,4 @@ export default function FoodMasterPage({ onToast, isAdmin }: Props) {
   );
 }
 
-const fc = "w-full bg-bg-card border border-border-dim px-3 py-1.5 text-xs text-foreground focus:outline-none focus:border-neon-cyan transition-colors";
 
-function Field({ label, children, colSpan }: { label: string; children: React.ReactNode; colSpan?: number }) {
-  return (
-    <div className={colSpan === 2 ? 'col-span-2' : ''}>
-      <label className="block text-xs text-muted-foreground mb-1 tracking-wider uppercase">{label}</label>
-      {children}
-    </div>
-  );
-}
-
-function Modal({ title, onClose, onSave, saveLabel = 'SAVE', danger = false, children }: {
-  title: string; onClose: () => void; onSave: () => void; saveLabel?: string; danger?: boolean; children: React.ReactNode;
-}) {
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/70 flex items-center justify-center z-40 p-4" onClick={onClose}
-    >
-      <motion.div initial={{ scale: 0.9, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 10 }}
-        className="w-full max-w-md bg-bg-surface border border-border-dim p-6"
-        style={{ boxShadow: '0 0 40px rgba(0,229,255,0.1)' }} onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="text-sm font-bold tracking-widest text-neon-cyan">{title}</h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none">×</button>
-        </div>
-        <div className="mb-6">{children}</div>
-        <div className="flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 text-xs tracking-widest border border-border-dim text-muted-foreground hover:border-foreground hover:text-foreground transition-all uppercase">CANCEL</button>
-          <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={onSave}
-            className="px-4 py-2 text-xs font-bold tracking-widest uppercase"
-            style={{ background: danger ? 'rgba(255,51,102,0.1)' : 'rgba(0,229,255,0.1)', border: `1px solid ${danger ? '#ff3366' : '#00e5ff'}`, color: danger ? '#ff3366' : '#00e5ff', boxShadow: `0 0 10px ${danger ? 'rgba(255,51,102,0.2)' : 'rgba(0,229,255,0.2)'}` }}
-          >{saveLabel}</motion.button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}

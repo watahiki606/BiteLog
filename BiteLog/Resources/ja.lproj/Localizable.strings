@@ -241,6 +241,8 @@
 // Design System - VoiceOver
 "Unit.Kilocalories" = "キロカロリー";
 "Unit.Grams" = "グラム";
+"Unit.Milligrams" = "ミリグラム";
+"Unit.Micrograms" = "マイクログラム";
 "%@ of %@ goal" = "目標 %2$@ の %1$@";
 
 // 日付ナビゲーション
@@ -475,3 +477,8 @@
 "%@ per day" = "1日 %@";
 "Goal: less than %@" = "目標 %@未満";
 "Goal: %@%% of energy or less" = "目標 エネルギーの%@%%以下";
+
+/* 入力欄は炭水化物とうち食物繊維。糖質は引き算で出す */
+"Of which dietary fiber" = "うち食物繊維";
+"Sugar (Carbohydrates − Fiber)" = "糖質（炭水化物 − 食物繊維）";
+"Dietary fiber can't be more than carbohydrates." = "食物繊維は炭水化物より多くできません。";

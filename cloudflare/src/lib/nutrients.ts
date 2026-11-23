@@ -15,6 +15,8 @@ export type NutrientDefinition = {
   label: string;
   names: Record<string, string>;
   shortNames: Record<string, string>;
+  /** 日本食品標準成分表のどの列から値を取るか。minus があれば、その列を引く */
+  composition?: { table: string; tag: string; minus?: string };
 };
 
 export const NUTRIENTS: readonly NutrientDefinition[] = definitions;
@@ -35,7 +37,10 @@ for (const n of NUTRIENTS) {
 /** 最初からある5項目。必ず値を持つ */
 export const CORE_NUTRIENT_IDS = ['calories', 'protein', 'fat', 'netCarbs', 'dietaryFiber'] as const;
 /** あとから足した栄養素。値が無ければ「分からない」 */
-export const ADDED_NUTRIENT_IDS = ['saltEquivalent', 'saturatedFat'] as const;
+export const ADDED_NUTRIENT_IDS = [
+  'saltEquivalent', 'saturatedFat',
+  'potassium', 'calcium', 'magnesium', 'iron', 'vitaminA', 'vitaminD', 'vitaminC',
+] as const;
 export type CoreNutrientId = (typeof CORE_NUTRIENT_IDS)[number];
 export type AddedNutrientId = (typeof ADDED_NUTRIENT_IDS)[number];
 export type CoreNutrients = Record<CoreNutrientId, number>;

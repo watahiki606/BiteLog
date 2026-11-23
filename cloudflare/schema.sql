@@ -15,13 +15,57 @@ CREATE TABLE IF NOT EXISTS food_masters (
   -- 最初の5項目より後に足した栄養素。NULL は「分からない」
   salt_equivalent REAL,
   saturated_fat REAL,
+  potassium REAL,
+  calcium REAL,
+  magnesium REAL,
+  iron REAL,
+  vitamin_a REAL,
+  vitamin_d REAL,
+  vitamin_c REAL,
   -- 値の出典。label、composition_table、ai_estimate、manual のどれか。NULL は分からない
   nutrient_source TEXT,
   -- 出典の参照先。成分表の食品番号か URL
-  nutrient_source_ref TEXT
+  nutrient_source_ref TEXT,
+  -- 食品の出典と違う出典の栄養素だけを並べた JSON。例 {"potassium":"composition_table"}
+  nutrient_sources TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_food_masters_product_name ON food_masters(product_name);
+
+-- composition_foods: 日本食品標準成分表。可食部 100 g あたり。成分表の「-」は NULL
+CREATE TABLE IF NOT EXISTS composition_foods (
+  food_number TEXT PRIMARY KEY,
+  food_group TEXT NOT NULL,
+  name TEXT NOT NULL,
+  search_text TEXT NOT NULL,
+  edition TEXT NOT NULL,
+  calories REAL,
+  protein REAL,
+  fat REAL,
+  net_carbs REAL,
+  dietary_fiber REAL,
+  salt_equivalent REAL,
+  saturated_fat REAL,
+  potassium REAL,
+  calcium REAL,
+  magnesium REAL,
+  iron REAL,
+  vitamin_a REAL,
+  vitamin_d REAL,
+  vitamin_c REAL,
+  raw_json TEXT NOT NULL
+);
+
+-- food_master_components: 食品を成分表の食品と重さの組にひも付ける
+CREATE TABLE IF NOT EXISTS food_master_components (
+  food_master_id TEXT NOT NULL COLLATE NOCASE REFERENCES food_masters(id) ON DELETE CASCADE,
+  position INTEGER NOT NULL,
+  food_number TEXT NOT NULL REFERENCES composition_foods(food_number),
+  grams REAL NOT NULL CHECK (grams > 0),
+  PRIMARY KEY (food_master_id, position)
+);
+
+CREATE INDEX IF NOT EXISTS idx_food_master_components_food_number ON food_master_components(food_number);
 
 -- log_items: ユーザーごとの食事ログ（user_idで分離）
 CREATE TABLE IF NOT EXISTS log_items (

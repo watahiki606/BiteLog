@@ -209,7 +209,8 @@ struct AIAnalysisResultView: View {
   @State private var calories: String
   @State private var protein: String
   @State private var fat: String
-  @State private var netCarbs: String
+  /// 炭水化物。保存のときに食物繊維を引いて糖質にする
+  @State private var carbohydrate: String
   @State private var dietaryFiber: String
   @State private var portionAmount: String
   @State private var portionUnit: String
@@ -240,7 +241,8 @@ struct AIAnalysisResultView: View {
     _calories = State(initialValue: String(format: "%.0f", result.calories))
     _protein = State(initialValue: NutritionFormatter.formatNutrition(result.protein))
     _fat = State(initialValue: NutritionFormatter.formatNutrition(result.fat))
-    _netCarbs = State(initialValue: NutritionFormatter.formatNutrition(result.netCarbs))
+    _carbohydrate = State(
+      initialValue: CarbohydrateInput.carbohydrateText(netCarbs: result.netCarbs, dietaryFiber: result.dietaryFiber))
     _dietaryFiber = State(initialValue: NutritionFormatter.formatNutrition(result.dietaryFiber))
     _portionAmount = State(initialValue: NutritionFormatter.formatNutrition(result.portionAmount))
     _portionUnit = State(initialValue: result.portionUnit)
@@ -294,12 +296,20 @@ struct AIAnalysisResultView: View {
               
               EditableField(icon: "circle.fill", label: NSLocalizedString("Protein", comment: "Label"), text: $protein, unit: "g", keyboardType: .decimalPad, color: .blue)
               EditableField(icon: "circle.fill", label: NSLocalizedString("Fat", comment: "Label"), text: $fat, unit: "g", keyboardType: .decimalPad, color: .yellow)
-              EditableField(icon: "circle.fill", label: NSLocalizedString("Sugar", comment: "Label"), text: $netCarbs, unit: "g", keyboardType: .decimalPad, color: .green)
-              EditableField(icon: "circle.fill", label: NSLocalizedString("Dietary Fiber", comment: "Label"), text: $dietaryFiber, unit: "g", keyboardType: .decimalPad, color: .brown)
-              
-              // 炭水化物は計算値として表示（編集不可）
-              let carbs = (Double(netCarbs) ?? 0) + (Double(dietaryFiber) ?? 0)
-              ResultRow(icon: "circle.fill", label: NSLocalizedString("Carbohydrates", comment: "Label"), value: "\(NutritionFormatter.formatNutrition(carbs))g", color: .purple)
+              // ラベルと同じ並びで、炭水化物とその内訳の食物繊維を直せるようにする。糖質は引き算で出す
+              EditableField(icon: "circle.fill", label: NSLocalizedString("Carbohydrates", comment: "Label"), text: $carbohydrate, unit: "g", keyboardType: .decimalPad, color: .purple)
+              EditableField(icon: "circle.fill", label: NSLocalizedString("Of which dietary fiber", comment: "Dietary fiber as part of carbohydrates"), text: $dietaryFiber, unit: "g", keyboardType: .decimalPad, color: .brown)
+              ResultRow(
+                icon: "circle.fill",
+                label: NSLocalizedString("Sugar (Carbohydrates − Fiber)", comment: "Net carbs computed from the inputs"),
+                value: carbohydrateInput.isValid ? "\(NutritionFormatter.formatNutrition(carbohydrateInput.netCarbs))g" : "—",
+                color: .green)
+              if !carbohydrateInput.isValid {
+                Text(NSLocalizedString(
+                  "Dietary fiber can't be more than carbohydrates.", comment: "Validation message in the food form"))
+                .font(.footnote).foregroundColor(.red)
+                .frame(maxWidth: .infinity, alignment: .leading)
+              }
 
               // 写真の見た目からは推定させていない。表示や公式の値から読めなかったものは空欄のまま
               ForEach(Self.addedNutrients, id: \.self) { id in
@@ -334,6 +344,7 @@ struct AIAnalysisResultView: View {
           }
           .buttonStyle(.borderedProminent)
           .controlSize(.large)
+          .disabled(!carbohydrateInput.isValid)
           .padding(.horizontal)
           .padding(.bottom)
         }
@@ -448,7 +459,7 @@ struct AIAnalysisResultView: View {
       calories = String(format: "%.0f", looked.calories)
       protein = NutritionFormatter.formatNutrition(looked.protein)
       fat = NutritionFormatter.formatNutrition(looked.fat)
-      netCarbs = NutritionFormatter.formatNutrition(looked.netCarbs)
+      carbohydrate = CarbohydrateInput.carbohydrateText(netCarbs: looked.netCarbs, dietaryFiber: looked.dietaryFiber)
       dietaryFiber = NutritionFormatter.formatNutrition(looked.dietaryFiber)
       portionAmount = NutritionFormatter.formatNutrition(looked.portionAmount)
       portionUnit = looked.portionUnit
@@ -609,12 +620,16 @@ struct AIAnalysisResultView: View {
     }
   }
 
+  private var carbohydrateInput: CarbohydrateInput {
+    CarbohydrateInput(carbohydrate: carbohydrate, dietaryFiber: dietaryFiber)
+  }
+
   private func saveFoodItem() {
     let caloriesValue = Double(calories) ?? 0
     let proteinValue = Double(protein) ?? 0
     let fatValue = Double(fat) ?? 0
-    let netCarbsValue = Double(netCarbs) ?? 0
-    let dietaryFiberValue = Double(dietaryFiber) ?? 0
+    let netCarbsValue = carbohydrateInput.netCarbs
+    let dietaryFiberValue = carbohydrateInput.fiber
     let portionAmountValue = Double(portionAmount) ?? 1
 
     Task {

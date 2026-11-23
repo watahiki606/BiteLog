@@ -4,6 +4,11 @@ import { foodMasterToResponse } from '../types';
 import { authMiddleware } from '../middleware/auth';
 import { nutrientsFromRow } from '../lib/nutrients';
 import { FM_NUTRIENT_SELECT, hasInvalidSource, insertFoodMaster, nutrientUpdate, type FoodMasterInput } from '../lib/foodMasterSql';
+import { ADDED_NUTRIENTS } from '../lib/nutrients';
+import { parseComponents, type ComponentInput } from '../lib/foodComposition';
+import {
+  applyFoodComposition, clearSupplementMarks, componentsOf, replaceComponentsStatements, unknownFoodNumbers,
+} from '../lib/foodCompositionDb';
 
 const FM_SELECT = `
   fm.id, fm.brand_name, fm.product_name, ${FM_NUTRIENT_SELECT},
@@ -70,14 +75,24 @@ const foodMasters = new Hono<{ Bindings: Bindings; Variables: Variables }>()
     ).bind(userId, c.req.param('id')).first<FoodMasterRow>();
 
     if (!row) return c.json({ error: 'Not found' }, 404);
-    return c.json(foodMasterToResponse(row));
+    return c.json({ ...foodMasterToResponse(row), components: await componentsOf(c.env.DB, row.id) });
   })
   .post('/', async (c) => {
     const userId = c.get('userId');
-    const body = await c.req.json<FoodMasterInput & { onConflict?: 'reject' }>();
+    const body = await c.req.json<FoodMasterInput & { onConflict?: 'reject'; components?: unknown }>();
     if (hasInvalidSource(body)) return c.json({ error: 'Invalid nutrientSource' }, 400);
+    const components = await readComponents(c.env.DB, body);
+    if (components === 'invalid') return c.json({ error: 'Invalid components' }, 400);
 
     await insertFoodMaster(c.env.DB, body, userId).run();
+
+    // 作れたときだけひも付ける。同じ名前の別の食品が返るときは、その食品に触れない
+    const created = await c.env.DB.prepare('SELECT id FROM food_masters WHERE unique_key = ?')
+      .bind(body.uniqueKey).first<{ id: string }>();
+    if (components && created && created.id.toLowerCase() === body.id.toLowerCase()) {
+      await c.env.DB.batch(replaceComponentsStatements(c.env.DB, created.id, components));
+      await applyFoodComposition(c.env.DB, created.id);
+    }
 
     const row = await c.env.DB.prepare(
       `SELECT ${FM_SELECT} ${FM_JOIN} WHERE fm.unique_key = ?`
@@ -119,8 +134,10 @@ const foodMasters = new Hono<{ Bindings: Bindings; Variables: Variables }>()
       return c.json({ error: 'Forbidden' }, 403);
     }
 
-    const body = await c.req.json<Partial<FoodMasterInput>>();
+    const body = await c.req.json<Partial<FoodMasterInput> & { components?: unknown }>();
     if (hasInvalidSource(body)) return c.json({ error: 'Invalid nutrientSource' }, 400);
+    const components = await readComponents(c.env.DB, body);
+    if (components === 'invalid') return c.json({ error: 'Invalid components' }, 400);
     const nutrients = nutrientUpdate(body);
 
     await c.env.DB.prepare(
@@ -136,6 +153,13 @@ const foodMasters = new Hono<{ Bindings: Bindings; Variables: Variables }>()
       body.portionSize ?? null, body.portionUnit ?? null,
       c.req.param('id')
     ).run();
+
+    // 手で入れた栄養素は、成分表で補った印を外す。次に計算し直しても書き換えない
+    await clearSupplementMarks(c.env.DB, c.req.param('id'), ADDED_NUTRIENTS.map((n) => n.id).filter((id) => id in body));
+    if (components) {
+      await c.env.DB.batch(replaceComponentsStatements(c.env.DB, c.req.param('id'), components));
+      await applyFoodComposition(c.env.DB, c.req.param('id'));
+    }
 
     const row = await c.env.DB.prepare(
       `SELECT * FROM food_masters WHERE id = ?`
@@ -182,8 +206,23 @@ const foodMasters = new Hono<{ Bindings: Bindings; Variables: Variables }>()
       ).bind(snapshot, log.id).run();
     }
 
-    await c.env.DB.prepare(`DELETE FROM food_masters WHERE id = ?`).bind(id).run();
+    await c.env.DB.batch([
+      c.env.DB.prepare(`DELETE FROM food_master_components WHERE food_master_id = ?`).bind(id),
+      c.env.DB.prepare(`DELETE FROM food_masters WHERE id = ?`).bind(id),
+    ]);
     return c.json({ ok: true });
   });
+
+/**
+ * 本文の components を読む。キーが無ければ undefined で、ひも付けは変えない。
+ * 公開中の古い版のアプリは送らないので、ひも付けは消えない。形がおかしいか、成分表に無い食品番号があれば 'invalid'
+ */
+async function readComponents(db: D1Database, body: { components?: unknown }): Promise<ComponentInput[] | undefined | 'invalid'> {
+  if (!('components' in body) || body.components === undefined) return undefined;
+  const components = parseComponents(body.components);
+  if (!components) return 'invalid';
+  if ((await unknownFoodNumbers(db, components)).length > 0) return 'invalid';
+  return components;
+}
 
 export default foodMasters;

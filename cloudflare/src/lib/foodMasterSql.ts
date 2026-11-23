@@ -14,7 +14,7 @@ export type FoodMasterInput = Nutrients & {
 };
 
 /** fm を別名にした food_masters の栄養素と出典の列。SELECT に並べる */
-export const FM_NUTRIENT_SELECT = [...NUTRIENT_COLUMNS, 'nutrient_source', 'nutrient_source_ref']
+export const FM_NUTRIENT_SELECT = [...NUTRIENT_COLUMNS, 'nutrient_source', 'nutrient_source_ref', 'nutrient_sources']
   .map((column) => `fm.${column}`)
   .join(', ');
 

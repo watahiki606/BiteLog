@@ -81,3 +81,48 @@ export function addedInputsToBody(inputs: AddedInputs, clearEmpty: boolean): Par
   }
   return body;
 }
+
+/** 引き算で出る 0.19999… のような誤差を丸める */
+function roundSmall(value: number): number {
+  return Math.round(value * 10_000) / 10_000;
+}
+
+type CarbParts = { netCarbs: number; dietaryFiber: number };
+
+/**
+ * 入力欄に出す炭水化物。食品表示の義務は炭水化物なので、入力欄はラベルと同じ並びにする。
+ * 保存の形は糖質と食物繊維のまま。公開中の古い版のアプリが食物繊維を必須の数値として読むため
+ */
+export function carbohydrateOf(v: CarbParts): number {
+  return roundSmall(v.netCarbs + v.dietaryFiber);
+}
+
+/** 炭水化物を入れたら、食物繊維を引いた値を糖質にする */
+export function withCarbohydrate<T extends CarbParts>(v: T, carbohydrate: number): T {
+  return { ...v, netCarbs: roundSmall(carbohydrate - v.dietaryFiber) };
+}
+
+/** 食物繊維は炭水化物の内訳なので、炭水化物を保ったまま糖質を減らす */
+export function withFiber<T extends CarbParts>(v: T, fiber: number): T {
+  return { ...v, dietaryFiber: fiber, netCarbs: roundSmall(carbohydrateOf(v) - fiber) };
+}
+
+/**
+ * 直すときに送る値。変えた欄だけを送る。
+ * 成分表で補った値も欄に出るので、全部を送るとサーバーは手で入れた値とみなし、補った印を外してしまう
+ */
+export function changedAddedBody(initial: AddedInputs, current: AddedInputs): Partial<Record<AddedNutrientId, number | null>> {
+  const body: Partial<Record<AddedNutrientId, number | null>> = {};
+  for (const id of ADDED_NUTRIENT_IDS) {
+    if (initial[id].trim() === current[id].trim()) continue;
+    const text = current[id].trim();
+    const value = text === '' ? NaN : Number(text);
+    body[id] = Number.isNaN(value) ? null : value;
+  }
+  return body;
+}
+
+/** 量の単位が重さか体積なら、その数を食材の重さの初期値にする。個や人前は重さが分からないので 100 g */
+export function defaultComponentGrams(portionSize: number, portionUnit: string): number {
+  return /^(g|gram|grams|グラム|ml|mL|ミリリットル)$/i.test(portionUnit.trim()) && portionSize > 0 ? portionSize : 100;
+}

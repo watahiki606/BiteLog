@@ -3,6 +3,11 @@ import { SELF, env } from 'cloudflare:test';
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { issueSessionJwt } from '../middleware/auth';
 import { applySchema } from '../test/schema';
+import { ADDED_NUTRIENT_IDS } from '../lib/nutrients';
+
+/** 値の分かっていた品数。挙げなかった栄養素は 0 */
+const known = (counts: Record<string, number> = {}) =>
+  Object.fromEntries(ADDED_NUTRIENT_IDS.map((id) => [id, counts[id] ?? 0]));
 
 // 最初の5項目のあとに足した栄養素。値が無ければ「分からない」として扱い、0 とは区別する。
 // 公開中の古い版のアプリは新しい栄養素を送らないので、送られなかったら分からないまま残す。
@@ -70,6 +75,15 @@ describe('食品の新しい栄養素', () => {
 
     expect(res.status).toBe(201);
     expect(await res.json()).toMatchObject({ ...CORE, saltEquivalent: 2.5, saturatedFat: 8 });
+  });
+
+  it('ミネラルとビタミンも、列と単位を取り違えずに保存して返す', async () => {
+    const minerals = {
+      potassium: 720, calcium: 10.5, magnesium: 42, iron: 1.1, vitaminA: 3, vitaminD: 0.4, vitaminC: 9,
+    };
+    await create(A, minerals);
+
+    expect(await get(A)).toMatchObject(minerals);
   });
 
   it('送られなければ分からないとして、応答から省く', async () => {
@@ -210,7 +224,7 @@ describe('集計', () => {
       logDate: '2026-11-01', mealType: 'Lunch',
       calories: 2600, protein: 60, fat: 80, netCarbs: 360, dietaryFiber: 12,
       saltEquivalent: 6, saturatedFat: 16,
-      itemCount: 3, knownCounts: { saltEquivalent: 2, saturatedFat: 1 },
+      itemCount: 3, knownCounts: known({ saltEquivalent: 2, saturatedFat: 1 }),
     }]);
   });
 
@@ -222,7 +236,7 @@ describe('集計', () => {
       items: Record<string, unknown>[];
     }>();
     expect(items[0]).not.toHaveProperty('saltEquivalent');
-    expect(items[0]).toMatchObject({ itemCount: 1, knownCounts: { saltEquivalent: 0, saturatedFat: 0 } });
+    expect(items[0]).toMatchObject({ itemCount: 1, knownCounts: known() });
   });
 
   it('日次の統計も同じ形で返す。記録の無い日は品数を 0 にする', async () => {
@@ -236,7 +250,7 @@ describe('集計', () => {
     }>();
     expect(items[0]).toMatchObject({
       date: '2026-11-01', calories: 2600, saltEquivalent: 6, saturatedFat: 16,
-      itemCount: 3, knownCounts: { saltEquivalent: 2, saturatedFat: 1 },
+      itemCount: 3, knownCounts: known({ saltEquivalent: 2, saturatedFat: 1 }),
     });
     expect(items[1]).toMatchObject({ date: '2026-11-02', calories: 0, itemCount: 0, weightKg: 60 });
     expect(items[1]).not.toHaveProperty('saltEquivalent');

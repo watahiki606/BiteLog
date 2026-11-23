@@ -1,7 +1,7 @@
 import { motion } from 'motion/react';
 import { clearSession } from '@/lib/auth';
 
-type Tab = 'food' | 'log' | 'goals' | 'stats' | 'body';
+type Tab = 'food' | 'log' | 'goals' | 'stats' | 'body' | 'link';
 
 interface Props {
   activeTab: Tab;
@@ -10,12 +10,14 @@ interface Props {
   isAdmin: boolean;
 }
 
-const tabs: { id: Tab; label: string; icon: string }[] = [
+const tabs: { id: Tab; label: string; icon: string; adminOnly?: boolean }[] = [
   { id: 'food',  label: 'FOOD MASTER', icon: '◈' },
   { id: 'log',   label: 'MEAL LOG',    icon: '◉' },
   { id: 'goals', label: 'NUTRITION',   icon: '◇' },
   { id: 'stats', label: 'STATISTICS',  icon: '◎' },
   { id: 'body',  label: 'BODY',        icon: '◐' },
+  // 成分表とのひも付けは食品を書き換えるので、管理者だけに出す
+  { id: 'link',  label: 'LINK TABLE',  icon: '◆', adminOnly: true },
 ];
 
 export default function Sidebar({ activeTab, onTabChange, onLogout, isAdmin }: Props) {
@@ -39,7 +41,7 @@ export default function Sidebar({ activeTab, onTabChange, onLogout, isAdmin }: P
 
       {/* ナビゲーション */}
       <nav className="flex-1 py-4">
-        {tabs.map((tab) => (
+        {tabs.filter((tab) => isAdmin || !tab.adminOnly).map((tab) => (
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
