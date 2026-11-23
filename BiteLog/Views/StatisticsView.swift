@@ -190,12 +190,7 @@ struct StatisticsView: View {
 
   /// プロフィールの性別と年齢で引いた目標量。プロフィールが無ければ空
   private var addedNutrientGoals: [NutrientID: DietaryReferenceIntakes.Goal] {
-    guard let profile = PersonalProfile.load(), let intakes = DietaryReferenceIntakes.bundled else { return [:] }
-    var goals: [NutrientID: DietaryReferenceIntakes.Goal] = [:]
-    for id in NutrientID.allCases {
-      if let goal = intakes.goal(for: id, profile: profile) { goals[id] = goal }
-    }
-    return goals
+    DietaryReferenceIntakes.goalsForSavedProfile()
   }
 
   /// 選んだ期間の食事の質のスコア。記録の無い日は「何も食べなかった日」とみなさず、記録のある日として数えない

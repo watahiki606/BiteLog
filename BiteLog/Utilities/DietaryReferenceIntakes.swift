@@ -89,6 +89,23 @@ struct DietaryReferenceIntakes {
     return goal(for: nutrient, sex: profile.sex, age: age)
   }
 
+  /// プロフィールで引いた、目標量のある栄養素すべて
+  func goals(for profile: PersonalProfile, today: Date = Date(), calendar: Calendar = .current)
+    -> [NutrientID: Goal]
+  {
+    var goals: [NutrientID: Goal] = [:]
+    for id in NutrientID.allCases {
+      if let goal = goal(for: id, profile: profile, today: today, calendar: calendar) { goals[id] = goal }
+    }
+    return goals
+  }
+
+  /// 端末に保存したプロフィールで引く。性別と生年月日が無ければ空
+  static func goalsForSavedProfile() -> [NutrientID: Goal] {
+    guard let profile = PersonalProfile.load(), let intakes = bundled else { return [:] }
+    return intakes.goals(for: profile)
+  }
+
   /// 推定エネルギー必要量。身体活動レベル「ふつう」の値。1歳未満は nil
   func estimatedEnergyRequirement(sex: TanitaProfile.Sex, age: Int) -> Double? {
     Self.band(energyBands, sex: sex, age: age)?.value
