@@ -198,6 +198,15 @@ struct StatisticsView: View {
     return goals
   }
 
+  /// 選んだ期間の食事の質のスコア。記録の無い日は「何も食べなかった日」とみなさず、記録のある日として数えない
+  private var dietQualityScore: DietQualityScore.Result {
+    guard let intakes = DietaryReferenceIntakes.bundled else { return .unavailable([.noProfile]) }
+    let loggedDays = Set(settledItems.filter { $0.totals.itemCount > 0 }.map(\.logDate)).count
+    return DietQualityScore.evaluate(
+      totals: settledTotals, periodDays: visibleDays, loggedDays: loggedDays, profile: PersonalProfile.load(),
+      intakes: intakes)
+  }
+
   private var settledAverage: NutritionValues {
     StatisticsCalculator.dailyAverage(settledItems, dayCount: visibleDays)
   }
@@ -229,6 +238,11 @@ struct StatisticsView: View {
             AddedNutrientGoalsView(totals: settledTotals, dayCount: visibleDays, goals: addedNutrientGoals)
           }
 
+          dietQualityTitle
+          CardView {
+            DietQualityScoreView(result: dietQualityScore)
+          }
+
           sectionTitle(NSLocalizedString("PFC Balance", comment: "Statistics section"))
           pfcBalanceCard
 
@@ -249,6 +263,16 @@ struct StatisticsView: View {
     .navigationTitle(NSLocalizedString("Statistics", comment: "Tab name"))
     .navigationBarTitleDisplayMode(.large)
     .task(id: reloadKey) { await reload() }
+  }
+
+  /// 医療的な判断に見えないよう、見出しに「参考」と添える
+  private var dietQualityTitle: some View {
+    HStack(alignment: .firstTextBaseline, spacing: 8) {
+      sectionTitle(NSLocalizedString("Diet Quality Score", comment: "Statistics section"))
+      Text(NSLocalizedString("For reference", comment: "Label on the diet quality score"))
+        .font(.subheadline)
+        .foregroundStyle(.secondary)
+    }
   }
 
   /// カードの上に置く見出し。記録の画面の食事の見出しと同じ太さにそろえる

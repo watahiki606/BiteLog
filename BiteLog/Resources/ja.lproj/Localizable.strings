@@ -507,3 +507,22 @@
 "Ministry of Health: Dietary Reference Intakes for Japanese 2025" = "厚生労働省 日本人の食事摂取基準（2025年版）";
 "Food Nutrients" = "食品の栄養成分";
 "Reference Values" = "比べる基準の値";
+
+/* 食事の質のスコア。参考の点として出し、良し悪しは書かない */
+"Diet Quality Score" = "食事の質スコア";
+"For reference" = "参考";
+"%1$d of %2$d points" = "%2$d点中%1$d点";
+"%d%% of the goal" = "目標量の %d%%";
+"ListSeparator" = "、";
+"Add your sex and birth date in Profile to see the score." = "プロフィールに性別と生年月日を入れると出します。";
+"The score is for people aged 18 and over." = "18歳以上の方に出します。";
+"Choose a period of 7 days or more to see the score." = "7日以上の期間を選ぶと出します。";
+"The score needs meals logged on 5 days or more in the period." = "期間のうち5日以上に記録があると出します。";
+"Too many items have unknown values for %@." = "%@の値が分からない品が多いので出せません。";
+"No calories are logged in this period." = "この期間はカロリーの記録がありません。";
+"DietQualityScore.Note.Reference" = "栄養素の量を食事摂取基準と比べて出した参考の点で、診断ではありません。";
+"DietQualityScore.Note.AddedSugar" = "研究で使われる NRF9.3 から添加糖を除いた形のため、研究の点とは比べられません。";
+"DietQualityScore.Note.Consult" = "妊娠中の方や持病のある方は、専門家に相談してください。";
+"DataSources.Score" = "食事の質スコアは、Murakami らが2019年に示した NRF9.3 の日本版の方法をもとに、添加糖を除いて計算します。摂取量はエネルギーで調整し、推定エネルギー必要量の身体活動レベルふつうの値に換算してから基準と比べます。";
+"Murakami K, et al. Nutrients 2019" = "Murakami K, et al. Nutrients 2019";
+"Score Method" = "スコアの方法";
