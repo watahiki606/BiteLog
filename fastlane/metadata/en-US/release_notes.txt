@@ -1,9 +1,12 @@
-You can now log salt equivalent and saturated fat.
+BiteLog now covers many more nutrients.
 
-- The food form has a new Other Nutrients section for salt equivalent and saturated fat. Leave them blank if the label doesn't show them
-- When you photograph a nutrition label, the analysis reads these two as well
-- Daily totals and statistics show them. When some foods have no value, BiteLog tells you how many foods the total covers
-- Add your sex and birth date in Profile to compare them with the dietary goals in Statistics
-- CSV export adds two columns at the end
+- Log salt equivalent, saturated fat, potassium, calcium, magnesium, iron, and vitamins A, D, and C. Leave a value blank if the label doesn't show it
+- Link a food to the Standard Tables of Food Composition in Japan with a weight, and nutrients missing from the label are filled from the table. When you add a food by hand, BiteLog suggests matches from the table by name
+- Photo analysis now splits a dish into ingredients and weights, and takes the values from the table
+- See 15 more nutrients, such as phosphorus, zinc, and B vitamins, under Detailed Nutrients in food details and Statistics
+- Add your sex and birth date in Profile to compare nutrients with the dietary reference intakes in Statistics
+- Statistics shows a Diet Quality Score for reference, based on how your nutrients compare with the reference values
+- The food form now follows the label: carbohydrates, then dietary fiber
+- CSV export adds the new nutrients as columns at the end
 
 When you register a food from a photo or by hand, BiteLog now tells you if a food with the same name and unit already exists.
