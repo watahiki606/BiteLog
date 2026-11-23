@@ -435,6 +435,26 @@
 // 記録の画面の左下のボタンで、長押しと同じ操作を読み上げから選ぶときの名前
 "Measure Weight" = "体重を測る";
 
+/* 訳が無く、日本語でも英語のまま出ていた文言 */
+// 食品の手入力と詳細
+"Portion Size" = "分量";
+"Portion Unit (e.g. piece, g)" = "単位 (例: 個、g)";
+"Nutrition (per %@ %@)" = "%1$@%2$@あたりの栄養成分";
+// 記録の編集の脚注。左が1単位あたり、右が合計
+"Values shown as: per %@ %@ → total" = "表示: %1$@%2$@あたり → 合計";
+// 写真解析
+"AI food analysis requires sign-in." = "写真の解析にはサインインが必要です。";
+"Sign In Required" = "サインインが必要です";
+"Please sign in to use AI food analysis." = "写真の解析を使うにはサインインしてください。";
+"Save Failed" = "保存できませんでした";
+"Failed to save. Please try again." = "もう一度お試しください。";
+// サインインとアカウント
+"Track your meals and nutrition" = "毎日の食事と栄養を記録";
+"Account" = "アカウント";
+"Sign Out" = "サインアウト";
+"Sign Out?" = "サインアウトしますか?";
+"You will return to the sign-in screen." = "サインインの画面に戻ります。";
+
 /* 同じ名前と単位の食品が登録済み */
 "The same data is already registered." = "同じデータが既に登録されています。";
 "A food with the same brand, name, and unit is already registered. Change one of them and save again." = "同じブランド名・商品名・単位の食品が既に登録されています。どれかを変えて保存し直してください。";
