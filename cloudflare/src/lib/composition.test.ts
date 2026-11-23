@@ -63,6 +63,36 @@ describe('1食品の栄養素', () => {
   });
 });
 
+describe('脂質が 0 の食品の飽和脂肪酸', () => {
+  // ウイスキー 16016 のように、脂肪酸成分表に載らず FASAT の列が無い食品
+  const spirit = { ENERC_KCAL: '234', 'PROT-': '0', 'FAT-': '(0)', 'CHOCDF-': '0', 'FIB-': '(0)' };
+
+  it('脂質が 0 で飽和脂肪酸が分からなければ、飽和脂肪酸も 0', () => {
+    expect(compositionNutrients(spirit).saturated_fat).toBe(0);
+    expect(compositionNutrients({ ...spirit, 'FAT-': '0' }).saturated_fat).toBe(0);
+  });
+
+  it('脂質が Tr でも、飽和脂肪酸は 0', () => {
+    expect(compositionNutrients({ ...spirit, 'FAT-': 'Tr', FASAT: '-' }).saturated_fat).toBe(0);
+  });
+
+  it('脂質が未測定なら、飽和脂肪酸は分からないまま', () => {
+    expect(compositionNutrients({ ...spirit, 'FAT-': '-' }).saturated_fat).toBeNull();
+  });
+
+  it('脂質が少しでもあれば、飽和脂肪酸は分からないまま', () => {
+    expect(compositionNutrients({ ...spirit, 'FAT-': '0.1' }).saturated_fat).toBeNull();
+  });
+
+  it('飽和脂肪酸の値があれば、その値を使う', () => {
+    expect(compositionNutrients({ ...spirit, 'FAT-': '0', FASAT: '(0.01)' }).saturated_fat).toBe(0.01);
+  });
+
+  it('ほかの脂肪酸は 0 にしない', () => {
+    expect(compositionNutrients(spirit).n3_fatty_acids).toBeNull();
+  });
+});
+
 describe('検索の言葉', () => {
   it('カタカナはひらがなに、括弧と空白は外す', () => {
     expect(normalizeForSearch('＜畜肉類＞　ぶた　［中型種肉］　ロース')).toBe('畜肉類ぶた中型種肉ろーす');

@@ -27,10 +27,23 @@ export function parseCompositionValue(raw: string | undefined): number | null {
   return Math.round(value * 1e6) / 1e6;
 }
 
+const columnOf = (id: string) => {
+  const n = COMPOSITION_NUTRIENTS.find((d) => d.id === id);
+  if (!n) throw new Error(`定義に ${id} が無い`);
+  return n.column;
+};
+const FAT_COLUMN = columnOf('fat');
+const SATURATED_FAT_COLUMN = columnOf('saturatedFat');
+
 /**
  * 定義の composition に従って、1食品の栄養素の値を取り出す。100 g あたり。
  * minus がある栄養素は引き算で出す。糖質は炭水化物から食物繊維を引く。
- * 成分表の Q&A 7-3 のとおりで、負になれば 0、引く値が未測定なら引かない
+ * 成分表の Q&A 7-3 のとおりで、負になれば 0、引く値が未測定なら引かない。
+ *
+ * 脂質が 0 なら、飽和脂肪酸は分からなくても 0 にする。飽和脂肪酸は脂質の一部なので、脂質より多くならない。
+ * 脂肪酸成分表に載らない酒などが、脂質 0 のまま飽和脂肪酸だけ分からないと、スコアの条件の
+ * 「値の分かる品が8割」を満たせなくなる。食品マスタの値ではなくここで決めるのは、
+ * 食品マスタの脂質は 0 と分からないを区別できないため
  */
 export function compositionNutrients(cells: Record<string, string | undefined>): Record<string, number | null> {
   const values: Record<string, number | null> = {};
@@ -43,6 +56,7 @@ export function compositionNutrients(cells: Record<string, string | undefined>):
     const minus = parseCompositionValue(cells[n.composition.minus]) ?? 0;
     values[n.column] = Math.max(0, Math.round((base - minus) * 1e6) / 1e6);
   }
+  if (values[FAT_COLUMN] === 0 && values[SATURATED_FAT_COLUMN] === null) values[SATURATED_FAT_COLUMN] = 0;
   return values;
 }
 

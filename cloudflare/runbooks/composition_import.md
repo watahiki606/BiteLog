@@ -10,7 +10,8 @@ cd cloudflare
 # Excel は manifest.json の URL から落とし、ハッシュを確かめる。置き場所はどこでもよい
 bun scripts/composition/build-sql.ts /tmp/mext-composition > /tmp/composition.sql
 
-# 手元で流して件数を確かめる。本表は 2538 行、飽和脂肪酸の値がある行は 1967 行
+# 手元で流して件数を確かめる。本表は 2538 行、飽和脂肪酸の値がある行は 2147 行
+# 脂肪酸成分表に載る 1967 行と、脂質が 0 なので飽和脂肪酸を 0 にした 180 行
 npx wrangler d1 execute bitelog --local --file /tmp/composition.sql
 npx wrangler d1 execute bitelog --local --command "SELECT COUNT(*), COUNT(saturated_fat) FROM composition_foods"
 
