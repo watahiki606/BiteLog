@@ -482,3 +482,28 @@
 "Of which dietary fiber" = "うち食物繊維";
 "Sugar (Carbohydrates − Fiber)" = "糖質（炭水化物 − 食物繊維）";
 "Dietary fiber can't be more than carbohydrates." = "食物繊維は炭水化物より多くできません。";
+
+/* ミネラルとビタミンの基準値。推奨量は割合を添え、目安量は値だけ */
+"Goal: %@ or more" = "目標 %@以上";
+"Adequate intake %@" = "目安量 %@";
+"Recommended %1$@, %2$@ if menstruating" = "推奨量 %1$@、月経がある場合は %2$@";
+"Recommended %1$@: %2$d%%" = "推奨量 %1$@ に対して %2$d%%";
+"Recommended %@" = "推奨量 %@";
+
+/* 食品成分表とのひも付け */
+"Enter the product name to see candidates." = "商品名を入れると候補が出ます。";
+"No match in the food composition table." = "成分表に合う食品がありません。";
+"Links this food" = "この食品と結びます";
+"Remove the link" = "結び付けを外す";
+"Food Composition Table" = "食品成分表";
+"Nutrients not on the label are filled from the table. The weight is the edible part in one portion." = "ラベルに無い栄養素を成分表の値で補います。重さは1回分に含まれる食べられる部分の重さです。";
+"Filled from the food composition table" = "食品成分表で補った値";
+"Data Sources" = "データの出典";
+
+/* データの出典 */
+"DataSources.Composition" = "日本食品標準成分表（八訂）増補2023年（文部科学省）をもとに BiteLog が加工して作成。2026年3月27日の正誤表を反映しています。食品を成分表の食品と重さで結ぶと、ラベルに書かれていない栄養素を成分表の値で補います。";
+"DataSources.DRI" = "日本人の食事摂取基準（2025年版）（厚生労働省）の値を、プロフィールの性別と年齢で選んで並べます。基準は習慣的な摂取量に対するものなので、選んだ期間の1日平均と比べます。";
+"Ministry of Education: Standard Tables of Food Composition" = "文部科学省 日本食品標準成分表";
+"Ministry of Health: Dietary Reference Intakes for Japanese 2025" = "厚生労働省 日本人の食事摂取基準（2025年版）";
+"Food Nutrients" = "食品の栄養成分";
+"Reference Values" = "比べる基準の値";

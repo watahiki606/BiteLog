@@ -311,7 +311,7 @@ struct AIAnalysisResultView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
               }
 
-              // 写真の見た目からは推定させていない。表示や公式の値から読めなかったものは空欄のまま
+              // 表示や公式の値から読んだ値と、成分表の食材から引いた値。どちらでも分からなければ空欄
               ForEach(Self.addedNutrients, id: \.self) { id in
                 EditableField(
                   icon: id.symbolName, label: id.localizedName,
@@ -323,6 +323,26 @@ struct AIAnalysisResultView: View {
             .padding()
             .background(Color(UIColor.secondarySystemBackground))
             .cornerRadius(12)
+
+            // 料理を分けた成分表の食材。保存のときに食品とひも付け、ミネラルやビタミンの値の元になる
+            if let components = current.components, !components.isEmpty {
+              VStack(alignment: .leading, spacing: 8) {
+                Text(NSLocalizedString("Food Composition Table", comment: "Composition link section"))
+                  .font(.headline)
+                ForEach(components) { component in
+                  HStack(alignment: .firstTextBaseline) {
+                    Text(component.name ?? component.foodNumber).font(.subheadline)
+                    Spacer(minLength: 8)
+                    Text("\(NutritionFormatter.formatNutrition(component.grams)) g")
+                      .font(.subheadline).monospacedDigit().foregroundStyle(.secondary)
+                  }
+                }
+              }
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .padding()
+              .background(Color(UIColor.secondarySystemBackground))
+              .cornerRadius(12)
+            }
 
             officialLookupSection
           }
@@ -655,6 +675,7 @@ struct AIAnalysisResultView: View {
         let source = current.nutrientSource
         withAdded.nutrientSource = source.source
         withAdded.nutrientSourceRef = source.ref
+        withAdded.components = current.components
         let fm = try await APIClient.shared.createFoodMaster(withAdded)
 
         let logDTO = LogItemCreateDTO(

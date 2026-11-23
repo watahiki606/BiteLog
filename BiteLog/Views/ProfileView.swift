@@ -66,6 +66,11 @@ struct ProfileView: View {
               NSLocalizedString("Export CSV", comment: "Export CSV"),
               systemImage: "square.and.arrow.up", color: .teal)
           }
+          NavigationLink(destination: DataSourcesView()) {
+            SettingsRowLabel(
+              NSLocalizedString("Data Sources", comment: "Data sources"),
+              systemImage: "book.closed.fill", color: .indigo)
+          }
           Button(role: .destructive, action: { showingDeleteConfirmation = true }) {
             SettingsRowLabel(
               NSLocalizedString("Delete All Data", comment: "Delete all data"),

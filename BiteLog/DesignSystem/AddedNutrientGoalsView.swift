@@ -1,9 +1,10 @@
 import SwiftUI
 
-/// あとから足した栄養素の期間の1日平均を、食事摂取基準の目標量と並べる。
+/// あとから足した栄養素の期間の1日平均を、食事摂取基準の値と並べる。
 ///
 /// 値の分からない品があると平均は少なく出る。少なく出たまま「目標を守れている」とは書けないので、
-/// 良し悪しは書かず、何品ぶんの値から出したかを添えるだけにする。
+/// 良し悪しは書かず、何品ぶんの値から出したかを添えるだけにする。「不足」とも書かない。
+/// 基準は習慣的な摂取量に対するものなので、選んだ期間の1日平均と比べる。
 struct AddedNutrientGoalsView: View {
   let totals: NutrientTotals
   /// 平均の母数にする日数。記録の無い日も含める
@@ -54,7 +55,7 @@ struct AddedNutrientGoalsView: View {
         }
       }
       if let goal = goals[id] {
-        Text(goalText(goal))
+        Text(goalText(goal, perDay: known > 0 ? perDay(id) : nil))
           .font(.caption)
           .foregroundStyle(.secondary)
       }
@@ -79,14 +80,22 @@ struct AddedNutrientGoalsView: View {
         format: NSLocalizedString("%@%% of energy", comment: "Share of energy"),
         NutritionFormatter.formatNutrition((percent * 10).rounded() / 10))
     }
-    let perDay = total / Double(max(dayCount, 1))
     return String(
-      format: NSLocalizedString("%@ per day", comment: "Average per day"), "\(id.format(perDay))\(id.unit)")
+      format: NSLocalizedString("%@ per day", comment: "Average per day"), "\(id.format(perDay(id)))\(id.unit)")
   }
 
-  private func goalText(_ goal: DietaryReferenceIntakes.Goal) -> String {
+  private func perDay(_ id: NutrientID) -> Double {
+    (totals.values.amounts[id] ?? 0) / Double(max(dayCount, 1))
+  }
+
+  private func goalText(_ goal: DietaryReferenceIntakes.Goal, perDay: Double?) -> String {
     let value = NutritionFormatter.formatNutrition(goal.value)
+    let unit = goal.nutrient.unit
     switch goal.comparison {
+    case .atLeast:
+      return String(format: NSLocalizedString("Goal: %@ or more", comment: "Dietary goal"), "\(value)\(unit)")
+    case .reference:
+      return Self.referenceText(goal, perDay: perDay)
     case .lessThan:
       return String(
         format: NSLocalizedString("Goal: less than %@", comment: "Dietary goal"), "\(value)\(goal.nutrient.unit)")
@@ -94,5 +103,25 @@ struct AddedNutrientGoalsView: View {
       return String(
         format: NSLocalizedString("Goal: %@%% of energy or less", comment: "Dietary goal"), value)
     }
+  }
+
+  /// 推奨量は割合を添え、目安量は値だけを並べる。目安量を下回っても不足とは判定できないため
+  static func referenceText(_ goal: DietaryReferenceIntakes.Goal, perDay: Double?) -> String {
+    let unit = goal.nutrient.unit
+    let value = "\(NutritionFormatter.formatNutrition(goal.value))\(unit)"
+    if goal.indicator == .adequateIntake {
+      return String(format: NSLocalizedString("Adequate intake %@", comment: "Dietary reference"), value)
+    }
+    if let alt = goal.menstruatingValue {
+      return String(
+        format: NSLocalizedString("Recommended %1$@, %2$@ if menstruating", comment: "Iron reference for women"),
+        value, "\(NutritionFormatter.formatNutrition(alt))\(unit)")
+    }
+    if let perDay, goal.value > 0 {
+      return String(
+        format: NSLocalizedString("Recommended %1$@: %2$d%%", comment: "Share of the recommended amount"),
+        value, Int((perDay / goal.value * 100).rounded()))
+    }
+    return String(format: NSLocalizedString("Recommended %@", comment: "Dietary reference"), value)
   }
 }

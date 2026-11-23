@@ -381,15 +381,22 @@ private struct ScreenPartsGalleryView: View {
   }
 }
 
-/// 統計の「食塩と飽和脂肪酸」。目標量があるときと、プロフィールが無いとき
+/// 統計の「その他の栄養素」。基準値があるときと、プロフィールが無いとき
 private struct AddedNutrientGoalsGalleryView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 24) {
       AddedNutrientGoalsView(
         totals: DailyTotalsSample.addedTotals, dayCount: 1,
         goals: [
-          .saltEquivalent: .init(nutrient: .saltEquivalent, comparison: .lessThan, value: 7.5),
-          .saturatedFat: .init(nutrient: .saturatedFat, comparison: .atMostPercentOfEnergy, value: 7),
+          .saltEquivalent: .init(nutrient: .saltEquivalent, indicator: .tentativeDietaryGoal, comparison: .lessThan, value: 7.5),
+          .saturatedFat: .init(
+            nutrient: .saturatedFat, indicator: .tentativeDietaryGoal, comparison: .atMostPercentOfEnergy, value: 7),
+          .potassium: .init(nutrient: .potassium, indicator: .tentativeDietaryGoal, comparison: .atLeast, value: 2600),
+          .calcium: .init(nutrient: .calcium, indicator: .recommendedDietaryAllowance, comparison: .reference, value: 650),
+          .iron: .init(
+            nutrient: .iron, indicator: .recommendedDietaryAllowance, comparison: .reference, value: 6.0,
+            menstruatingValue: 10.5),
+          .vitaminD: .init(nutrient: .vitaminD, indicator: .adequateIntake, comparison: .reference, value: 9),
         ])
       Divider()
       AddedNutrientGoalsView(totals: DailyTotalsSample.addedTotals, dayCount: 1, goals: [:])
