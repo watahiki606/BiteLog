@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { createClient } from '@/lib/api';
 import type { ToastMessage } from '@/components/Toast';
 import type { FoodMaster } from '@/hooks/useFoodMasters';
-import { useFoodDetail, type FoodComponent } from '@/hooks/useComposition';
+import type { CompositionFood } from '@/hooks/useComposition';
 import { Field, Modal, fieldClass as fc } from '@/components/Modal';
-import ComponentsEditor from '@/components/ComponentsEditor';
+import CompositionPicker from '@/components/CompositionPicker';
 import {
-  LABEL_NUTRIENTS, NUTRIENTS, addedInputsFrom, addedInputsToBody, carbohydrateOf, changedAddedBody, defaultComponentGrams,
-  emptyAddedInputs, inputStep, pickNutrients, withCarbohydrate, withFiber, zeroNutrients,
-  type AddedInputs, type AddedNutrientId, type CoreNutrientId,
+  ADDED_NUTRIENTS, CORE_NUTRIENT_IDS, LABEL_NUTRIENTS, NUTRIENTS, addedInputsFrom, addedInputsToBody, carbohydrateOf,
+  defaultPickGrams, emptyAddedInputs, inputStep, mergePicked, pickNutrients, pickedTexts, withCarbohydrate, withFiber,
+  zeroNutrients, type AddedInputs, type AddedNutrientId, type CoreNutrientId, type NutrientDefinition, type PickFieldId,
 } from '@/lib/nutrients';
 
 const emptyForm = {
@@ -38,21 +38,23 @@ const NUTRIENT_FIELDS = NUTRIENTS.filter((n) => n.core).map((n) => ({
   step: n.fractionDigits > 0 ? String(inputStep(n)) : undefined,
 }));
 
-// あとから足した栄養素。空欄は「分からない」として保存する。
-// 詳しい栄養素は食品表示に載ることがまれなので欄を出さず、成分表とのひも付けから補う
-const ADDED_FIELDS = LABEL_NUTRIENTS.map((n) => ({
-  id: n.id as AddedNutrientId,
-  name: n.names.en,
-  unit: n.unit,
-  step: String(inputStep(n)),
-}));
+// あとから足した栄養素。空欄は「分からない」として保存する
+function addedFields(nutrients: readonly NutrientDefinition[]) {
+  return nutrients.map((n) => ({ id: n.id as AddedNutrientId, name: n.names.en, unit: n.unit, step: String(inputStep(n)) }));
+}
+const ADDED_FIELDS = addedFields(LABEL_NUTRIENTS);
+// 詳しい栄養素は食品表示に載ることがまれなので、欄は畳んだ中に出す
+const DETAIL_FIELDS = addedFields(ADDED_NUTRIENTS.filter((n) => n.detail));
 
-const COMPOSITION = 'composition_table';
+/** 最初の5項目の欄は数で持つ。0 は空欄とみなし、成分表から選んだ値を入れてよい欄にする */
+function coreText(value: number): string {
+  return value === 0 ? '' : String(value);
+}
 
-/** 食品を作る、直す。成分表とのひも付けもここで行う */
+/** 食品を作る、直す。成分表から選んで値を欄に入れることもできる */
 export default function FoodEditModal({ editing, onClose, onSaved, onToast }: {
   /** 直す食品。null なら作る */
-  editing: (FoodMaster & { nutrientSource?: string | null }) | null;
+  editing: FoodMaster | null;
   onClose: () => void;
   onSaved: () => void;
   onToast: (msg: Omit<ToastMessage, 'id'>) => void;
@@ -60,17 +62,11 @@ export default function FoodEditModal({ editing, onClose, onSaved, onToast }: {
   const [form, setForm] = useState<FormData>(() => editing
     ? { brandName: editing.brandName, productName: editing.productName, ...pickNutrients(editing), portionSize: editing.portionSize, portionUnit: editing.portionUnit }
     : emptyForm);
-  const initialAdded = editing ? addedInputsFrom(editing) : emptyAddedInputs();
-  const [addedForm, setAddedForm] = useState<AddedInputs>(initialAdded);
-  /** 手で触ったひも付け。null のうちは、読んだ詳細のひも付けをそのまま出す */
-  const [editedComponents, setEditedComponents] = useState<FoodComponent[] | null>(null);
-  const initialAllFromTable = editing?.nutrientSource === COMPOSITION;
-  const [allFromTable, setAllFromTable] = useState(initialAllFromTable);
-  const { data: detail } = useFoodDetail(editing?.id ?? null);
-
-  // ひも付けは一覧に付かないので、詳細から読む
-  const components = editedComponents ?? detail?.components ?? [];
-  const componentsTouched = editedComponents !== null;
+  const [addedForm, setAddedForm] = useState<AddedInputs>(() => (editing ? addedInputsFrom(editing) : emptyAddedInputs()));
+  const [picked, setPicked] = useState<{ name: string; grams: number } | null>(null);
+  /** 最後に成分表から入れた欄の文字。選び直したとき、手で直していない欄だけを入れ替える */
+  const [pickedFields, setPickedFields] = useState<Partial<Record<PickFieldId, string>>>({});
+  const [showsDetail, setShowsDetail] = useState(false);
 
   function setField<K extends keyof FormData>(key: K, val: FormData[K]) {
     setForm((f) => ({ ...f, [key]: val }));
@@ -87,8 +83,31 @@ export default function FoodEditModal({ editing, onClose, onSaved, onToast }: {
     else setField(id, value);
   }
 
-  function changeComponents(next: FoodComponent[]) {
-    setEditedComponents(next);
+  /** 成分表から選んだ食品の、重さの分の値を欄に入れる */
+  function fill(food: CompositionFood, grams: number) {
+    const texts = pickedTexts(food.per100g, grams);
+    const current: Partial<Record<PickFieldId, string>> = { ...addedForm };
+    for (const id of CORE_NUTRIENT_IDS) current[id] = coreText(form[id]);
+    const changes = mergePicked(current, texts, pickedFields);
+    setForm((f) => {
+      const next = { ...f };
+      for (const id of CORE_NUTRIENT_IDS) {
+        const text = changes[id];
+        if (text !== undefined) next[id] = Number(text || 0);
+      }
+      return next;
+    });
+    setAddedForm((a) => {
+      const next = { ...a };
+      for (const [id, text] of Object.entries(changes)) {
+        if (id in next) next[id as AddedNutrientId] = text ?? '';
+      }
+      return next;
+    });
+    setPickedFields(texts);
+    setPicked({ name: food.name, grams });
+    // 詳しい栄養素にも値が入る。畳んだままだと入ったことが見えない
+    if (DETAIL_FIELDS.some((f) => texts[f.id] !== undefined)) setShowsDetail(true);
   }
 
   async function handleSave() {
@@ -96,21 +115,11 @@ export default function FoodEditModal({ editing, onClose, onSaved, onToast }: {
       onToast({ message: '食物繊維は炭水化物より多くできません', type: 'error' });
       return;
     }
-    if (components.some((c) => !(c.grams > 0))) {
-      onToast({ message: '成分表の食材の重さを入れてください', type: 'error' });
-      return;
-    }
-    if (allFromTable && components.length === 0) {
-      onToast({ message: '成分表から取るには、成分表の食材を選んでください', type: 'error' });
-      return;
-    }
-    const componentsBody = components.map((c) => ({ foodNumber: c.foodNumber, grams: c.grams }));
     try {
       const client = createClient();
       if (editing) {
-        const body: Record<string, unknown> = { ...form, ...changedAddedBody(initialAdded, addedForm) };
-        if (componentsTouched || allFromTable !== initialAllFromTable) body.components = componentsBody;
-        if (allFromTable !== initialAllFromTable) body.nutrientSource = allFromTable ? COMPOSITION : 'manual';
+        // 空欄は null で送り、分からないに戻す
+        const body = { ...form, ...addedInputsToBody(addedForm, true) };
         // PUT は Hono RPC がバリデータなしで json ボディを型推論できないため、
         // param だけ渡し、ボディは init で送る。
         // init.headers は渡さない: Hono クライアントが {headers, ...opt.init} の順で
@@ -132,8 +141,7 @@ export default function FoodEditModal({ editing, onClose, onSaved, onToast }: {
           // reject を付けないと、同じ名前と単位の食品があるとき既存の食品が返り、追加できたように見える
           json: {
             ...form, ...addedInputsToBody(addedForm, false),
-            nutrientSource: allFromTable ? COMPOSITION : 'manual',
-            ...(components.length > 0 ? { components: componentsBody } : {}),
+            nutrientSource: 'manual',
             id, uniqueKey, onConflict: 'reject',
           },
         });
@@ -150,7 +158,15 @@ export default function FoodEditModal({ editing, onClose, onSaved, onToast }: {
     }
   }
 
-  const sources = detail?.nutrientSources ?? {};
+  function addedField(f: (typeof ADDED_FIELDS)[number]) {
+    return (
+      // 見出しは大文字にするので、単位だけは元の書き方で出す。µg が MG に見えるため
+      <Field key={f.id} label={<>{f.name} <span className="normal-case">({f.unit})</span></>}>
+        <input type="number" step={f.step} placeholder="unknown" value={addedForm[f.id]}
+          onChange={(e) => setAddedForm((a) => ({ ...a, [f.id]: e.target.value }))} className={fc} style={{ fontFamily: 'inherit' }} />
+      </Field>
+    );
+  }
 
   return (
     <Modal title={editing ? 'EDIT FOOD' : 'ADD FOOD'} onClose={onClose} onSave={handleSave} wide>
@@ -160,27 +176,20 @@ export default function FoodEditModal({ editing, onClose, onSaved, onToast }: {
         <Field label="Portion Size"><input type="number" step="0.1" value={form.portionSize} onChange={(e) => setField('portionSize', Number(e.target.value))} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
         <Field label="Portion Unit"><input type="text" value={form.portionUnit} onChange={(e) => setField('portionUnit', e.target.value)} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
 
-        <Field label="Composition table (per portion)" colSpan={2}>
-          <ComponentsEditor components={components} onChange={changeComponents}
-            defaultGrams={defaultComponentGrams(form.portionSize, form.portionUnit)}
-            productName={form.productName} />
-          <label className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-            <input type="checkbox" checked={allFromTable} onChange={(e) => setAllFromTable(e.target.checked)} />
-            ALL VALUES FROM THE TABLE. Otherwise only unknown nutrients are filled
-          </label>
+        <Field label="Pick from composition table (edible grams per portion)" colSpan={2}>
+          <CompositionPicker productName={form.productName} defaultGrams={defaultPickGrams(form.portionSize, form.portionUnit)}
+            picked={picked} onPick={fill} />
         </Field>
 
         {NUTRIENT_FIELDS.map((f) => (
-          <Field key={f.id} label={f.label}><input type="number" step={f.step} value={fieldValue(f.id)} disabled={allFromTable} onChange={(e) => setNutrient(f.id, Number(e.target.value))} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
+          <Field key={f.id} label={f.label}><input type="number" step={f.step} value={fieldValue(f.id)} onChange={(e) => setNutrient(f.id, Number(e.target.value))} className={fc} style={{ fontFamily: 'inherit' }} /></Field>
         ))}
         <Field label="Net Carbs (g)"><p className="px-3 py-1.5 text-xs text-muted-foreground">{form.netCarbs < 0 ? '—' : form.netCarbs}</p></Field>
-        {ADDED_FIELDS.map((f) => (
-          // 見出しは大文字にするので、単位だけは元の書き方で出す。µg が MG に見えるため
-          <Field key={f.id} label={<>{f.name} <span className="normal-case">({f.unit})</span>{sources[f.id] === COMPOSITION && <span className="text-neon-green"> · TABLE</span>}</>}>
-            <input type="number" step={f.step} placeholder="unknown" value={addedForm[f.id]} disabled={allFromTable}
-              onChange={(e) => setAddedForm((a) => ({ ...a, [f.id]: e.target.value }))} className={fc} style={{ fontFamily: 'inherit' }} />
-          </Field>
-        ))}
+        {ADDED_FIELDS.map(addedField)}
+        <details className="col-span-2" open={showsDetail} onToggle={(e) => setShowsDetail(e.currentTarget.open)}>
+          <summary className="cursor-pointer py-2 text-xs tracking-widest text-muted-foreground">DETAILED NUTRIENTS</summary>
+          <div className="grid grid-cols-2 gap-3">{DETAIL_FIELDS.map(addedField)}</div>
+        </details>
       </div>
     </Modal>
   );
