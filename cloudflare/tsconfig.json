@@ -8,5 +8,7 @@
     "skipLibCheck": true,
     "types": ["@cloudflare/workers-types"],
     "resolveJsonModule": true
-  }
+  },
+  // scripts/ は bun で手元で動かす道具。Worker の型では読まない
+  "exclude": ["scripts"]
 }

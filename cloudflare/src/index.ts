@@ -11,6 +11,7 @@ import aiAnalyze from './routes/aiAnalyze';
 import bodyMeasurements from './routes/bodyMeasurements';
 import statistics from './routes/statistics';
 import compositionFoods from './routes/compositionFoods';
+import admin from './routes/admin';
 
 const base = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -41,6 +42,7 @@ const app = base
   .route('/api/body-measurements', bodyMeasurements)
   .route('/api/statistics', statistics)
   .route('/api/composition-foods', compositionFoods)
+  .route('/api/admin', admin)
   .get('/health', (c) => c.json({ ok: true }));
 
 export default app;
