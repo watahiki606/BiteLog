@@ -53,7 +53,7 @@ struct DietQualityScoreView: View {
     let name = Label {
       Text(component.nutrient.localizedName)
     } icon: {
-      Image(systemName: component.nutrient.symbolName).foregroundStyle(component.nutrient.color)
+      NutrientBadge(nutrient: component.nutrient, size: 24)
     }
     let value = Text(Self.percentText(component))
       .monospacedDigit()

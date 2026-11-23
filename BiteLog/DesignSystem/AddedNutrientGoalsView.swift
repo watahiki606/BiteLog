@@ -50,7 +50,7 @@ struct AddedNutrientGoalsView: View {
     let name = Label {
       Text(id.localizedName)
     } icon: {
-      Image(systemName: id.symbolName).foregroundStyle(id.color)
+      NutrientBadge(nutrient: id, size: 24)
     }
     let value = Text(known > 0 ? averageText(id) : NSLocalizedString("Unknown", comment: "Unknown nutrient value"))
       .monospacedDigit()

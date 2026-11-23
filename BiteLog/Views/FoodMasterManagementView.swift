@@ -236,6 +236,14 @@ struct FoodMasterDetailView: View {
 
   private var shown: FoodMasterDTO { detail ?? foodMaster }
 
+  /// 値が分からなければ「不明」
+  private func valueText(_ value: Double?, _ nutrient: some NutrientDisplaying) -> some View {
+    Text(value.map { "\(nutrient.format($0))\(nutrient.unit)" }
+      ?? NSLocalizedString("Unknown", comment: "Unknown nutrient value"))
+      .monospacedDigit()
+      .fontWeight(.medium)
+  }
+
   var body: some View {
     NavigationStack {
       Form {
@@ -263,53 +271,37 @@ struct FoodMasterDetailView: View {
               foodMaster.portionUnit
             ))
         ) {
-          LabeledContent(
-            NSLocalizedString("Calories", comment: "Calories"),
-            value: "\(NutritionFormatter.formatNutrition(foodMaster.calories)) kcal"
-          )
-          LabeledContent(
-            NSLocalizedString("Protein", comment: "Protein"),
-            value: "\(NutritionFormatter.formatNutrition(foodMaster.protein)) g"
-          )
-          LabeledContent(
-            NSLocalizedString("Fat", comment: "Fat"),
-            value: "\(NutritionFormatter.formatNutrition(foodMaster.fat)) g"
-          )
+          // 記録の編集と同じ、印の丸を添えた1行のカードにする
+          NutrientCardRow(nutrient: Nutrient.calories) { valueText(shown.calories, Nutrient.calories) }
+          NutrientCardRow(nutrient: Nutrient.protein) { valueText(shown.protein, Nutrient.protein) }
+          NutrientCardRow(nutrient: Nutrient.fat) { valueText(shown.fat, Nutrient.fat) }
           // 入力と同じく、ラベルの並びの炭水化物、うち食物繊維、糖質の順に出す
-          LabeledContent(
-            NSLocalizedString("Carbohydrates", comment: "Carbohydrates"),
-            value: "\(CarbohydrateInput.carbohydrateText(netCarbs: shown.netCarbs, dietaryFiber: shown.dietaryFiber)) g"
-          )
-          LabeledContent(
-            NSLocalizedString("Of which dietary fiber", comment: "Dietary fiber as part of carbohydrates"),
-            value: "\(NutritionFormatter.formatNutrition(shown.dietaryFiber)) g"
-          )
-          LabeledContent(
-            NSLocalizedString("Sugar", comment: "Sugar"),
-            value: "\(NutritionFormatter.formatNutrition(shown.netCarbs)) g"
-          )
+          NutrientCardRow(
+            nutrient: Nutrient.carbs, name: NSLocalizedString("Carbohydrates", comment: "Carbohydrates")
+          ) {
+            Text("\(CarbohydrateInput.carbohydrateText(netCarbs: shown.netCarbs, dietaryFiber: shown.dietaryFiber))g")
+              .monospacedDigit()
+              .fontWeight(.medium)
+          }
+          NutrientCardRow(
+            nutrient: Nutrient.fiber,
+            name: NSLocalizedString("Of which dietary fiber", comment: "Dietary fiber as part of carbohydrates")
+          ) { valueText(shown.dietaryFiber, Nutrient.fiber) }
+          NutrientCardRow(nutrient: Nutrient.netCarbs, name: NSLocalizedString("Sugar", comment: "Sugar")) {
+            valueText(shown.netCarbs, Nutrient.netCarbs)
+          }
           ForEach(NutrientID.labelNutrients, id: \.self) { id in
-            LabeledContent {
-              Text(shown.nutrients[id].map { "\(id.format($0)) \(id.unit)" }
-                ?? NSLocalizedString("Unknown", comment: "Unknown nutrient value"))
-            } label: {
-              VStack(alignment: .leading, spacing: 2) {
-                Text(id.localizedName)
-                if shown.isSupplemented(id) {
-                  Text(NSLocalizedString("Filled from the food composition table", comment: "Supplemented value mark"))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                }
-              }
-            }
+            NutrientCardRow(
+              nutrient: id,
+              note: shown.isSupplemented(id)
+                ? NSLocalizedString("Filled from the food composition table", comment: "Supplemented value mark")
+                : nil
+            ) { valueText(shown.nutrients[id], id) }
           }
           // 詳しい栄養素はどれも成分表で補った値なので、1つずつに印を付けない
           DisclosureGroup(NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients filled from the composition table")) {
             ForEach(NutrientID.detailNutrients, id: \.self) { id in
-              LabeledContent(id.localizedName) {
-                Text(shown.nutrients[id].map { "\(id.format($0)) \(id.unit)" }
-                  ?? NSLocalizedString("Unknown", comment: "Unknown nutrient value"))
-              }
+              NutrientCardRow(nutrient: id) { valueText(shown.nutrients[id], id) }
             }
           }
         }

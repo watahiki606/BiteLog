@@ -46,7 +46,7 @@ struct NutritionOverview: View {
 
       Spacer(minLength: 8)
 
-      NutrientBadge(nutrient: .calories, size: 48)
+      NutrientBadge(nutrient: Nutrient.calories, size: 48)
     }
     .padding(20)
     .frame(maxWidth: .infinity, alignment: .leading)
@@ -89,22 +89,5 @@ struct NutritionOverview: View {
     )
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(nutrient.accessibilityLabel(for: value))
-  }
-}
-
-/// 栄養素の形を、その色の淡い丸に入れた印。
-struct NutrientBadge: View {
-  let nutrient: Nutrient
-  var size: CGFloat = 36
-
-  @Environment(\.colorSchemeContrast) private var contrast
-
-  var body: some View {
-    Image(systemName: nutrient.symbolName)
-      .font(.system(size: size * 0.42, weight: .semibold))
-      .foregroundStyle(nutrient.color)
-      .frame(width: size, height: size)
-      .background(nutrient.color.opacity(contrast == .increased ? 0.3 : 0.15), in: Circle())
-      .accessibilityHidden(true)
   }
 }

@@ -606,7 +606,7 @@ struct StatisticsView: View {
   private func pfcLegend(_ nutrient: Nutrient, _ pct: Double) -> some View {
     VStack(alignment: .leading, spacing: 2) {
       HStack(spacing: 4) {
-        Image(systemName: nutrient.symbolName)
+        NutrientGlyphView(glyph: nutrient.glyph)
           .foregroundStyle(nutrient.color)
           .accessibilityHidden(true)
         Text(nutrient.localizedName)

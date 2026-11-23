@@ -51,7 +51,7 @@ enum Nutrient: String, CaseIterable, Identifiable {
 
   /// 色と一緒に出す形。色だけだと、色の見分けにくい人や
   /// 小さく表示したときに栄養素を取り違える。
-  var symbolName: String { nutrientID?.symbolName ?? "square.stack.3d.up.fill" }
+  var glyph: NutrientGlyph { nutrientID?.glyph ?? .symbol("square.stack.3d.up.fill") }
 
   /// 栄養素ごとに妥当な桁数で整形する。炭水化物は糖質と食物繊維と同じ桁にする
   func format(_ value: Double) -> String {

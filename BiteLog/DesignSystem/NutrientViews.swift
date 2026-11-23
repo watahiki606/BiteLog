@@ -79,7 +79,7 @@ struct NutrientIconRow: View {
 
   private func item(_ nutrient: Nutrient, _ value: Double) -> some View {
     HStack(spacing: 4) {
-      Image(systemName: nutrient.symbolName)
+      NutrientGlyphView(glyph: nutrient.glyph)
         .font(.caption2)
         .foregroundStyle(nutrient.color)
       Text("\(nutrient.format(value))\(nutrient.unit)")
@@ -185,7 +185,7 @@ struct NutrientBar: View {
   private var compactHeader: some View {
     VStack(alignment: .leading, spacing: 2) {
       HStack(spacing: 4) {
-        Image(systemName: nutrient.symbolName)
+        NutrientGlyphView(glyph: nutrient.glyph)
           .foregroundStyle(nutrient.color)
           .accessibilityHidden(true)
         Text(nutrient.localizedName)
