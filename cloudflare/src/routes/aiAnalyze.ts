@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import type { Bindings, Variables } from '../types';
 import { authMiddleware } from '../middleware/auth';
-import { ADDED_NUTRIENTS } from '../lib/nutrients';
+import { LABEL_NUTRIENTS } from '../lib/nutrients';
 import { COMPONENTS_SCHEMA, COMPONENT_RULES, loadCatalog, mergeNutrients, resolveComponents } from '../lib/aiComposition';
 
 const aiAnalyze = new Hono<{ Bindings: Bindings; Variables: Variables }>();
@@ -56,8 +56,8 @@ basis
 sourceUrl
 - When basis is official, the URL of the page you took the values from. Otherwise an empty string.`;
 
-/** あとから足した栄養素の出力。ラベルか公式の値に書かれていたときだけ数値を返させる */
-const ADDED_NUTRIENT_SCHEMA = Object.fromEntries(ADDED_NUTRIENTS.map((n) => [n.id, {
+/** 食品表示に載りうる栄養素の出力。ラベルか公式の値に書かれていたときだけ数値を返させる。詳しい栄養素は食材の成分表から引く */
+const LABEL_NUTRIENT_SCHEMA = Object.fromEntries(LABEL_NUTRIENTS.map((n) => [n.id, {
   type: ['number', 'null'],
   description: `${n.names.ja} in ${n.unit} for the portion, or null when not printed or published`,
 }]));
@@ -94,7 +94,7 @@ const RESPONSE_FORMAT = {
         description: '食物繊維 in grams for the portion',
       },
       // 写真の見た目からの推定は誤差が大きいので、読めなかったら null を返させる。足りない値は成分表で補う
-      ...ADDED_NUTRIENT_SCHEMA,
+      ...LABEL_NUTRIENT_SCHEMA,
       portion: {
         type: 'number',
         description: 'The amount the user is eating now',
@@ -115,7 +115,7 @@ const RESPONSE_FORMAT = {
       'fat',
       'sugar',
       'dietaryFiber',
-      ...ADDED_NUTRIENTS.map((n) => n.id),
+      ...LABEL_NUTRIENTS.map((n) => n.id),
       'portion',
       'portionUnit',
       'confidence',
@@ -279,7 +279,7 @@ aiAnalyze.post('/analyze-food', async (c) => {
     fat: numberOrNull(parsed['fat']),
     netCarbs: numberOrNull(parsed['sugar']),
     dietaryFiber: numberOrNull(parsed['dietaryFiber']),
-    ...Object.fromEntries(ADDED_NUTRIENTS.map((n) => [n.id, numberOrNull(parsed[n.id])])),
+    ...Object.fromEntries(LABEL_NUTRIENTS.map((n) => [n.id, numberOrNull(parsed[n.id])])),
   }, resolved, fromLabel);
 
   const result = {

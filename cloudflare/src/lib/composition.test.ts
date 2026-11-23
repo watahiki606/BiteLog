@@ -3,6 +3,7 @@ import {
   COMPOSITION_NUTRIENTS, compositionNutrients, compositionSearchText, compositionSearchWords, normalizeForSearch,
   parseCompositionValue,
 } from './composition';
+import { NUTRIENTS } from './nutrients';
 
 describe('成分表のセルの値', () => {
   it('数値はそのまま、Excel の誤差は丸める', () => {
@@ -58,7 +59,7 @@ describe('1食品の栄養素', () => {
   });
 
   it('成分表の値を持つ栄養素は、定義のすべての栄養素', () => {
-    expect(COMPOSITION_NUTRIENTS.length).toBe(14);
+    expect(COMPOSITION_NUTRIENTS.map((n) => n.id)).toEqual(NUTRIENTS.map((n) => n.id));
   });
 });
 

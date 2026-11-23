@@ -20,6 +20,8 @@ type Nutrient = {
   fractionDigits: number;
   group: string;
   core: boolean;
+  /** 成分表から補うだけの詳しい栄養素。入力欄と1日の合計に出さない */
+  detail: boolean;
   label: string;
   names: Record<string, string>;
   shortNames: Record<string, string>;
@@ -41,6 +43,8 @@ function validate(nutrients: Nutrient[]): void {
     if (!Number.isInteger(n.fractionDigits) || n.fractionDigits < 0) errors.push(`${at}: fractionDigits は 0 以上の整数`);
     if (!GROUPS.includes(n.group)) errors.push(`${at}: group は ${GROUPS.join(', ')} のどれか`);
     if (typeof n.core !== 'boolean') errors.push(`${at}: core は true か false`);
+    if (typeof n.detail !== 'boolean') errors.push(`${at}: detail は true か false`);
+    if (n.core && n.detail) errors.push(`${at}: core と detail は両方 true にできない`);
     if (!LABELS.includes(n.label)) errors.push(`${at}: label は ${LABELS.join(', ')} のどれか`);
     if (n.composition !== undefined) {
       const c = n.composition;
@@ -73,7 +77,7 @@ function swift(nutrients: Nutrient[]): string {
       (n) => `    case .${n.id}:
       return NutrientDefinition(
         id: .${n.id}, column: ${quote(n.column)}, unit: ${quote(n.unit)}, fractionDigits: ${n.fractionDigits},
-        group: .${n.group}, core: ${n.core}, label: .${n.label})`,
+        group: .${n.group}, core: ${n.core}, detail: ${n.detail}, label: .${n.label})`,
     )
     .join('\n');
   return `// ${HEADER}

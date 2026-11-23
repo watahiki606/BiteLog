@@ -1,11 +1,11 @@
 // 栄養素の一覧。Worker と同じ定義を使い、web では5項目ごとの手書きをしない。
 import {
-  NUTRIENTS, CORE_NUTRIENT_IDS, ADDED_NUTRIENTS, ADDED_NUTRIENT_IDS,
+  NUTRIENTS, CORE_NUTRIENT_IDS, ADDED_NUTRIENTS, ADDED_NUTRIENT_IDS, LABEL_NUTRIENTS,
   type CoreNutrientId, type CoreNutrients, type AddedNutrientId, type AddedNutrients, type NutrientDefinition,
 } from '../../../../cloudflare/src/lib/nutrients';
 
 export {
-  NUTRIENTS, CORE_NUTRIENT_IDS, ADDED_NUTRIENTS, ADDED_NUTRIENT_IDS,
+  NUTRIENTS, CORE_NUTRIENT_IDS, ADDED_NUTRIENTS, ADDED_NUTRIENT_IDS, LABEL_NUTRIENTS,
   type CoreNutrientId, type CoreNutrients, type AddedNutrientId, type AddedNutrients, type NutrientDefinition,
 };
 

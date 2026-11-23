@@ -100,9 +100,17 @@ struct EditItemView: View {
               nutrient: .carbs,
               perPortion: perPortionNetCarbs + perPortionDietaryFiber,
               total: totalCarbs)
-            ForEach(NutrientID.allCases.filter { !$0.definition.core }, id: \.self) { id in
+            ForEach(NutrientID.labelNutrients, id: \.self) { id in
               EditNutrientRow(
                 addedNutrient: id, perPortion: perPortionAmounts[id], total: totalNutrition.amounts[id])
+            }
+            DisclosureGroup(
+              NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients filled from the composition table")
+            ) {
+              ForEach(NutrientID.detailNutrients, id: \.self) { id in
+                EditNutrientRow(
+                  addedNutrient: id, perPortion: perPortionAmounts[id], total: totalNutrition.amounts[id])
+              }
             }
           } header: {
             Text(NSLocalizedString("Nutrition", comment: "Form section title"))

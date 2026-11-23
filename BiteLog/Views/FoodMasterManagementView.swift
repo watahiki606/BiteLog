@@ -288,7 +288,7 @@ struct FoodMasterDetailView: View {
             NSLocalizedString("Sugar", comment: "Sugar"),
             value: "\(NutritionFormatter.formatNutrition(shown.netCarbs)) g"
           )
-          ForEach(NutrientID.allCases.filter { !$0.definition.core }, id: \.self) { id in
+          ForEach(NutrientID.labelNutrients, id: \.self) { id in
             LabeledContent {
               Text(shown.nutrients[id].map { "\(id.format($0)) \(id.unit)" }
                 ?? NSLocalizedString("Unknown", comment: "Unknown nutrient value"))
@@ -300,6 +300,15 @@ struct FoodMasterDetailView: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 }
+              }
+            }
+          }
+          // 詳しい栄養素はどれも成分表で補った値なので、1つずつに印を付けない
+          DisclosureGroup(NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients filled from the composition table")) {
+            ForEach(NutrientID.detailNutrients, id: \.self) { id in
+              LabeledContent(id.localizedName) {
+                Text(shown.nutrients[id].map { "\(id.format($0)) \(id.unit)" }
+                  ?? NSLocalizedString("Unknown", comment: "Unknown nutrient value"))
               }
             }
           }
@@ -405,8 +414,9 @@ struct FoodMasterFormView: View {
 
   @FocusState private var focusedField: FocusedField?
 
-  /// 「その他の栄養素」に並べる栄養素。定義ファイルの並び
-  private static let addedNutrients = NutrientID.allCases.filter { !$0.definition.core }
+  /// 「その他の栄養素」に並べる栄養素。定義ファイルの並び。
+  /// 詳しい栄養素は食品表示に載ることがまれなので欄を出さず、成分表とのひも付けから補う
+  private static let addedNutrients = NutrientID.labelNutrients
 
   private var stateKey: String {
     switch mode {

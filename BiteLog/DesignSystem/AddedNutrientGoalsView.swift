@@ -12,15 +12,29 @@ struct AddedNutrientGoalsView: View {
   /// プロフィールの性別と年齢で引いた目標量。プロフィールが無ければ空
   let goals: [NutrientID: DietaryReferenceIntakes.Goal]
 
-  private static let nutrients = NutrientID.allCases.filter { !$0.definition.core }
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
-      ForEach(Self.nutrients, id: \.self) { id in
+      ForEach(NutrientID.labelNutrients, id: \.self) { id in
         row(id)
       }
+      // 詳しい栄養素は15あり、並べるとカードが長くなりすぎる。畳んでおく
+      DisclosureGroup {
+        VStack(alignment: .leading, spacing: 14) {
+          ForEach(NutrientID.detailNutrients, id: \.self) { id in
+            row(id)
+          }
+        }
+        .padding(.top, 8)
+      } label: {
+        // 1日の合計の「その他の栄養素」と同じく、補助的な操作なので灰色に落とす
+        Text(NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients filled from the composition table"))
+          .font(.subheadline)
+          .foregroundStyle(.secondary)
+      }
+      .tint(.secondary)
       if goals.isEmpty {
         Text(NSLocalizedString(
           "Add your sex and birth date in Profile to compare with the dietary goals.",

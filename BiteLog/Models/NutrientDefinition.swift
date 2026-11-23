@@ -14,6 +14,9 @@ struct NutrientDefinition: Equatable, Sendable {
   let group: NutrientGroup
   /// 最初からある5項目。必須で、未入力は 0 として持つ。それ以外は未入力を「不明」として持つ
   let core: Bool
+  /// 成分表から補うだけの詳しい栄養素。食品表示に載ることがまれなので入力欄に出さない。
+  /// 基準は習慣的な摂取量に対するものなので、1日の合計にも出さず、統計の期間で見せる
+  let detail: Bool
   let label: NutrientLabelRequirement
 }
 
@@ -25,4 +28,11 @@ enum NutrientGroup: String, Sendable {
 /// 食品表示基準での扱い。ラベルから値を得られる見込みの目安になる
 enum NutrientLabelRequirement: String, Sendable {
   case mandatory, recommended, optional
+}
+
+extension NutrientID {
+  /// 最初の5項目のあとに足した栄養素のうち、食品表示に載りうるもの。入力欄と1日の合計に出す
+  static let labelNutrients = allCases.filter { !$0.definition.core && !$0.definition.detail }
+  /// 成分表から補うだけの詳しい栄養素。詳細と統計で、畳んだ中に並べる
+  static let detailNutrients = allCases.filter { $0.definition.detail }
 }

@@ -217,7 +217,8 @@ struct AIAnalysisResultView: View {
   /// あとから足した栄養素。表示か公式の値から読めなかったものは空欄
   @State private var addedValues: [NutrientID: String]
 
-  private static let addedNutrients = NutrientID.allCases.filter { !$0.definition.core }
+  /// 欄に出す栄養素。詳しい栄養素は保存のあとサーバーが食材の成分表から補う
+  private static let addedNutrients = NutrientID.labelNutrients
 
   private static func addedFields(_ result: FoodAnalysisResult) -> [NutrientID: String] {
     result.addedNutrients.values.mapValues(NutritionFormatter.formatNutrition)

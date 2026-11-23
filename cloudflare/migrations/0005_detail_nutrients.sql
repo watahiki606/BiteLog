@@ -1,0 +1,32 @@
+-- 詳しい栄養素を足す。リン、亜鉛、銅、マンガン、ビタミン E、K、B1、B2、ナイアシン、B6、B12、葉酸、パントテン酸、n-3系脂肪酸、n-6系脂肪酸
+-- 値は成分表から補うだけで、NULL は「分からない」を表す。成分表の列は scripts/composition/build-sql.ts で流し直して埋める
+ALTER TABLE food_masters ADD COLUMN phosphorus REAL;
+ALTER TABLE food_masters ADD COLUMN zinc REAL;
+ALTER TABLE food_masters ADD COLUMN copper REAL;
+ALTER TABLE food_masters ADD COLUMN manganese REAL;
+ALTER TABLE food_masters ADD COLUMN vitamin_e REAL;
+ALTER TABLE food_masters ADD COLUMN vitamin_k REAL;
+ALTER TABLE food_masters ADD COLUMN vitamin_b1 REAL;
+ALTER TABLE food_masters ADD COLUMN vitamin_b2 REAL;
+ALTER TABLE food_masters ADD COLUMN niacin REAL;
+ALTER TABLE food_masters ADD COLUMN vitamin_b6 REAL;
+ALTER TABLE food_masters ADD COLUMN vitamin_b12 REAL;
+ALTER TABLE food_masters ADD COLUMN folate REAL;
+ALTER TABLE food_masters ADD COLUMN pantothenic_acid REAL;
+ALTER TABLE food_masters ADD COLUMN n3_fatty_acids REAL;
+ALTER TABLE food_masters ADD COLUMN n6_fatty_acids REAL;
+ALTER TABLE composition_foods ADD COLUMN phosphorus REAL;
+ALTER TABLE composition_foods ADD COLUMN zinc REAL;
+ALTER TABLE composition_foods ADD COLUMN copper REAL;
+ALTER TABLE composition_foods ADD COLUMN manganese REAL;
+ALTER TABLE composition_foods ADD COLUMN vitamin_e REAL;
+ALTER TABLE composition_foods ADD COLUMN vitamin_k REAL;
+ALTER TABLE composition_foods ADD COLUMN vitamin_b1 REAL;
+ALTER TABLE composition_foods ADD COLUMN vitamin_b2 REAL;
+ALTER TABLE composition_foods ADD COLUMN niacin REAL;
+ALTER TABLE composition_foods ADD COLUMN vitamin_b6 REAL;
+ALTER TABLE composition_foods ADD COLUMN vitamin_b12 REAL;
+ALTER TABLE composition_foods ADD COLUMN folate REAL;
+ALTER TABLE composition_foods ADD COLUMN pantothenic_acid REAL;
+ALTER TABLE composition_foods ADD COLUMN n3_fatty_acids REAL;
+ALTER TABLE composition_foods ADD COLUMN n6_fatty_acids REAL;
