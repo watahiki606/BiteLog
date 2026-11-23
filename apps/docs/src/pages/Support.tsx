@@ -244,6 +244,35 @@ export default function Support() {
         </div>
       </section>
 
+      {/* Data sources */}
+      <section id="sources" className="px-6 py-16 border-b border-border">
+        <div className="mx-auto max-w-4xl">
+          <div className="mb-6">
+            <p className="text-xs tracking-widest text-neon-green mb-1">&gt; DATA_SOURCES</p>
+            <h2 className="text-xl font-bold text-foreground">データの出典</h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="border border-border bg-bg-card p-6">
+              <h3 className="text-sm font-semibold text-neon-cyan mb-3">食品の栄養成分</h3>
+              <p className="text-xs text-fg-muted leading-relaxed">
+                日本食品標準成分表（八訂）増補2023年（文部科学省）をもとに BiteLog が加工して作成。2026年3月27日の正誤表を反映しています。
+              </p>
+              <p className="text-xs text-fg-muted leading-relaxed mt-3">
+                食品を成分表の食品と重さで結ぶと、ラベルに書かれていない栄養素を成分表の値で補います。補った値は、食品の詳細で分かるように示します。
+              </p>
+              <a href="https://www.mext.go.jp/a_menu/syokuhinseibun/mext_00001.html" className="text-xs text-neon-cyan underline mt-3 inline-block">文部科学省 日本食品標準成分表</a>
+            </div>
+            <div className="border border-border bg-bg-card p-6">
+              <h3 className="text-sm font-semibold text-neon-cyan mb-3">比べる基準の値</h3>
+              <p className="text-xs text-fg-muted leading-relaxed">
+                日本人の食事摂取基準（2025年版）（厚生労働省）の値を、プロフィールの性別と年齢で選んで並べます。基準は習慣的な摂取量に対するものなので、選んだ期間の1日平均と比べます。
+              </p>
+              <a href="https://www.mhlw.go.jp/stf/newpage_44138.html" className="text-xs text-neon-cyan underline mt-3 inline-block">厚生労働省 日本人の食事摂取基準（2025年版）</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CSV Spec */}
       <section id="csv" className="px-6 py-16 border-b border-border">
         <div className="mx-auto max-w-4xl">

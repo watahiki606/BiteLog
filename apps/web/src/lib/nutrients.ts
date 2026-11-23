@@ -106,3 +106,23 @@ export function withCarbohydrate<T extends CarbParts>(v: T, carbohydrate: number
 export function withFiber<T extends CarbParts>(v: T, fiber: number): T {
   return { ...v, dietaryFiber: fiber, netCarbs: roundSmall(carbohydrateOf(v) - fiber) };
 }
+
+/**
+ * 直すときに送る値。変えた欄だけを送る。
+ * 成分表で補った値も欄に出るので、全部を送るとサーバーは手で入れた値とみなし、補った印を外してしまう
+ */
+export function changedAddedBody(initial: AddedInputs, current: AddedInputs): Partial<Record<AddedNutrientId, number | null>> {
+  const body: Partial<Record<AddedNutrientId, number | null>> = {};
+  for (const id of ADDED_NUTRIENT_IDS) {
+    if (initial[id].trim() === current[id].trim()) continue;
+    const text = current[id].trim();
+    const value = text === '' ? NaN : Number(text);
+    body[id] = Number.isNaN(value) ? null : value;
+  }
+  return body;
+}
+
+/** 量の単位が重さか体積なら、その数を食材の重さの初期値にする。個や人前は重さが分からないので 100 g */
+export function defaultComponentGrams(portionSize: number, portionUnit: string): number {
+  return /^(g|gram|grams|グラム|ml|mL|ミリリットル)$/i.test(portionUnit.trim()) && portionSize > 0 ? portionSize : 100;
+}

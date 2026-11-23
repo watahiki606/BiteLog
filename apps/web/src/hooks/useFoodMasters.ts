@@ -11,6 +11,7 @@ export type FoodMaster = CoreNutrients & AddedNutrients & {
   usageCount: number;
   isMine: boolean;
   createdBy?: string;
+  nutrientSource?: string | null;
 };
 
 export const FOOD_MASTER_LIMIT = 30;
