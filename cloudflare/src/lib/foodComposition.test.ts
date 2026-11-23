@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   parseComponents, parseNutrientSources, planCompositionUpdate, serializeNutrientSources, sumComponents, type FoodState,
 } from './foodComposition';
+import { ADDED_NUTRIENTS } from './nutrients';
 
 describe('送られたひも付けの形', () => {
   it('食品番号と重さの組を受け付ける', () => {
@@ -52,7 +53,11 @@ describe('どの栄養素に書き込むか', () => {
 
   it('ラベルの食品は、分からない栄養素だけを補い、印を付ける', () => {
     const plan = planCompositionUpdate(label, totals);
-    expect(plan.values).toEqual({ potassium: 720, vitamin_d: null, saturated_fat: null, magnesium: null, iron: null, vitamin_a: null, vitamin_c: null });
+    // 分からない栄養素のうち、成分表でも分からないものは null のまま書く
+    const unknownElsewhere = Object.fromEntries(
+      ADDED_NUTRIENTS.filter((n) => !(n.column in label.values) || label.values[n.column] === null)
+        .map((n) => [n.column, null]));
+    expect(plan.values).toEqual({ ...unknownElsewhere, potassium: 720 });
     expect(plan.nutrientSources).toEqual({ potassium: 'composition_table' });
   });
 

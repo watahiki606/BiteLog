@@ -12,6 +12,8 @@ export type NutrientDefinition = {
   group: string;
   /** 最初からある5項目。NOT NULL で、未入力は 0 として持つ */
   core: boolean;
+  /** 成分表から補うだけの詳しい栄養素。入力欄と AI に読ませる項目に入れない */
+  detail: boolean;
   label: string;
   names: Record<string, string>;
   shortNames: Record<string, string>;
@@ -40,6 +42,9 @@ export const CORE_NUTRIENT_IDS = ['calories', 'protein', 'fat', 'netCarbs', 'die
 export const ADDED_NUTRIENT_IDS = [
   'saltEquivalent', 'saturatedFat',
   'potassium', 'calcium', 'magnesium', 'iron', 'vitaminA', 'vitaminD', 'vitaminC',
+  'phosphorus', 'zinc', 'copper', 'manganese',
+  'vitaminE', 'vitaminK', 'vitaminB1', 'vitaminB2', 'niacin', 'vitaminB6', 'vitaminB12', 'folate', 'pantothenicAcid',
+  'n3FattyAcids', 'n6FattyAcids',
 ] as const;
 export type CoreNutrientId = (typeof CORE_NUTRIENT_IDS)[number];
 export type AddedNutrientId = (typeof ADDED_NUTRIENT_IDS)[number];
@@ -57,6 +62,9 @@ export function isNutrientSource(value: unknown): value is NutrientSource {
 
 /** あとから足した栄養素の定義 */
 export const ADDED_NUTRIENTS: readonly NutrientDefinition[] = NUTRIENTS.filter((n) => !n.core);
+
+/** 食品表示に載りうる、あとから足した栄養素。手入力の欄と、AI にラベルから読ませる項目はこれだけ */
+export const LABEL_NUTRIENTS: readonly NutrientDefinition[] = ADDED_NUTRIENTS.filter((n) => !n.detail);
 
 /** food_masters の栄養素の列。定義の並び順 */
 export const NUTRIENT_COLUMNS: readonly string[] = NUTRIENTS.map((n) => n.column);

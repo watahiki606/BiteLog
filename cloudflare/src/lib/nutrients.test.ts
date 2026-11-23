@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ADDED_NUTRIENT_IDS, CORE_NUTRIENT_IDS, NUTRIENTS, NUTRIENT_COLUMNS, nutrientBinds, nutrientsFromRow } from './nutrients';
+import { ADDED_NUTRIENT_IDS, CORE_NUTRIENT_IDS, LABEL_NUTRIENTS, NUTRIENTS, NUTRIENT_COLUMNS, nutrientBinds, nutrientsFromRow } from './nutrients';
 import { NUTRITION_BASE_CTE, NUTRITION_SUM_COLUMNS } from './nutritionSql';
 
 describe('栄養素の定義', () => {
@@ -9,6 +9,12 @@ describe('栄養素の定義', () => {
 
   it('型で持つ追加の栄養素は、定義ファイルの core でないものと同じ', () => {
     expect(NUTRIENTS.filter((n) => !n.core).map((n) => n.id)).toEqual([...ADDED_NUTRIENT_IDS]);
+  });
+
+  it('食品表示に載りうる栄養素は、最初の5項目でも詳しい栄養素でもないもの', () => {
+    expect(LABEL_NUTRIENTS.map((n) => n.id)).toEqual(NUTRIENTS.filter((n) => !n.core && !n.detail).map((n) => n.id));
+    expect(LABEL_NUTRIENTS.map((n) => n.id)).toContain('vitaminC');
+    expect(LABEL_NUTRIENTS.map((n) => n.id)).not.toContain('zinc');
   });
 
   it('D1 の行の列から、API のキーで値を取り出す', () => {

@@ -313,6 +313,17 @@ describe('食塩相当量と飽和脂肪酸', () => {
     }
   });
 
+  it('詳しい栄養素はラベルから読ませない。値は食材の成分表から引く', async () => {
+    await analyzeFood({ imageBase64: 'dummy' }, await authHeader());
+
+    const { properties, required } = lastOpenaiRequestBody.text.format.schema;
+    for (const key of ['zinc', 'folate', 'n3FattyAcids']) {
+      expect(properties).not.toHaveProperty(key);
+      expect(required).not.toContain(key);
+    }
+    expect(properties).toHaveProperty('vitaminC');
+  });
+
   it('表示や公式の値から読めたときだけ数値にし、ナトリウムは食塩相当量に換えるよう指示する', async () => {
     await analyzeFood({ imageBase64: 'dummy' }, await authHeader());
 
