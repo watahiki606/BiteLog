@@ -18,6 +18,7 @@ npx wrangler d1 migrations apply bitelog --remote
 ```
 
 新しい列を読む Worker は、列を足したあとにデプロイする。先に出すと、無い列を読んで落ちる。
+表や列を消すときは逆で、読まなくなった Worker を先にデプロイしてから消す。
 
 戻すときは、まず Worker を前の版に戻す。D1 を戻すと、適用したあとの書き込みも消える。
 

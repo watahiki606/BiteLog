@@ -1,4 +1,3 @@
-import { parseNutrientSources } from './lib/foodComposition';
 import { nutrientsFromRow } from './lib/nutrients';
 
 export type Bindings = {
@@ -31,7 +30,6 @@ export type FoodMasterRow = {
   last_number_of_servings: number;
   nutrient_source?: string | null;
   nutrient_source_ref?: string | null;
-  nutrient_sources?: string | null;
   /** 栄養素の列。並びと名前は定義ファイルが持つ */
   [nutrientColumn: string]: unknown;
 };
@@ -115,8 +113,6 @@ export function foodMasterToResponse(row: FoodMasterRow) {
     lastNumberOfServings: row.last_number_of_servings,
     nutrientSource: row.nutrient_source ?? null,
     nutrientSourceRef: row.nutrient_source_ref ?? null,
-    // 食品の出典と違う出典の栄養素。成分表で補った栄養素がここに並ぶ
-    nutrientSources: parseNutrientSources(row.nutrient_sources),
   };
 }
 

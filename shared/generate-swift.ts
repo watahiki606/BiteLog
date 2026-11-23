@@ -20,7 +20,7 @@ type Nutrient = {
   fractionDigits: number;
   group: string;
   core: boolean;
-  /** 成分表から補うだけの詳しい栄養素。入力欄と1日の合計に出さない */
+  /** 食品表示に載ることがまれな詳しい栄養素。入力欄と1日の合計では畳んだ中に出す */
   detail: boolean;
   label: string;
   names: Record<string, string>;

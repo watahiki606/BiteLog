@@ -12,7 +12,7 @@ export type NutrientDefinition = {
   group: string;
   /** 最初からある5項目。NOT NULL で、未入力は 0 として持つ */
   core: boolean;
-  /** 成分表から補うだけの詳しい栄養素。入力欄と AI に読ませる項目に入れない */
+  /** 食品表示に載ることがまれな詳しい栄養素。入力欄では畳み、AI に読ませる項目に入れない */
   detail: boolean;
   label: string;
   names: Record<string, string>;

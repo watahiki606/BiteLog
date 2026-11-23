@@ -288,7 +288,7 @@ aiAnalyze.post('/analyze-food', async (c) => {
     portionUnit: (parsed['portionUnit'] as string) ?? '人前',
     confidence,
     productName: (parsed['productName'] as string) ?? '不明な料理',
-    // 成分表の食材と重さ。アプリは食品を作るときにそのまま送り、ひも付けにする
+    // 成分表の食材と重さ。アプリは結果の画面に、値の元にした食材として出す
     ...(resolved ? { components: resolved.components } : {}),
   };
   if (!menuName) {
