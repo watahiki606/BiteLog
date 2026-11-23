@@ -224,7 +224,7 @@ struct StatisticsView: View {
           sectionTitle(NSLocalizedString("Nutrients per Day", comment: "Statistics section"))
           nutrientAverageCard
 
-          sectionTitle(NSLocalizedString("Salt and Saturated Fat", comment: "Statistics section"))
+          sectionTitle(NSLocalizedString("Other Nutrients", comment: "Statistics section"))
           CardView {
             AddedNutrientGoalsView(totals: settledTotals, dayCount: visibleDays, goals: addedNutrientGoals)
           }

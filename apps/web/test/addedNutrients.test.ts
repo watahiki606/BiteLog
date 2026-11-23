@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'bun:test';
 import { correlationSeries, type DailyStat } from '../src/lib/correlation';
-import { addedInputsFrom, addedInputsToBody, sumKnown } from '../src/lib/nutrients';
+import { ADDED_NUTRIENT_IDS, addedInputsFrom, addedInputsToBody, emptyAddedInputs, sumKnown } from '../src/lib/nutrients';
 
 // あとから足した栄養素は、値の分からない品や日がある。0 として扱わず、分かっているものだけで出す
 
@@ -54,14 +54,17 @@ describe('食塩の推移', () => {
 
 describe('食品の入力欄', () => {
   it('作るときは、数として読めた欄だけを送る', () => {
-    expect(addedInputsToBody({ saltEquivalent: '2.5', saturatedFat: '' }, false)).toEqual({ saltEquivalent: 2.5 });
+    expect(addedInputsToBody({ ...emptyAddedInputs(), saltEquivalent: '2.5', potassium: 'abc' }, false)).toEqual({ saltEquivalent: 2.5 });
   });
 
   it('直すときは、空欄を null で送って分からないに戻す', () => {
-    expect(addedInputsToBody({ saltEquivalent: '0', saturatedFat: ' ' }, true)).toEqual({ saltEquivalent: 0, saturatedFat: null });
+    const body = addedInputsToBody({ ...emptyAddedInputs(), saltEquivalent: '0', saturatedFat: ' ' }, true);
+    expect(body.saltEquivalent).toBe(0);
+    expect(body.saturatedFat).toBeNull();
+    expect(Object.keys(body)).toEqual([...ADDED_NUTRIENT_IDS]);
   });
 
   it('食品の値から欄を埋め、分からない値は空欄にする', () => {
-    expect(addedInputsFrom({ saltEquivalent: 1.2 })).toEqual({ saltEquivalent: '1.2', saturatedFat: '' });
+    expect(addedInputsFrom({ saltEquivalent: 1.2, potassium: 0 })).toEqual({ ...emptyAddedInputs(), saltEquivalent: '1.2', potassium: '0' });
   });
 });

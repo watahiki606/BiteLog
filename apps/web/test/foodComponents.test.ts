@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { changedAddedBody, defaultComponentGrams, emptyAddedInputs } from '../src/lib/nutrients';
+import { changedAddedBody, defaultComponentGrams, emptyAddedInputs, searchTermOf } from '../src/lib/nutrients';
 
 describe('直すときに送る値', () => {
   it('変えた欄だけを送る。空にした欄は null', () => {
@@ -23,5 +23,13 @@ describe('食材の重さの初期値', () => {
   it('個や人前なら 100', () => {
     expect(defaultComponentGrams(1, '個')).toBe(100);
     expect(defaultComponentGrams(1, '人前')).toBe(100);
+  });
+});
+
+describe('候補を探す語', () => {
+  it('食品名の最初の語で探す', () => {
+    expect(searchTermOf('鶏むね肉（皮なし）')).toBe('鶏むね肉');
+    expect(searchTermOf('ポテトチップス うすしお')).toBe('ポテトチップス');
+    expect(searchTermOf('')).toBe('');
   });
 });

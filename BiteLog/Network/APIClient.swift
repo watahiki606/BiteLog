@@ -153,6 +153,20 @@ final class APIClient {
     return try await request(path: "/api/food-masters/\(id)", method: "PUT", body: dto)
   }
 
+  /// 1件を読む。成分表とのひも付け components は、一覧には付かずこちらにだけ付く
+  func fetchFoodMaster(id: UUID) async throws -> FoodMasterDTO {
+    return try await request(path: "/api/food-masters/\(id)")
+  }
+
+  /// 成分表を名前で探す。普段の言葉は Worker が成分表の書き方に寄せる
+  func searchComposition(query: String, limit: Int = 5) async throws -> [CompositionFoodDTO] {
+    var allowed = CharacterSet.urlQueryAllowed
+    allowed.remove(charactersIn: "&+=?")
+    let q = query.addingPercentEncoding(withAllowedCharacters: allowed) ?? ""
+    let response: CompositionSearchResponse = try await request(path: "/api/composition-foods?q=\(q)&limit=\(limit)")
+    return response.items
+  }
+
   func deleteFoodMaster(id: UUID) async throws {
     try await requestVoid(path: "/api/food-masters/\(id)", method: "DELETE")
   }

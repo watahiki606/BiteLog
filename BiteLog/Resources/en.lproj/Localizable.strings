@@ -446,3 +446,28 @@
 "Of which dietary fiber" = "Of which dietary fiber";
 "Sugar (Carbohydrates − Fiber)" = "Net carbs (Carbs − Fiber)";
 "Dietary fiber can't be more than carbohydrates." = "Dietary fiber can't be more than carbohydrates.";
+
+/* ミネラルとビタミンの基準値。推奨量は割合を添え、目安量は値だけ */
+"Goal: %@ or more" = "Goal: %@ or more";
+"Adequate intake %@" = "Adequate intake %@";
+"Recommended %1$@, %2$@ if menstruating" = "Recommended %1$@, %2$@ if menstruating";
+"Recommended %1$@: %2$d%%" = "%2$d%% of the recommended %1$@";
+"Recommended %@" = "Recommended %@";
+
+/* 食品成分表とのひも付け */
+"Enter the product name to see candidates." = "Enter the product name to see candidates.";
+"No match in the food composition table." = "No match in the food composition table.";
+"Links this food" = "Links this food";
+"Remove the link" = "Remove the link";
+"Food Composition Table" = "Food Composition Table";
+"Nutrients not on the label are filled from the table. The weight is the edible part in one portion." = "Nutrients not on the label are filled from the table. The weight is the edible part in one portion.";
+"Filled from the food composition table" = "Filled from the food composition table";
+"Data Sources" = "Data Sources";
+
+/* データの出典 */
+"DataSources.Composition" = "Created and processed by BiteLog from the Standard Tables of Food Composition in Japan 2020 (Eighth Revised Edition), 2023 supplement, Ministry of Education, Culture, Sports, Science and Technology, including the errata of March 27, 2026. When a food is linked to the table with a weight, nutrients missing from the label are filled from the table.";
+"DataSources.DRI" = "Reference values come from the Dietary Reference Intakes for Japanese (2025), Ministry of Health, Labour and Welfare, chosen by the sex and age in your profile. They apply to habitual intake, so they are compared with the daily average over the selected period.";
+"Ministry of Education: Standard Tables of Food Composition" = "Standard Tables of Food Composition in Japan";
+"Ministry of Health: Dietary Reference Intakes for Japanese 2025" = "Dietary Reference Intakes for Japanese (2025)";
+"Food Nutrients" = "Food Nutrients";
+"Reference Values" = "Reference Values";

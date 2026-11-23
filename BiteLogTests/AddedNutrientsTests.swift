@@ -133,6 +133,33 @@ struct AddedNutrientsTests {
     #expect(Self.intakes.goal(for: .saturatedFat, sex: .male, age: 2) == nil)
   }
 
+  @Test func カリウムは目標量で以上と比べる() {
+    let goal = Self.intakes.goal(for: .potassium, sex: .female, age: 40)
+    #expect(goal?.value == 2600)
+    #expect(goal?.comparison == .atLeast)
+    #expect(goal?.indicator == .tentativeDietaryGoal)
+    #expect(Self.intakes.goal(for: .potassium, sex: .male, age: 2) == nil)
+  }
+
+  @Test func ミネラルとビタミンは推奨量や目安量と並べるだけ() {
+    #expect(Self.intakes.goal(for: .calcium, sex: .male, age: 40)?.value == 750)
+    #expect(Self.intakes.goal(for: .calcium, sex: .male, age: 40)?.comparison == .reference)
+    #expect(Self.intakes.goal(for: .calcium, sex: .male, age: 40)?.indicator == .recommendedDietaryAllowance)
+    #expect(Self.intakes.goal(for: .magnesium, sex: .female, age: 40)?.value == 290)
+    #expect(Self.intakes.goal(for: .vitaminA, sex: .male, age: 40)?.value == 900)
+    #expect(Self.intakes.goal(for: .vitaminC, sex: .female, age: 80)?.value == 100)
+    #expect(Self.intakes.goal(for: .vitaminD, sex: .female, age: 40)?.indicator == .adequateIntake)
+    #expect(Self.intakes.goal(for: .vitaminD, sex: .female, age: 40)?.value == 9)
+  }
+
+  @Test func 女性の鉄は月経の有無で2つの値を持つ() {
+    let woman = Self.intakes.goal(for: .iron, sex: .female, age: 40)
+    #expect(woman?.value == 6.0)
+    #expect(woman?.menstruatingValue == 10.5)
+    #expect(Self.intakes.goal(for: .iron, sex: .female, age: 70)?.menstruatingValue == nil)
+    #expect(Self.intakes.goal(for: .iron, sex: .male, age: 40)?.menstruatingValue == nil)
+  }
+
   @Test func 目標量の無い栄養素は引けない() {
     #expect(Self.intakes.goal(for: .protein, sex: .male, age: 40) == nil)
   }

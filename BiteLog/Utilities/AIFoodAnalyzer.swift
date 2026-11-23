@@ -15,8 +15,10 @@ struct FoodAnalysisResult {
   let basis: AnalysisBasis
   /// 公式の栄養成分を調べる欄に入れておく名前。ロゴや文字が見えなければ nil
   var menuGuess: String? = nil
-  /// あとから足した栄養素。栄養成分表示か公式の値から読めたものだけを持つ
+  /// あとから足した栄養素。表示か公式の値から読めたものと、成分表で引いたもの
   var addedNutrients = NutrientAmounts()
+  /// 料理を分けた成分表の食材と重さ。食品を作るときに送り、ひも付けにする
+  var components: [FoodComponent]? = nil
 
   /// 食品に保存する値の出典と参照先。
   /// 写真だけの解析は根拠を返さないが、信頼度が high なのは値を栄養成分表示から読んだときだけ
@@ -96,9 +98,8 @@ class AIFoodAnalyzer {
         confidence: response.confidence,
         basis: AnalysisBasis(menuName: menuName, basis: response.basis, sourceUrl: response.sourceUrl),
         menuGuess: response.menuGuess,
-        addedNutrients: NutrientAmounts([
-          .saltEquivalent: response.saltEquivalent, .saturatedFat: response.saturatedFat,
-        ].compactMapValues { $0 })
+        addedNutrients: response.addedNutrients,
+        components: response.components
       )
     } catch APIError.unauthorized {
       throw AnalysisError.notAuthenticated
