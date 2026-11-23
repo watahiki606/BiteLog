@@ -154,8 +154,11 @@ struct AddedNutrientsTests {
         numberOfServings: 1, isMasterDeleted: false, foodMaster: food, nutritionSnapshot: nil)
     }
 
-    #expect(CSVExporter.header.hasSuffix("portion_unit,salt_equivalent,saturated_fat"))
-    #expect(CSVExporter.row(for: item(withSalt), dateFormatter: formatter).hasSuffix(",皿,2.5,"))
-    #expect(CSVExporter.row(for: item(food), dateFormatter: formatter).hasSuffix(",皿,,"))
+    #expect(
+      CSVExporter.header.hasSuffix(
+        "portion_unit,salt_equivalent,saturated_fat,potassium,calcium,magnesium,iron,vitamin_a,vitamin_d,vitamin_c"))
+    // 食塩の後ろに、分からない8つの栄養素の空のセルが続く
+    #expect(CSVExporter.row(for: item(withSalt), dateFormatter: formatter).hasSuffix(",皿,2.5" + String(repeating: ",", count: 8)))
+    #expect(CSVExporter.row(for: item(food), dateFormatter: formatter).hasSuffix(",皿" + String(repeating: ",", count: 9)))
   }
 }

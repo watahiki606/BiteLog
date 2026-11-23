@@ -65,6 +65,8 @@ extension NutrientID: NutrientDisplaying {
     switch definition.unit {
     case "kcal": return NSLocalizedString("Unit.Kilocalories", comment: "Spoken unit")
     case "g": return NSLocalizedString("Unit.Grams", comment: "Spoken unit")
+    case "mg": return NSLocalizedString("Unit.Milligrams", comment: "Spoken unit")
+    case "µg": return NSLocalizedString("Unit.Micrograms", comment: "Spoken unit")
     default: return definition.unit
     }
   }

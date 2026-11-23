@@ -8,7 +8,8 @@
     "core": true,
     "label": "mandatory",
     "names": { "ja": "カロリー", "en": "Calories" },
-    "shortNames": { "ja": "カロリー", "en": "Cal" }
+    "shortNames": { "ja": "カロリー", "en": "Cal" },
+    "composition": { "table": "main", "tag": "ENERC_KCAL" }
   },
   {
     "id": "protein",
@@ -19,7 +20,8 @@
     "core": true,
     "label": "mandatory",
     "names": { "ja": "タンパク質", "en": "Protein" },
-    "shortNames": { "ja": "タンパク", "en": "P" }
+    "shortNames": { "ja": "タンパク", "en": "P" },
+    "composition": { "table": "main", "tag": "PROT-" }
   },
   {
     "id": "fat",
@@ -30,7 +32,8 @@
     "core": true,
     "label": "mandatory",
     "names": { "ja": "脂質", "en": "Fat" },
-    "shortNames": { "ja": "脂質", "en": "F" }
+    "shortNames": { "ja": "脂質", "en": "F" },
+    "composition": { "table": "main", "tag": "FAT-" }
   },
   {
     "id": "netCarbs",
@@ -41,7 +44,8 @@
     "core": true,
     "label": "optional",
     "names": { "ja": "糖質", "en": "Sugar" },
-    "shortNames": { "ja": "糖質", "en": "Sugar" }
+    "shortNames": { "ja": "糖質", "en": "Sugar" },
+    "composition": { "table": "main", "tag": "CHOCDF-", "minus": "FIB-" }
   },
   {
     "id": "dietaryFiber",
@@ -52,7 +56,8 @@
     "core": true,
     "label": "recommended",
     "names": { "ja": "食物繊維", "en": "Dietary Fiber" },
-    "shortNames": { "ja": "繊維", "en": "Fiber" }
+    "shortNames": { "ja": "繊維", "en": "Fiber" },
+    "composition": { "table": "main", "tag": "FIB-" }
   },
   {
     "id": "saltEquivalent",
@@ -63,7 +68,8 @@
     "core": false,
     "label": "mandatory",
     "names": { "ja": "食塩相当量", "en": "Salt equivalent" },
-    "shortNames": { "ja": "食塩", "en": "Salt" }
+    "shortNames": { "ja": "食塩", "en": "Salt" },
+    "composition": { "table": "main", "tag": "NACL_EQ" }
   },
   {
     "id": "saturatedFat",
@@ -74,6 +80,91 @@
     "core": false,
     "label": "recommended",
     "names": { "ja": "飽和脂肪酸", "en": "Saturated fat" },
-    "shortNames": { "ja": "飽和脂肪", "en": "Sat. fat" }
+    "shortNames": { "ja": "飽和脂肪", "en": "Sat. fat" },
+    "composition": { "table": "fattyAcid", "tag": "FASAT" }
+  },
+  {
+    "id": "potassium",
+    "column": "potassium",
+    "unit": "mg",
+    "fractionDigits": 0,
+    "group": "mineral",
+    "core": false,
+    "label": "optional",
+    "names": { "ja": "カリウム", "en": "Potassium" },
+    "shortNames": { "ja": "カリウム", "en": "K" },
+    "composition": { "table": "main", "tag": "K" }
+  },
+  {
+    "id": "calcium",
+    "column": "calcium",
+    "unit": "mg",
+    "fractionDigits": 0,
+    "group": "mineral",
+    "core": false,
+    "label": "optional",
+    "names": { "ja": "カルシウム", "en": "Calcium" },
+    "shortNames": { "ja": "カルシウム", "en": "Ca" },
+    "composition": { "table": "main", "tag": "CA" }
+  },
+  {
+    "id": "magnesium",
+    "column": "magnesium",
+    "unit": "mg",
+    "fractionDigits": 0,
+    "group": "mineral",
+    "core": false,
+    "label": "optional",
+    "names": { "ja": "マグネシウム", "en": "Magnesium" },
+    "shortNames": { "ja": "マグネシウム", "en": "Mg" },
+    "composition": { "table": "main", "tag": "MG" }
+  },
+  {
+    "id": "iron",
+    "column": "iron",
+    "unit": "mg",
+    "fractionDigits": 1,
+    "group": "mineral",
+    "core": false,
+    "label": "optional",
+    "names": { "ja": "鉄", "en": "Iron" },
+    "shortNames": { "ja": "鉄", "en": "Fe" },
+    "composition": { "table": "main", "tag": "FE" }
+  },
+  {
+    "id": "vitaminA",
+    "column": "vitamin_a",
+    "unit": "µg",
+    "fractionDigits": 0,
+    "group": "vitamin",
+    "core": false,
+    "label": "optional",
+    "names": { "ja": "ビタミンA", "en": "Vitamin A" },
+    "shortNames": { "ja": "ビタミンA", "en": "Vit A" },
+    "composition": { "table": "main", "tag": "VITA_RAE" }
+  },
+  {
+    "id": "vitaminD",
+    "column": "vitamin_d",
+    "unit": "µg",
+    "fractionDigits": 1,
+    "group": "vitamin",
+    "core": false,
+    "label": "optional",
+    "names": { "ja": "ビタミンD", "en": "Vitamin D" },
+    "shortNames": { "ja": "ビタミンD", "en": "Vit D" },
+    "composition": { "table": "main", "tag": "VITD" }
+  },
+  {
+    "id": "vitaminC",
+    "column": "vitamin_c",
+    "unit": "mg",
+    "fractionDigits": 0,
+    "group": "vitamin",
+    "core": false,
+    "label": "optional",
+    "names": { "ja": "ビタミンC", "en": "Vitamin C" },
+    "shortNames": { "ja": "ビタミンC", "en": "Vit C" },
+    "composition": { "table": "main", "tag": "VITC" }
   }
 ]

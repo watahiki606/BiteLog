@@ -11,6 +11,7 @@ const GROUPS = ['energy', 'macro', 'lipid', 'carbohydrate', 'vitamin', 'mineral'
 const LABELS = ['mandatory', 'recommended', 'optional'];
 const UNITS = ['kcal', 'g', 'mg', 'µg'];
 const LANGUAGES = ['ja', 'en'];
+const COMPOSITION_TABLES = ['main', 'fattyAcid'];
 
 type Nutrient = {
   id: string;
@@ -22,6 +23,8 @@ type Nutrient = {
   label: string;
   names: Record<string, string>;
   shortNames: Record<string, string>;
+  /** 日本食品標準成分表のどの列から値を取るか。minus があれば、その列を引く */
+  composition?: { table: string; tag: string; minus?: string };
 };
 
 function validate(nutrients: Nutrient[]): void {
@@ -39,6 +42,12 @@ function validate(nutrients: Nutrient[]): void {
     if (!GROUPS.includes(n.group)) errors.push(`${at}: group は ${GROUPS.join(', ')} のどれか`);
     if (typeof n.core !== 'boolean') errors.push(`${at}: core は true か false`);
     if (!LABELS.includes(n.label)) errors.push(`${at}: label は ${LABELS.join(', ')} のどれか`);
+    if (n.composition !== undefined) {
+      const c = n.composition;
+      if (!COMPOSITION_TABLES.includes(c.table)) errors.push(`${at}: composition.table は ${COMPOSITION_TABLES.join(', ')} のどれか`);
+      if (typeof c.tag !== 'string' || c.tag === '') errors.push(`${at}: composition.tag が無い`);
+      if (c.minus !== undefined && (typeof c.minus !== 'string' || c.minus === '')) errors.push(`${at}: composition.minus が空`);
+    }
     for (const lang of LANGUAGES) {
       if (!n.names?.[lang]) errors.push(`${at}: names.${lang} が無い`);
       if (!n.shortNames?.[lang]) errors.push(`${at}: shortNames.${lang} が無い`);

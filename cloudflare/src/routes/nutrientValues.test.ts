@@ -3,6 +3,11 @@ import { SELF, env } from 'cloudflare:test';
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { issueSessionJwt } from '../middleware/auth';
 import { applySchema } from '../test/schema';
+import { ADDED_NUTRIENT_IDS } from '../lib/nutrients';
+
+/** 値の分かっていた品数。挙げなかった栄養素は 0 */
+const known = (counts: Record<string, number> = {}) =>
+  Object.fromEntries(ADDED_NUTRIENT_IDS.map((id) => [id, counts[id] ?? 0]));
 
 // 栄養素の値が、食品の作成から記録、削除、集計まで取り違えずに通るか。
 // 5つの栄養素にすべて別の値を入れ、列名とキーの対応がずれたら落ちるようにしている。
@@ -119,7 +124,7 @@ describe('記録の栄養素', () => {
     expect(summary.items).toEqual([{
       logDate: '2026-11-01', mealType: 'Lunch',
       calories: 1300, protein: 30, fat: 40, netCarbs: 180, dietaryFiber: 6,
-      itemCount: 1, knownCounts: { saltEquivalent: 0, saturatedFat: 0 },
+      itemCount: 1, knownCounts: known(),
     }]);
 
     const daily = await (await call('/api/statistics/daily?from=2026-11-01&to=2026-11-01')).json<{
@@ -140,7 +145,7 @@ describe('記録の栄養素', () => {
     }>();
     expect(summary.items).toEqual([{
       logDate: '2026-11-01', mealType: 'Lunch', ...CURRY,
-      itemCount: 1, knownCounts: { saltEquivalent: 0, saturatedFat: 0 },
+      itemCount: 1, knownCounts: known(),
     }]);
   });
 });

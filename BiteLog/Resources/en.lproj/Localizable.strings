@@ -226,6 +226,8 @@
 // Design System - VoiceOver
 "Unit.Kilocalories" = "kilocalories";
 "Unit.Grams" = "grams";
+"Unit.Milligrams" = "milligrams";
+"Unit.Micrograms" = "micrograms";
 "%@ of %@ goal" = "%1$@ of %2$@ goal";
 
 // Date navigation

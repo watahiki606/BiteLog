@@ -15,6 +15,13 @@ CREATE TABLE IF NOT EXISTS food_masters (
   -- 最初の5項目より後に足した栄養素。NULL は「分からない」
   salt_equivalent REAL,
   saturated_fat REAL,
+  potassium REAL,
+  calcium REAL,
+  magnesium REAL,
+  iron REAL,
+  vitamin_a REAL,
+  vitamin_d REAL,
+  vitamin_c REAL,
   -- 値の出典。label、composition_table、ai_estimate、manual のどれか。NULL は分からない
   nutrient_source TEXT,
   -- 出典の参照先。成分表の食品番号か URL

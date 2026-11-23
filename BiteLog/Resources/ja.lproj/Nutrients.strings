@@ -14,3 +14,17 @@
 "saltEquivalent.shortName" = "食塩";
 "saturatedFat.name" = "飽和脂肪酸";
 "saturatedFat.shortName" = "飽和脂肪";
+"potassium.name" = "カリウム";
+"potassium.shortName" = "カリウム";
+"calcium.name" = "カルシウム";
+"calcium.shortName" = "カルシウム";
+"magnesium.name" = "マグネシウム";
+"magnesium.shortName" = "マグネシウム";
+"iron.name" = "鉄";
+"iron.shortName" = "鉄";
+"vitaminA.name" = "ビタミンA";
+"vitaminA.shortName" = "ビタミンA";
+"vitaminD.name" = "ビタミンD";
+"vitaminD.shortName" = "ビタミンD";
+"vitaminC.name" = "ビタミンC";
+"vitaminC.shortName" = "ビタミンC";

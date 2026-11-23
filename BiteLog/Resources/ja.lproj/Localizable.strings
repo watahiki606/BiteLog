@@ -241,6 +241,8 @@
 // Design System - VoiceOver
 "Unit.Kilocalories" = "キロカロリー";
 "Unit.Grams" = "グラム";
+"Unit.Milligrams" = "ミリグラム";
+"Unit.Micrograms" = "マイクログラム";
 "%@ of %@ goal" = "目標 %2$@ の %1$@";
 
 // 日付ナビゲーション

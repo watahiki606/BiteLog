@@ -14,3 +14,17 @@
 "saltEquivalent.shortName" = "Salt";
 "saturatedFat.name" = "Saturated fat";
 "saturatedFat.shortName" = "Sat. fat";
+"potassium.name" = "Potassium";
+"potassium.shortName" = "K";
+"calcium.name" = "Calcium";
+"calcium.shortName" = "Ca";
+"magnesium.name" = "Magnesium";
+"magnesium.shortName" = "Mg";
+"iron.name" = "Iron";
+"iron.shortName" = "Fe";
+"vitaminA.name" = "Vitamin A";
+"vitaminA.shortName" = "Vit A";
+"vitaminD.name" = "Vitamin D";
+"vitaminD.shortName" = "Vit D";
+"vitaminC.name" = "Vitamin C";
+"vitaminC.shortName" = "Vit C";
