@@ -74,11 +74,9 @@ export default function MealLogPage({ onToast }: Props) {
     { label: 'NET CARBS',value: totals.netCarbs,  unit: 'g',    color: '#00e5ff' },
     {
       label: 'SALT',
-      value: salt.total == null ? '—' : Math.round(salt.total * 10) / 10,
-      unit: salt.total == null ? '' : 'g',
+      value: salt == null ? '—' : Math.round(salt * 10) / 10,
+      unit: salt == null ? '' : 'g',
       color: '#c0c0ff',
-      // 値の分からない品があれば、何品ぶんの合計かを添える
-      note: salt.known > 0 && salt.known < items.length ? `${salt.known}/${items.length} items` : undefined,
     },
   ];
 
@@ -104,7 +102,6 @@ export default function MealLogPage({ onToast }: Props) {
             <div className="text-lg font-bold" style={{ color: s.color }}>
               {s.value}<span className="text-xs font-normal ml-1 text-muted-foreground">{s.unit}</span>
             </div>
-            {'note' in s && s.note && <div className="text-[10px] text-muted-foreground mt-0.5">{s.note}</div>}
             <div className="absolute bottom-0 left-0 right-0 h-0.5 opacity-40" style={{ background: s.color }} />
           </motion.div>
         ))}
