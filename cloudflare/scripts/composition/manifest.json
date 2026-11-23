@@ -1,0 +1,18 @@
+{
+  "edition": "2023-20260327",
+  "title": "日本食品標準成分表（八訂）増補2023年",
+  "erratumDate": "2026-03-27",
+  "page": "https://www.mext.go.jp/a_menu/syokuhinseibun/mext_00001.html",
+  "files": {
+    "main": {
+      "description": "本表",
+      "url": "https://www.mext.go.jp/content/20260327-mxt_kagsei-mext-000029402_02.xlsx",
+      "sha256": "0d5a77077dd6cd91cbc2e6e317b8b218a38728c409eed452f1c10635a0d3099c"
+    },
+    "fattyAcid": {
+      "description": "脂肪酸成分表編 第1表 可食部100g当たり",
+      "url": "https://www.mext.go.jp/content/20260327-mxt_kagsei-mext-000029402_09.xlsx",
+      "sha256": "435ab7125d3de26fba968de952b463b71d011c6b0f50e8966112293c521fd5fd"
+    }
+  }
+}
