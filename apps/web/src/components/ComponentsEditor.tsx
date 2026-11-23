@@ -1,23 +1,26 @@
 import { useEffect, useState } from 'react';
 import { useCompositionSearch, type FoodComponent } from '@/hooks/useComposition';
 import { fieldClass } from '@/components/Modal';
+import { searchTermOf } from '@/lib/nutrients';
 
 /**
  * 食品を成分表の食品と重さにひも付ける欄。
  * 重さは食品の1回分に含まれる、その食材の可食部の重さ。料理なら食材ごとに行を足す
  */
-export default function ComponentsEditor({ components, onChange, defaultGrams, initialQuery = '' }: {
+export default function ComponentsEditor({ components, onChange, defaultGrams, productName }: {
   components: FoodComponent[];
   onChange: (components: FoodComponent[]) => void;
   defaultGrams: number;
-  initialQuery?: string;
+  /** 検索欄が空のあいだは、食品名の最初の語で候補を出す。合っていれば押すだけで結べる */
+  productName: string;
 }) {
-  const [query, setQuery] = useState(initialQuery);
-  const [debounced, setDebounced] = useState(initialQuery);
+  const [query, setQuery] = useState('');
+  const effective = query.trim() || (components.length === 0 ? searchTermOf(productName) : '');
+  const [debounced, setDebounced] = useState(effective);
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(query), 300);
+    const t = setTimeout(() => setDebounced(effective), 300);
     return () => clearTimeout(t);
-  }, [query]);
+  }, [effective]);
   const { data: results = [], isLoading } = useCompositionSearch(debounced);
 
   function add(foodNumber: string, name: string) {
@@ -49,6 +52,7 @@ export default function ComponentsEditor({ components, onChange, defaultGrams, i
           </div>
         ))
       )}
+      {!query.trim() && debounced && <p className="text-xs text-muted-foreground">CANDIDATES FOR “{debounced}”</p>}
       <input type="text" placeholder="SEARCH COMPOSITION TABLE..." value={query} onChange={(e) => setQuery(e.target.value)}
         className={fieldClass} style={{ fontFamily: 'inherit' }} />
       {debounced.trim() && (
@@ -71,3 +75,4 @@ export default function ComponentsEditor({ components, onChange, defaultGrams, i
     </div>
   );
 }
+

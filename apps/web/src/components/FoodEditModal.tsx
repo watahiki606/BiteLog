@@ -162,7 +162,7 @@ export default function FoodEditModal({ editing, onClose, onSaved, onToast }: {
         <Field label="Composition table (per portion)" colSpan={2}>
           <ComponentsEditor components={components} onChange={changeComponents}
             defaultGrams={defaultComponentGrams(form.portionSize, form.portionUnit)}
-            initialQuery={editing ? editing.productName.split(/[\s\u3000（(]/)[0] : ''} />
+            productName={form.productName} />
           <label className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
             <input type="checkbox" checked={allFromTable} onChange={(e) => setAllFromTable(e.target.checked)} />
             ALL VALUES FROM THE TABLE. Otherwise only unknown nutrients are filled

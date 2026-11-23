@@ -126,3 +126,8 @@ export function changedAddedBody(initial: AddedInputs, current: AddedInputs): Pa
 export function defaultComponentGrams(portionSize: number, portionUnit: string): number {
   return /^(g|gram|grams|グラム|ml|mL|ミリリットル)$/i.test(portionUnit.trim()) && portionSize > 0 ? portionSize : 100;
 }
+
+/** 食品名の最初の語。「鶏むね肉（皮なし）」なら「鶏むね肉」。アプリと同じ区切り */
+export function searchTermOf(productName: string): string {
+  return productName.split(/[\s\u3000（(【[｛{、，,・/＋+&]/).find((w) => w.trim() !== '')?.trim() ?? '';
+}
