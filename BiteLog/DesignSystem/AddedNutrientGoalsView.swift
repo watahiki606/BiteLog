@@ -31,7 +31,7 @@ struct AddedNutrientGoalsView: View {
           .padding(.top, 12)
       } label: {
         // 1日の合計の「その他の栄養素」と同じく、補助的な操作なので灰色に落とす
-        Text(NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients filled from the composition table"))
+        Text(NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients rarely on food labels"))
           .font(.subheadline.weight(.semibold))
           .foregroundStyle(.secondary)
       }

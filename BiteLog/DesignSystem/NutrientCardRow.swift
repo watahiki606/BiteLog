@@ -8,8 +8,6 @@ struct NutrientCardRow<Value: View>: View {
   let nutrient: any NutrientDisplaying
   /// 栄養素の名前と違う呼び方をしたいとき。食品の詳細の「うち食物繊維」
   var name: String? = nil
-  /// 名前の下に小さく添える一言。成分表で補った値の印
-  var note: String? = nil
   @ViewBuilder let value: () -> Value
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -40,14 +38,7 @@ struct NutrientCardRow<Value: View>: View {
   }
 
   private var label: some View {
-    VStack(alignment: .leading, spacing: 2) {
-      Text(name ?? nutrient.localizedName)
-        .fixedSize(horizontal: false, vertical: true)
-      if let note {
-        Text(note)
-          .font(.caption2)
-          .foregroundStyle(.secondary)
-      }
-    }
+    Text(name ?? nutrient.localizedName)
+      .fixedSize(horizontal: false, vertical: true)
   }
 }

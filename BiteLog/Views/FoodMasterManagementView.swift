@@ -232,9 +232,6 @@ struct FoodMasterManagementView: View {
 struct FoodMasterDetailView: View {
   let foodMaster: FoodMasterDTO
   @Environment(\.dismiss) var dismiss
-  @State private var detail: FoodMasterDTO?
-
-  private var shown: FoodMasterDTO { detail ?? foodMaster }
 
   /// 値が分からなければ「不明」
   private func valueText(_ value: Double?, _ nutrient: some NutrientDisplaying) -> some View {
@@ -272,52 +269,35 @@ struct FoodMasterDetailView: View {
             ))
         ) {
           // 記録の編集と同じ、印の丸を添えた1行のカードにする
-          NutrientCardRow(nutrient: Nutrient.calories) { valueText(shown.calories, Nutrient.calories) }
-          NutrientCardRow(nutrient: Nutrient.protein) { valueText(shown.protein, Nutrient.protein) }
-          NutrientCardRow(nutrient: Nutrient.fat) { valueText(shown.fat, Nutrient.fat) }
+          NutrientCardRow(nutrient: Nutrient.calories) { valueText(foodMaster.calories, Nutrient.calories) }
+          NutrientCardRow(nutrient: Nutrient.protein) { valueText(foodMaster.protein, Nutrient.protein) }
+          NutrientCardRow(nutrient: Nutrient.fat) { valueText(foodMaster.fat, Nutrient.fat) }
           // 入力と同じく、ラベルの並びの炭水化物、うち食物繊維、糖質の順に出す
           NutrientCardRow(
             nutrient: Nutrient.carbs, name: NSLocalizedString("Carbohydrates", comment: "Carbohydrates")
           ) {
-            Text("\(CarbohydrateInput.carbohydrateText(netCarbs: shown.netCarbs, dietaryFiber: shown.dietaryFiber))g")
+            Text("\(CarbohydrateInput.carbohydrateText(netCarbs: foodMaster.netCarbs, dietaryFiber: foodMaster.dietaryFiber))g")
               .monospacedDigit()
               .fontWeight(.medium)
           }
           NutrientCardRow(
             nutrient: Nutrient.fiber,
             name: NSLocalizedString("Of which dietary fiber", comment: "Dietary fiber as part of carbohydrates")
-          ) { valueText(shown.dietaryFiber, Nutrient.fiber) }
+          ) { valueText(foodMaster.dietaryFiber, Nutrient.fiber) }
           NutrientCardRow(nutrient: Nutrient.netCarbs, name: NSLocalizedString("Sugar", comment: "Sugar")) {
-            valueText(shown.netCarbs, Nutrient.netCarbs)
+            valueText(foodMaster.netCarbs, Nutrient.netCarbs)
           }
           ForEach(NutrientID.labelNutrients, id: \.self) { id in
-            NutrientCardRow(
-              nutrient: id,
-              note: shown.isSupplemented(id)
-                ? NSLocalizedString("Filled from the food composition table", comment: "Supplemented value mark")
-                : nil
-            ) { valueText(shown.nutrients[id], id) }
+            NutrientCardRow(nutrient: id) { valueText(foodMaster.nutrients[id], id) }
           }
-          // 詳しい栄養素はどれも成分表で補った値なので、1つずつに印を付けない
-          DisclosureGroup(NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients filled from the composition table")) {
+          // 詳しい栄養素は食品表示に載ることがまれで、数も多いので畳んでおく
+          DisclosureGroup(NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients rarely on food labels")) {
             ForEach(NutrientID.detailNutrients, id: \.self) { id in
-              NutrientCardRow(nutrient: id) { valueText(shown.nutrients[id], id) }
+              NutrientCardRow(nutrient: id) { valueText(foodMaster.nutrients[id], id) }
             }
           }
         }
         .headerProminence(.increased)
-
-        if let components = shown.components, !components.isEmpty {
-          Section(NSLocalizedString("Food Composition Table", comment: "Composition link section")) {
-            ForEach(components) { component in
-              LabeledContent(component.name ?? component.foodNumber, value: "\(NutritionFormatter.formatNutrition(component.grams)) g")
-            }
-          }
-        }
-      }
-      .task {
-        // 一覧の食品には、ひも付けと補った印が付いていない。1件を読み直す
-        if let fetched = try? await APIClient.shared.fetchFoodMaster(id: foodMaster.id) { detail = fetched }
       }
       .navigationTitle(NSLocalizedString("Food Detail", comment: "Food detail"))
       .toolbar {
@@ -394,21 +374,21 @@ struct FoodMasterFormView: View {
   /// 最初の5項目のあとに足した栄養素の入力。空欄は分からないとして保存する
   @State private var addedValues: [NutrientID: String] = [:]
   /// 開いたときの「その他の栄養素」の欄。直すときは変えた欄だけを送る。
-  /// 成分表で補った値も欄に出るので、全部を送るとサーバーは手で入れた値とみなし、補った印を外してしまう
+  /// 欄は値を1桁に丸めて出すので、全部を送ると触っていない値まで丸めて保存してしまう
   @State private var initialAddedValues: [NutrientID: String] = [:]
-  /// 成分表とのひも付け。食品名から候補を出し、押すと決まる
-  @State private var components: [FoodComponent] = []
-  @State private var initialComponents: [FoodComponent] = []
-  /// 成分表で補った栄養素。欄に印を付ける
-  @State private var supplemented: Set<NutrientID> = []
+  /// 最後に成分表から選んだ食品と重さ
+  @State private var picked: (name: String, grams: Double)?
+  /// 最後に成分表から入れた欄の文字。選び直したとき、手で直していない欄だけを入れ替える
+  @State private var pickedTexts: [CompositionPick.Field: String] = [:]
+  @State private var showsDetailFields = false
   @State private var isSaving = false
   @State private var failure: OperationFailure?
 
   @FocusState private var focusedField: FocusedField?
 
-  /// 「その他の栄養素」に並べる栄養素。定義ファイルの並び。
-  /// 詳しい栄養素は食品表示に載ることがまれなので欄を出さず、成分表とのひも付けから補う
-  private static let addedNutrients = NutrientID.labelNutrients
+  /// 最初の5項目のほかに欄を出す栄養素。定義ファイルの並び。
+  /// 詳しい栄養素は食品表示に載ることがまれなので、欄は畳んだ中に出す
+  private static let addedNutrients = NutrientID.labelNutrients + NutrientID.detailNutrients
 
   private var stateKey: String {
     switch mode {
@@ -427,10 +407,11 @@ struct FoodMasterFormView: View {
     case added(NutrientID)
   }
 
-  /// キーボードの前後の欄へ移る順番。画面に並ぶ順
-  private static let fieldOrder: [FocusedField] =
+  /// キーボードの前後の欄へ移る順番。画面に並ぶ順。畳んだ詳しい栄養素の欄には移らない
+  private var fieldOrder: [FocusedField] {
     [.brandName, .productName, .portionSize, .portionUnit, .calories, .protein, .fat, .carbohydrate, .dietaryFiber]
-    + addedNutrients.map { .added($0) }
+      + (showsDetailFields ? Self.addedNutrients : NutrientID.labelNutrients).map { .added($0) }
+  }
 
   var title: String {
     switch mode {
@@ -480,6 +461,12 @@ struct FoodMasterFormView: View {
             text: $portionUnit)
             .focused($focusedField, equals: .portionUnit)
         }
+
+        CompositionPickSection(
+          productName: productName,
+          defaultGrams: CompositionPick.defaultGrams(portionSize: Double(portionSize) ?? 1, portionUnit: portionUnit),
+          picked: picked,
+          onPick: fill)
 
         Section {
           HStack {
@@ -550,24 +537,12 @@ struct FoodMasterFormView: View {
         .foregroundColor(.secondary)
 
         Section {
-          ForEach(Self.addedNutrients, id: \.self) { id in
-            HStack {
-              VStack(alignment: .leading, spacing: 2) {
-                Text(id.localizedName)
-                if supplemented.contains(id) && addedValues[id] == initialAddedValues[id] {
-                  Text(NSLocalizedString("Filled from the food composition table", comment: "Supplemented value mark"))
-                    .font(.caption2)
-                }
-              }
-              Spacer()
-              TextField(
-                NSLocalizedString("Unknown", comment: "Placeholder for an unknown nutrient value"),
-                text: Binding(get: { addedValues[id] ?? "" }, set: { addedValues[id] = $0 })
-              )
-              .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
-              .focused($focusedField, equals: .added(id))
-              Text(id.definition.unit)
-            }
+          ForEach(NutrientID.labelNutrients, id: \.self) { addedField($0) }
+          DisclosureGroup(
+            NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients rarely on food labels"),
+            isExpanded: $showsDetailFields
+          ) {
+            ForEach(NutrientID.detailNutrients, id: \.self) { addedField($0) }
           }
         } header: {
           Text(NSLocalizedString("Other Nutrients", comment: "Form section for nutrients added later"))
@@ -579,11 +554,6 @@ struct FoodMasterFormView: View {
         }
         .font(.subheadline)
         .foregroundColor(.secondary)
-
-        CompositionLinkSection(
-          productName: productName,
-          defaultGrams: CompositionLink.defaultGrams(portionSize: Double(portionSize) ?? 1, portionUnit: portionUnit),
-          components: $components)
       }
       .navigationTitle(title)
       .toolbar {
@@ -616,7 +586,6 @@ struct FoodMasterFormView: View {
       }
       .operationFailureAlert($failure)
       .onAppear { loadState() }
-      .task { await loadComposition() }
       .onDisappear { saveState() }
       .onChange(of: brandName) { _, _ in saveState() }
       .onChange(of: productName) { _, _ in saveState() }
@@ -631,8 +600,60 @@ struct FoodMasterFormView: View {
     }
   }
 
+  private func addedField(_ id: NutrientID) -> some View {
+    HStack {
+      Text(id.localizedName)
+      Spacer()
+      TextField(
+        NSLocalizedString("Unknown", comment: "Placeholder for an unknown nutrient value"),
+        text: Binding(get: { addedValues[id] ?? "" }, set: { addedValues[id] = $0 })
+      )
+      .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
+      .focused($focusedField, equals: .added(id))
+      Text(id.definition.unit)
+    }
+  }
+
+  /// 成分表から選んだ食品の、重さの分の値を欄に入れる
+  private func fill(_ food: CompositionFoodDTO, grams: Double) {
+    let texts = CompositionPick.fieldTexts(per100g: food.per100g, grams: grams)
+    let current = Dictionary(uniqueKeysWithValues: Self.pickFields.map { ($0, text(of: $0)) })
+    for (field, text) in CompositionPick.merge(current: current, picked: texts, previouslyPicked: pickedTexts) {
+      setText(text, of: field)
+    }
+    pickedTexts = texts
+    picked = (food.name, grams)
+    // 詳しい栄養素にも値が入る。畳んだままだと入ったことが見えない
+    if NutrientID.detailNutrients.contains(where: { texts[.added($0)] != nil }) { showsDetailFields = true }
+  }
+
+  private static let pickFields: [CompositionPick.Field] =
+    [.calories, .protein, .fat, .carbohydrate, .dietaryFiber] + addedNutrients.map { .added($0) }
+
+  private func text(of field: CompositionPick.Field) -> String {
+    switch field {
+    case .calories: return calories
+    case .protein: return protein
+    case .fat: return fat
+    case .carbohydrate: return carbohydrate
+    case .dietaryFiber: return dietaryFiber
+    case .added(let id): return addedValues[id] ?? ""
+    }
+  }
+
+  private func setText(_ text: String, of field: CompositionPick.Field) {
+    switch field {
+    case .calories: calories = text
+    case .protein: protein = text
+    case .fat: fat = text
+    case .carbohydrate: carbohydrate = text
+    case .dietaryFiber: dietaryFiber = text
+    case .added(let id): addedValues[id] = text
+    }
+  }
+
   private func focusNextField() {
-    let allFields = Self.fieldOrder
+    let allFields = fieldOrder
     guard let current = focusedField, let idx = allFields.firstIndex(of: current) else {
       focusedField = allFields.first; return
     }
@@ -640,7 +661,7 @@ struct FoodMasterFormView: View {
   }
 
   private func focusPreviousField() {
-    let allFields = Self.fieldOrder
+    let allFields = fieldOrder
     guard let current = focusedField, let idx = allFields.firstIndex(of: current) else {
       focusedField = allFields.last; return
     }
@@ -681,7 +702,6 @@ struct FoodMasterFormView: View {
         var withAdded = dto
         for (id, value) in enteredAddedValues { withAdded.nutrients[id] = value }
         withAdded.nutrientSource = "manual"
-        if !components.isEmpty { withAdded.components = components }
         saved = try await APIClient.shared.createFoodMaster(withAdded)
         clearSavedState()
       case .edit(let foodMaster):
@@ -705,7 +725,6 @@ struct FoodMasterFormView: View {
             dto.clearedNutrients.insert(id)
           }
         }
-        if components != initialComponents { dto.components = components }
         saved = try await APIClient.shared.updateFoodMaster(id: foodMaster.id, dto)
       }
       onSaved?(saved)
@@ -774,16 +793,6 @@ struct FoodMasterFormView: View {
     case .add:
       break
     }
-  }
-
-  /// 直すときは、ひも付けと補った印を読む。一覧の食品には付いていない
-  private func loadComposition() async {
-    guard case .edit(let foodMaster) = mode,
-      let detail = try? await APIClient.shared.fetchFoodMaster(id: foodMaster.id)
-    else { return }
-    components = detail.components ?? []
-    initialComponents = components
-    supplemented = Set(Self.addedNutrients.filter(detail.isSupplemented))
   }
 
   private func clearSavedState() {

@@ -17,7 +17,7 @@ struct FoodAnalysisResult {
   var menuGuess: String? = nil
   /// あとから足した栄養素。表示か公式の値から読めたものと、成分表で引いたもの
   var addedNutrients = NutrientAmounts()
-  /// 料理を分けた成分表の食材と重さ。食品を作るときに送り、ひも付けにする
+  /// 料理を分けた成分表の食材と重さ。足した栄養素の値の元で、結果の画面に出す
   var components: [FoodComponent]? = nil
 
   /// 食品に保存する値の出典と参照先。

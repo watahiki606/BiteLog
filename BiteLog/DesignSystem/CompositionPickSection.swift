@@ -1,69 +1,81 @@
 import SwiftUI
 
-/// 食品の入力で、成分表の候補を出す欄。
+/// 食品の入力で、成分表から食品を選んで値を欄に入れる欄。
 ///
-/// 食品名で成分表を探し、候補を押すと食材と重さが決まる。選ばなくても保存できる。
-/// 結んでおくと、ラベルに書かれていないミネラルやビタミンを成分表の値で補える。
-struct CompositionLinkSection: View {
+/// 食品名で成分表を探して候補を出す。違う語で探すこともできる。候補を押すと、重さの分の値が
+/// 下の栄養素の欄に入る。入れた値は手で打った値と同じで直せる。選ばなくても保存できる。
+struct CompositionPickSection: View {
   let productName: String
   let defaultGrams: Double
-  @Binding var components: [FoodComponent]
+  /// 最後に選んだ食品と重さ。選んだことを欄の下に出す
+  let picked: (name: String, grams: Double)?
+  let onPick: (CompositionFoodDTO, Double) -> Void
 
+  @State private var searchText = ""
+  @State private var gramsText = ""
   @State private var candidates: [CompositionFoodDTO] = []
-  @State private var gramsText: [String: String] = [:]
 
-  private var query: String { CompositionLink.query(for: productName) }
+  private var query: String {
+    let typed = searchText.trimmingCharacters(in: .whitespaces)
+    return typed.isEmpty ? CompositionPick.query(for: productName) : typed
+  }
+
+  private var grams: Double {
+    Double(gramsText.trimmingCharacters(in: .whitespaces)).flatMap { $0 > 0 ? $0 : nil } ?? defaultGrams
+  }
 
   var body: some View {
     Section {
-      if components.isEmpty {
-        if candidates.isEmpty {
-          Text(query.isEmpty
-            ? NSLocalizedString("Enter the product name to see candidates.", comment: "Composition link hint")
-            : NSLocalizedString("No match in the food composition table.", comment: "Composition link empty"))
-            .foregroundStyle(.secondary)
-        }
-        ForEach(candidates) { food in
-          Button {
-            components = [FoodComponent(foodNumber: food.foodNumber, grams: defaultGrams, name: food.name)]
-          } label: {
-            HStack {
-              Text(food.name).foregroundStyle(.primary).multilineTextAlignment(.leading)
-              Spacer(minLength: 8)
-              Image(systemName: "plus.circle").foregroundStyle(.tint)
-            }
-          }
-          .accessibilityHint(NSLocalizedString("Links this food", comment: "Composition candidate hint"))
-        }
-      } else {
-        ForEach($components) { $component in
+      TextField(
+        query.isEmpty ? NSLocalizedString("Search the table", comment: "Composition search placeholder") : query,
+        text: $searchText)
+      HStack {
+        Text(NSLocalizedString("Edible weight", comment: "Weight of the food picked from the composition table"))
+        Spacer()
+        TextField(NutritionFormatter.formatNutrition(defaultGrams), text: $gramsText)
+          .keyboardType(.decimalPad)
+          .multilineTextAlignment(.trailing)
+          .frame(width: 80)
+        Text("g").foregroundStyle(.secondary)
+      }
+      if candidates.isEmpty {
+        Text(query.isEmpty
+          ? NSLocalizedString("Enter the product name to see candidates.", comment: "Composition pick hint")
+          : NSLocalizedString("No match in the food composition table.", comment: "Composition pick empty"))
+          .foregroundStyle(.secondary)
+      }
+      ForEach(candidates) { food in
+        Button {
+          onPick(food, grams)
+        } label: {
           HStack {
-            Text(component.name ?? component.foodNumber)
+            Text(food.name).foregroundStyle(.primary).multilineTextAlignment(.leading)
             Spacer(minLength: 8)
-            TextField("100", value: $component.grams, format: .number)
-              .keyboardType(.decimalPad)
-              .multilineTextAlignment(.trailing)
-              .frame(width: 70)
-            Text("g")
+            Image(systemName: "arrow.down.circle").foregroundStyle(.tint)
           }
         }
-        .onDelete { components.remove(atOffsets: $0) }
-        Button(NSLocalizedString("Remove the link", comment: "Composition link remove"), role: .destructive) {
-          components = []
-        }
+        .accessibilityHint(NSLocalizedString(
+          "Fills the nutrient fields with its values", comment: "Composition candidate hint"))
+      }
+      if let picked {
+        Text(String(
+          format: NSLocalizedString("Filled with %@, %@ g. You can edit the values.", comment: "Composition pick result"),
+          picked.name, NutritionFormatter.formatNutrition(picked.grams)))
+          .font(.footnote)
+          .foregroundStyle(.secondary)
       }
     } header: {
-      Text(NSLocalizedString("Food Composition Table", comment: "Composition link section"))
+      Text(NSLocalizedString("Pick from the Composition Table", comment: "Composition pick section"))
     } footer: {
       Text(NSLocalizedString(
-        "Nutrients not on the label are filled from the table. The weight is the edible part in one portion.",
-        comment: "Composition link footer"))
+        "Fills empty fields with the values for this weight. The weight is the edible part in one portion.",
+        comment: "Composition pick footer"))
     }
     .task(id: query) {
       // 打つたびに探さないよう、少し待ってから探す。名前を変えれば候補も変わる
       try? await Task.sleep(for: .milliseconds(400))
       guard !Task.isCancelled else { return }
-      candidates = query.isEmpty ? [] : ((try? await APIClient.shared.searchComposition(query: query, limit: 4)) ?? [])
+      candidates = query.isEmpty ? [] : ((try? await APIClient.shared.searchComposition(query: query, limit: 5)) ?? [])
     }
   }
 }

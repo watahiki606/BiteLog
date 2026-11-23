@@ -457,7 +457,7 @@ private struct NutrientRowsGalleryView: View {
       EditNutrientRow(addedNutrient: .saturatedFat, perPortion: 2.4, total: 3.6)
       EditNutrientRow(addedNutrient: .calcium, perPortion: nil, total: nil)
       EditNutrientRow(addedNutrient: .vitaminB12, perPortion: 0.4, total: 0.6)
-      NutrientCardRow(nutrient: NutrientID.potassium, note: "Filled from the food composition table") {
+      NutrientCardRow(nutrient: NutrientID.potassium) {
         Text("420mg")
       }
     }

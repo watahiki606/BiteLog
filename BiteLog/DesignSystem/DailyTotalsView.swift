@@ -100,7 +100,7 @@ struct DailyTotalsView: View {
             ringGrid(NutrientID.detailNutrients)
               .padding(.top, 12)
           } label: {
-            Text(NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients filled from the composition table"))
+            Text(NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients rarely on food labels"))
               .font(.subheadline.weight(.semibold))
               .foregroundStyle(.secondary)
           }

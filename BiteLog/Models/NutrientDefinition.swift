@@ -14,7 +14,7 @@ struct NutrientDefinition: Equatable, Sendable {
   let group: NutrientGroup
   /// 最初からある5項目。必須で、未入力は 0 として持つ。それ以外は未入力を「不明」として持つ
   let core: Bool
-  /// 成分表から補うだけの詳しい栄養素。食品表示に載ることがまれなので入力欄に出さない
+  /// 食品表示に載ることがまれな詳しい栄養素。入力欄は畳んだ中に出す
   let detail: Bool
   let label: NutrientLabelRequirement
 }
@@ -32,6 +32,6 @@ enum NutrientLabelRequirement: String, Sendable {
 extension NutrientID {
   /// 最初の5項目のあとに足した栄養素のうち、食品表示に載りうるもの。入力欄に出す
   static let labelNutrients = allCases.filter { !$0.definition.core && !$0.definition.detail }
-  /// 成分表から補うだけの詳しい栄養素。どの画面でも、畳んだ「詳しい栄養素」の中に並べる
+  /// 食品表示に載ることがまれな詳しい栄養素。どの画面でも、畳んだ「詳しい栄養素」の中に並べる
   static let detailNutrients = allCases.filter { $0.definition.detail }
 }
