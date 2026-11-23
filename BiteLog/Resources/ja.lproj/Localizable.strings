@@ -469,9 +469,6 @@
 "Other Nutrients" = "その他の栄養素";
 "Other Nutrients per Day" = "その他の栄養素の1日平均";
 "Leave blank if the label doesn't show it. Enter 0 only when it is really 0." = "表示に無ければ空欄のままにしてください。0 は、本当に 0 のときだけ入れます。";
-// 値の分からない品があるときの合計。%1$d が値の分かっていた品数、%2$d が全品数
-"Total of %1$d of %2$d items" = "%2$d品中%1$d品の合計";
-"From %1$d of %2$d items" = "%2$d品中%1$d品の値から";
 "Salt and Saturated Fat" = "食塩と飽和脂肪酸";
 "Add your sex and birth date in Profile to compare with the dietary goals." = "プロフィールに性別と生年月日を入れると、食事摂取基準の目標量と並べます。";
 

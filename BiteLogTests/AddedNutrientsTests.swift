@@ -36,8 +36,7 @@ struct AddedNutrientsTests {
     #expect(totals.itemCount == 3)
     #expect(totals.knownCount(.saltEquivalent) == 2)
     #expect(totals.knownCount(.saturatedFat) == 1)
-    #expect(totals.isComplete(.calories))
-    #expect(!totals.isComplete(.saltEquivalent))
+    #expect(totals.knownCount(.calories) == 3)
   }
 
   @Test func 日ごとの集計から品数を読む() throws {

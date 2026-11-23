@@ -70,8 +70,6 @@ struct NutrientRingCard: View {
   ///
   /// 次の食事を決められるのは「あと何 g」なので、1日の合計では出す。過去の平均に「あと」は無いので、期間では出さない
   var showsRemaining: Bool = false
-  /// 値の分からない品があるときの「5品中3品の合計」
-  var partialNote: String? = nil
   var background: Color = Color(UIColor.secondarySystemGroupedBackground)
 
   var body: some View {
@@ -99,9 +97,6 @@ struct NutrientRingCard: View {
             if let note = Self.menstruatingNote(progress.goal) {
               Text(note).foregroundStyle(.secondary)
             }
-          }
-          if let partialNote {
-            Text(partialNote).foregroundStyle(.secondary)
           }
         }
         .font(.caption2)
@@ -199,7 +194,6 @@ struct NutrientRingCard: View {
       }
       if let note = Self.menstruatingNote(progress.goal) { parts.append(note) }
     }
-    if let partialNote { parts.append(partialNote) }
     return parts.joined(separator: ", ")
   }
 }
@@ -299,7 +293,6 @@ struct NutrientRingGrid: View {
     }
     return NutrientRingCard(
       nutrient: id, amount: amount, progress: progress, showsRemaining: showsRemaining,
-      partialNote: known > 0 && !totals.isComplete(id) ? partialNote(known) : nil,
       background: cardBackground)
   }
 
@@ -315,16 +308,4 @@ struct NutrientRingGrid: View {
     return false
   }
 
-  private func partialNote(_ known: Int) -> String {
-    switch aggregation {
-    case .dayTotal:
-      return String(
-        format: NSLocalizedString("Total of %1$d of %2$d items", comment: "Partial total of a nutrient"),
-        known, totals.itemCount)
-    case .dailyAverage:
-      return String(
-        format: NSLocalizedString("From %1$d of %2$d items", comment: "Partial average of a nutrient"),
-        known, totals.itemCount)
-    }
-  }
 }

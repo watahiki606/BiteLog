@@ -3,7 +3,8 @@ import Foundation
 /// 何品かを足した合計と、栄養素ごとに値の分かっていた品数。
 ///
 /// あとから足した栄養素は、値の分からない品がある。0 として足すと少なく見えるので、
-/// 分かっている品だけを足し、「5品中3品の合計」と添えられるように品数を持つ。
+/// 分かっている品だけを足す。どの品も分からなければ「不明」と出し、
+/// 食事の質スコアは分からない品が多いときに点を出さない。そのために品数を持つ。
 struct NutrientTotals {
   let values: NutritionValues
   /// 合計に入れた品の数
@@ -30,9 +31,6 @@ struct NutrientTotals {
   func knownCount(_ id: NutrientID) -> Int {
     knownCounts[id] ?? (id.definition.core ? itemCount : 0)
   }
-
-  /// 全品の値が分かっていれば true
-  func isComplete(_ id: NutrientID) -> Bool { knownCount(id) == itemCount }
 
   static func + (lhs: NutrientTotals, rhs: NutrientTotals) -> NutrientTotals {
     var knownCounts: [NutrientID: Int] = [:]
