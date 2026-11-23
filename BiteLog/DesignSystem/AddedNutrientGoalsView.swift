@@ -10,6 +10,8 @@ struct AddedNutrientGoalsView: View {
   /// プロフィールの性別と年齢で引いた目標量。プロフィールが無ければ空
   let goals: [NutrientID: DietaryReferenceIntakes.Goal]
 
+  @State private var showsDetailNutrients = false
+
   /// 飽和脂肪酸の目標量はエネルギーに占める割合なので、期間に食べたエネルギーの1日平均と比べる
   private var energyPerDay: Double { totals.values.calories / Double(max(dayCount, 1)) }
 
@@ -25,8 +27,9 @@ struct AddedNutrientGoalsView: View {
 
       grid(NutrientID.labelNutrients)
 
-      // 詳しい栄養素は15あり、並べると画面が長くなりすぎる。畳んでおく
-      DisclosureGroup {
+      // 詳しい栄養素は15あり、並べると画面が長くなりすぎる。畳んでおく。
+      // 1日の合計の同じ見出しと、押せる範囲と見た目をそろえる
+      HeadingDisclosure(isExpanded: $showsDetailNutrients) {
         grid(NutrientID.detailNutrients)
           .padding(.top, 12)
       } label: {
