@@ -6,7 +6,7 @@ import { useFoodDetail, type FoodComponent } from '@/hooks/useComposition';
 import { Field, Modal, fieldClass as fc } from '@/components/Modal';
 import ComponentsEditor from '@/components/ComponentsEditor';
 import {
-  ADDED_NUTRIENTS, NUTRIENTS, addedInputsFrom, addedInputsToBody, carbohydrateOf, changedAddedBody, defaultComponentGrams,
+  LABEL_NUTRIENTS, NUTRIENTS, addedInputsFrom, addedInputsToBody, carbohydrateOf, changedAddedBody, defaultComponentGrams,
   emptyAddedInputs, inputStep, pickNutrients, withCarbohydrate, withFiber, zeroNutrients,
   type AddedInputs, type AddedNutrientId, type CoreNutrientId,
 } from '@/lib/nutrients';
@@ -38,8 +38,9 @@ const NUTRIENT_FIELDS = NUTRIENTS.filter((n) => n.core).map((n) => ({
   step: n.fractionDigits > 0 ? String(inputStep(n)) : undefined,
 }));
 
-// あとから足した栄養素。空欄は「分からない」として保存する
-const ADDED_FIELDS = ADDED_NUTRIENTS.map((n) => ({
+// あとから足した栄養素。空欄は「分からない」として保存する。
+// 詳しい栄養素は食品表示に載ることがまれなので欄を出さず、成分表とのひも付けから補う
+const ADDED_FIELDS = LABEL_NUTRIENTS.map((n) => ({
   id: n.id as AddedNutrientId,
   name: n.names.en,
   unit: n.unit,
