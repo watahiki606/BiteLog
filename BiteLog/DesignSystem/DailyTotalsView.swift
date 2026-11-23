@@ -17,6 +17,8 @@ struct DailyTotalsView: View {
   /// プロフィールの性別と年齢で引いた基準値。プロフィールが無ければ空で、値だけを出す
   var referenceGoals: [NutrientID: DietaryReferenceIntakes.Goal] = [:]
 
+  @State private var showsDetailNutrients = false
+
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.colorScheme) private var colorScheme
 
@@ -78,7 +80,8 @@ struct DailyTotalsView: View {
         }
       }
 
-      DisclosureGroup(isExpanded: $showsAllNutrients) {
+      // 合計のカードは List の1行なので、DisclosureGroup だと中のカードを押しただけで閉じる
+      HeadingDisclosure(isExpanded: $showsAllNutrients) {
         VStack(alignment: .leading, spacing: 12) {
           NutrientBar(
             nutrient: .fiber, value: totals.dietaryFiber, target: goals.fiber,
@@ -96,7 +99,7 @@ struct DailyTotalsView: View {
 
           // 統計と同じく、詳しい栄養素は畳んだ中に同じカードで並べる。
           // 統計にだけ出すと、同じ栄養素がどこで見られるのか迷う
-          DisclosureGroup {
+          HeadingDisclosure(isExpanded: $showsDetailNutrients) {
             ringGrid(NutrientID.detailNutrients)
               .padding(.top, 12)
           } label: {

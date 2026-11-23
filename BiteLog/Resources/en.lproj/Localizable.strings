@@ -493,3 +493,9 @@
 
 /* Nutrients rarely on food labels, shown collapsed */
 "Detailed Nutrients" = "Detailed Nutrients";
+
+/* State of a disclosure that is open */
+"Expanded" = "Expanded";
+
+/* State of a disclosure that is closed */
+"Collapsed" = "Collapsed";

@@ -528,3 +528,9 @@
 
 /* 食品表示に載ることがまれな詳しい栄養素。畳んだ中に並べる */
 "Detailed Nutrients" = "詳しい栄養素";
+
+/* State of a disclosure that is open */
+"Expanded" = "開いています";
+
+/* State of a disclosure that is closed */
+"Collapsed" = "閉じています";
