@@ -12,19 +12,6 @@ struct FoodComponent: Codable, Hashable, Identifiable {
   var id: String { foodNumber }
 }
 
-/// 成分表の1食品。値は 100 g あたりで、未測定の栄養素は持たない
-struct CompositionFoodDTO: Decodable, Hashable, Identifiable {
-  var foodNumber: String
-  var name: String
-  var per100g: [String: Double]
-
-  var id: String { foodNumber }
-}
-
-struct CompositionSearchResponse: Decodable {
-  var items: [CompositionFoodDTO]
-}
-
 struct FoodMasterDTO: Codable, Identifiable, Hashable {
   var id: UUID
   var brandName: String

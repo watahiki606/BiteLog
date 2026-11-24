@@ -1,4 +1,5 @@
-// 文部科学省の Excel から、composition_foods に入れる SQL を書き出す。
+// 文部科学省の Excel から、国の一覧の食品を food_masters に入れる SQL を書き出す。
+// 食品番号から決まる id で上書きするので、版を入れ替えるときも同じ食品の行の値が変わるだけで、増えない。
 //
 // 使い方:
 //   bun scripts/composition/build-sql.ts <Excel を置いたフォルダ> > composition.sql
@@ -9,13 +10,13 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { COMPOSITION_NUTRIENTS, compositionNutrients, compositionSearchText } from '../../src/lib/composition';
+import { COMPOSITION_NUTRIENTS, compositionFoodUpsert, compositionNutrients } from '../../src/lib/composition';
 import manifest from './manifest.json';
 
-/** 脂肪酸成分表から raw_json に残す列。個々の脂肪酸は入れない */
+/** 脂肪酸成分表から本表の値に足す列。飽和脂肪酸と n-3、n-6 系の値はここから取る */
 const FATTY_ACID_SUMMARY = ['FACID', 'FASAT', 'FAMS', 'FAPU', 'FAPUN3', 'FAPUN6'];
 
-type Row = { foodNumber: string; group: string; name: string; remarks: string; cells: Record<string, string> };
+type Row = { foodNumber: string; name: string; cells: Record<string, string> };
 
 function unzip(path: string, entry: string): string {
   const result = Bun.spawnSync(['unzip', '-p', path, entry]);
@@ -80,10 +81,7 @@ function readTable(path: string): Row[] {
       tags.forEach((tag, i) => {
         if (i > 3 && tag !== '' && i !== remarksIndex) cells[tag] = (r[i] ?? '').trim();
       });
-      return {
-        foodNumber: r[1], group: r[0], name: r[3].replace(/\s+/g, ' ').replace(/　+/g, '　').trim(),
-        remarks: remarksIndex >= 0 ? (r[remarksIndex] ?? '') : '', cells,
-      };
+      return { foodNumber: r[1], name: r[3].replace(/\s+/g, ' ').replace(/　+/g, '　').trim(), cells };
     });
 }
 
@@ -107,8 +105,9 @@ function sqlString(s: string): string {
   return `'${s.replaceAll("'", "''")}'`;
 }
 
-function sqlNumber(v: number | null): string {
-  return v === null ? 'NULL' : String(v);
+function sqlValue(v: string | number | null): string {
+  if (v === null) return 'NULL';
+  return typeof v === 'number' ? String(v) : sqlString(v);
 }
 
 const dir = process.argv[2];
@@ -120,7 +119,6 @@ if (!dir) {
 const main = readTable(await source(dir, 'main'));
 const fattyAcids = new Map(readTable(await source(dir, 'fattyAcid')).map((r) => [r.foodNumber, r.cells]));
 
-const columns = ['food_number', 'food_group', 'name', 'search_text', 'edition', ...COMPOSITION_NUTRIENTS.map((n) => n.column), 'raw_json'];
 const lines: string[] = [];
 let withFattyAcid = 0;
 for (const row of main) {
@@ -129,16 +127,10 @@ for (const row of main) {
   const faSummary = Object.fromEntries(FATTY_ACID_SUMMARY.filter((t) => t in fa).map((t) => [t, fa[t]]));
   // 本表と脂肪酸成分表の両方にある列は本表の値を使う。脂肪酸の列は本表に無いので、成分表の table で分けなくてよい
   const cells = { ...faSummary, ...row.cells };
-  const values = compositionNutrients(cells);
-  lines.push(
-    `INSERT OR REPLACE INTO composition_foods (${columns.join(', ')}) VALUES (` +
-      [
-        sqlString(row.foodNumber), sqlString(row.group), sqlString(row.name),
-        sqlString(compositionSearchText(row.name, row.remarks)), sqlString(manifest.edition),
-        ...COMPOSITION_NUTRIENTS.map((n) => sqlNumber(values[n.column])),
-        sqlString(JSON.stringify(cells)),
-      ].join(', ') + ');',
-  );
+  const { sql, binds } = compositionFoodUpsert(row.foodNumber, row.name, compositionNutrients(cells));
+  // ? を順に値の文字に置き換える。replace は元の文だけをたどるので、入れた値の中の ? は置き換わらない
+  let i = 0;
+  lines.push(sql.replace(/\?/g, () => sqlValue(binds[i++])).replace(/\n\s*/g, ' ') + ';');
 }
 
 process.stdout.write(lines.join('\n') + '\n');

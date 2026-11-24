@@ -448,20 +448,13 @@
 "Vitamins" = "Vitamins";
 "Fatty acids" = "Fatty acids";
 
-/* 食品の入力で、似た食品の値を欄に入れる */
-"Enter the product name to see candidates." = "Enter the product name to see candidates.";
-"Fill from a Similar Food" = "Fill from a Similar Food";
-"Search foods" = "Search foods";
-"No matching food." = "No matching food.";
-"Weight per portion" = "Weight per portion";
+/* 食品の入力の単位の例と、写真の解析で値の元にした食材、データの出典 */
 "e.g. piece, g" = "e.g. piece, g";
-"Fills the nutrient fields with its values" = "Fills the nutrient fields with its values";
-"Filled with %@, %@ g. You can edit the values." = "Filled with %1$@, %2$@ g. You can edit the values.";
 "Ingredients behind the values" = "Ingredients behind the values";
 "Data Sources" = "Data Sources";
 
 /* データの出典 */
-"DataSources.Composition" = "Created and processed by BiteLog from the Standard Tables of Food Composition in Japan 2020 (Eighth Revised Edition), 2023 supplement, Ministry of Education, Culture, Sports, Science and Technology, including the errata of March 27, 2026. When you pick a food and its weight under “Fill from a Similar Food” while entering a food, its table values go into the nutrient fields. Photo analysis also splits a meal into table foods to calculate its values. Niacin is shown as niacin equivalents, and vitamin E as α-tocopherol.";
+"DataSources.Composition" = "Created and processed by BiteLog from the Standard Tables of Food Composition in Japan 2020 (Eighth Revised Edition), 2023 supplement, Ministry of Education, Culture, Sports, Science and Technology, including the errata of March 27, 2026. Foods from the table appear after your own foods when you search for a food. Values are per 100 g. Photo analysis also splits a meal into table foods to calculate its values. Niacin is shown as niacin equivalents, and vitamin E as α-tocopherol.";
 "DataSources.DRI" = "Reference values come from the Dietary Reference Intakes for Japanese (2025), Ministry of Health, Labour and Welfare, chosen by the sex and age in your profile. They apply to habitual intake, so they are compared with the daily average over the selected period.";
 "Ministry of Education: Standard Tables of Food Composition" = "Standard Tables of Food Composition in Japan";
 "Ministry of Health: Dietary Reference Intakes for Japanese 2025" = "Dietary Reference Intakes for Japanese (2025)";

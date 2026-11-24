@@ -3,6 +3,7 @@ import { SELF, env } from 'cloudflare:test';
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { issueSessionJwt } from '../middleware/auth';
 import { applySchema } from '../test/schema';
+import { compositionFoodUpsert } from '../lib/composition';
 
 const TEST_SECRET = 'dev-and-test-secret';
 
@@ -78,6 +79,57 @@ describe('GET /api/food-masters の q', () => {
   it('1語なら、ブランド名か商品名に含まれるものをすべて返す', async () => {
     const { names } = await search(`q=${encodeURIComponent('サーモン')}`);
     expect(names).toEqual(['|サーモンアボカド丼', 'スシロー|サーモンアボカド']);
+  });
+});
+
+function insertComposition(foodNumber: string, name: string) {
+  const { sql, binds } = compositionFoodUpsert(foodNumber, name, { calories: 100 });
+  return env.DB.prepare(sql).bind(...binds);
+}
+
+async function searchInOrder(query: string) {
+  const res = await SELF.fetch(`http://localhost/api/food-masters?${query}`, {
+    headers: { Authorization: `Bearer ${await issueSessionJwt('user-a', TEST_SECRET)}` },
+  });
+  const body = await res.json<{ items: Array<{ productName: string }> }>();
+  return body.items.map((i) => i.productName);
+}
+
+describe('GET /api/food-masters の並び', () => {
+  beforeEach(async () => {
+    await env.DB.batch([
+      insertComposition('11220', '＜鳥肉類＞ にわとり ［若どり・主品目］ むね 皮なし 生'),
+      insertComposition('01088', 'こめ ［水稲めし］ 精白米 うるち米'),
+      insertComposition('12004', '鶏卵 全卵 ゆで'),
+      insertFoodMaster('fm-other', '', 'ほかの人のご飯', 'someone-else'),
+      insertFoodMaster('fm-mine', '', '自分のご飯', 'user-a'),
+      env.DB.prepare(
+        `INSERT INTO user_food_stats (user_id, food_master_id, usage_count, last_used_date) VALUES ('user-a', ?, 3, '2026-11-20')`,
+      ).bind('00000000-0000-4000-8000-000000012004'),
+    ]);
+  });
+
+  it('使ったことのある食品、自分の食品、ほかの人の食品、国の一覧の食品の順。国の一覧は名前の短い順', async () => {
+    expect(await searchInOrder('')).toEqual([
+      '鶏卵 全卵 ゆで',
+      '自分のご飯',
+      'ほかの人のご飯',
+      'こめ ［水稲めし］ 精白米 うるち米',
+      '＜鳥肉類＞ にわとり ［若どり・主品目］ むね 皮なし 生',
+    ]);
+  });
+
+  it('onlyMine なら、自分の食品だけを返す', async () => {
+    expect(await searchInOrder('onlyMine=true')).toEqual(['自分のご飯']);
+  });
+
+  it('国の一覧の食品は、普段の言葉でも成分表の書き方に寄せて見つかる。元の語で見つかる食品も残る', async () => {
+    expect(await searchInOrder(`q=${encodeURIComponent('ご飯')}`)).toEqual([
+      '自分のご飯', 'ほかの人のご飯', 'こめ ［水稲めし］ 精白米 うるち米',
+    ]);
+    expect(await searchInOrder(`q=${encodeURIComponent('鶏むね肉 生')}`)).toEqual([
+      '＜鳥肉類＞ にわとり ［若どり・主品目］ むね 皮なし 生',
+    ]);
   });
 });
 

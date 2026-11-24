@@ -385,10 +385,6 @@ struct FoodMasterFormView: View {
   /// 開いたときの「その他の栄養素」の欄。直すときは変えた欄だけを送る。
   /// 欄は値を1桁に丸めて出すので、全部を送ると触っていない値まで丸めて保存してしまう
   @State private var initialAddedValues: [NutrientID: String] = [:]
-  /// 最後に成分表から選んだ食品と重さ
-  @State private var picked: (name: String, grams: Double)?
-  /// 最後に成分表から入れた欄の文字。選び直したとき、手で直していない欄だけを入れ替える
-  @State private var pickedTexts: [CompositionPick.Field: String] = [:]
   @State private var showsDetailFields = false
   @State private var isSaving = false
   @State private var failure: OperationFailure?
@@ -464,12 +460,6 @@ struct FoodMasterFormView: View {
             NSLocalizedString("Unit", comment: "Unit"), text: $portionUnit, field: .portionUnit,
             placeholder: NSLocalizedString("e.g. piece, g", comment: "Placeholder of the portion unit"))
         }
-
-        CompositionPickSection(
-          productName: productName,
-          defaultGrams: CompositionPick.defaultGrams(portionSize: Double(portionSize) ?? 1, portionUnit: portionUnit),
-          picked: picked,
-          onPick: fill)
 
         Section {
           // 1日の合計や統計と同じく、栄養素を1枚ずつのカードにして画面の地に並べる
@@ -617,44 +607,6 @@ struct FoodMasterFormView: View {
       id, text: Binding(get: { addedValues[id] ?? "" }, set: { addedValues[id] = $0 }),
       placeholder: NSLocalizedString("Unknown", comment: "Placeholder for an unknown nutrient value"),
       field: .added(id))
-  }
-
-  /// 成分表から選んだ食品の、重さの分の値を欄に入れる
-  private func fill(_ food: CompositionFoodDTO, grams: Double) {
-    let texts = CompositionPick.fieldTexts(per100g: food.per100g, grams: grams)
-    let current = Dictionary(uniqueKeysWithValues: Self.pickFields.map { ($0, text(of: $0)) })
-    for (field, text) in CompositionPick.merge(current: current, picked: texts, previouslyPicked: pickedTexts) {
-      setText(text, of: field)
-    }
-    pickedTexts = texts
-    picked = (food.name, grams)
-    // 詳しい栄養素にも値が入る。畳んだままだと入ったことが見えない
-    if NutrientID.detailNutrients.contains(where: { texts[.added($0)] != nil }) { showsDetailFields = true }
-  }
-
-  private static let pickFields: [CompositionPick.Field] =
-    [.calories, .protein, .fat, .carbohydrate, .dietaryFiber] + NutrientID.addedNutrients.map { .added($0) }
-
-  private func text(of field: CompositionPick.Field) -> String {
-    switch field {
-    case .calories: return calories
-    case .protein: return protein
-    case .fat: return fat
-    case .carbohydrate: return carbohydrate
-    case .dietaryFiber: return dietaryFiber
-    case .added(let id): return addedValues[id] ?? ""
-    }
-  }
-
-  private func setText(_ text: String, of field: CompositionPick.Field) {
-    switch field {
-    case .calories: calories = text
-    case .protein: protein = text
-    case .fat: fat = text
-    case .carbohydrate: carbohydrate = text
-    case .dietaryFiber: dietaryFiber = text
-    case .added(let id): addedValues[id] = text
-    }
   }
 
   private func focusNextField() {

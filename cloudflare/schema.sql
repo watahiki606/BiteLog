@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS food_masters (
   vitamin_a REAL,
   vitamin_d REAL,
   vitamin_c REAL,
-  -- 詳しい栄養素。成分表から補うだけ
+  -- 詳しい栄養素。食品表示に載ることがまれ
   phosphorus REAL,
   zinc REAL,
   copper REAL,
@@ -50,50 +50,6 @@ CREATE TABLE IF NOT EXISTS food_masters (
 );
 
 CREATE INDEX IF NOT EXISTS idx_food_masters_product_name ON food_masters(product_name);
-
--- composition_foods: 日本食品標準成分表。可食部 100 g あたり。成分表の「-」は NULL
-CREATE TABLE IF NOT EXISTS composition_foods (
-  food_number TEXT PRIMARY KEY,
-  food_group TEXT NOT NULL,
-  name TEXT NOT NULL,
-  search_text TEXT NOT NULL,
-  edition TEXT NOT NULL,
-  calories REAL,
-  protein REAL,
-  fat REAL,
-  net_carbs REAL,
-  dietary_fiber REAL,
-  salt_equivalent REAL,
-  saturated_fat REAL,
-  potassium REAL,
-  calcium REAL,
-  magnesium REAL,
-  iron REAL,
-  vitamin_a REAL,
-  vitamin_d REAL,
-  vitamin_c REAL,
-  phosphorus REAL,
-  zinc REAL,
-  copper REAL,
-  manganese REAL,
-  iodine REAL,
-  selenium REAL,
-  chromium REAL,
-  molybdenum REAL,
-  vitamin_e REAL,
-  vitamin_k REAL,
-  vitamin_b1 REAL,
-  vitamin_b2 REAL,
-  niacin REAL,
-  vitamin_b6 REAL,
-  vitamin_b12 REAL,
-  folate REAL,
-  pantothenic_acid REAL,
-  biotin REAL,
-  n3_fatty_acids REAL,
-  n6_fatty_acids REAL,
-  raw_json TEXT NOT NULL
-);
 
 -- log_items: ユーザーごとの食事ログ（user_idで分離）
 CREATE TABLE IF NOT EXISTS log_items (

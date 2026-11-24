@@ -1,7 +1,7 @@
-// 写真の解析で、料理を成分表の食材と重さに分けさせ、値は成分表から引く。
+// 写真の解析で、料理を成分表の食材と重さに分けさせ、値は food_masters に入れた国の一覧の食品から引く。
 // AI に微量栄養素の数値を直接答えさせると大きく外れる。成分表を引く形のほうが誤差が小さいと報告されている。
 import { NUTRIENTS } from './nutrients';
-import { COMPOSITION_NUTRIENTS } from './composition';
+import { COMPOSITION_CREATOR, COMPOSITION_NUTRIENTS, compositionFoodId } from './composition';
 
 /** 食材の1行。grams は1回分に含まれる、その食材の可食部の重さ */
 export type ComponentInput = { foodNumber: string; grams: number };
@@ -66,15 +66,19 @@ export type Catalog = { text: string; names: Map<string, string> };
 
 let cached: Catalog | null = null;
 
-/** 成分表の食品番号と食品名の一覧。表が空なら null で、写真の解析は今までどおり数値だけを答えさせる */
+/** 国の一覧の食品番号と食品名の一覧。1つも無ければ null で、写真の解析は数値だけを答えさせる */
 export async function loadCatalog(db: D1Database | undefined): Promise<Catalog | null> {
   if (cached) return cached;
   if (!db) return null;
   // 濃縮の食品は薄める前の値で、そのまま重さを掛けると食塩が何倍にもなる。評価でラーメンが 58 g になったので一覧から外す。
   // 濃縮還元のジュースはそのまま飲む形なので残す
+  // 利用者が成分表を出典にした食品も食品番号を持つが、値は国の一覧のものとは限らないので、作った人で絞る
   const { results } = await db.prepare(
-    "SELECT food_number, name FROM composition_foods WHERE name NOT LIKE '%濃縮%' OR name LIKE '%濃縮還元%' ORDER BY food_number",
+    `SELECT nutrient_source_ref AS food_number, product_name AS name FROM food_masters
+     WHERE created_by = ? AND (product_name NOT LIKE '%濃縮%' OR product_name LIKE '%濃縮還元%')
+     ORDER BY nutrient_source_ref`,
   )
+    .bind(COMPOSITION_CREATOR)
     .all<{ food_number: string; name: string }>();
   if (results.length === 0) return null;
   cached = {
@@ -108,7 +112,7 @@ export type ResolvedComponents = {
   totals: Record<string, number | null>;
 };
 
-/** AI が答えた食材を確かめ、成分表から値を足す。表に無い番号や重さの無い行は捨てる。残らなければ null */
+/** AI が答えた食材を確かめ、国の一覧の食品から値を足す。表に無い番号や重さの無い行は捨てる。残らなければ null */
 export async function resolveComponents(db: D1Database, catalog: Catalog, raw: unknown): Promise<ResolvedComponents | null> {
   if (!Array.isArray(raw)) return null;
   const valid = raw.filter((c) => catalog.names.has((c as { foodNumber?: string })?.foodNumber ?? '') && Number((c as { grams?: unknown }).grams) > 0);
@@ -117,12 +121,19 @@ export async function resolveComponents(db: D1Database, catalog: Catalog, raw: u
 
   const numbers = [...new Set(components.map((c) => c.foodNumber))];
   const columns = COMPOSITION_NUTRIENTS.map((n) => n.column);
+  // id は食品番号から決まるので、主キーで引く
   const { results } = await db.prepare(
-    `SELECT food_number, ${columns.join(', ')} FROM composition_foods WHERE food_number IN (${numbers.map(() => '?').join(', ')})`,
-  ).bind(...numbers).all<Record<string, unknown>>();
-  const per100g = new Map<string, Per100g>(results.map((r) => [
-    r.food_number as string, Object.fromEntries(columns.map((col) => [col, r[col] as number | null])),
-  ]));
+    `SELECT nutrient_source_ref AS food_number, portion_size, ${columns.join(', ')} FROM food_masters
+     WHERE created_by = ? AND id IN (${numbers.map(() => '?').join(', ')})`,
+  ).bind(COMPOSITION_CREATOR, ...numbers.map(compositionFoodId)).all<Record<string, unknown>>();
+  // 国の一覧は 100 g あたりで入れるが、管理者が量を直しても 100 g あたりに戻して足す
+  const per100g = new Map<string, Per100g>(results.map((r) => {
+    const scale = 100 / (r.portion_size as number);
+    return [
+      r.food_number as string,
+      Object.fromEntries(columns.map((col) => [col, r[col] === null ? null : (r[col] as number) * scale])),
+    ];
+  }));
 
   const totals = sumComponents(components.map((c) => ({ grams: c.grams, per100g: per100g.get(c.foodNumber) ?? null })));
   // 1食で食塩が 20 g を超えるのは、粉の調味料をスープの量で数えたような読み違い。評価で顆粒だし 100 g が出た。
