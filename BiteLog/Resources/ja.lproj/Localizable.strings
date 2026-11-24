@@ -552,3 +552,14 @@
 "DietQualityScore.About.Differences.Unknown" = "研究では、すべての食品の栄養素の値がそろっています。BiteLog では、値のわからない食品を0とは数えず、値のわかる食品だけでカロリーあたりの量を出して換算します。値のわからない食品も同じような割合で栄養素を含んでいたとみなすので、そうした食品があるときの点は目安です。1回の食事の中に値のわかる食品とわからない食品が混ざるときは、わかる食品のカロリーを食品の数の割合から見積もります。";
 "DietQualityScore.About.Care.Title" = "気をつけること";
 "DietQualityScore.About.Sources.Title" = "出典";
+
+/* 統計で栄養素を押すと開く説明 */
+"What it does" = "はたらき";
+"When you get too little" = "足りないとき";
+"When you get too much" = "とりすぎたとき";
+"Foods rich in it" = "多く含む食品の例";
+"Sources" = "出典";
+"General information about the nutrient, not advice for your own health. Ask a doctor or dietitian about your own case." = "栄養素についての一般的な情報で、あなたの健康についての助言ではありません。ご自身のことは、医師や管理栄養士に相談してください。";
+"NutrientInfo.Source.EHealthNet" = "厚生労働省 e-ヘルスネット「%@」";
+"NutrientInfo.Source.HFNet" = "国立健康・栄養研究所「健康食品」の安全性・有効性情報「%@」";
+"Shows what this nutrient does" = "栄養素の説明を開きます";

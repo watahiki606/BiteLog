@@ -105,6 +105,8 @@ struct StatisticsView: View {
 
   @State private var period: StatPeriod = .week
   @State private var metric: TrendMetric = .calories
+  /// 押した栄養素の説明。シートで開く
+  @State private var selectedInfo: NutrientInfo?
   @State private var bodyMeasurements: [BodyMeasurementDTO] = []
 
   /// 同じ日に何度も乗った日は、朝いちばんを代表にする。記録の画面と同じ
@@ -231,11 +233,13 @@ struct StatisticsView: View {
           // 値は期間の1日平均。上の主要な栄養素の見出しと書き方をそろえる
           sectionTitle(NSLocalizedString("Other Nutrients per Day", comment: "Statistics section"))
           // 栄養素ごとのカードを地の上に直接並べる。1枚のカードに入れると、カードの中にカードが重なる
-          AddedNutrientGoalsView(totals: settledTotals, dayCount: visibleDays, goals: addedNutrientGoals)
+          AddedNutrientGoalsView(
+            totals: settledTotals, dayCount: visibleDays, goals: addedNutrientGoals,
+            onSelect: { selectedInfo = NutrientInfo($0) })
 
           dietQualityTitle
           CardView {
-            DietQualityScoreView(result: dietQualityScore)
+            DietQualityScoreView(result: dietQualityScore, onSelect: { selectedInfo = NutrientInfo($0) })
           }
 
           sectionTitle(NSLocalizedString("PFC Balance", comment: "Statistics section"))
@@ -258,6 +262,9 @@ struct StatisticsView: View {
     .navigationTitle(NSLocalizedString("Statistics", comment: "Tab name"))
     .navigationBarTitleDisplayMode(.large)
     .task(id: reloadKey) { await reload() }
+    .sheet(item: $selectedInfo) { info in
+      NutrientInfoView(info: info)
+    }
   }
 
   /// 医療的な判断に見えないよう、見出しに「参考」と添える
@@ -411,6 +418,7 @@ struct StatisticsView: View {
               .font(.title3)
               .foregroundStyle(.secondary)
           }
+          .opensNutrientInfo { selectedInfo = NutrientInfo(metric.nutrient) }
 
           // 目標の線と達成日数はカロリーにしか無い
           if metric == .calories {
@@ -542,21 +550,27 @@ struct StatisticsView: View {
         VStack(spacing: 12) {
           NutrientBar(
             nutrient: .protein, value: avg.protein, target: nutritionGoalsManager.targetProtein)
+            .opensNutrientInfo { selectedInfo = NutrientInfo(Nutrient.protein) }
           NutrientBar(nutrient: .fat, value: avg.fat, target: nutritionGoalsManager.targetFat)
+            .opensNutrientInfo { selectedInfo = NutrientInfo(Nutrient.fat) }
           NutrientBar(
             nutrient: .netCarbs, value: avg.netCarbs, target: nutritionGoalsManager.targetNetCarbs)
+            .opensNutrientInfo { selectedInfo = NutrientInfo(Nutrient.netCarbs) }
         }
       } else {
         HStack(alignment: .top, spacing: 16) {
           NutrientBar(
             nutrient: .protein, value: avg.protein, target: nutritionGoalsManager.targetProtein,
             isCompact: true)
+            .opensNutrientInfo { selectedInfo = NutrientInfo(Nutrient.protein) }
           NutrientBar(
             nutrient: .fat, value: avg.fat, target: nutritionGoalsManager.targetFat,
             isCompact: true)
+            .opensNutrientInfo { selectedInfo = NutrientInfo(Nutrient.fat) }
           NutrientBar(
             nutrient: .netCarbs, value: avg.netCarbs,
             target: nutritionGoalsManager.targetNetCarbs, isCompact: true)
+            .opensNutrientInfo { selectedInfo = NutrientInfo(Nutrient.netCarbs) }
         }
       }
     }

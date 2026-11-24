@@ -205,6 +205,8 @@ struct NutrientRingGrid: View {
   /// 飽和脂肪酸の目標量はエネルギーに占める割合なので、その割合を掛けるエネルギー
   let energy: Double
   var cardBackground: Color = Color(UIColor.secondarySystemGroupedBackground)
+  /// カードを押したとき。統計だけが渡し、説明を開く。ログの合計では渡さない
+  var onSelect: ((NutrientID) -> Void)? = nil
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -235,7 +237,13 @@ struct NutrientRingGrid: View {
     return Grid(horizontalSpacing: 10, verticalSpacing: 10) {
       ForEach(rows, id: \.self) { row in
         GridRow {
-          ForEach(row, id: \.self) { card($0) }
+          ForEach(row, id: \.self) { id in
+            if let onSelect {
+              card(id).opensNutrientInfo { onSelect(id) }
+            } else {
+              card(id)
+            }
+          }
           // 奇数で余った列は空けておき、最後の1枚を半分の幅にそろえる
           if row.count < columns {
             Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])

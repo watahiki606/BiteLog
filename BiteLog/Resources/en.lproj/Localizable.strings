@@ -520,3 +520,14 @@
 "DietQualityScore.About.Differences.Unknown" = "In the research, every food has values for all nutrients. BiteLog does not count foods with unknown values as zero. It uses only the foods with known values to find the amount per calorie. This assumes the other foods had nutrients in similar proportions, so the score is an estimate when such foods exist. When a meal mixes foods with known and unknown values, the calories of the known foods are estimated from their share of the number of foods.";
 "DietQualityScore.About.Care.Title" = "Please note";
 "DietQualityScore.About.Sources.Title" = "Sources";
+
+/* 統計で栄養素を押すと開く説明 */
+"What it does" = "What it does";
+"When you get too little" = "When you get too little";
+"When you get too much" = "When you get too much";
+"Foods rich in it" = "Foods rich in it";
+"Sources" = "Sources";
+"General information about the nutrient, not advice for your own health. Ask a doctor or dietitian about your own case." = "General information about the nutrient, not advice for your own health. Ask a doctor or dietitian about your own case.";
+"NutrientInfo.Source.EHealthNet" = "MHLW e-Health Net: %@";
+"NutrientInfo.Source.HFNet" = "NIHN Safety and Effectiveness Information on Health Foods: %@";
+"Shows what this nutrient does" = "Shows what this nutrient does";

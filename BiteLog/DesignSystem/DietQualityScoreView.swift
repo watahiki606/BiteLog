@@ -6,6 +6,8 @@ import SwiftUI
 /// 死亡リスクも書かない。疾病のリスクを個人の結果として出すことになるため。
 struct DietQualityScoreView: View {
   let result: DietQualityScore.Result
+  /// 栄養素の行を押したとき。説明を開く
+  var onSelect: ((NutrientID) -> Void)? = nil
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -68,7 +70,11 @@ struct DietQualityScoreView: View {
       }
 
       ForEach(score.components, id: \.nutrient) { component in
-        row(component)
+        if let onSelect {
+          row(component).opensNutrientInfo { onSelect(component.nutrient) }
+        } else {
+          row(component)
+        }
       }
     }
   }
