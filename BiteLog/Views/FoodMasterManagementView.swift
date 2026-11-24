@@ -254,10 +254,13 @@ struct FoodMasterDetailView: View {
     NavigationStack {
       Form {
         Section(header: Text(NSLocalizedString("Basic Info", comment: "Basic info"))) {
-          LabeledContent(
-            NSLocalizedString("Brand Name", comment: "Brand name"),
-            value: foodMaster.brandName
-          )
+          // 国の食品成分表の食品はブランド名が空。空の行を出すと、値が抜けているように見える
+          if !foodMaster.brandName.trimmingCharacters(in: .whitespaces).isEmpty {
+            LabeledContent(
+              NSLocalizedString("Brand Name", comment: "Brand name"),
+              value: foodMaster.brandName
+            )
+          }
           LabeledContent(
             NSLocalizedString("Product Name", comment: "Product name"),
             value: foodMaster.productName
