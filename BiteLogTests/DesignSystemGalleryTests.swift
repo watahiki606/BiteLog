@@ -54,7 +54,12 @@ struct DesignSystemGalleryTests {
       }
       try render(DayRingGalleryView(), to: base, name: "day-rings-\(name)", scheme: scheme, typeSize: typeSize)
       try render(NutrientRowsGalleryView(), to: base, name: "nutrient-rows-\(name)", scheme: scheme, typeSize: typeSize)
-      try render(DietQualityScoreGalleryView(), to: base, name: "score-\(name)", scheme: scheme, typeSize: typeSize)
+      // 点が出るときと出せないときは別の絵にする。並べると AX5 で書き出せない高さになる
+      try render(
+        DietQualityScoreGalleryView(available: true), to: base, name: "score-\(name)", scheme: scheme, typeSize: typeSize)
+      try render(
+        DietQualityScoreGalleryView(available: false), to: base, name: "score-unavailable-\(name)", scheme: scheme,
+        typeSize: typeSize)
       // 1件の画面は2通りを別の絵にする。並べると AX5 で書き出せない高さになる
       try render(
         BodyDetailGalleryView(withReference: true), to: base, name: "body-detail-\(name)",
@@ -504,14 +509,15 @@ private struct DietQualityScoreGalleryView: View {
     .init(nutrient: .magnesium, role: .encouraged, percentOfReference: 85),
     .init(nutrient: .saturatedFat, role: .limited, percentOfReference: 131),
     .init(nutrient: .saltEquivalent, role: .limited, percentOfReference: 124),
-  ])
+  ], hasUnknownItems: true)
+
+  let available: Bool
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 24) {
-      DietQualityScoreView(result: .score(Self.score))
-      Divider()
-      DietQualityScoreView(result: .unavailable([.tooFewLoggedDays, .manyUnknownItems([.vitaminD, .potassium])]))
-    }
+    DietQualityScoreView(
+      result: available
+        ? .score(Self.score) : .unavailable([.tooFewLoggedDays, .noKnownValues([.vitaminD, .potassium])])
+    )
     .padding()
   }
 }

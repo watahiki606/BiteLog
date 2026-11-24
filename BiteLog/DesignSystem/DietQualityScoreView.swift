@@ -24,6 +24,21 @@ struct DietQualityScoreView: View {
         .foregroundStyle(.secondary)
       }
       notes
+      // 点の根拠と計算は長いので、カードには入口だけを置く
+      NavigationLink {
+        DietQualityScoreAboutView()
+      } label: {
+        HStack {
+          Text(NSLocalizedString("How the score is calculated", comment: "Link to the diet quality score explanation"))
+          Spacer(minLength: 8)
+          Image(systemName: "chevron.right")
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(.tertiary)
+            .accessibilityHidden(true)
+        }
+        .font(.subheadline)
+        .contentShape(Rectangle())
+      }
     }
   }
 
@@ -42,6 +57,15 @@ struct DietQualityScoreView: View {
         String(
           format: NSLocalizedString("%1$d of %2$d points", comment: "Diet quality score for VoiceOver"),
           Int(score.score.rounded()), Int(DietQualityScore.maximum)))
+
+      // 値の分からない品は、分かっている品と同じ割合で栄養素を含んでいたとみなしている。点のすぐそばで断る
+      if score.hasUnknownItems {
+        Text(NSLocalizedString(
+          "This is an estimate because some foods have unknown values.", comment: "Diet quality score is an estimate"))
+          .font(.footnote)
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+      }
 
       ForEach(score.components, id: \.nutrient) { component in
         row(component)
@@ -102,10 +126,9 @@ struct DietQualityScoreView: View {
     case .tooFewLoggedDays:
       return NSLocalizedString(
         "The score needs meals logged on 5 days or more in the period.", comment: "Diet quality score unavailable")
-    case .manyUnknownItems(let ids):
+    case .noKnownValues(let ids):
       return String(
-        format: NSLocalizedString(
-          "Too many items have unknown values for %@.", comment: "Diet quality score unavailable"),
+        format: NSLocalizedString("No food with a known value for %@.", comment: "Diet quality score unavailable"),
         ids.map(\.localizedName).joined(separator: NSLocalizedString("ListSeparator", comment: "Separator between items in a list")))
     case .noEnergy:
       return NSLocalizedString("No calories are logged in this period.", comment: "Diet quality score unavailable")

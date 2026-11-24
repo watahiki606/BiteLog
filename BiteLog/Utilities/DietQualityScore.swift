@@ -5,6 +5,10 @@ import Foundation
 /// 推奨する9栄養素は参照量に対する割合を100%で打ち切って足し、制限する2栄養素は参照量を超えた分を引く。
 /// 摂取量はエネルギーで調整し、推定エネルギー必要量に換算してから参照量と比べる。Murakami 2019 の方法による。
 ///
+/// 値の分からない品は 0 として数えない。0 にすると、記録の欠けの分だけ点が下がり、食事ではなく欠けを測ることになる。
+/// 栄養素ごとに、値の分かっていた品の量をその品のカロリーで割って換算する。
+/// 分からない品の食べ方が、分かっている品と同じ割合だったとみなすことになる。
+///
 /// 添加糖は成分表に列が無い。糖質で代えると、でんぷんの多いごはんやいもまで減点するので外した。
 /// そのため研究の NRF9.3 とは同じ点にならない。
 struct DietQualityScore: Equatable {
@@ -38,8 +42,8 @@ struct DietQualityScore: Equatable {
     case periodTooShort
     /// 記録のある日が5日より少ない
     case tooFewLoggedDays
-    /// 値の分かっていた品が8割に満たない栄養素。欠けの分だけ合計が少なく出るため
-    case manyUnknownItems([NutrientID])
+    /// 値の分かっていた品が無いか、あってもカロリーが 0 の栄養素。換算のもとが無い
+    case noKnownValues([NutrientID])
     case noEnergy
   }
 
@@ -57,10 +61,10 @@ struct DietQualityScore: Equatable {
   static let minimumAge = 18
   static let minimumPeriodDays = 7
   static let minimumLoggedDays = 5
-  /// 根拠になる研究は無い。点の下がり方が最大でも2割程度に収まる線として決めた
-  static let minimumKnownShare = 0.8
 
   let components: [Component]
+  /// 値の分からない品のある栄養素が1つでもあるか。あれば点は目安になる
+  let hasUnknownItems: Bool
 
   var score: Double { components.map(\.points).reduce(0, +) }
 
@@ -86,14 +90,12 @@ struct DietQualityScore: Equatable {
     if age < minimumAge { shortfalls.append(.notAdult) }
     if periodDays < minimumPeriodDays { shortfalls.append(.periodTooShort) }
     if loggedDays < minimumLoggedDays { shortfalls.append(.tooFewLoggedDays) }
-    if totals.itemCount > 0 {
-      let unknown = nutrients.filter {
-        Double(totals.knownCount($0)) < Double(totals.itemCount) * minimumKnownShare
-      }
-      if !unknown.isEmpty { shortfalls.append(.manyUnknownItems(unknown)) }
+    if totals.values.calories <= 0 {
+      shortfalls.append(.noEnergy)
+    } else {
+      let noValues = nutrients.filter { totals.knownEnergy($0) <= 0 }
+      if !noValues.isEmpty { shortfalls.append(.noKnownValues(noValues)) }
     }
-    let energy = totals.values.calories
-    if energy <= 0 { shortfalls.append(.noEnergy) }
     guard shortfalls.isEmpty else { return .unavailable(shortfalls) }
 
     guard let eer = intakes.estimatedEnergyRequirement(sex: sex, age: age) else {
@@ -103,13 +105,15 @@ struct DietQualityScore: Equatable {
     for id in nutrients {
       guard let reference = referenceAmount(id, sex: sex, age: age, eer: eer, intakes: intakes), reference > 0
       else { continue }
-      let adjusted = (totals.values.amounts[id] ?? 0) / energy * eer
+      // 値の分かっていた品の量を、その品のカロリーで割って換算する
+      let adjusted = (totals.values.amounts[id] ?? 0) / totals.knownEnergy(id) * eer
       components.append(
         Component(
           nutrient: id, role: encouraged.contains(id) ? .encouraged : .limited,
           percentOfReference: adjusted / reference * 100))
     }
-    return .score(DietQualityScore(components: components))
+    return .score(
+      DietQualityScore(components: components, hasUnknownItems: nutrients.contains(where: totals.hasUnknownItems)))
   }
 
   /// 参照量。女性の鉄は、月経の有無を聞かないので月経なしの値を使う。

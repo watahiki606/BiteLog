@@ -118,6 +118,54 @@ struct DietQualityScoreTests {
     #expect(abs((score.component(.iron)?.percentOfReference ?? 0) - 100) < 0.001)
   }
 
+  // MARK: 値の分からない品
+
+  @Test func 値の分からない品を0として数えず値の分かっていた品のカロリーで換算する() throws {
+    // 片方の区分はカリウムの値が分かり、もう片方は分からない。エネルギーは半分ずつ
+    let known = Self.totals(perDay: Self.maleAtReference, calories: Self.maleEER / 2)
+    let unknown = Self.totals(perDay: [:], calories: Self.maleEER / 2, knownCounts: [.potassium: 0])
+
+    let score = try #require(Self.score(Self.evaluate(known + unknown)))
+
+    // 0として数えると、カリウムは参照量の50%になる
+    #expect(abs((score.component(.potassium)?.percentOfReference ?? 0) - 200) < 0.001)
+    #expect(score.hasUnknownItems)
+  }
+
+  @Test func 品の値が混ざった区分では分かっていた品のカロリーを品数の割合で見積もる() throws {
+    // サーバーは日と食事の区分ごとにまとめて返すので、区分の中のどの品の値が分かっていたかは分からない
+    var perDay = Self.maleAtReference
+    perDay[.potassium] = 1500
+    let totals = Self.totals(perDay: perDay, itemCount: 10, knownCounts: [.potassium: 5])
+
+    #expect(abs(totals.knownEnergy(.potassium) - Self.maleEER * 7 / 2) < 0.001)
+    let score = try #require(Self.score(Self.evaluate(totals)))
+    #expect(abs((score.component(.potassium)?.percentOfReference ?? 0) - 100) < 0.001)
+  }
+
+  @Test func 一品ずつの値から作ると値の分かっていた品のカロリーをそのまま足す() {
+    var known = NutrientAmounts(calories: 100, protein: 0, fat: 0, netCarbs: 0, dietaryFiber: 0)
+    known[.potassium] = 300
+    let unknown = NutrientAmounts(calories: 900, protein: 0, fat: 0, netCarbs: 0, dietaryFiber: 0)
+
+    let totals = NutrientTotals(items: [NutritionValues(known), NutritionValues(unknown)])
+
+    #expect(totals.knownEnergy(.potassium) == 100)
+    #expect(totals.knownEnergy(.protein) == 1000)
+  }
+
+  @Test func 値の分からない品が無ければ目安としない() throws {
+    let score = try #require(Self.score(Self.evaluate(Self.totals(perDay: Self.maleAtReference))))
+
+    #expect(!score.hasUnknownItems)
+  }
+
+  @Test func 値の分かる品が一つも無い栄養素があれば出さない() {
+    let totals = Self.totals(perDay: Self.maleAtReference, knownCounts: [.vitaminD: 0, .potassium: 3])
+
+    #expect(Self.shortfalls(Self.evaluate(totals)) == [.noKnownValues([.vitaminD])])
+  }
+
   // MARK: 出す条件
 
   @Test func 期間が7日より短ければ出さない() {
@@ -130,14 +178,6 @@ struct DietQualityScoreTests {
     let result = Self.evaluate(Self.totals(perDay: Self.maleAtReference), periodDays: 30, loggedDays: 4)
 
     #expect(Self.shortfalls(result) == [.tooFewLoggedDays])
-  }
-
-  @Test func 値の分かっていた品が8割に満たない栄養素があれば出さない() {
-    let short = Self.totals(perDay: Self.maleAtReference, knownCounts: [.potassium: 7, .vitaminD: 0])
-    let enough = Self.totals(perDay: Self.maleAtReference, knownCounts: [.potassium: 8])
-
-    #expect(Self.shortfalls(Self.evaluate(short)) == [.manyUnknownItems([.vitaminD, .potassium])])
-    #expect(Self.score(Self.evaluate(enough)) != nil)
   }
 
   @Test func エネルギーの合計が0なら出さない() {
@@ -160,9 +200,9 @@ struct DietQualityScoreTests {
 
   @Test func 満たしていない条件はすべて返す() {
     let result = Self.evaluate(
-      Self.totals(perDay: Self.maleAtReference, knownCounts: [.calcium: 1]), periodDays: 3, loggedDays: 2, age: 10)
+      Self.totals(perDay: Self.maleAtReference, knownCounts: [.calcium: 0]), periodDays: 3, loggedDays: 2, age: 10)
 
-    #expect(Self.shortfalls(result) == [.notAdult, .periodTooShort, .tooFewLoggedDays, .manyUnknownItems([.calcium])])
+    #expect(Self.shortfalls(result) == [.notAdult, .periodTooShort, .tooFewLoggedDays, .noKnownValues([.calcium])])
   }
 
   @Test func プロフィールが無ければ出さない() {
