@@ -17,7 +17,6 @@
 "Calories" = "カロリー";
 "Protein" = "タンパク質";
 "Fat" = "脂質";
-"Carbs" = "炭水化物";
 "Select Date" = "日付を選択";
 
 // Form Fields
@@ -43,7 +42,6 @@
 "No Food Items" = "フードがありません";
 "Add your first food item to start tracking your nutrition." = "フードを追加して栄養成分を記録を開始します。";
 "Delete Food Item?" = "フードを削除しますか？";
-
 
 // Import/Export CSV
 "CSV File Format:" = "CSVファイルのフォーマット:";
@@ -109,12 +107,8 @@
 "You need to register food items before you can add meals." = "フードを登録してからフードを追加できます。";
 "Go to Food Management" = "フード管理に移動";
 "Register new food items in the food tab" = "フードタブで新しいフードを登録";
-"Carbs (Sugar + Fiber)" = "炭水化物（糖質 + 食物繊維）";
-"Carbohydrates (Sugar + Fiber)" = "炭水化物（糖質 + 食物繊維）";
 "Dietary Fiber" = "食物繊維";
 "Sugar" = "糖質";
-"Carbohydrates" = "炭水化物";
-"Carbs" = "炭水化物";
 
 // Data deletion
 "Success" = "成功";
@@ -231,7 +225,6 @@
 "No records in this period" = "この期間の記録はありません";
 "Failed to load statistics" = "統計の読み込みに失敗しました";
 "Retry" = "再試行";
-
 
 // Design System - 炭水化物の短縮ラベル。ほかの栄養素の短い名前は Nutrients.strings にある
 "Nutrient.Short.Carbs" = "炭水化物";
@@ -463,12 +456,11 @@
 /* あとから足した栄養素。食塩相当量と飽和脂肪酸 */
 "Other Nutrients" = "その他の栄養素";
 "Other Nutrients per Day" = "その他の栄養素の1日平均";
+"Dietary Fiber and Carbohydrates" = "食物繊維と炭水化物";
 "Salt and Saturated Fat" = "食塩と飽和脂肪酸";
 "Add your sex and birth date in Profile to compare with the dietary goals." = "プロフィールに性別と生年月日を入れると、食事摂取基準の目標量と並べます。";
 
-/* 入力欄は炭水化物とうち食物繊維。糖質は引き算で出す */
-"Of which dietary fiber" = "うち食物繊維";
-"Sugar (Carbohydrates − Fiber)" = "糖質（炭水化物 − 食物繊維）";
+/* 入力欄は炭水化物と食物繊維。糖質は引き算で出す */
 "Dietary fiber can't be more than carbohydrates." = "食物繊維は炭水化物より多くできません。";
 
 /* 栄養素のリングのカード。基準値に対する割合と、ミネラルとビタミンの見出し */
@@ -493,24 +485,8 @@
 "Food Nutrients" = "食品の栄養成分";
 "Reference Values" = "比べる基準の値";
 
-/* 食事の質のスコア。参考の点として出し、良し悪しは書かない */
-"Diet Quality Score" = "食事の質スコア";
-"For reference" = "参考";
-"%1$d of %2$d points" = "%2$d点中%1$d点";
+/* 栄養素のリングのカードの読み上げ。目標量に対する割合 */
 "%d%% of the goal" = "目標量の %d%%";
-"ListSeparator" = "、";
-"Add your sex and birth date in Profile to see the score." = "プロフィールに性別と生年月日を入れると出します。";
-"The score is for people aged 18 and over." = "18歳以上の方に出します。";
-"Choose a period of 7 days or more to see the score." = "7日以上の期間を選ぶと出します。";
-"The score needs meals logged on 5 days or more in the period." = "期間のうち5日以上に記録があると出します。";
-"Too many items have unknown values for %@." = "%@の値が分からない品が多いので出せません。";
-"No calories are logged in this period." = "この期間はカロリーの記録がありません。";
-"DietQualityScore.Note.Reference" = "栄養素の量を食事摂取基準と比べて出した参考の点で、診断ではありません。";
-"DietQualityScore.Note.AddedSugar" = "研究で使われる NRF9.3 から添加糖を除いた形のため、研究の点とは比べられません。";
-"DietQualityScore.Note.Consult" = "妊娠中の方や持病のある方は、専門家に相談してください。";
-"DataSources.Score" = "食事の質スコアは、Murakami らが2019年に示した NRF9.3 の日本版の方法をもとに、添加糖を除いて計算します。摂取量はエネルギーで調整し、推定エネルギー必要量の身体活動レベルふつうの値に換算してから基準と比べます。";
-"Murakami K, et al. Nutrients 2019" = "Murakami K, et al. Nutrients 2019";
-"Score Method" = "スコアの方法";
 
 /* 食品表示に載ることがまれな詳しい栄養素。畳んだ中に並べる */
 "Detailed Nutrients" = "詳しい栄養素";
@@ -523,3 +499,14 @@
 
 /* 記録の編集。食べた量の分の栄養成分 */
 "Nutrition for %@ %@" = "%1$@%2$@分の栄養成分";
+
+/* 統計で栄養素を押すと開く説明 */
+"What it does" = "はたらき";
+"When you get too little" = "足りないとき";
+"When you get too much" = "とりすぎたとき";
+"Foods rich in it" = "多く含む食品の例";
+"Sources" = "出典";
+"General information about the nutrient, not advice for your own health. Ask a doctor or dietitian about your own case." = "栄養素についての一般的な情報で、あなたの健康についての助言ではありません。ご自身のことは、医師や管理栄養士に相談してください。";
+"NutrientInfo.Source.EHealthNet" = "厚生労働省 e-ヘルスネット「%@」";
+"NutrientInfo.Source.HFNet" = "国立健康・栄養研究所「健康食品」の安全性・有効性情報「%@」";
+"Shows what this nutrient does" = "栄養素の説明を開きます";

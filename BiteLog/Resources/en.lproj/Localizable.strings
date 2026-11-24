@@ -18,7 +18,6 @@
 "Calories" = "Calories";
 "Protein" = "Protein";
 "Fat" = "Fat";
-"Carbs" = "Carbs";
 "Select Date" = "Select Date";
 
 // Form Fields
@@ -431,12 +430,11 @@
 /* Nutrients added after the first five: salt equivalent and saturated fat */
 "Other Nutrients" = "Other Nutrients";
 "Other Nutrients per Day" = "Other Nutrients per Day";
+"Dietary Fiber and Carbohydrates" = "Dietary Fiber and Carbohydrates";
 "Salt and Saturated Fat" = "Salt and Saturated Fat";
 "Add your sex and birth date in Profile to compare with the dietary goals." = "Add your sex and birth date in Profile to compare with the dietary goals.";
 
 /* Carbohydrates and the fiber within them. Net carbs are computed */
-"Of which dietary fiber" = "Of which dietary fiber";
-"Sugar (Carbohydrates − Fiber)" = "Net carbs (Carbs − Fiber)";
 "Dietary fiber can't be more than carbohydrates." = "Dietary fiber can't be more than carbohydrates.";
 
 /* 栄養素のリングのカード。基準値に対する割合と、ミネラルとビタミンの見出し */
@@ -461,24 +459,8 @@
 "Food Nutrients" = "Food Nutrients";
 "Reference Values" = "Reference Values";
 
-/* Diet quality score. Shown for reference, without judging good or bad */
-"Diet Quality Score" = "Diet Quality Score";
-"For reference" = "For reference";
-"%1$d of %2$d points" = "%1$d of %2$d points";
+/* Read aloud on nutrient ring cards: share of the goal */
 "%d%% of the goal" = "%d%% of the goal";
-"ListSeparator" = ", ";
-"Add your sex and birth date in Profile to see the score." = "Add your sex and birth date in Profile to see the score.";
-"The score is for people aged 18 and over." = "The score is for people aged 18 and over.";
-"Choose a period of 7 days or more to see the score." = "Choose a period of 7 days or more to see the score.";
-"The score needs meals logged on 5 days or more in the period." = "The score needs meals logged on 5 days or more in the period.";
-"Too many items have unknown values for %@." = "Too many items have unknown values for %@.";
-"No calories are logged in this period." = "No calories are logged in this period.";
-"DietQualityScore.Note.Reference" = "A reference score from comparing nutrients with the dietary reference intakes. It is not a diagnosis.";
-"DietQualityScore.Note.AddedSugar" = "It leaves added sugars out of the NRF9.3 used in research, so it can't be compared with scores in studies.";
-"DietQualityScore.Note.Consult" = "If you are pregnant or have a medical condition, talk to a professional.";
-"DataSources.Score" = "The diet quality score follows the Japanese version of NRF9.3 by Murakami et al. (2019), without added sugars. Intakes are adjusted for energy and scaled to the estimated energy requirement at a moderate activity level before comparing with the reference values.";
-"Murakami K, et al. Nutrients 2019" = "Murakami K, et al. Nutrients 2019";
-"Score Method" = "Score Method";
 
 /* Nutrients rarely on food labels, shown collapsed */
 "Detailed Nutrients" = "Detailed Nutrients";
@@ -491,3 +473,14 @@
 
 /* 記録の編集。食べた量の分の栄養成分 */
 "Nutrition for %@ %@" = "Nutrition for %1$@ %2$@";
+
+/* 統計で栄養素を押すと開く説明 */
+"What it does" = "What it does";
+"When you get too little" = "When you get too little";
+"When you get too much" = "When you get too much";
+"Foods rich in it" = "Foods rich in it";
+"Sources" = "Sources";
+"General information about the nutrient, not advice for your own health. Ask a doctor or dietitian about your own case." = "General information about the nutrient, not advice for your own health. Ask a doctor or dietitian about your own case.";
+"NutrientInfo.Source.EHealthNet" = "MHLW e-Health Net: %@";
+"NutrientInfo.Source.HFNet" = "NIHN Safety and Effectiveness Information on Health Foods: %@";
+"Shows what this nutrient does" = "Shows what this nutrient does";

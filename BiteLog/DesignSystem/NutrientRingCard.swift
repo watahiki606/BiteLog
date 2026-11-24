@@ -7,7 +7,7 @@ import SwiftUI
 /// 上限の目標を超えたら輪を赤にする。満たしたい栄養素が届いたら輪を閉じ、印を添える。
 /// 基準値が無ければ輪を描かず、印の丸だけにする。
 struct NutrientRing: View {
-  let nutrient: NutrientID
+  let nutrient: any NutrientDisplaying
   let progress: ReferenceProgress?
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -64,7 +64,8 @@ struct NutrientRing: View {
 /// 文字は名前、量、基準値に対する割合の3つだけにする。残りの量や月経の有無で変わる基準まで
 /// 並べると、2列のカードでは文字が詰まって読めない。届いたか超えたかは輪の印と色で示す。
 struct NutrientRingCard: View {
-  let nutrient: NutrientID
+  /// 定義の栄養素のほか、基準の無い炭水化物も並べるので、表示に要る性質だけで受け取る
+  let nutrient: any NutrientDisplaying
   /// 値の分かった品の合計や平均。どの品も分からなければ nil
   let amount: Double?
   /// 基準値と比べた結果。プロフィールが無いときや、値が分からないときは nil
@@ -162,7 +163,7 @@ struct NutrientRingCard: View {
 
 /// 栄養素のリングのカードを、見出しで分けて2列に並べる。
 ///
-/// 食塩相当量と飽和脂肪酸は上限の目標なので、ミネラルや脂質の仲間からは出して先にまとめる。
+/// 食物繊維と炭水化物を先に置く。食塩相当量と飽和脂肪酸は上限の目標なので、ミネラルや脂質の仲間からは出して次にまとめる。
 /// 残りはミネラル、ビタミン、脂肪酸に分ける。
 struct NutrientRingGrid: View {
   /// どの合計を見せるか。1日の合計か、期間の1日平均か
@@ -172,10 +173,11 @@ struct NutrientRingGrid: View {
   }
 
   enum Section: CaseIterable {
-    case saltAndSaturatedFat, minerals, vitamins, fattyAcids
+    case fiberAndCarbohydrates, saltAndSaturatedFat, minerals, vitamins, fattyAcids
 
     init(_ id: NutrientID) {
       switch id {
+      case .dietaryFiber, .netCarbs: self = .fiberAndCarbohydrates
       case .saltEquivalent, .saturatedFat: self = .saltAndSaturatedFat
       default:
         switch id.definition.group {
@@ -189,12 +191,22 @@ struct NutrientRingGrid: View {
 
     var title: String {
       switch self {
+      case .fiberAndCarbohydrates:
+        return NSLocalizedString("Dietary Fiber and Carbohydrates", comment: "Nutrient group heading")
       case .saltAndSaturatedFat: return NSLocalizedString("Salt and Saturated Fat", comment: "Nutrient group heading")
       case .minerals: return NSLocalizedString("Minerals", comment: "Nutrient group heading")
       case .vitamins: return NSLocalizedString("Vitamins", comment: "Nutrient group heading")
       case .fattyAcids: return NSLocalizedString("Fatty acids", comment: "Nutrient group heading")
       }
     }
+  }
+
+  /// 食物繊維と炭水化物のカードに出す値。合計か1日平均かは aggregation に合わせて呼ぶ側で割っておく
+  struct Carbohydrates {
+    let fiber: Double
+    let total: Double
+    /// 利用者が目標の画面で決めた食物繊維の量。食事摂取基準ではなく、主要な栄養素のバーと同じ目標と比べる
+    let fiberGoal: Double
   }
 
   let nutrients: [NutrientID]
@@ -204,40 +216,76 @@ struct NutrientRingGrid: View {
   let goals: [NutrientID: DietaryReferenceIntakes.Goal]
   /// 飽和脂肪酸の目標量はエネルギーに占める割合なので、その割合を掛けるエネルギー
   let energy: Double
+  /// 渡すと、先頭に食物繊維と炭水化物のカードを置く
+  var carbohydrates: Carbohydrates? = nil
   var cardBackground: Color = Color(UIColor.secondarySystemGroupedBackground)
+  /// カードを押したとき。統計だけが渡し、説明を開く。ログの合計では渡さない
+  var onSelect: ((NutrientInfo) -> Void)? = nil
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+  /// カード1枚に出すもの
+  private struct Card {
+    let info: NutrientInfo
+    let amount: Double?
+    let progress: ReferenceProgress?
+  }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
       ForEach(Section.allCases, id: \.self) { section in
-        let members = nutrients.filter { Section($0) == section }
-        if !members.isEmpty {
+        let cards = cards(section)
+        if !cards.isEmpty {
           VStack(alignment: .leading, spacing: 8) {
             Text(section.title)
               .font(.subheadline.weight(.semibold))
               .foregroundStyle(.secondary)
               .accessibilityAddTraits(.isHeader)
-            grid(members)
+            grid(cards)
           }
         }
       }
     }
   }
 
+  private func cards(_ section: Section) -> [Card] {
+    if section == .fiberAndCarbohydrates {
+      guard let carbohydrates else { return [] }
+      let fiberGoal = DietaryReferenceIntakes.Goal(
+        nutrient: .dietaryFiber, indicator: .tentativeDietaryGoal, comparison: .atLeast,
+        value: carbohydrates.fiberGoal)
+      return [
+        Card(
+          info: NutrientInfo(NutrientID.dietaryFiber), amount: carbohydrates.fiber,
+          progress: ReferenceProgress(amount: carbohydrates.fiber, goal: fiberGoal, energy: energy)),
+        // 炭水化物には比べる基準が無いので、輪を描かず量だけを出す
+        Card(info: NutrientInfo(Nutrient.carbs), amount: carbohydrates.total, progress: nil),
+      ]
+    }
+    return nutrients.filter { Section($0) == section }.map(card)
+  }
+
   /// 大きな文字では2列に並べると名前も値も切れるので、1列にする
   private var columns: Int { dynamicTypeSize.isAccessibilitySize ? 1 : 2 }
 
-  private func grid(_ members: [NutrientID]) -> some View {
-    let rows = stride(from: 0, to: members.count, by: columns).map {
-      Array(members[$0..<min($0 + columns, members.count)])
+  private func grid(_ cards: [Card]) -> some View {
+    let rows = stride(from: 0, to: cards.count, by: columns).map {
+      Array(cards[$0..<min($0 + columns, cards.count)])
     }
     return Grid(horizontalSpacing: 10, verticalSpacing: 10) {
-      ForEach(rows, id: \.self) { row in
+      ForEach(rows.indices, id: \.self) { index in
         GridRow {
-          ForEach(row, id: \.self) { card($0) }
+          ForEach(rows[index], id: \.info.id) { card in
+            let view = NutrientRingCard(
+              nutrient: card.info.nutrient, amount: card.amount, progress: card.progress, background: cardBackground)
+            if let onSelect {
+              view.opensNutrientInfo { onSelect(card.info) }
+            } else {
+              view
+            }
+          }
           // 奇数で余った列は空けておき、最後の1枚を半分の幅にそろえる
-          if row.count < columns {
+          if rows[index].count < columns {
             Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
           }
         }
@@ -245,13 +293,13 @@ struct NutrientRingGrid: View {
     }
   }
 
-  private func card(_ id: NutrientID) -> some View {
+  private func card(_ id: NutrientID) -> Card {
     let known = totals.knownCount(id)
     let amount = known > 0 ? (totals.values.amounts[id] ?? 0) / divisor : nil
     let progress = amount.flatMap { amount in
       goals[id].flatMap { ReferenceProgress(amount: amount, goal: $0, energy: energy) }
     }
-    return NutrientRingCard(nutrient: id, amount: amount, progress: progress, background: cardBackground)
+    return Card(info: NutrientInfo(id), amount: amount, progress: progress)
   }
 
   private var divisor: Double {

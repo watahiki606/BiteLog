@@ -5,7 +5,6 @@ BiteLog now covers many more nutrients.
 - Photo analysis now splits a dish into ingredients and weights, and takes the values from the table
 - See 20 more nutrients, such as phosphorus, zinc, and B vitamins, in food details, the daily total, and Statistics
 - Add your sex and birth date in Profile to compare nutrients with the dietary reference intakes in Statistics
-- Statistics shows a Diet Quality Score for reference, based on how your nutrients compare with the reference values
 - The food form now follows the label: carbohydrates, then dietary fiber
 - CSV export adds the new nutrients as columns at the end
 

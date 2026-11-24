@@ -34,7 +34,7 @@ enum Nutrient: String, CaseIterable, Identifiable {
   }
 
   var localizedName: String {
-    nutrientID?.localizedName ?? NSLocalizedString("Carbs", comment: "Nutrient")
+    nutrientID?.localizedName ?? NSLocalizedString("Carbohydrates", comment: "Nutrient")
   }
 
   /// 横幅が取れない場所で使う短い名前。
@@ -62,9 +62,11 @@ enum Nutrient: String, CaseIterable, Identifiable {
     nutrientID.map { values.amounts.core($0) } ?? values.carbs
   }
 
+  /// 読み上げる単位。炭水化物は糖質と同じ g
+  var spokenUnit: String { (nutrientID ?? .netCarbs).spokenUnit }
+
   /// VoiceOver 用。「タンパク質 45グラム」のように単位を読み上げさせる。
   func accessibilityLabel(for value: Double) -> String {
-    let unitName = (nutrientID ?? .netCarbs).spokenUnit
-    return "\(localizedName) \(format(value)) \(unitName)"
+    "\(localizedName) \(format(value)) \(spokenUnit)"
   }
 }

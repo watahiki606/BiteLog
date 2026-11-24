@@ -1,0 +1,163 @@
+/*
+  Explanations shown when a nutrient is tapped in Statistics. Write only what the sources listed in NutrientInfo.swift support.
+  Keys are "nutrient.field". role: what the nutrient does, shortage: when you get too little, excess: when you get too much, foods: foods rich in it.
+  Leave out a field the sources do not cover. Missing fields are not shown.
+*/
+
+"calories.role" = "The energy your body uses to move and keep warm. It comes from protein, fat, and carbohydrates: about 4 kcal per gram of protein or carbohydrate and about 9 kcal per gram of fat.";
+
+"protein.role" = "The main building block of muscles, organs, skin, and hair. It also works in enzymes, hormones, and immunity. You need it from food every day because the body cannot make some amino acids.";
+"protein.shortage" = "It can lead to muscle loss, lower strength, and weaker immunity.";
+"protein.excess" = "There is no set upper limit, but eating more does not make you healthier, and too much may harm kidney function in the future. People with kidney disease should follow the advice of their doctor or dietitian.";
+
+"fat.role" = "A source of energy and a material for cell membranes and hormones. The goal is 20 to 30% of daily energy from fat, and the type of fatty acids matters as well as the amount.";
+
+"netCarbs.role" = "The part of carbohydrates that is digested and used for energy, and an important energy source for the brain in particular. In BiteLog, sugar is carbohydrates minus dietary fiber.";
+"netCarbs.excess" = "Too much of the simple sugars in it, such as table sugar, is known to cause obesity and tooth decay. A diet heavy in sugars tends to fall short of other vitamins and minerals.";
+
+"carbohydrate.role" = "An important source of energy. It is split into sugars that are digested for energy and dietary fiber that is hard to digest. The goal is 50 to 65% of daily energy from carbohydrates.";
+"carbohydrate.excess" = "Too much of the simple sugars, such as table sugar, is known to cause obesity and tooth decay.";
+
+"dietaryFiber.role" = "A part of food that is not digested in the small intestine and reaches the large intestine. It helps regular bowel movements, and many studies link it to a lower chance of heart attack, stroke, and type 2 diabetes.";
+"dietaryFiber.foods" = "Found in plant foods such as grains, potatoes, beans, vegetables, mushrooms, fruit, and seaweed.";
+
+"saltEquivalent.role" = "The sodium in salt keeps the balance of body fluids and of acids and alkalis. Most of the sodium Japanese people take comes from salt.";
+"saltEquivalent.shortage" = "It hardly ever runs short with a normal diet.";
+"saltEquivalent.excess" = "Too much raises the risk of high blood pressure and heart and blood vessel disease, and has been reported to raise the risk of stomach cancer.";
+"saltEquivalent.foods" = "For Japanese people aged 40 to 59, about half of the salt they take is reported to come from seasonings such as soy sauce and salt.";
+
+"saturatedFat.role" = "One of the fatty acids that make up fat.";
+"saturatedFat.excess" = "Too much raises LDL cholesterol in the blood and the risk of heart attack. For people aged 18 and over, the goal is 7% of daily energy or less.";
+"saturatedFat.foods" = "Found mostly in animal fats such as fatty meat and butter.";
+
+"n3FattyAcids.role" = "A fatty acid the body cannot make, so it must come from food. It includes alpha-linolenic acid, EPA, and DHA. It is part of cell membranes and works in calming inflammation and in nerve and immune function.";
+"n3FattyAcids.shortage" = "A shortage causes skin inflammation and weaker immunity.";
+"n3FattyAcids.foods" = "Rich in fish oil.";
+
+"n6FattyAcids.role" = "A fatty acid the body cannot make, so it must come from food. It includes linoleic acid. It is part of cell membranes and works in nerve and immune function.";
+"n6FattyAcids.shortage" = "A shortage causes skin inflammation and weaker immunity.";
+"n6FattyAcids.foods" = "Rich in vegetable oils such as soybean oil.";
+
+"potassium.role" = "A mineral that keeps the balance of body fluids and of acids and alkalis and works in nerves and muscles. It helps the body get rid of sodium and is known to work toward lowering blood pressure. The average Japanese intake is below the goal.";
+"potassium.excess" = "People whose kidney function is reduced may need to limit it. Follow your doctor's advice.";
+"potassium.foods" = "Found in vegetables and many other foods, such as meat, fruit, milk and dairy products, and tea.";
+
+"calcium.role" = "The most plentiful mineral in the body. 99% is in bones and teeth, and the rest works in blood clotting and in the heart and muscles. Japanese intake falls short of the goal.";
+"calcium.shortage" = "A long shortage leads to bone loss and osteoporosis. Vitamin D is needed to absorb it.";
+"calcium.excess" = "Too much from a normal diet is rare, but too much from supplements can cause stones and get in the way of absorbing other minerals such as magnesium.";
+"calcium.foods" = "Milk, tofu, komatsuna, dried sardines, shishamo, and others.";
+
+"magnesium.role" = "A mineral needed for almost every reaction in the body. Together with calcium it keeps bones healthy.";
+"magnesium.shortage" = "Healthy people on a normal diet rarely run short. A shortage is known to cause osteoporosis and irregular heartbeat.";
+"magnesium.excess" = "There are no reports of harm from too much in normal foods. Large amounts from supplements or medicine can cause diarrhea.";
+"magnesium.foods" = "Tofu, soba, almonds, spinach, bananas, bonito, and others.";
+
+"phosphorus.role" = "A mineral that builds bones with calcium and plays an important part in energy and fat metabolism.";
+"phosphorus.shortage" = "It is plentiful in everyday foods and hardly ever runs short with a normal diet.";
+"phosphorus.excess" = "Too much over a long time is known to reduce kidney function and get in the way of absorbing calcium. In Japan today, with many processed foods, phosphorus tends to be high compared with calcium.";
+"phosphorus.foods" = "Brown rice, tofu, natto, fish, chicken, and others.";
+
+"iron.role" = "Carries oxygen as part of hemoglobin in red blood cells.";
+"iron.shortage" = "It causes anemia, which can bring headaches, dizziness, a pounding heart, and shortness of breath. A shortage is more of a concern for women who menstruate and for pregnant women.";
+"iron.excess" = "Too much from a normal diet is rare, but too much from supplements can cause constipation and stomach trouble. If a small child swallows iron pills by mistake, it can cause serious poisoning.";
+"iron.foods" = "Liver, clams, shijimi clams, lean beef, komatsuna, spinach, soy milk, and others.";
+
+"zinc.role" = "Part of many enzymes and central to making protein and to cell growth.";
+"zinc.shortage" = "It is known to cause taste problems, skin inflammation, and loss of appetite.";
+"zinc.excess" = "It is rarely a problem with a normal diet, but too much over time can block the absorption of copper and iron and may lead to anemia.";
+"zinc.foods" = "Oysters, beef, beans, brown rice, nuts, and others.";
+
+"copper.role" = "Helps enzymes work and, together with iron, helps make blood.";
+"copper.shortage" = "It is said not to occur with a normal diet. A shortage causes anemia and other problems.";
+"copper.excess" = "There are no reports of symptoms from too much in normal foods over time.";
+"copper.foods" = "Beef liver, squid, octopus, oysters, nuts, cocoa, and others.";
+
+"manganese.role" = "Helps enzymes work and is also part of some enzymes.";
+"manganese.shortage" = "It hardly ever runs short with a normal diet.";
+"manganese.excess" = "Too much is not a problem with a normal diet.";
+"manganese.foods" = "Brown rice, soba, tofu, walnuts, gyokuro tea, shijimi clams, and others.";
+
+"iodine.role" = "Mostly found in the thyroid, where it is part of thyroid hormones.";
+"iodine.shortage" = "In Japan, where people eat a lot of seaweed and seafood, a shortage is not a problem. Around the world it often runs short and is known to cause a swollen thyroid.";
+"iodine.excess" = "Too much over a long time can upset thyroid function. Cases from eating a lot of seaweed have been reported in Japan too.";
+"iodine.foods" = "Seaweed such as kombu, hijiki, wakame, and nori, and fish such as cod and mackerel.";
+
+"selenium.role" = "Part of enzymes and important in antioxidant work.";
+"selenium.shortage" = "In Japan, a shortage is hardly ever a problem with a normal diet.";
+"selenium.excess" = "The gap between the amount you need and a toxic amount is small. Too much causes changes in nails, hair loss, and stomach trouble. Be careful with supplements.";
+"selenium.foods" = "Seafood such as bonito, tuna, mackerel, and cod roe, and pasta, soba, and bread.";
+
+"chromium.role" = "Helps keep the metabolism of sugars, cholesterol, and protein working.";
+"chromium.shortage" = "A shortage is not a problem with a normal diet.";
+"chromium.excess" = "The chromium in food has low toxicity, and too much is rarely a problem.";
+"chromium.foods" = "Tofu, soba, kombu, mackerel, oysters, clams, and others.";
+
+"molybdenum.role" = "Part of enzymes that drive oxidation and reduction reactions in the body.";
+"molybdenum.shortage" = "A normal diet provides enough, so it hardly ever runs short.";
+"molybdenum.excess" = "Any extra leaves the body quickly, so too much is hardly ever a problem for healthy people on a normal diet.";
+"molybdenum.foods" = "Natto, tofu, edamame, rice, liver, and others.";
+
+"vitaminA.role" = "Keeps the eyes working and the skin and mucous membranes healthy, and takes part in growth.";
+"vitaminA.shortage" = "It causes night blindness and weaker immunity, and a severe shortage reduces eyesight. The risk of running short on a normal diet is said to be low.";
+"vitaminA.excess" = "It dissolves in fat and builds up in the body. Too much causes nausea and headaches. Too much during pregnancy is known to affect the baby. Beta-carotene in vegetables is hardly a concern with a normal diet.";
+"vitaminA.foods" = "Liver, eel, eggs, carrots, spinach, pumpkin, and others.";
+
+"vitaminD.role" = "Helps the gut absorb calcium and phosphorus and keeps bones healthy. The skin also makes it in sunlight.";
+"vitaminD.shortage" = "It is known to cause rickets in children and osteomalacia in adults. In older people, a long shortage is said to lower bone density and make fractures more likely.";
+"vitaminD.excess" = "Too much raises calcium in the blood, which can build up in the kidneys and cause nausea and loss of appetite.";
+"vitaminD.foods" = "Fish such as salmon, eel, and saury, and mushrooms such as maitake and wood ear.";
+
+"vitaminE.role" = "As an antioxidant, it keeps fats in the body from oxidizing.";
+"vitaminE.shortage" = "A shortage can cause nerve and muscle problems, but it is rarely seen in people.";
+"vitaminE.excess" = "Too much from a normal diet hardly ever happens. Caution has been raised about too much from supplements.";
+"vitaminE.foods" = "Vegetable oils, almonds, pumpkin, red peppers, eel, and others.";
+
+"vitaminK.role" = "Needed for blood to clot, and also said to be needed to build bones.";
+"vitaminK.shortage" = "It causes nosebleeds and blood that is slow to clot. People on a normal diet hardly ever run short.";
+"vitaminK.excess" = "Vitamin K in food is reported to have no toxicity even in large amounts. People taking the blood thinner warfarin are asked to always talk to their doctor about eating natto or green juice.";
+"vitaminK.foods" = "Natto, spinach, komatsuna, shungiku, broccoli, and others.";
+
+"vitaminB1.role" = "Needed to make energy from sugars.";
+"vitaminB1.shortage" = "It affects the nerves and brain, which run mainly on sugars, and is known to cause beriberi. Meals high in sugars and heavy drinking make it more likely to run short.";
+"vitaminB1.excess" = "No harm from too much in food or supplements has been reported.";
+"vitaminB1.foods" = "Pork, brown rice, beans, eel, cod roe, and others.";
+
+"vitaminB2.role" = "Takes part in making energy, supports growth, and protects the skin and mucous membranes.";
+"vitaminB2.shortage" = "It causes cracks at the corners of the mouth, a sore tongue, skin inflammation, and poor growth.";
+"vitaminB2.excess" = "Any extra leaves in urine, so too much is said to be unlikely to cause harm. Urine may turn yellow.";
+"vitaminB2.foods" = "Liver, eel, milk, eggs, natto, and others.";
+
+"niacin.role" = "Helps many enzymes in the body work. Besides food, the body also makes it from the amino acid tryptophan.";
+"niacin.shortage" = "It can cause pellagra, with skin inflammation, diarrhea, and mental and nerve symptoms. It is rare in Japan.";
+"niacin.excess" = "Too much from supplements can cause flushing, itching, and stomach trouble, and an upper limit has been set.";
+"niacin.foods" = "Cod roe, chicken breast, bonito, tuna, peanuts, brown rice, and others.";
+
+"vitaminB6.role" = "Helps the metabolism of protein and other nutrients, and is needed to make substances that nerves use.";
+"vitaminB6.shortage" = "It causes eczema, cracks at the corners of the mouth, a sore tongue, and anemia. It rarely runs short on its own.";
+"vitaminB6.excess" = "Very large amounts, such as several grams a day for months, are known to cause sensory nerve problems such as numbness in the hands and feet, and an upper limit has been set.";
+"vitaminB6.foods" = "Bonito, tuna, pork fillet, bananas, sweet potatoes, brown rice, and others.";
+
+"vitaminB12.role" = "Helps the metabolism of amino acids and fats. Plant foods contain almost none.";
+"vitaminB12.shortage" = "It is known to cause pernicious anemia and nerve problems.";
+"vitaminB12.excess" = "Extra is not absorbed, so too much causes almost no harm.";
+"vitaminB12.foods" = "Shellfish such as shijimi clams and clams, liver, saury, mackerel, nori, and others.";
+
+"folate.role" = "Takes part in making DNA and in amino acid metabolism, and is essential for cells to multiply.";
+"folate.shortage" = "It causes a type of anemia called megaloblastic anemia. Women planning a pregnancy or in early pregnancy are advised to take 400 µg a day from supplements or fortified foods to lower the baby's risk of neural tube defects.";
+"folate.excess" = "No harm from too much folate in food has been reported. An upper limit has been set for folate in supplements.";
+"folate.foods" = "Spinach, broccoli, edamame, strawberries, liver, and others.";
+
+"pantothenicAcid.role" = "As part of coenzymes, it is closely involved in making energy and in fat metabolism.";
+"pantothenicAcid.shortage" = "It is in many foods, so it almost never runs short with a normal diet.";
+"pantothenicAcid.excess" = "Side effects from too much have hardly been reported.";
+"pantothenicAcid.foods" = "Natto, liver, chicken breast, cod roe, avocado, and others.";
+
+"biotin.role" = "Helps enzymes involved in the metabolism of sugars and fatty acids and in making energy.";
+"biotin.shortage" = "It does not run short with a normal diet. Eating a lot of raw egg white for a long time can cause a shortage.";
+"biotin.excess" = "Extra leaves quickly in urine, so problems from too much are usually not seen.";
+"biotin.foods" = "Peanuts, almonds, liver, eggs, natto, and others.";
+
+"vitaminC.role" = "Essential for collagen, which makes up skin, tendons, and cartilage. It also works as an antioxidant and helps the gut absorb iron. The body cannot make it, so it must come from food.";
+"vitaminC.shortage" = "It causes tiredness and low energy, and a severe shortage leads to scurvy, with bleeding gums and skin. Smokers need more.";
+"vitaminC.excess" = "No reports of harm from too much in normal foods have been found. Too much from supplements can cause nausea, diarrhea, and stomach pain.";
+"vitaminC.foods" = "Red peppers, kiwifruit, broccoli, strawberries, mandarins, potatoes, and others.";

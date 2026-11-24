@@ -47,20 +47,14 @@ struct DietaryReferenceIntakes {
       let comparison: Comparison
       let bands: [Band]
     }
-    struct EnergyRequirement: Decodable {
-      let bands: [Entry.Band]
-    }
     let goals: [Entry]
-    let estimatedEnergyRequirement: EnergyRequirement
   }
 
   private let entries: [File.Entry]
-  private let energyBands: [File.Entry.Band]
 
   init(data: Data) throws {
     let file = try JSONDecoder().decode(File.self, from: data)
     entries = file.goals
-    energyBands = file.estimatedEnergyRequirement.bands
   }
 
   /// 同梱のファイル。読めなければ目標量を出さない
@@ -104,11 +98,6 @@ struct DietaryReferenceIntakes {
   static func goalsForSavedProfile() -> [NutrientID: Goal] {
     guard let profile = PersonalProfile.load(), let intakes = bundled else { return [:] }
     return intakes.goals(for: profile)
-  }
-
-  /// 推定エネルギー必要量。身体活動レベル「ふつう」の値。1歳未満は nil
-  func estimatedEnergyRequirement(sex: TanitaProfile.Sex, age: Int) -> Double? {
-    Self.band(energyBands, sex: sex, age: age)?.value
   }
 
   private static func band(_ bands: [File.Entry.Band], sex: TanitaProfile.Sex, age: Int) -> File.Entry.Band? {

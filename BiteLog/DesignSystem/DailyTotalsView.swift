@@ -80,23 +80,11 @@ struct DailyTotalsView: View {
       }
 
       // 合計のカードは List の1行なので、DisclosureGroup だと中のカードを押しただけで閉じる
+      // 食物繊維と炭水化物も、ほかの栄養素と同じリングのカードで並べる。
+      // 1つだけバーや文字の行にすると、どこからがカードの並びなのか分からず、見た目もそろわない
       HeadingDisclosure(isExpanded: $showsAllNutrients) {
-        VStack(alignment: .leading, spacing: 12) {
-          NutrientBar(
-            nutrient: .fiber, value: totals.dietaryFiber, target: goals.fiber,
-            showsRemaining: true)
-
-          LabeledContent {
-            Text("\(Nutrient.carbs.format(totals.carbs))\(Nutrient.carbs.unit)")
-              .monospacedDigit()
-          } label: {
-            Text(NSLocalizedString("Carbs (Sugar + Fiber)", comment: "Nutrient label"))
-          }
-
-          ringGrid(NutrientID.addedNutrients)
-            .padding(.top, 4)
-        }
-        .padding(.top, 8)
+        ringGrid(NutrientID.addedNutrients)
+          .padding(.top, 8)
       } label: {
         // リストの外では見出しと矢印がリンク色になり、押せる文字が目立ちすぎる。
         // 中身より弱い補助的な操作なので灰色に落とす
@@ -115,6 +103,7 @@ extension DailyTotalsView {
     NutrientRingGrid(
       nutrients: nutrients, totals: addedTotals, aggregation: .dayTotal, goals: referenceGoals,
       energy: goals.calories,
+      carbohydrates: .init(fiber: totals.dietaryFiber, total: totals.carbs, fiberGoal: goals.fiber),
       // 合計のカードの上に重ねるので、一段明るい地にする
       cardBackground: Color(UIColor.tertiarySystemGroupedBackground))
   }
