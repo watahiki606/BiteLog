@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  COMPOSITION_NUTRIENTS, compositionNutrients, compositionSearchText, compositionSearchWords, normalizeForSearch,
-  parseCompositionValue,
+  COMPOSITION_CREATOR, COMPOSITION_NUTRIENTS, compositionFoodId, compositionFoodUpsert, compositionNutrients,
+  compositionWordsFor, parseCompositionValue,
 } from './composition';
 import { NUTRIENTS } from './nutrients';
 
@@ -98,19 +98,44 @@ describe('脂質が 0 の食品の飽和脂肪酸', () => {
   });
 });
 
-describe('検索の言葉', () => {
-  it('カタカナはひらがなに、括弧と空白は外す', () => {
-    expect(normalizeForSearch('＜畜肉類＞　ぶた　［中型種肉］　ロース')).toBe('畜肉類ぶた中型種肉ろーす');
-  });
-
+describe('食品検索の言い換え', () => {
   it('普段の言葉を成分表の書き方に寄せ、語に分ける', () => {
-    expect(compositionSearchWords('豚ロース')).toEqual(['ぶた', 'ろーす']);
-    expect(compositionSearchWords('鶏むね肉 焼き')).toEqual(['にわとり', 'むね', '焼き']);
-    expect(compositionSearchWords('ご飯')).toEqual(['めし']);
-    expect(compositionSearchWords('豚汁')).toEqual(['とん汁']);
+    expect(compositionWordsFor('豚ロース')).toEqual(['ぶた', 'ロース']);
+    expect(compositionWordsFor('鶏むね肉')).toEqual(['にわとり', 'むね']);
+    expect(compositionWordsFor('ご飯')).toEqual(['めし']);
+    expect(compositionWordsFor('豚汁')).toEqual(['とん汁']);
   });
 
-  it('備考の別名も検索の対象にする', () => {
-    expect(compositionSearchText('えんばく　オートミール', '別名： オート、オーツ 米国成分表から推計')).toBe('えんばくおーとみーる おーと おーつ');
+  it('言い換える語が無ければ null', () => {
+    expect(compositionWordsFor('サーモン')).toBeNull();
   });
 });
+
+describe('国の一覧の食品', () => {
+  it('id は食品番号から決める。どの環境でも同じ食品は同じ id になる', () => {
+    expect(compositionFoodId('01088')).toBe('00000000-0000-4000-8000-000000001088');
+  });
+
+  it('100 g あたりで、ブランド名は空、作った人と出典と食品番号を入れる', () => {
+    const { sql, binds } = compositionFoodUpsert('01088', 'こめ ［水稲めし］ 精白米 うるち米', { calories: 156 });
+    const row = Object.fromEntries(columnsOf(sql).map((column, i) => [column, binds[i]]));
+    expect(row).toMatchObject({
+      id: '00000000-0000-4000-8000-000000001088', brand_name: '', product_name: 'こめ ［水稲めし］ 精白米 うるち米',
+      portion_size: 100, portion_unit: 'g', unique_key: '|こめ ［水稲めし］ 精白米 うるち米|g',
+      created_by: COMPOSITION_CREATOR, nutrient_source: 'composition_table', nutrient_source_ref: '01088', calories: 156,
+    });
+  });
+
+  it('未測定の基本5項目は 0 にし、それ以外の栄養素は分からないのまま', () => {
+    const { sql, binds } = compositionFoodUpsert('16001', '＜アルコール飲料類＞ 清酒 普通酒', {
+      calories: 107, protein: 0.4, fat: 0, net_carbs: 4.9, dietary_fiber: null, potassium: 5, iodine: null,
+    });
+    const row = Object.fromEntries(columnsOf(sql).map((column, i) => [column, binds[i]]));
+    expect(row).toMatchObject({ dietary_fiber: 0, potassium: 5, iodine: null, vitamin_d: null });
+  });
+});
+
+/** INSERT 文の列名の並び */
+function columnsOf(sql: string): string[] {
+  return /\(([^)]*)\)\s*VALUES/.exec(sql)![1].split(',').map((c) => c.trim());
+}

@@ -16,16 +16,9 @@ struct EditItemView: View {
   @State private var failure: OperationFailure?
   private let pageSize = 100
 
-  private var perPortionCalories: Double { foodMaster?.calories ?? item.nutritionSnapshot?.calories ?? 0 }
-  private var perPortionProtein: Double { foodMaster?.protein ?? item.nutritionSnapshot?.protein ?? 0 }
-  private var perPortionFat: Double { foodMaster?.fat ?? item.nutritionSnapshot?.fat ?? 0 }
-  private var perPortionNetCarbs: Double { foodMaster?.netCarbs ?? item.nutritionSnapshot?.netCarbs ?? 0 }
-  private var perPortionDietaryFiber: Double { foodMaster?.dietaryFiber ?? item.nutritionSnapshot?.dietaryFiber ?? 0 }
-  private var portionSize: Double { foodMaster?.portionSize ?? item.nutritionSnapshot?.portionSize ?? 1.0 }
-  /// 1単位あたりの値。食品が残っていれば食品の、消えていればスナップショットの値
-  private var perPortionAmounts: NutrientAmounts {
-    foodMaster?.nutrients ?? item.nutritionSnapshot?.nutrients ?? NutrientAmounts()
-  }
+  @FocusState private var isServingsFocused: Bool?
+
+  private var portionUnit: String { foodMaster?.portionUnit ?? item.portionUnit }
 
   private var servingsValue: Double { Double(numberOfServings) ?? 1.0 }
 
@@ -58,24 +51,14 @@ struct EditItemView: View {
         Section {
           foodRow
 
-          LabeledContent {
-            HStack(spacing: 6) {
-              TextField("1.0", text: $numberOfServings)
-                .keyboardType(.decimalPad)
-                .multilineTextAlignment(.trailing)
-                .monospacedDigit()
-              Text(foodMaster?.portionUnit ?? item.portionUnit)
-                .foregroundStyle(.secondary)
-            }
-          } label: {
-            Text(NSLocalizedString("Servings", comment: "Servings label"))
+          // この画面で直せるのは食べた量だけ。その欄にだけ枠を付け、ほかは表示だけと分かるようにする
+          LabeledContent(NSLocalizedString("Servings", comment: "Servings label")) {
+            NumberInputField(
+              title: NSLocalizedString("Servings", comment: "Servings label"), text: $numberOfServings,
+              placeholder: "1", unit: portionUnit, focus: $isServingsFocused, field: true)
           }
         } header: {
           Text(NSLocalizedString("Food Item", comment: "Form section title"))
-        } footer: {
-          Text(
-            NSLocalizedString(
-              "Adjust the serving size to calculate the intake", comment: "Servings explanation"))
         }
 
         if foodMaster != nil || item.isMasterDeleted {
@@ -87,41 +70,32 @@ struct EditItemView: View {
           }
 
           Section {
-            EditNutrientRow(
-              nutrient: .calories, perPortion: perPortionCalories, total: totalCalories)
-            EditNutrientRow(
-              nutrient: .protein, perPortion: perPortionProtein, total: totalProtein)
-            EditNutrientRow(nutrient: .fat, perPortion: perPortionFat, total: totalFat)
-            EditNutrientRow(
-              nutrient: .netCarbs, perPortion: perPortionNetCarbs, total: totalNetCarbs)
-            EditNutrientRow(
-              nutrient: .fiber, perPortion: perPortionDietaryFiber, total: totalDietaryFiber)
-            EditNutrientRow(
-              nutrient: .carbs,
-              perPortion: perPortionNetCarbs + perPortionDietaryFiber,
-              total: totalCarbs)
+            EditNutrientRow(nutrient: .calories, total: totalCalories)
+            EditNutrientRow(nutrient: .protein, total: totalProtein)
+            EditNutrientRow(nutrient: .fat, total: totalFat)
+            EditNutrientRow(nutrient: .netCarbs, total: totalNetCarbs)
+            EditNutrientRow(nutrient: .fiber, total: totalDietaryFiber)
+            EditNutrientRow(nutrient: .carbs, total: totalCarbs)
             ForEach(NutrientID.labelNutrients, id: \.self) { id in
-              EditNutrientRow(
-                addedNutrient: id, perPortion: perPortionAmounts[id], total: totalNutrition.amounts[id])
+              EditNutrientRow(addedNutrient: id, total: totalNutrition.amounts[id])
             }
             DisclosureGroup(
               NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients rarely on food labels")
             ) {
               ForEach(NutrientID.detailNutrients, id: \.self) { id in
-                EditNutrientRow(
-                  addedNutrient: id, perPortion: perPortionAmounts[id], total: totalNutrition.amounts[id])
+                EditNutrientRow(addedNutrient: id, total: totalNutrition.amounts[id])
               }
             }
+            .listRowAsCard()
           } header: {
-            Text(NSLocalizedString("Nutrition", comment: "Form section title"))
-          } footer: {
+            // 何の値かを一覧の前に言う。脚注に書くと、最後まで読まないと何を見ているか分からない
             Text(
               String(
-                format: NSLocalizedString(
-                  "Values shown as: per %@ %@ → total", comment: "Nutrition explanation"),
-                NutritionFormatter.formatNutrition(portionSize),
-                foodMaster?.portionUnit ?? item.portionUnit))
+                format: NSLocalizedString("Nutrition for %@ %@", comment: "Nutrition for the eaten amount"),
+                NutritionFormatter.formatNutrition(servingsValue), portionUnit))
+            .sectionHeaderAlignedToCard()
           }
+          .headerProminence(.increased)
         }
       }
       .navigationTitle(NSLocalizedString("Edit Meal", comment: "Navigation title"))
@@ -199,51 +173,39 @@ struct EditItemView: View {
   }
 }
 
-/// 「1食あたり → 合計」を1行のカードで示す。栄養素の名前・色・単位・印は栄養素の型から引く。
+/// 食べた量の分の栄養素を1行のカードで示す。栄養素の名前・色・単位・印は栄養素の型から引く。
+///
+/// 1単位あたりの値は並べない。「67kcal → 134kcal」と2つ並べると、どちらが食べた量なのか説明が要る。
+/// 1単位あたりの値は食品の詳細で見られる。
 struct EditNutrientRow: View {
   let nutrient: any NutrientDisplaying
   /// 分からなければ nil。あとから足した栄養素は、値の分からない食品がある
-  let perPortion: Double?
   let total: Double?
 
-  init(nutrient: Nutrient, perPortion: Double, total: Double) {
+  init(nutrient: Nutrient, total: Double) {
     self.nutrient = nutrient
-    self.perPortion = perPortion
     self.total = total
   }
 
-  init(addedNutrient: NutrientID, perPortion: Double?, total: Double?) {
+  init(addedNutrient: NutrientID, total: Double?) {
     self.nutrient = addedNutrient
-    self.perPortion = perPortion
     self.total = total
-  }
-
-  private func text(_ value: Double?) -> String {
-    value.map { "\(nutrient.format($0))\(nutrient.unit)" }
-      ?? NSLocalizedString("Unknown", comment: "Unknown nutrient value")
   }
 
   var body: some View {
-    NutrientCardRow(nutrient: nutrient) {
-      HStack(spacing: 6) {
-        Text(text(perPortion))
-          .monospacedDigit()
-          .foregroundStyle(.secondary)
-
-        Image(systemName: "arrow.right")
-          .font(.caption2)
-          .foregroundStyle(.secondary)
-          .accessibilityHidden(true)
-
-        Text(text(total))
-          .monospacedDigit()
-          .fontWeight(.medium)
-      }
+    NutrientCardRow(nutrient: nutrient, background: Color(UIColor.secondarySystemGroupedBackground)) {
+      Text(
+        total.map { "\(nutrient.format($0))\(nutrient.unit)" }
+          ?? NSLocalizedString("Unknown", comment: "Unknown nutrient value")
+      )
+      .monospacedDigit()
+      .fontWeight(.medium)
     }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(
       total.map(nutrient.accessibilityLabel(for:))
         ?? "\(nutrient.localizedName) \(NSLocalizedString("Unknown", comment: "Unknown nutrient value"))")
+    .listRowAsCard()
   }
 }
 

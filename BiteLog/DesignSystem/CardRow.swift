@@ -23,6 +23,19 @@ extension View {
   }
 }
 
+extension View {
+  /// フォームの行の地と区切り線を消し、中身のカードを画面の地に直接並べる。
+  ///
+  /// 栄養素のカードを、1日の合計や統計と同じく1枚ずつ独立した面に見せる。
+  /// 行の地を残すと、セクションの面の上にカードが重なって二重の枠に見える。
+  func listRowAsCard() -> some View {
+    self
+      .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+      .listRowBackground(Color.clear)
+      .listRowSeparator(.hidden)
+  }
+}
+
 /// 押すと別の画面へ進むカード。
 ///
 /// NavigationLink をそのまま行に置くと、右端の矢印がカードの外に描かれる。

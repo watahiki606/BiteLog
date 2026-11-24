@@ -35,12 +35,23 @@ struct DesignSystemGalleryTests {
       try render(ScreenPartsGalleryView(), to: base, name: "parts-\(name)", scheme: scheme, typeSize: typeSize)
       try render(BodyGalleryView(), to: base, name: "body-\(name)", scheme: scheme, typeSize: typeSize)
       // 統計の「食塩と飽和脂肪酸」は別の絵にする。合計のカードと並べると AX5 で書き出せない高さになる
-      try render(
-        AddedNutrientGoalsGalleryView(withGoals: true), to: base, name: "added-\(name)", scheme: scheme,
-        typeSize: typeSize)
-      try render(
-        AddedNutrientGoalsGalleryView(withGoals: false), to: base, name: "added-noprofile-\(name)",
-        scheme: scheme, typeSize: typeSize)
+      if typeSize.isAccessibilitySize {
+        // 統計は栄養素を全部1段に並べるので、AX5 の1列では1枚に書き出せない高さになる。見出しごとに分けて描く
+        for section in NutrientRingGrid.Section.allCases {
+          for withGoals in [true, false] {
+            try render(
+              AddedNutrientSectionGalleryView(section: section, withGoals: withGoals), to: base,
+              name: "added-\(section)\(withGoals ? "" : "-noprofile")-\(name)", scheme: scheme, typeSize: typeSize)
+          }
+        }
+      } else {
+        try render(
+          AddedNutrientGoalsGalleryView(withGoals: true), to: base, name: "added-\(name)", scheme: scheme,
+          typeSize: typeSize)
+        try render(
+          AddedNutrientGoalsGalleryView(withGoals: false), to: base, name: "added-noprofile-\(name)",
+          scheme: scheme, typeSize: typeSize)
+      }
       try render(DayRingGalleryView(), to: base, name: "day-rings-\(name)", scheme: scheme, typeSize: typeSize)
       try render(NutrientRowsGalleryView(), to: base, name: "nutrient-rows-\(name)", scheme: scheme, typeSize: typeSize)
       try render(DietQualityScoreGalleryView(), to: base, name: "score-\(name)", scheme: scheme, typeSize: typeSize)
@@ -433,6 +444,20 @@ private struct AddedNutrientGoalsGalleryView: View {
   }
 }
 
+/// 統計の栄養素のうち、1つの見出しの分だけを並べる。AX5 で全部を1枚に描けないときに使う
+private struct AddedNutrientSectionGalleryView: View {
+  let section: NutrientRingGrid.Section
+  let withGoals: Bool
+
+  var body: some View {
+    NutrientRingGrid(
+      nutrients: NutrientID.addedNutrients.filter { NutrientRingGrid.Section($0) == section },
+      totals: DailyTotalsSample.addedTotals, aggregation: .dailyAverage(days: 1),
+      goals: withGoals ? DailyTotalsSample.goals : [:], energy: 1800)
+    .padding()
+  }
+}
+
 /// 1日の合計の「その他の栄養素」だけを、合計のカードと同じ地の上に並べる。
 /// 合計のカードごと描くと AX5 で書き出せない高さになる
 private struct DayRingGalleryView: View {
@@ -451,12 +476,12 @@ private struct DayRingGalleryView: View {
 private struct NutrientRowsGalleryView: View {
   var body: some View {
     VStack(spacing: 8) {
-      EditNutrientRow(nutrient: .calories, perPortion: 240, total: 360)
-      EditNutrientRow(nutrient: .fiber, perPortion: 2.1, total: 3.2)
-      EditNutrientRow(addedNutrient: .saltEquivalent, perPortion: 1.2, total: 1.8)
-      EditNutrientRow(addedNutrient: .saturatedFat, perPortion: 2.4, total: 3.6)
-      EditNutrientRow(addedNutrient: .calcium, perPortion: nil, total: nil)
-      EditNutrientRow(addedNutrient: .vitaminB12, perPortion: 0.4, total: 0.6)
+      EditNutrientRow(nutrient: .calories, total: 360)
+      EditNutrientRow(nutrient: .fiber, total: 3.2)
+      EditNutrientRow(addedNutrient: .saltEquivalent, total: 1.8)
+      EditNutrientRow(addedNutrient: .saturatedFat, total: 3.6)
+      EditNutrientRow(addedNutrient: .calcium, total: nil)
+      EditNutrientRow(addedNutrient: .vitaminB12, total: 0.6)
       NutrientCardRow(nutrient: NutrientID.potassium) {
         Text("420mg")
       }

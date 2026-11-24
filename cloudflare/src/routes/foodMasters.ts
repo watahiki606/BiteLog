@@ -4,6 +4,7 @@ import { foodMasterToResponse } from '../types';
 import { authMiddleware } from '../middleware/auth';
 import { nutrientsFromRow } from '../lib/nutrients';
 import { FM_NUTRIENT_SELECT, hasInvalidSource, insertFoodMaster, nutrientUpdate, type FoodMasterInput } from '../lib/foodMasterSql';
+import { COMPOSITION_CREATOR, compositionWordsFor } from '../lib/composition';
 
 const FM_SELECT = `
   fm.id, fm.brand_name, fm.product_name, ${FM_NUTRIENT_SELECT},
@@ -28,11 +29,19 @@ const foodMasters = new Hono<{ Bindings: Bindings; Variables: Variables }>()
     const words = q.split(/\s+/).filter(Boolean);
     const conditions: string[] = [];
     const binds: string[] = [];
+    // LIKE は D1 でパターン長に上限があり、長い商品名で探すと SQL がエラーになる。
+    // instr なら長さの上限が無い。lower で英字の大文字小文字を区別しない点は LIKE と同じにする
+    const contains = (column: string) => `instr(lower(${column}), lower(?)) > 0`;
     for (const word of words) {
-      // LIKE は D1 でパターン長に上限があり、長い商品名で探すと SQL がエラーになる。
-      // instr なら長さの上限が無い。lower で英字の大文字小文字を区別しない点は LIKE と同じにする
-      conditions.push('(instr(lower(fm.brand_name), lower(?)) > 0 OR instr(lower(fm.product_name), lower(?)) > 0)');
+      const alternatives = [`${contains('fm.brand_name')} OR ${contains('fm.product_name')}`];
       binds.push(word, word);
+      // 国の一覧の食品は「めし」「にわとり」のように書くので、「ご飯」「鶏むね肉」は言い換えた語でも探す
+      const composition = compositionWordsFor(word);
+      if (composition) {
+        alternatives.push(composition.map(() => contains('fm.product_name')).join(' AND '));
+        binds.push(...composition);
+      }
+      conditions.push(`(${alternatives.map((a) => `(${a})`).join(' OR ')})`);
     }
     if (onlyMine) {
       conditions.push('fm.created_by = ?');
@@ -41,11 +50,18 @@ const foodMasters = new Hono<{ Bindings: Bindings; Variables: Variables }>()
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const [dataResult, countResult] = await Promise.all([
+      // 使ったことのある食品、自分の食品、ほかの人の食品、国の一覧の食品の順。
+      // 国の一覧は 2,538 食品あり、前に出すと自分の食品が埋もれる。一覧の中では名前の短いものほど一般的な食品なので先に出す。
+      // 同じ順位の食品も並びを決めておく。決めないと、ページを送ったときに同じ食品が二度出たり抜けたりする
       c.env.DB.prepare(
         `SELECT ${FM_SELECT} ${FM_JOIN} ${where}
-         ORDER BY usage_count DESC, ufs.last_used_date DESC
+         ORDER BY usage_count DESC, ufs.last_used_date DESC,
+           fm.created_by = ? DESC,
+           fm.created_by = '${COMPOSITION_CREATOR}',
+           CASE WHEN fm.created_by = '${COMPOSITION_CREATOR}' THEN length(fm.product_name) END,
+           fm.product_name, fm.id
          LIMIT ? OFFSET ?`
-      ).bind(userId, ...binds, limit, offset).all<FoodMasterRow>(),
+      ).bind(userId, ...binds, userId, limit, offset).all<FoodMasterRow>(),
       c.env.DB.prepare(`SELECT COUNT(*) as count FROM food_masters fm ${where}`)
         .bind(...binds).first<{ count: number }>(),
     ]);

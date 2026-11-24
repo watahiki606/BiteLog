@@ -241,14 +241,26 @@ struct FoodMasterDetailView: View {
       .fontWeight(.medium)
   }
 
+  private func card(
+    _ nutrient: any NutrientDisplaying, name: String? = nil, @ViewBuilder value: @escaping () -> some View
+  ) -> some View {
+    NutrientCardRow(
+      nutrient: nutrient, name: name, background: Color(UIColor.secondarySystemGroupedBackground), value: value
+    )
+    .listRowAsCard()
+  }
+
   var body: some View {
     NavigationStack {
       Form {
         Section(header: Text(NSLocalizedString("Basic Info", comment: "Basic info"))) {
-          LabeledContent(
-            NSLocalizedString("Brand Name", comment: "Brand name"),
-            value: foodMaster.brandName
-          )
+          // 国の食品成分表の食品はブランド名が空。空の行を出すと、値が抜けているように見える
+          if !foodMaster.brandName.trimmingCharacters(in: .whitespaces).isEmpty {
+            LabeledContent(
+              NSLocalizedString("Brand Name", comment: "Brand name"),
+              value: foodMaster.brandName
+            )
+          }
           LabeledContent(
             NSLocalizedString("Product Name", comment: "Product name"),
             value: foodMaster.productName
@@ -259,43 +271,43 @@ struct FoodMasterDetailView: View {
           )
         }
 
-        Section(
-          header: Text(
+        Section {
+          // 食品の入力と同じく、印の丸を添えたカードを画面の地に1枚ずつ並べる
+          card(Nutrient.calories) { valueText(foodMaster.calories, Nutrient.calories) }
+          card(Nutrient.protein) { valueText(foodMaster.protein, Nutrient.protein) }
+          card(Nutrient.fat) { valueText(foodMaster.fat, Nutrient.fat) }
+          // 入力と同じく、ラベルの並びの炭水化物、うち食物繊維、糖質の順に出す
+          card(Nutrient.carbs, name: NSLocalizedString("Carbohydrates", comment: "Carbohydrates")) {
+            Text("\(CarbohydrateInput.carbohydrateText(netCarbs: foodMaster.netCarbs, dietaryFiber: foodMaster.dietaryFiber))g")
+              .monospacedDigit()
+              .fontWeight(.medium)
+          }
+          card(
+            Nutrient.fiber,
+            name: NSLocalizedString("Of which dietary fiber", comment: "Dietary fiber as part of carbohydrates")
+          ) { valueText(foodMaster.dietaryFiber, Nutrient.fiber) }
+          card(Nutrient.netCarbs, name: NSLocalizedString("Sugar", comment: "Sugar")) {
+            valueText(foodMaster.netCarbs, Nutrient.netCarbs)
+          }
+          ForEach(NutrientID.labelNutrients, id: \.self) { id in
+            card(id) { valueText(foodMaster.nutrients[id], id) }
+          }
+          // 詳しい栄養素は食品表示に載ることがまれで、数も多いので畳んでおく
+          DisclosureGroup(NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients rarely on food labels")) {
+            ForEach(NutrientID.detailNutrients, id: \.self) { id in
+              card(id) { valueText(foodMaster.nutrients[id], id) }
+            }
+          }
+          .listRowAsCard()
+        } header: {
+          Text(
             String(
               format: NSLocalizedString(
                 "Nutrition (per %@ %@)", comment: "Nutrition with portion size and unit"),
               NutritionFormatter.formatNutrition(foodMaster.portionSize),
               foodMaster.portionUnit
             ))
-        ) {
-          // 記録の編集と同じ、印の丸を添えた1行のカードにする
-          NutrientCardRow(nutrient: Nutrient.calories) { valueText(foodMaster.calories, Nutrient.calories) }
-          NutrientCardRow(nutrient: Nutrient.protein) { valueText(foodMaster.protein, Nutrient.protein) }
-          NutrientCardRow(nutrient: Nutrient.fat) { valueText(foodMaster.fat, Nutrient.fat) }
-          // 入力と同じく、ラベルの並びの炭水化物、うち食物繊維、糖質の順に出す
-          NutrientCardRow(
-            nutrient: Nutrient.carbs, name: NSLocalizedString("Carbohydrates", comment: "Carbohydrates")
-          ) {
-            Text("\(CarbohydrateInput.carbohydrateText(netCarbs: foodMaster.netCarbs, dietaryFiber: foodMaster.dietaryFiber))g")
-              .monospacedDigit()
-              .fontWeight(.medium)
-          }
-          NutrientCardRow(
-            nutrient: Nutrient.fiber,
-            name: NSLocalizedString("Of which dietary fiber", comment: "Dietary fiber as part of carbohydrates")
-          ) { valueText(foodMaster.dietaryFiber, Nutrient.fiber) }
-          NutrientCardRow(nutrient: Nutrient.netCarbs, name: NSLocalizedString("Sugar", comment: "Sugar")) {
-            valueText(foodMaster.netCarbs, Nutrient.netCarbs)
-          }
-          ForEach(NutrientID.labelNutrients, id: \.self) { id in
-            NutrientCardRow(nutrient: id) { valueText(foodMaster.nutrients[id], id) }
-          }
-          // 詳しい栄養素は食品表示に載ることがまれで、数も多いので畳んでおく
-          DisclosureGroup(NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients rarely on food labels")) {
-            ForEach(NutrientID.detailNutrients, id: \.self) { id in
-              NutrientCardRow(nutrient: id) { valueText(foodMaster.nutrients[id], id) }
-            }
-          }
+          .sectionHeaderAlignedToCard()
         }
         .headerProminence(.increased)
       }
@@ -376,19 +388,11 @@ struct FoodMasterFormView: View {
   /// 開いたときの「その他の栄養素」の欄。直すときは変えた欄だけを送る。
   /// 欄は値を1桁に丸めて出すので、全部を送ると触っていない値まで丸めて保存してしまう
   @State private var initialAddedValues: [NutrientID: String] = [:]
-  /// 最後に成分表から選んだ食品と重さ
-  @State private var picked: (name: String, grams: Double)?
-  /// 最後に成分表から入れた欄の文字。選び直したとき、手で直していない欄だけを入れ替える
-  @State private var pickedTexts: [CompositionPick.Field: String] = [:]
   @State private var showsDetailFields = false
   @State private var isSaving = false
   @State private var failure: OperationFailure?
 
   @FocusState private var focusedField: FocusedField?
-
-  /// 最初の5項目のほかに欄を出す栄養素。定義ファイルの並び。
-  /// 詳しい栄養素は食品表示に載ることがまれなので、欄は畳んだ中に出す
-  private static let addedNutrients = NutrientID.labelNutrients + NutrientID.detailNutrients
 
   private var stateKey: String {
     switch mode {
@@ -410,7 +414,7 @@ struct FoodMasterFormView: View {
   /// キーボードの前後の欄へ移る順番。画面に並ぶ順。畳んだ詳しい栄養素の欄には移らない
   private var fieldOrder: [FocusedField] {
     [.brandName, .productName, .portionSize, .portionUnit, .calories, .protein, .fat, .carbohydrate, .dietaryFiber]
-      + (showsDetailFields ? Self.addedNutrients : NutrientID.labelNutrients).map { .added($0) }
+      + (showsDetailFields ? NutrientID.addedNutrients : NutrientID.labelNutrients).map { .added($0) }
   }
 
   var title: String {
@@ -443,80 +447,54 @@ struct FoodMasterFormView: View {
     NavigationStack {
       Form {
         Section(header: Text(NSLocalizedString("Basic Info", comment: "Basic info"))) {
-          TextField(NSLocalizedString("Brand Name", comment: "Brand name"), text: $brandName)
-            .focused($focusedField, equals: .brandName)
-          TextField(NSLocalizedString("Product Name", comment: "Product name"), text: $productName)
-            .focused($focusedField, equals: .productName)
-          HStack {
-            Text(NSLocalizedString("Portion Size", comment: "Portion size"))
-            Spacer()
+          // 値が入ると placeholder の項目名が消え、何の欄か分からなくなる。名前は欄の外に出す
+          textRow(NSLocalizedString("Brand Name", comment: "Brand name"), text: $brandName, field: .brandName)
+          textRow(NSLocalizedString("Product Name", comment: "Product name"), text: $productName, field: .productName)
+          LabeledContent(NSLocalizedString("Portion Size", comment: "Portion size")) {
             TextField("1", text: $portionSize)
               .keyboardType(.decimalPad)
               .multilineTextAlignment(.trailing)
+              .monospacedDigit()
               .focused($focusedField, equals: .portionSize)
-              .frame(width: 80)
+              .frame(width: 84)
+              .inputFieldStyle(isFocused: focusedField == .portionSize)
           }
-          TextField(
-            NSLocalizedString("Portion Unit (e.g. piece, g)", comment: "Portion unit"),
-            text: $portionUnit)
-            .focused($focusedField, equals: .portionUnit)
+          textRow(
+            NSLocalizedString("Unit", comment: "Unit"), text: $portionUnit, field: .portionUnit,
+            placeholder: NSLocalizedString("e.g. piece, g", comment: "Placeholder of the portion unit"))
         }
 
-        CompositionPickSection(
-          productName: productName,
-          defaultGrams: CompositionPick.defaultGrams(portionSize: Double(portionSize) ?? 1, portionUnit: portionUnit),
-          picked: picked,
-          onPick: fill)
-
         Section {
-          HStack {
-            Text(NSLocalizedString("Calories", comment: "Calories"))
-            Spacer()
-            TextField(NSLocalizedString("0", comment: "0"), text: $calories)
-              .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
-              .focused($focusedField, equals: .calories)
-            Text(NSLocalizedString("kcal", comment: "kcal"))
-          }
-          HStack {
-            Text(NSLocalizedString("Protein", comment: "Protein"))
-            Spacer()
-            TextField(NSLocalizedString("0", comment: "0"), text: $protein)
-              .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
-              .focused($focusedField, equals: .protein)
-            Text(NSLocalizedString("g", comment: "g"))
-          }
-          HStack {
-            Text(NSLocalizedString("Fat", comment: "Fat"))
-            Spacer()
-            TextField(NSLocalizedString("0", comment: "0"), text: $fat)
-              .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
-              .focused($focusedField, equals: .fat)
-            Text(NSLocalizedString("g", comment: "g"))
-          }
+          // 1日の合計や統計と同じく、栄養素を1枚ずつのカードにして画面の地に並べる
+          numberCard(Nutrient.calories, text: $calories, field: .calories)
+          numberCard(Nutrient.protein, text: $protein, field: .protein)
+          numberCard(Nutrient.fat, text: $fat, field: .fat)
           // ラベルと同じ並びで、炭水化物とその内訳の食物繊維を入れる。糖質は引き算で出す
-          HStack {
-            Text(NSLocalizedString("Carbohydrates", comment: "Carbohydrates"))
-            Spacer()
-            TextField(NSLocalizedString("0", comment: "0"), text: $carbohydrate)
-              .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
-              .focused($focusedField, equals: .carbohydrate)
-            Text(NSLocalizedString("g", comment: "g"))
+          numberCard(
+            Nutrient.carbs, name: NSLocalizedString("Carbohydrates", comment: "Carbohydrates"),
+            text: $carbohydrate, field: .carbohydrate)
+          numberCard(
+            Nutrient.fiber,
+            name: NSLocalizedString("Of which dietary fiber", comment: "Dietary fiber as part of carbohydrates"),
+            text: $dietaryFiber, field: .dietaryFiber)
+          // 計算で出るだけの値なので枠を付けない。入力の欄と見分けられるようにする
+          NutrientCardRow(
+            nutrient: Nutrient.netCarbs,
+            name: NSLocalizedString("Sugar (Carbohydrates − Fiber)", comment: "Net carbs computed from the inputs"),
+            background: Self.cardBackground
+          ) {
+            HStack(spacing: 6) {
+              Text(carbohydrateInput.isValid ? NutritionFormatter.formatNutrition(carbohydrateInput.netCarbs) : "—")
+                .monospacedDigit()
+                .fontWeight(.medium)
+                // 枠の中の数字と右端をそろえる
+                .padding(.trailing, 10)
+              Text(Nutrient.netCarbs.unit)
+                .foregroundStyle(.secondary)
+                .frame(minWidth: unitWidth, alignment: .leading)
+            }
           }
-          HStack {
-            Text(NSLocalizedString("Of which dietary fiber", comment: "Dietary fiber as part of carbohydrates"))
-            Spacer()
-            TextField(NSLocalizedString("0", comment: "0"), text: $dietaryFiber)
-              .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
-              .focused($focusedField, equals: .dietaryFiber)
-            Text(NSLocalizedString("g", comment: "g"))
-          }
-          HStack {
-            Text(NSLocalizedString("Sugar (Carbohydrates − Fiber)", comment: "Net carbs computed from the inputs"))
-            Spacer()
-            Text(carbohydrateInput.isValid ? NutritionFormatter.formatNutrition(carbohydrateInput.netCarbs) : "—")
-              .foregroundColor(.secondary)
-            Text(NSLocalizedString("g", comment: "g")).foregroundColor(.secondary)
-          }
+          .listRowAsCard()
         } header: {
           Text(
             String(
@@ -524,6 +502,7 @@ struct FoodMasterFormView: View {
               portionSize.isEmpty ? "1" : portionSize,
               portionUnit.isEmpty ? NSLocalizedString("unit", comment: "Default unit") : portionUnit
             ))
+          .sectionHeaderAlignedToCard()
         } footer: {
           if !carbohydrateInput.isValid {
             Text(NSLocalizedString(
@@ -533,27 +512,21 @@ struct FoodMasterFormView: View {
           }
         }
         .headerProminence(.increased)
-        .font(.subheadline)
-        .foregroundColor(.secondary)
 
         Section {
-          ForEach(NutrientID.labelNutrients, id: \.self) { addedField($0) }
+          ForEach(NutrientID.labelNutrients, id: \.self) { addedCard($0) }
           DisclosureGroup(
             NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients rarely on food labels"),
             isExpanded: $showsDetailFields
           ) {
-            ForEach(NutrientID.detailNutrients, id: \.self) { addedField($0) }
+            ForEach(NutrientID.detailNutrients, id: \.self) { addedCard($0) }
           }
+          .listRowAsCard()
         } header: {
           Text(NSLocalizedString("Other Nutrients", comment: "Form section for nutrients added later"))
-        } footer: {
-          // 0 と入れれば 0 として、空欄なら分からないとして保存する。合計では分からない品を数えて添える
-          Text(NSLocalizedString(
-            "Leave blank if the label doesn't show it. Enter 0 only when it is really 0.",
-            comment: "Footer of other nutrients"))
+            .sectionHeaderAlignedToCard()
         }
-        .font(.subheadline)
-        .foregroundColor(.secondary)
+        .headerProminence(.increased)
       }
       .navigationTitle(title)
       .toolbar {
@@ -600,56 +573,43 @@ struct FoodMasterFormView: View {
     }
   }
 
-  private func addedField(_ id: NutrientID) -> some View {
-    HStack {
-      Text(id.localizedName)
-      Spacer()
-      TextField(
-        NSLocalizedString("Unknown", comment: "Placeholder for an unknown nutrient value"),
-        text: Binding(get: { addedValues[id] ?? "" }, set: { addedValues[id] = $0 })
-      )
-      .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
-      .focused($focusedField, equals: .added(id))
-      Text(id.definition.unit)
+  /// 栄養素のカードの地。行の地を消して画面の地に直接置くので、1日の合計や統計のカードと同じ地にする
+  private static let cardBackground = Color(UIColor.secondarySystemGroupedBackground)
+
+  /// 糖質の行の単位を、入力の欄の単位と同じ幅にそろえる
+  @ScaledMetric(relativeTo: .subheadline) private var unitWidth: CGFloat = 32
+
+  /// 名前を左に、文字を打つ枠を右に置いた行
+  private func textRow(
+    _ label: String, text: Binding<String>, field: FocusedField, placeholder: String = ""
+  ) -> some View {
+    LabeledContent(label) {
+      TextField(placeholder, text: text)
+        .focused($focusedField, equals: field)
+        .inputFieldStyle(isFocused: focusedField == field)
     }
   }
 
-  /// 成分表から選んだ食品の、重さの分の値を欄に入れる
-  private func fill(_ food: CompositionFoodDTO, grams: Double) {
-    let texts = CompositionPick.fieldTexts(per100g: food.per100g, grams: grams)
-    let current = Dictionary(uniqueKeysWithValues: Self.pickFields.map { ($0, text(of: $0)) })
-    for (field, text) in CompositionPick.merge(current: current, picked: texts, previouslyPicked: pickedTexts) {
-      setText(text, of: field)
+  /// 栄養素1つのカードに、数を打つ枠を置く。カードのどこを押しても枠に打てるようにする
+  private func numberCard(
+    _ nutrient: any NutrientDisplaying, name: String? = nil, text: Binding<String>,
+    placeholder: String = NSLocalizedString("0", comment: "0"), field: FocusedField
+  ) -> some View {
+    NutrientCardRow(nutrient: nutrient, name: name, background: Self.cardBackground) {
+      NumberInputField(
+        title: name ?? nutrient.localizedName, text: text, placeholder: placeholder, unit: nutrient.unit,
+        focus: $focusedField, field: field)
     }
-    pickedTexts = texts
-    picked = (food.name, grams)
-    // 詳しい栄養素にも値が入る。畳んだままだと入ったことが見えない
-    if NutrientID.detailNutrients.contains(where: { texts[.added($0)] != nil }) { showsDetailFields = true }
+    .contentShape(Rectangle())
+    .onTapGesture { focusedField = field }
+    .listRowAsCard()
   }
 
-  private static let pickFields: [CompositionPick.Field] =
-    [.calories, .protein, .fat, .carbohydrate, .dietaryFiber] + addedNutrients.map { .added($0) }
-
-  private func text(of field: CompositionPick.Field) -> String {
-    switch field {
-    case .calories: return calories
-    case .protein: return protein
-    case .fat: return fat
-    case .carbohydrate: return carbohydrate
-    case .dietaryFiber: return dietaryFiber
-    case .added(let id): return addedValues[id] ?? ""
-    }
-  }
-
-  private func setText(_ text: String, of field: CompositionPick.Field) {
-    switch field {
-    case .calories: calories = text
-    case .protein: protein = text
-    case .fat: fat = text
-    case .carbohydrate: carbohydrate = text
-    case .dietaryFiber: dietaryFiber = text
-    case .added(let id): addedValues[id] = text
-    }
+  private func addedCard(_ id: NutrientID) -> some View {
+    numberCard(
+      id, text: Binding(get: { addedValues[id] ?? "" }, set: { addedValues[id] = $0 }),
+      placeholder: NSLocalizedString("Unknown", comment: "Placeholder for an unknown nutrient value"),
+      field: .added(id))
   }
 
   private func focusNextField() {
@@ -717,7 +677,7 @@ struct FoodMasterFormView: View {
           portionUnit: portionUnit
         )
         let entered = enteredAddedValues
-        for id in Self.addedNutrients where addedValues[id] ?? "" != initialAddedValues[id] ?? "" {
+        for id in NutrientID.addedNutrients where addedValues[id] ?? "" != initialAddedValues[id] ?? "" {
           if let value = entered[id] {
             dto.nutrients[id] = value
           } else {
@@ -746,7 +706,7 @@ struct FoodMasterFormView: View {
 
   private func saveState() {
     guard case .quickAdd = mode else { return }
-    for id in Self.addedNutrients {
+    for id in NutrientID.addedNutrients {
       UserDefaults.standard.set(addedValues[id] ?? "", forKey: "\(stateKey)_\(id.rawValue)")
     }
     UserDefaults.standard.set(brandName, forKey: "\(stateKey)_brandName")
@@ -773,7 +733,7 @@ struct FoodMasterFormView: View {
       protein = NutritionFormatter.formatNutrition(foodMaster.protein)
       portionSize = NutritionFormatter.formatNutrition(foodMaster.portionSize)
       portionUnit = foodMaster.portionUnit
-      for id in Self.addedNutrients {
+      for id in NutrientID.addedNutrients {
         addedValues[id] = foodMaster.nutrients[id].map(NutritionFormatter.formatNutrition)
       }
       initialAddedValues = addedValues
@@ -787,7 +747,7 @@ struct FoodMasterFormView: View {
       protein = UserDefaults.standard.string(forKey: "\(stateKey)_protein") ?? ""
       portionSize = UserDefaults.standard.string(forKey: "\(stateKey)_portionSize") ?? ""
       portionUnit = UserDefaults.standard.string(forKey: "\(stateKey)_portionUnit") ?? ""
-      for id in Self.addedNutrients {
+      for id in NutrientID.addedNutrients {
         addedValues[id] = UserDefaults.standard.string(forKey: "\(stateKey)_\(id.rawValue)")
       }
     case .add:
@@ -798,7 +758,7 @@ struct FoodMasterFormView: View {
   private func clearSavedState() {
     guard case .quickAdd = mode else { return }
     (["_brandName", "_productName", "_calories", "_carbohydrate", "_dietaryFiber", "_fat", "_protein", "_portionSize", "_portionUnit"]
-      + Self.addedNutrients.map { "_\($0.rawValue)" }).forEach {
+      + NutrientID.addedNutrients.map { "_\($0.rawValue)" }).forEach {
       UserDefaults.standard.removeObject(forKey: "\(stateKey)\($0)")
     }
   }

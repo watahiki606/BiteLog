@@ -196,6 +196,15 @@ struct AddedNutrientsTests {
     #expect(NutrientID.detailNutrients.contains(.zinc))
   }
 
+  @Test func 最初の5項目のほかは1回ずつ並び食品表示に載りうるものが先() {
+    let added = NutrientID.addedNutrients
+    #expect(Set(added) == Set(NutrientID.allCases.filter { !$0.definition.core }))
+    #expect(added.count == Set(added).count)
+    let firstDetail = added.firstIndex { $0.definition.detail } ?? added.endIndex
+    #expect(added[..<firstDetail].allSatisfy { !$0.definition.detail })
+    #expect(added[firstDetail...].allSatisfy { $0.definition.detail })
+  }
+
   @Test func 目標量の無い栄養素は引けない() {
     #expect(Self.intakes.goal(for: .calories, sex: .male, age: 40) == nil)
   }

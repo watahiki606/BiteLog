@@ -5,8 +5,9 @@ import app from '../index';
 import { issueSessionJwt } from '../middleware/auth';
 import { applySchema } from '../test/schema';
 import { resetCatalogCache } from '../lib/aiComposition';
+import { compositionFoodUpsert } from '../lib/composition';
 
-// 写真の解析で、料理を成分表の食材と重さに分けさせ、値は成分表から引く
+// 写真の解析で、料理を成分表の食材と重さに分けさせ、値は食品に入れた国の一覧の食品から引く
 
 const SECRET = 'ai-composition-test-secret';
 
@@ -27,16 +28,19 @@ afterAll(() => vi.unstubAllGlobals());
 
 beforeEach(async () => {
   resetCatalogCache();
-  await env.DB.prepare('DELETE FROM composition_foods').run();
+  await env.DB.prepare('DELETE FROM food_masters').run();
   for (const [num, name, values] of [
     ['01088', 'こめ ［水稲めし］ 精白米 うるち米', { calories: 156, protein: 2.5, fat: 0.3, net_carbs: 35.6, dietary_fiber: 1.5, salt_equivalent: 0, potassium: 29, vitamin_d: 0 }],
     ['18030', '和風料理 煮物類 親子丼の具', { calories: 101, protein: 8.4, fat: 5.2, net_carbs: 5.2, dietary_fiber: 0.4, salt_equivalent: 1.0, potassium: 120, vitamin_d: 0.7 }],
   ] as const) {
-    const cols = Object.keys(values);
-    await env.DB.prepare(
-      `INSERT INTO composition_foods (food_number, food_group, name, search_text, edition, ${cols.join(', ')}, raw_json) VALUES (?, ?, ?, ?, 'test', ${cols.map(() => '?').join(', ')}, '{}')`,
-    ).bind(num, num.slice(0, 2), name, name, ...Object.values(values)).run();
+    const { sql, binds } = compositionFoodUpsert(num, name, values);
+    await env.DB.prepare(sql).bind(...binds).run();
   }
+  // 国の一覧ではない食品は、成分表の出典で食品番号を持っていても一覧に入れない
+  await env.DB.prepare(
+    `INSERT INTO food_masters (id, product_name, unique_key, created_by, nutrient_source, nutrient_source_ref)
+     VALUES ('mine', '自分のご飯', '|自分のご飯|g', 'test-user', 'composition_table', '01088')`,
+  ).run();
 });
 
 async function analyze() {
@@ -60,6 +64,7 @@ describe('写真の解析と成分表', () => {
     answer = OYAKODON;
     await analyze();
     expect(lastRequest.instructions).toContain('01088 こめ ［水稲めし］ 精白米 うるち米');
+    expect(lastRequest.instructions).not.toContain('自分のご飯');
     expect(lastRequest.text.format.schema.required).toContain('components');
   });
 

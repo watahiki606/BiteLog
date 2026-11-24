@@ -1,5 +1,5 @@
-// 日本食品標準成分表の値の読み方と、成分表の食品を探すときの言葉の揃え方。
-// 取り込みのスクリプト scripts/composition/build-sql.ts と、Worker の検索の両方で使う。
+// 日本食品標準成分表の値の読み方と、国の一覧の食品を food_masters に入れる形、食品検索の言い換え。
+// 取り込みのスクリプト scripts/composition/build-sql.ts と、Worker の両方で使う。
 import { NUTRIENTS, type NutrientDefinition } from './nutrients';
 
 /** 成分表の値がある栄養素。定義ファイルの composition から決める */
@@ -60,20 +60,50 @@ export function compositionNutrients(cells: Record<string, string | undefined>):
   return values;
 }
 
-const BRACKETS = /[＜＞<>（）()［］[\]「」【】・,，、。.\s　]/g;
+/** 国の一覧の食品を作った人。利用者の id と重ならない。編集と削除は管理者だけになる */
+export const COMPOSITION_CREATOR = 'composition';
 
-/** 全角の英数字を半角に、カタカナをひらがなにし、括弧と空白を外して小文字にする */
-export function normalizeForSearch(text: string): string {
-  return text
-    .normalize('NFKC')
-    .replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60))
-    .replace(BRACKETS, '')
-    .toLowerCase();
+/**
+ * 国の一覧の食品の id。食品番号から決める。
+ * 同じ食品はどの環境でも同じ id になり、版を入れ替えるときは同じ行を上書きする。
+ * 0008 の printf('00000000-0000-4000-8000-%012d', ...) と同じ形にする
+ */
+export function compositionFoodId(foodNumber: string): string {
+  return `00000000-0000-4000-8000-${foodNumber.padStart(12, '0')}`;
+}
+
+/**
+ * 国の一覧の1食品を food_masters に入れ、あれば値と名前を上書きする文。100 g あたり。
+ * ブランド名は空にし、名前は一覧のまま。基本5項目は food_masters で NULL を持てないので、未測定は 0 にする
+ */
+export function compositionFoodUpsert(
+  foodNumber: string, name: string, values: Record<string, number | null>,
+): { sql: string; binds: (string | number | null)[] } {
+  const nutrientColumns = COMPOSITION_NUTRIENTS.map((n) => n.column);
+  const row: Record<string, string | number | null> = {
+    id: compositionFoodId(foodNumber),
+    brand_name: '',
+    product_name: name,
+    ...Object.fromEntries(COMPOSITION_NUTRIENTS.map((n) => [n.column, values[n.column] ?? (n.core ? 0 : null)])),
+    portion_size: 100,
+    portion_unit: 'g',
+    unique_key: `|${name}|g`,
+    created_by: COMPOSITION_CREATOR,
+    nutrient_source: 'composition_table',
+    nutrient_source_ref: foodNumber,
+  };
+  const columns = Object.keys(row);
+  const updated = ['product_name', 'unique_key', ...nutrientColumns];
+  return {
+    sql: `INSERT INTO food_masters (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})
+ ON CONFLICT(id) DO UPDATE SET ${updated.map((c) => `${c} = excluded.${c}`).join(', ')}`,
+    binds: Object.values(row),
+  };
 }
 
 /**
  * 普段の言葉を成分表の書き方に寄せる。成分表は「ぶた」「にわとり」「めし」のように書くので、
- * 「豚ロース」「鶏むね肉」「ご飯」のままでは見つからない。
+ * 「豚ロース」「鶏むね肉」「ご飯」のままでは国の一覧の食品が見つからない。
  * 長い語から順に置き換えるので、「鶏肉」は「鶏」より先に置く
  */
 const SYNONYMS: readonly [string, string][] = [
@@ -88,19 +118,15 @@ const SYNONYMS: readonly [string, string][] = [
   ['林檎', 'りんご'], ['苺', 'いちご'], ['蜜柑', 'みかん'],
   ['蕎麦', 'そば'], ['中華麺', '中華めん'], ['ラーメン', '中華めん'], ['パスタ', 'スパゲッティ'],
   ['味噌', 'みそ'], ['醤油', 'しょうゆ'],
-];
+].sort((a, b) => b[0].length - a[0].length) as [string, string][];
 
-/** 検索語を、成分表の search_text と比べられる語の並びにする */
-export function compositionSearchWords(query: string): string[] {
-  let text = query;
-  for (const [from, to] of [...SYNONYMS].sort((a, b) => b[0].length - a[0].length)) {
-    text = text.split(from).join(` ${to} `);
-  }
-  return text.split(/[\s　]+/).map(normalizeForSearch).filter(Boolean);
-}
-
-/** 成分表の食品の検索用の文字。食品名と、備考にある別名をまとめる */
-export function compositionSearchText(name: string, remarks: string): string {
-  const aliases = (/別名[:：]\s*([^\s　]+)/.exec(remarks)?.[1] ?? '').split(/[、,，]/);
-  return [name, ...aliases].map(normalizeForSearch).filter(Boolean).join(' ');
+/**
+ * 検索語1つを成分表の書き方に寄せた語の並び。言い換える語が無ければ null。
+ * 食品検索は、元の語で見つかる食品に加えて、この語がすべて名前に含まれる食品も返す
+ */
+export function compositionWordsFor(word: string): string[] | null {
+  let text = word;
+  for (const [from, to] of SYNONYMS) text = text.split(from).join(` ${to} `);
+  if (text === word) return null;
+  return text.split(/[\s　]+/).filter(Boolean);
 }

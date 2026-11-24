@@ -32,6 +32,8 @@ enum NutrientLabelRequirement: String, Sendable {
 extension NutrientID {
   /// 最初の5項目のあとに足した栄養素のうち、食品表示に載りうるもの。入力欄に出す
   static let labelNutrients = allCases.filter { !$0.definition.core && !$0.definition.detail }
-  /// 食品表示に載ることがまれな詳しい栄養素。どの画面でも、畳んだ「詳しい栄養素」の中に並べる
+  /// 食品表示に載ることがまれな詳しい栄養素。入力と食品の詳細では、畳んだ「詳しい栄養素」の中に並べる
   static let detailNutrients = allCases.filter { $0.definition.detail }
+  /// 最初の5項目のほかの全部。食品表示に載りうるものを先に並べる
+  static let addedNutrients = labelNutrients + detailNutrients
 }

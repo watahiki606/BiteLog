@@ -29,7 +29,7 @@
 "Nutrition" = "栄養成分";
 "Search food items" = "フードを検索";
 "Add Meal" = "フードを追加";
-"Edit Meal" = "フードを編集";
+"Edit Meal" = "記録を編集";
 "Edit Food Item" = "フードを編集";
 "Add Food Item" = "フードを追加";
 "Brand Name" = "ブランド名";
@@ -97,8 +97,6 @@
 "Food" = "フード";
 "Food Item" = "フード";
 "Servings:" = "数量:";
-"Adjust the serving size to calculate the intake" = "摂取量を計算するために数量を調整してください";
-"Values shown as: per serving → total based on servings" = "表示値: 1食分 → 合計摂取量";
 "Select food" = "フードを選択";
 "Nutrition (per %@)" = "栄養成分（%@あたり）";
 "unit" = "単位";
@@ -440,10 +438,7 @@
 /* 訳が無く、日本語でも英語のまま出ていた文言 */
 // 食品の手入力と詳細
 "Portion Size" = "分量";
-"Portion Unit (e.g. piece, g)" = "単位 (例: 個、g)";
 "Nutrition (per %@ %@)" = "%1$@%2$@あたりの栄養成分";
-// 記録の編集の脚注。左が1単位あたり、右が合計
-"Values shown as: per %@ %@ → total" = "表示: %1$@%2$@あたり → 合計";
 // 写真解析
 "AI food analysis requires sign-in." = "写真の解析にはサインインが必要です。";
 "Sign In Required" = "サインインが必要です";
@@ -468,7 +463,6 @@
 /* あとから足した栄養素。食塩相当量と飽和脂肪酸 */
 "Other Nutrients" = "その他の栄養素";
 "Other Nutrients per Day" = "その他の栄養素の1日平均";
-"Leave blank if the label doesn't show it. Enter 0 only when it is really 0." = "表示に無ければ空欄のままにしてください。0 は、本当に 0 のときだけ入れます。";
 "Salt and Saturated Fat" = "食塩と飽和脂肪酸";
 "Add your sex and birth date in Profile to compare with the dietary goals." = "プロフィールに性別と生年月日を入れると、食事摂取基準の目標量と並べます。";
 
@@ -480,27 +474,19 @@
 /* 栄養素のリングのカード。基準値に対する割合と、ミネラルとビタミンの見出し */
 "%d%% of the recommended amount" = "推奨量の %d%%";
 "%d%% of the adequate intake" = "目安量の %d%%";
-"%@ if menstruating" = "月経がある場合は %@";
 "Over by %@" = "%@ 超過";
 "Reached" = "基準に到達";
 "Minerals" = "ミネラル";
 "Vitamins" = "ビタミン";
 "Fatty acids" = "脂肪酸";
 
-/* 食品の入力で、成分表から選んで値を欄に入れる */
-"Enter the product name to see candidates." = "商品名を入れると候補が出ます。";
-"No match in the food composition table." = "成分表に合う食品がありません。";
-"Pick from the Composition Table" = "成分表から選ぶ";
-"Search the table" = "成分表を探す";
-"Edible weight" = "重さ";
-"Fills the nutrient fields with its values" = "この食品の値を栄養素の欄に入れます";
-"Filled with %@, %@ g. You can edit the values." = "%1$@ %2$@ g の値を入れました。値は直せます。";
-"Fills empty fields with the values for this weight. The weight is the edible part in one portion." = "空いている欄に、この重さの分の値を入れます。重さは1回分に含まれる食べられる部分の重さです。";
+/* 食品の入力の単位の例と、写真の解析で値の元にした食材、データの出典 */
+"e.g. piece, g" = "例: 個、g";
 "Ingredients behind the values" = "値の元にした食材";
 "Data Sources" = "データの出典";
 
 /* データの出典 */
-"DataSources.Composition" = "日本食品標準成分表（八訂）増補2023年（文部科学省）をもとに BiteLog が加工して作成。2026年3月27日の正誤表を反映しています。食品を入力するときに成分表の食品と重さを選ぶと、その値を栄養素の欄に入れます。写真の解析でも、料理を成分表の食材に分けて値を計算します。ナイアシンはナイアシン当量、ビタミンEはα-トコフェロールの値です。";
+"DataSources.Composition" = "日本食品標準成分表（八訂）増補2023年（文部科学省）をもとに BiteLog が加工して作成。2026年3月27日の正誤表を反映しています。成分表の食品は、フードを探すと自分の食品のあとに出てきます。値は 100 g あたりです。写真の解析でも、料理を成分表の食材に分けて値を計算します。ナイアシンはナイアシン当量、ビタミンEはα-トコフェロールの値です。";
 "DataSources.DRI" = "日本人の食事摂取基準（2025年版）（厚生労働省）の値を、プロフィールの性別と年齢で選んで並べます。基準は習慣的な摂取量に対するものなので、選んだ期間の1日平均と比べます。";
 "Ministry of Education: Standard Tables of Food Composition" = "文部科学省 日本食品標準成分表";
 "Ministry of Health: Dietary Reference Intakes for Japanese 2025" = "厚生労働省 日本人の食事摂取基準（2025年版）";
@@ -534,3 +520,6 @@
 
 /* State of a disclosure that is closed */
 "Collapsed" = "閉じています";
+
+/* 記録の編集。食べた量の分の栄養成分 */
+"Nutrition for %@ %@" = "%1$@%2$@分の栄養成分";
