@@ -476,12 +476,12 @@ private struct DayRingGalleryView: View {
 private struct NutrientRowsGalleryView: View {
   var body: some View {
     VStack(spacing: 8) {
-      EditNutrientRow(nutrient: .calories, perPortion: 240, total: 360)
-      EditNutrientRow(nutrient: .fiber, perPortion: 2.1, total: 3.2)
-      EditNutrientRow(addedNutrient: .saltEquivalent, perPortion: 1.2, total: 1.8)
-      EditNutrientRow(addedNutrient: .saturatedFat, perPortion: 2.4, total: 3.6)
-      EditNutrientRow(addedNutrient: .calcium, perPortion: nil, total: nil)
-      EditNutrientRow(addedNutrient: .vitaminB12, perPortion: 0.4, total: 0.6)
+      EditNutrientRow(nutrient: .calories, total: 360)
+      EditNutrientRow(nutrient: .fiber, total: 3.2)
+      EditNutrientRow(addedNutrient: .saltEquivalent, total: 1.8)
+      EditNutrientRow(addedNutrient: .saturatedFat, total: 3.6)
+      EditNutrientRow(addedNutrient: .calcium, total: nil)
+      EditNutrientRow(addedNutrient: .vitaminB12, total: 0.6)
       NutrientCardRow(nutrient: NutrientID.potassium) {
         Text("420mg")
       }

@@ -30,7 +30,7 @@
 "Nutrition" = "Nutrition";
 "Search food items" = "Search food items";
 "Add Meal" = "Add Meal";
-"Edit Meal" = "Edit Meal";
+"Edit Meal" = "Edit Entry";
 
 // Import/Export CSV
 "CSV File Format:" = "CSV File Format:";
@@ -84,8 +84,6 @@
 "Food" = "Food";
 "Food Item" = "Food Item";
 "Servings:" = "Servings:";
-"Adjust the serving size to calculate the intake" = "Adjust the serving size to calculate the intake";
-"Values shown as: per serving → total based on servings" = "Values shown as: per serving → total based on servings";
 "Select food" = "Select food";
 "unit" = "unit";
 
@@ -497,3 +495,6 @@
 
 /* State of a disclosure that is closed */
 "Collapsed" = "Collapsed";
+
+/* 記録の編集。食べた量の分の栄養成分 */
+"Nutrition for %@ %@" = "Nutrition for %1$@ %2$@";

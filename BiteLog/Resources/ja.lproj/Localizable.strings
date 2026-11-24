@@ -29,7 +29,7 @@
 "Nutrition" = "栄養成分";
 "Search food items" = "フードを検索";
 "Add Meal" = "フードを追加";
-"Edit Meal" = "フードを編集";
+"Edit Meal" = "記録を編集";
 "Edit Food Item" = "フードを編集";
 "Add Food Item" = "フードを追加";
 "Brand Name" = "ブランド名";
@@ -97,8 +97,6 @@
 "Food" = "フード";
 "Food Item" = "フード";
 "Servings:" = "数量:";
-"Adjust the serving size to calculate the intake" = "摂取量を計算するために数量を調整してください";
-"Values shown as: per serving → total based on servings" = "表示値: 1食分 → 合計摂取量";
 "Select food" = "フードを選択";
 "Nutrition (per %@)" = "栄養成分（%@あたり）";
 "unit" = "単位";
@@ -441,8 +439,6 @@
 // 食品の手入力と詳細
 "Portion Size" = "分量";
 "Nutrition (per %@ %@)" = "%1$@%2$@あたりの栄養成分";
-// 記録の編集の脚注。左が1単位あたり、右が合計
-"Values shown as: per %@ %@ → total" = "表示: %1$@%2$@あたり → 合計";
 // 写真解析
 "AI food analysis requires sign-in." = "写真の解析にはサインインが必要です。";
 "Sign In Required" = "サインインが必要です";
@@ -531,3 +527,6 @@
 
 /* State of a disclosure that is closed */
 "Collapsed" = "閉じています";
+
+/* 記録の編集。食べた量の分の栄養成分 */
+"Nutrition for %@ %@" = "%1$@%2$@分の栄養成分";
