@@ -1,11 +1,14 @@
-BiteLog now covers many more nutrients.
+BiteLog now covers many more nutrients, with clearer screens.
 
-- Log salt equivalent, saturated fat, potassium, calcium, magnesium, iron, and vitamins A, D, and C. Leave a value blank if the label doesn't show it
-- Choose from 2,538 foods in the Standard Tables of Food Composition in Japan when you search for a food. They appear after your own foods
-- Photo analysis now splits a dish into ingredients and weights, and takes the values from the table
-- See 20 more nutrients, such as phosphorus, zinc, and B vitamins, in food details, the daily total, and Statistics
-- Add your sex and birth date in Profile to compare nutrients with the dietary reference intakes in Statistics
-- The food form now follows the label: carbohydrates, then dietary fiber
+- Log salt equivalent, saturated fat, potassium, calcium, iron, vitamins A, D, and C, and more. Leave a value blank if the label doesn't show it
+- See 20 more nutrients, such as phosphorus, zinc, iodine, selenium, and B vitamins
+- Choose from 2,538 foods in Japan's national food composition tables when you search for a food. They appear after your own foods
+- The daily total and Statistics show nutrients as cards with rings. Open Other Nutrients once to see them all
+- Add your sex and birth date in Profile to see each nutrient as a share of the national reference value
+- Tap a nutrient in Statistics to read what it does, what happens with too little or too much, and foods rich in it, with sources
+- Photo analysis now splits a dish into ingredients and weights and calculates values from the composition tables
+- The food and log entry editors now make it clear which fields you can edit
+- Carbohydrates, sugar, and dietary fiber now have the same names on every screen
 - CSV export adds the new nutrients as columns at the end
 
 When you register a food from a photo or by hand, BiteLog now tells you if a food with the same name and unit already exists.
