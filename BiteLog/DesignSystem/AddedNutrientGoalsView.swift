@@ -10,8 +10,6 @@ struct AddedNutrientGoalsView: View {
   /// プロフィールの性別と年齢で引いた目標量。プロフィールが無ければ空
   let goals: [NutrientID: DietaryReferenceIntakes.Goal]
 
-  @State private var showsDetailNutrients = false
-
   /// 飽和脂肪酸の目標量はエネルギーに占める割合なので、期間に食べたエネルギーの1日平均と比べる
   private var energyPerDay: Double { totals.values.calories / Double(max(dayCount, 1)) }
 
@@ -25,20 +23,9 @@ struct AddedNutrientGoalsView: View {
           .foregroundStyle(.secondary)
       }
 
-      grid(NutrientID.labelNutrients)
-
-      // 詳しい栄養素は15あり、並べると画面が長くなりすぎる。畳んでおく。
-      // 1日の合計の同じ見出しと、押せる範囲と見た目をそろえる
-      HeadingDisclosure(isExpanded: $showsDetailNutrients) {
-        grid(NutrientID.detailNutrients)
-          .padding(.top, 12)
-      } label: {
-        // 1日の合計の「その他の栄養素」と同じく、補助的な操作なので灰色に落とす
-        Text(NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients rarely on food labels"))
-          .font(.subheadline.weight(.semibold))
-          .foregroundStyle(.secondary)
-      }
-      .tint(.secondary)
+      // 食品表示に載るものと載りにくいものを分けて畳むと、全部を見るのに開く手間が増える。
+      // 見出しで種類ごとに分かれているので、まとめて並べる
+      grid(NutrientID.addedNutrients)
     }
   }
 

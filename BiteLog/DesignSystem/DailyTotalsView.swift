@@ -3,8 +3,9 @@ import SwiftUI
 /// 1日の摂取量を目標と並べて示す要約。
 ///
 /// カロリーのリングを主役にし、主要3栄養素はその下に添える。毎日は追わない
-/// 食物繊維、炭水化物、ミネラルやビタミンは畳んでおく。
-/// 全部を開いたままにすると要約だけで画面の3分の1を使う。
+/// 食物繊維、炭水化物、ミネラルやビタミンは1つの畳みにまとめる。
+/// 全部を開いたままにすると要約だけで画面の3分の1を使う。畳みの中でさらに畳むと、
+/// 全部を見るのに2回開くことになり、どこまで開けば見終わるのか分からない。
 ///
 /// 下に続く食事の一覧とは別の面として、余白を広く取った1枚のカードにする。
 /// 一覧の行と同じ見た目だと、合計と個々の記録の区別がつきにくい。
@@ -16,8 +17,6 @@ struct DailyTotalsView: View {
   var addedTotals: NutrientTotals = .empty
   /// プロフィールの性別と年齢で引いた基準値。プロフィールが無ければ空で、値だけを出す
   var referenceGoals: [NutrientID: DietaryReferenceIntakes.Goal] = [:]
-
-  @State private var showsDetailNutrients = false
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.colorScheme) private var colorScheme
@@ -94,20 +93,8 @@ struct DailyTotalsView: View {
             Text(NSLocalizedString("Carbs (Sugar + Fiber)", comment: "Nutrient label"))
           }
 
-          ringGrid(NutrientID.labelNutrients)
+          ringGrid(NutrientID.addedNutrients)
             .padding(.top, 4)
-
-          // 統計と同じく、詳しい栄養素は畳んだ中に同じカードで並べる。
-          // 統計にだけ出すと、同じ栄養素がどこで見られるのか迷う
-          HeadingDisclosure(isExpanded: $showsDetailNutrients) {
-            ringGrid(NutrientID.detailNutrients)
-              .padding(.top, 12)
-          } label: {
-            Text(NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients rarely on food labels"))
-              .font(.subheadline.weight(.semibold))
-              .foregroundStyle(.secondary)
-          }
-          .tint(.secondary)
         }
         .padding(.top, 8)
       } label: {

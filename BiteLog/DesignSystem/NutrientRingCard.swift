@@ -60,16 +60,15 @@ struct NutrientRing: View {
 // MARK: - カード
 
 /// 栄養素1つを、リングと値で見せる小さなカード。2列に並べる。
+///
+/// 文字は名前、量、基準値に対する割合の3つだけにする。残りの量や月経の有無で変わる基準まで
+/// 並べると、2列のカードでは文字が詰まって読めない。届いたか超えたかは輪の印と色で示す。
 struct NutrientRingCard: View {
   let nutrient: NutrientID
   /// 値の分かった品の合計や平均。どの品も分からなければ nil
   let amount: Double?
   /// 基準値と比べた結果。プロフィールが無いときや、値が分からないときは nil
   let progress: ReferenceProgress?
-  /// 基準までの残りと、超えた量を出すか。
-  ///
-  /// 次の食事を決められるのは「あと何 g」なので、1日の合計では出す。過去の平均に「あと」は無いので、期間では出さない
-  var showsRemaining: Bool = false
   var background: Color = Color(UIColor.secondarySystemGroupedBackground)
 
   var body: some View {
@@ -84,24 +83,13 @@ struct NutrientRingCard: View {
 
         value
 
-        Group {
-          if let progress {
-            Text(Self.percentText(progress))
-              .fontWeight(.semibold)
-              .foregroundStyle(progress.isOver ? .red : .secondary)
-            if showsRemaining, let status = Self.statusText(progress) {
-              Text(status)
-                .fontWeight(.semibold)
-                .foregroundStyle(progress.isOver ? .red : .secondary)
-            }
-            if let note = Self.menstruatingNote(progress.goal) {
-              Text(note).foregroundStyle(.secondary)
-            }
-          }
+        if let progress {
+          Text(verbatim: "\(progress.percent)%")
+            .font(.caption2)
+            .fontWeight(.semibold)
+            .monospacedDigit()
+            .foregroundStyle(progress.isOver ? .red : .secondary)
         }
-        .font(.caption2)
-        .monospacedDigit()
-        .fixedSize(horizontal: false, vertical: true)
       }
 
       Spacer(minLength: 0)
@@ -140,7 +128,7 @@ struct NutrientRingCard: View {
     }
   }
 
-  /// 「推奨量の 82%」。目標量、推奨量、目安量のどれと比べたかを言葉で分ける
+  /// 「推奨量の 82%」。画面では割合だけを出すが、読み上げでは何と比べたかを言葉で分ける
   static func percentText(_ progress: ReferenceProgress) -> String {
     let key: String
     switch progress.goal.indicator {
@@ -154,45 +142,17 @@ struct NutrientRingCard: View {
     return String(format: key, progress.percent)
   }
 
-  /// 「あと 2.5 g」「+1.5 g」。満たしたい栄養素が届いたら、割合と輪の印で足りるので出さない
-  static func statusText(_ progress: ReferenceProgress) -> String? {
-    let unit = progress.goal.nutrient.unit
-    let format = progress.goal.nutrient.format
-    if progress.isOver {
-      return "+\(format(progress.excess))\(unit)"
-    }
-    if progress.isReached { return nil }
-    return String(
-      format: NSLocalizedString("Remaining %@", comment: "Amount left to reach the goal"),
-      "\(format(progress.remaining))\(unit)")
-  }
-
-  /// 女性の鉄は月経の有無で推奨量が2つある。プロフィールで聞かないので、輪は月経なしの値で描き、もう1つを添える
-  static func menstruatingNote(_ goal: DietaryReferenceIntakes.Goal) -> String? {
-    guard let value = goal.menstruatingValue else { return nil }
-    return String(
-      format: NSLocalizedString("%@ if menstruating", comment: "Iron reference for women who menstruate"),
-      "\(goal.nutrient.format(value))\(goal.nutrient.unit)")
-  }
-
+  /// 画面で輪の色と印が示すことを、言葉にして読み上げる
   private var accessibilityValue: String {
-    var parts: [String] = []
-    if let progress {
-      parts.append(Self.percentText(progress))
-      if progress.isOver {
-        parts.append(
-          String(
-            format: NSLocalizedString("Over by %@", comment: "Amount over an upper goal"),
-            "\(nutrient.format(progress.excess)) \(nutrient.spokenUnit)"))
-      } else if progress.isReached {
-        parts.append(NSLocalizedString("Reached", comment: "A nutrient reached its reference amount"))
-      } else if showsRemaining {
-        parts.append(
-          String(
-            format: NSLocalizedString("Remaining %@", comment: "Amount left to reach the goal"),
-            "\(nutrient.format(progress.remaining)) \(nutrient.spokenUnit)"))
-      }
-      if let note = Self.menstruatingNote(progress.goal) { parts.append(note) }
+    guard let progress else { return "" }
+    var parts = [Self.percentText(progress)]
+    if progress.isOver {
+      parts.append(
+        String(
+          format: NSLocalizedString("Over by %@", comment: "Amount over an upper goal"),
+          "\(nutrient.format(progress.excess)) \(nutrient.spokenUnit)"))
+    } else if progress.isReached {
+      parts.append(NSLocalizedString("Reached", comment: "A nutrient reached its reference amount"))
     }
     return parts.joined(separator: ", ")
   }
@@ -291,9 +251,7 @@ struct NutrientRingGrid: View {
     let progress = amount.flatMap { amount in
       goals[id].flatMap { ReferenceProgress(amount: amount, goal: $0, energy: energy) }
     }
-    return NutrientRingCard(
-      nutrient: id, amount: amount, progress: progress, showsRemaining: showsRemaining,
-      background: cardBackground)
+    return NutrientRingCard(nutrient: id, amount: amount, progress: progress, background: cardBackground)
   }
 
   private var divisor: Double {
@@ -302,10 +260,4 @@ struct NutrientRingGrid: View {
     case .dailyAverage(let days): return Double(max(days, 1))
     }
   }
-
-  private var showsRemaining: Bool {
-    if case .dayTotal = aggregation { return true }
-    return false
-  }
-
 }
