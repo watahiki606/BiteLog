@@ -17,7 +17,6 @@
 "Calories" = "カロリー";
 "Protein" = "タンパク質";
 "Fat" = "脂質";
-"Carbs" = "炭水化物";
 "Select Date" = "日付を選択";
 
 // Form Fields
@@ -43,7 +42,6 @@
 "No Food Items" = "フードがありません";
 "Add your first food item to start tracking your nutrition." = "フードを追加して栄養成分を記録を開始します。";
 "Delete Food Item?" = "フードを削除しますか？";
-
 
 // Import/Export CSV
 "CSV File Format:" = "CSVファイルのフォーマット:";
@@ -109,12 +107,8 @@
 "You need to register food items before you can add meals." = "フードを登録してからフードを追加できます。";
 "Go to Food Management" = "フード管理に移動";
 "Register new food items in the food tab" = "フードタブで新しいフードを登録";
-"Carbs (Sugar + Fiber)" = "炭水化物（糖質 + 食物繊維）";
-"Carbohydrates (Sugar + Fiber)" = "炭水化物（糖質 + 食物繊維）";
 "Dietary Fiber" = "食物繊維";
 "Sugar" = "糖質";
-"Carbohydrates" = "炭水化物";
-"Carbs" = "炭水化物";
 
 // Data deletion
 "Success" = "成功";
@@ -231,7 +225,6 @@
 "No records in this period" = "この期間の記録はありません";
 "Failed to load statistics" = "統計の読み込みに失敗しました";
 "Retry" = "再試行";
-
 
 // Design System - 炭水化物の短縮ラベル。ほかの栄養素の短い名前は Nutrients.strings にある
 "Nutrient.Short.Carbs" = "炭水化物";
@@ -463,12 +456,11 @@
 /* あとから足した栄養素。食塩相当量と飽和脂肪酸 */
 "Other Nutrients" = "その他の栄養素";
 "Other Nutrients per Day" = "その他の栄養素の1日平均";
+"Dietary Fiber and Carbohydrates" = "食物繊維と炭水化物";
 "Salt and Saturated Fat" = "食塩と飽和脂肪酸";
 "Add your sex and birth date in Profile to compare with the dietary goals." = "プロフィールに性別と生年月日を入れると、食事摂取基準の目標量と並べます。";
 
-/* 入力欄は炭水化物とうち食物繊維。糖質は引き算で出す */
-"Of which dietary fiber" = "うち食物繊維";
-"Sugar (Carbohydrates − Fiber)" = "糖質（炭水化物 − 食物繊維）";
+/* 入力欄は炭水化物と食物繊維。糖質は引き算で出す */
 "Dietary fiber can't be more than carbohydrates." = "食物繊維は炭水化物より多くできません。";
 
 /* 栄養素のリングのカード。基準値に対する割合と、ミネラルとビタミンの見出し */
@@ -493,23 +485,8 @@
 "Food Nutrients" = "食品の栄養成分";
 "Reference Values" = "比べる基準の値";
 
-/* 食事の質のスコア。参考の点として出し、良し悪しは書かない */
-"Diet Quality Score" = "食事の質スコア";
-"For reference" = "参考";
-"%1$d of %2$d points" = "%2$d点中%1$d点";
+/* 栄養素のリングのカードの読み上げ。目標量に対する割合 */
 "%d%% of the goal" = "目標量の %d%%";
-"ListSeparator" = "、";
-"Add your sex and birth date in Profile to see the score." = "プロフィールに性別と生年月日を入れると出します。";
-"The score is for people aged 18 and over." = "18歳以上の方に出します。";
-"Choose a period of 7 days or more to see the score." = "7日以上の期間を選ぶと出します。";
-"The score needs meals logged on 5 days or more in the period." = "期間のうち5日以上に記録があると出します。";
-"No calories are logged in this period." = "この期間はカロリーの記録がありません。";
-"DietQualityScore.Note.Reference" = "栄養素の量を食事摂取基準と比べて出した参考の点で、診断ではありません。";
-"DietQualityScore.Note.AddedSugar" = "研究で使われる NRF9.3 から添加糖を除いた形のため、研究の点とは比べられません。";
-"DietQualityScore.Note.Consult" = "妊娠中の方や持病のある方は、専門家に相談してください。";
-"DataSources.Score" = "食事の質スコアは、Murakami らが2019年に示した NRF9.3 の日本版の方法をもとに、添加糖を除いて計算します。摂取量はエネルギーで調整し、推定エネルギー必要量の身体活動レベルふつうの値に換算してから基準と比べます。";
-"Murakami K, et al. Nutrients 2019" = "Murakami K, et al. Nutrients 2019";
-"Score Method" = "スコアの方法";
 
 /* 食品表示に載ることがまれな詳しい栄養素。畳んだ中に並べる */
 "Detailed Nutrients" = "詳しい栄養素";
@@ -522,36 +499,6 @@
 
 /* 記録の編集。食べた量の分の栄養成分 */
 "Nutrition for %@ %@" = "%1$@%2$@分の栄養成分";
-
-/* 食事の質スコアの目安の印と、根拠と計算の説明 */
-"No food with a known value for %@." = "%@の値がわかる食品がありません。";
-"This is an estimate because some foods have unknown values." = "値がわからない食品があるため目安です。";
-"How the score is calculated" = "スコアの根拠と計算";
-"About the Diet Quality Score" = "食事の質スコアについて";
-"Murakami K, et al. PLoS One 2020" = "Murakami K, et al. PLoS One 2020";
-"Fulgoni VL 3rd, et al. J Nutr 2009" = "Fulgoni VL 3rd, et al. J Nutr 2009";
-"DietQualityScore.About.What.Title" = "このスコアについて";
-"DietQualityScore.About.What.Body" = "食事に含まれる栄養素が、国の基準値に対してどれだけそろっているかを、900点満点で表した参考の点です。診断ではありません。";
-"DietQualityScore.About.Study.Title" = "もとにした研究";
-"DietQualityScore.About.Study.Origin" = "NRF9.3 という点の付け方をもとにしています。アメリカで、とりたい栄養素9つと控えたい栄養素3つから、食べ物の栄養の質を表すために作られました。日本の研究者が、日本人の食事摂取基準を当てはめて、1日の食事全体の点として計算する方法を示しています。";
-"DietQualityScore.About.Study.Validity" = "食べた物を16日間量って記録した日本の大人242人の研究では、質問票から出した点が、記録から出した点とおおむね同じ順に並びました。";
-"DietQualityScore.About.Study.Survey" = "国民健康・栄養調査の大人およそ2万人の記録で計算した研究では、点の高い人ほど望ましい食べ方をしていました。男女、年齢、たばこを吸うかどうかで知られている食事の違いも、点に表れました。";
-"DietQualityScore.About.Reference.Title" = "比べる基準値";
-"DietQualityScore.About.Reference.Body" = "厚生労働省の「日本人の食事摂取基準 2025年版」から、プロフィールの性別と年齢に合う値を使います。";
-"DietQualityScore.About.Reference.Values" = "たんぱく質、ビタミンA、ビタミンC、カルシウム、鉄、マグネシウムは推奨量と比べます。食物繊維とカリウムは目標量と比べます。ビタミンDは推奨量が無いので目安量と比べます。飽和脂肪酸はカロリーの7%、食塩相当量は目標量を上限とします。女性の鉄は、月経のない場合の値を使います。";
-"DietQualityScore.About.Steps.Title" = "計算のしかた";
-"DietQualityScore.About.Steps.Sum" = "選んだ期間に記録した食品から、11の栄養素の量を足します。";
-"DietQualityScore.About.Steps.Adjust" = "栄養素の量を、その栄養素の値がわかる食品のカロリーで割り、あなたの性別と年齢で1日に必要なカロリーの目安をかけます。たくさん食べた期間も少なかった期間も、同じ物差しで比べるためです。必要なカロリーの目安は、食事摂取基準にある、ふだんの活動量の人の値です。";
-"DietQualityScore.About.Steps.Encouraged" = "とりたい9つの栄養素は、基準値に対する割合をそのまま点にします。1つにつき100点で打ち切ります。1つの栄養素を多くとっても、ほかの栄養素の足りない分を埋め合わせないためです。";
-"DietQualityScore.About.Steps.Limited" = "控えたい2つの栄養素、飽和脂肪酸と食塩相当量は、基準値を超えた割合の分だけ点を引きます。";
-"DietQualityScore.About.Steps.Total" = "足し引きした合計が点です。満点は900点です。";
-"DietQualityScore.About.Steps.Conditions" = "点を出すのは、選んだ期間が7日以上で、記録のある日が5日以上あり、プロフィールに性別と生年月日を入れた18歳以上の人だけです。";
-"DietQualityScore.About.Differences.Title" = "もとの研究との違い";
-"DietQualityScore.About.Differences.AddedSugar" = "砂糖のように、あとから加えた糖を数えていません。もとの方法では控えたい栄養素に入っていますが、日本の食品成分表にはその値がありません。そのため甘い物の多い食事でも点が下がらず、研究の点より高めに出ることがあります。研究の点とは比べられません。";
-"DietQualityScore.About.Differences.Edition" = "基準値は、研究が使った2015年版ではなく、2025年版を使っています。";
-"DietQualityScore.About.Differences.Unknown" = "研究では、すべての食品の栄養素の値がそろっています。BiteLog では、値のわからない食品を0とは数えず、値のわかる食品だけでカロリーあたりの量を出して換算します。値のわからない食品も同じような割合で栄養素を含んでいたとみなすので、そうした食品があるときの点は目安です。1回の食事の中に値のわかる食品とわからない食品が混ざるときは、わかる食品のカロリーを食品の数の割合から見積もります。";
-"DietQualityScore.About.Care.Title" = "気をつけること";
-"DietQualityScore.About.Sources.Title" = "出典";
 
 /* 統計で栄養素を押すと開く説明 */
 "What it does" = "はたらき";

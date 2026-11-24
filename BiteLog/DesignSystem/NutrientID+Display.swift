@@ -8,6 +8,8 @@ protocol NutrientDisplaying {
   var unit: String { get }
   func format(_ value: Double) -> String
   func accessibilityLabel(for value: Double) -> String
+  /// 読み上げる単位。「グラム」
+  var spokenUnit: String { get }
 }
 
 extension Nutrient: NutrientDisplaying {}

@@ -20,14 +20,6 @@ struct DataSourcesView: View {
       } header: {
         Text(NSLocalizedString("Reference Values", comment: "Data sources section"))
       }
-      Section {
-        Text(NSLocalizedString("DataSources.Score", comment: "Diet quality score method"))
-        Link(
-          NSLocalizedString("Murakami K, et al. Nutrients 2019", comment: "Link title"),
-          destination: URL(string: "https://pubmed.ncbi.nlm.nih.gov/31640242/")!)
-      } header: {
-        Text(NSLocalizedString("Score Method", comment: "Data sources section"))
-      }
     }
     .navigationTitle(NSLocalizedString("Data Sources", comment: "Data sources"))
   }

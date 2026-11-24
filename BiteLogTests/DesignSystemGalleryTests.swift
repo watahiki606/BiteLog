@@ -54,12 +54,6 @@ struct DesignSystemGalleryTests {
       }
       try render(DayRingGalleryView(), to: base, name: "day-rings-\(name)", scheme: scheme, typeSize: typeSize)
       try render(NutrientRowsGalleryView(), to: base, name: "nutrient-rows-\(name)", scheme: scheme, typeSize: typeSize)
-      // 点が出るときと出せないときは別の絵にする。並べると AX5 で書き出せない高さになる
-      try render(
-        DietQualityScoreGalleryView(available: true), to: base, name: "score-\(name)", scheme: scheme, typeSize: typeSize)
-      try render(
-        DietQualityScoreGalleryView(available: false), to: base, name: "score-unavailable-\(name)", scheme: scheme,
-        typeSize: typeSize)
       // 1件の画面は2通りを別の絵にする。並べると AX5 で書き出せない高さになる
       try render(
         BodyDetailGalleryView(withReference: true), to: base, name: "body-detail-\(name)",
@@ -205,6 +199,9 @@ private struct GalleryView: View {
 private struct DailyTotalsSample: View {
   /// 畳みの中は DayRingGalleryView で描く。開くと AX5 で書き出せない高さになる
   @State private var showsAllNutrients = false
+
+  /// 食物繊維は目標の半分ほど。炭水化物は比べる基準が無いので量だけ
+  static let carbohydrates = NutrientRingGrid.Carbohydrates(fiber: 10, total: 160, fiberGoal: 20)
 
   /// 食塩は5品中3品だけ分かっていて目標量を超え、カルシウムは推奨量に届き、ビタミン D はどの品も分からない日
   static let addedTotals: NutrientTotals = {
@@ -443,8 +440,8 @@ private struct AddedNutrientGoalsGalleryView: View {
 
   var body: some View {
     AddedNutrientGoalsView(
-      totals: DailyTotalsSample.addedTotals, dayCount: 1, goals: withGoals ? DailyTotalsSample.goals : [:]
-    )
+      totals: DailyTotalsSample.addedTotals, dayCount: 1, goals: withGoals ? DailyTotalsSample.goals : [:],
+      fiberGoal: 20)
     .padding()
   }
 }
@@ -458,7 +455,8 @@ private struct AddedNutrientSectionGalleryView: View {
     NutrientRingGrid(
       nutrients: NutrientID.addedNutrients.filter { NutrientRingGrid.Section($0) == section },
       totals: DailyTotalsSample.addedTotals, aggregation: .dailyAverage(days: 1),
-      goals: withGoals ? DailyTotalsSample.goals : [:], energy: 1800)
+      goals: withGoals ? DailyTotalsSample.goals : [:], energy: 1800,
+      carbohydrates: section == .fiberAndCarbohydrates ? DailyTotalsSample.carbohydrates : nil)
     .padding()
   }
 }
@@ -469,7 +467,7 @@ private struct DayRingGalleryView: View {
   var body: some View {
     NutrientRingGrid(
       nutrients: NutrientID.labelNutrients, totals: DailyTotalsSample.addedTotals, aggregation: .dayTotal,
-      goals: DailyTotalsSample.goals, energy: 1800,
+      goals: DailyTotalsSample.goals, energy: 1800, carbohydrates: DailyTotalsSample.carbohydrates,
       cardBackground: Color(UIColor.tertiarySystemGroupedBackground))
     .padding(16)
     .background(Color(UIColor.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 24))
@@ -491,33 +489,6 @@ private struct NutrientRowsGalleryView: View {
         Text("420mg")
       }
     }
-    .padding()
-  }
-}
-
-/// 統計の「食事の質スコア」。点が出るときと、出せないとき
-private struct DietQualityScoreGalleryView: View {
-  private static let score = DietQualityScore(components: [
-    .init(nutrient: .protein, role: .encouraged, percentOfReference: 118),
-    .init(nutrient: .dietaryFiber, role: .encouraged, percentOfReference: 64),
-    .init(nutrient: .vitaminA, role: .encouraged, percentOfReference: 55),
-    .init(nutrient: .vitaminC, role: .encouraged, percentOfReference: 81),
-    .init(nutrient: .vitaminD, role: .encouraged, percentOfReference: 92),
-    .init(nutrient: .calcium, role: .encouraged, percentOfReference: 60),
-    .init(nutrient: .iron, role: .encouraged, percentOfReference: 103),
-    .init(nutrient: .potassium, role: .encouraged, percentOfReference: 77),
-    .init(nutrient: .magnesium, role: .encouraged, percentOfReference: 85),
-    .init(nutrient: .saturatedFat, role: .limited, percentOfReference: 131),
-    .init(nutrient: .saltEquivalent, role: .limited, percentOfReference: 124),
-  ], hasUnknownItems: true)
-
-  let available: Bool
-
-  var body: some View {
-    DietQualityScoreView(
-      result: available
-        ? .score(Self.score) : .unavailable([.tooFewLoggedDays, .noKnownValues([.vitaminD, .potassium])])
-    )
     .padding()
   }
 }

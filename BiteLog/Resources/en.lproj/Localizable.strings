@@ -18,7 +18,6 @@
 "Calories" = "Calories";
 "Protein" = "Protein";
 "Fat" = "Fat";
-"Carbs" = "Carbs";
 "Select Date" = "Select Date";
 
 // Form Fields
@@ -431,12 +430,11 @@
 /* Nutrients added after the first five: salt equivalent and saturated fat */
 "Other Nutrients" = "Other Nutrients";
 "Other Nutrients per Day" = "Other Nutrients per Day";
+"Dietary Fiber and Carbohydrates" = "Dietary Fiber and Carbohydrates";
 "Salt and Saturated Fat" = "Salt and Saturated Fat";
 "Add your sex and birth date in Profile to compare with the dietary goals." = "Add your sex and birth date in Profile to compare with the dietary goals.";
 
 /* Carbohydrates and the fiber within them. Net carbs are computed */
-"Of which dietary fiber" = "Of which dietary fiber";
-"Sugar (Carbohydrates − Fiber)" = "Net carbs (Carbs − Fiber)";
 "Dietary fiber can't be more than carbohydrates." = "Dietary fiber can't be more than carbohydrates.";
 
 /* 栄養素のリングのカード。基準値に対する割合と、ミネラルとビタミンの見出し */
@@ -461,23 +459,8 @@
 "Food Nutrients" = "Food Nutrients";
 "Reference Values" = "Reference Values";
 
-/* Diet quality score. Shown for reference, without judging good or bad */
-"Diet Quality Score" = "Diet Quality Score";
-"For reference" = "For reference";
-"%1$d of %2$d points" = "%1$d of %2$d points";
+/* Read aloud on nutrient ring cards: share of the goal */
 "%d%% of the goal" = "%d%% of the goal";
-"ListSeparator" = ", ";
-"Add your sex and birth date in Profile to see the score." = "Add your sex and birth date in Profile to see the score.";
-"The score is for people aged 18 and over." = "The score is for people aged 18 and over.";
-"Choose a period of 7 days or more to see the score." = "Choose a period of 7 days or more to see the score.";
-"The score needs meals logged on 5 days or more in the period." = "The score needs meals logged on 5 days or more in the period.";
-"No calories are logged in this period." = "No calories are logged in this period.";
-"DietQualityScore.Note.Reference" = "A reference score from comparing nutrients with the dietary reference intakes. It is not a diagnosis.";
-"DietQualityScore.Note.AddedSugar" = "It leaves added sugars out of the NRF9.3 used in research, so it can't be compared with scores in studies.";
-"DietQualityScore.Note.Consult" = "If you are pregnant or have a medical condition, talk to a professional.";
-"DataSources.Score" = "The diet quality score follows the Japanese version of NRF9.3 by Murakami et al. (2019), without added sugars. Intakes are adjusted for energy and scaled to the estimated energy requirement at a moderate activity level before comparing with the reference values.";
-"Murakami K, et al. Nutrients 2019" = "Murakami K, et al. Nutrients 2019";
-"Score Method" = "Score Method";
 
 /* Nutrients rarely on food labels, shown collapsed */
 "Detailed Nutrients" = "Detailed Nutrients";
@@ -490,36 +473,6 @@
 
 /* 記録の編集。食べた量の分の栄養成分 */
 "Nutrition for %@ %@" = "Nutrition for %1$@ %2$@";
-
-/* 食事の質スコアの目安の印と、根拠と計算の説明 */
-"No food with a known value for %@." = "No food has a known value for %@.";
-"This is an estimate because some foods have unknown values." = "This is an estimate because some foods have unknown values.";
-"How the score is calculated" = "How the score is calculated";
-"About the Diet Quality Score" = "About the Diet Quality Score";
-"Murakami K, et al. PLoS One 2020" = "Murakami K, et al. PLoS One 2020";
-"Fulgoni VL 3rd, et al. J Nutr 2009" = "Fulgoni VL 3rd, et al. J Nutr 2009";
-"DietQualityScore.About.What.Title" = "About this score";
-"DietQualityScore.About.What.Body" = "A score out of 900 that shows how well the nutrients in your meals meet the national reference values. It is for reference only and is not a diagnosis.";
-"DietQualityScore.About.Study.Title" = "The research behind it";
-"DietQualityScore.About.Study.Origin" = "The score is based on NRF9.3, a scoring method developed in the US to describe the nutritional quality of foods from 9 nutrients to encourage and 3 to limit. Researchers in Japan showed how to calculate it for a whole day's diet using the Dietary Reference Intakes for Japanese.";
-"DietQualityScore.About.Study.Validity" = "In a study of 242 Japanese adults who weighed and recorded what they ate for 16 days, scores from questionnaires ranked people in roughly the same order as scores from the records.";
-"DietQualityScore.About.Study.Survey" = "In a study using records of about 20,000 adults from the National Health and Nutrition Survey, people with higher scores ate in more favorable patterns, and the score reflected known differences in diet by sex, age, and smoking.";
-"DietQualityScore.About.Reference.Title" = "Reference values";
-"DietQualityScore.About.Reference.Body" = "BiteLog uses the values for your sex and age from the Dietary Reference Intakes for Japanese 2025 by the Ministry of Health, Labour and Welfare.";
-"DietQualityScore.About.Reference.Values" = "Protein, vitamin A, vitamin C, calcium, iron, and magnesium are compared with the recommended amounts. Dietary fiber and potassium are compared with the goals. Vitamin D has no recommended amount, so it is compared with the adequate intake. Saturated fat is capped at 7% of calories and salt at its goal. For women, iron uses the value for those who do not menstruate.";
-"DietQualityScore.About.Steps.Title" = "How it is calculated";
-"DietQualityScore.About.Steps.Sum" = "Add up the 11 nutrients from the foods you logged in the chosen period.";
-"DietQualityScore.About.Steps.Adjust" = "Divide each nutrient by the calories of the foods whose value for it is known, then multiply by the daily calorie need for your sex and age. This puts periods when you ate more or less on the same scale. The calorie need is the value for people with a moderate activity level in the Dietary Reference Intakes.";
-"DietQualityScore.About.Steps.Encouraged" = "For the 9 nutrients to encourage, the percentage of the reference value becomes the points, capped at 100 each, so eating plenty of one nutrient does not make up for too little of another.";
-"DietQualityScore.About.Steps.Limited" = "For the 2 nutrients to limit, saturated fat and salt, the percentage above the reference value is subtracted.";
-"DietQualityScore.About.Steps.Total" = "The total is the score. The maximum is 900.";
-"DietQualityScore.About.Steps.Conditions" = "The score is shown only for periods of 7 days or more with meals logged on 5 days or more, for people aged 18 and over who have entered their sex and birth date in Profile.";
-"DietQualityScore.About.Differences.Title" = "Differences from the original research";
-"DietQualityScore.About.Differences.AddedSugar" = "Added sugars are not counted. The original method limits them, but the Japanese food composition tables have no values for them. Meals high in sweets are therefore not marked down, and the score can be higher than in the research. It cannot be compared with research scores.";
-"DietQualityScore.About.Differences.Edition" = "The reference values come from the 2025 edition instead of the 2015 edition used in the research.";
-"DietQualityScore.About.Differences.Unknown" = "In the research, every food has values for all nutrients. BiteLog does not count foods with unknown values as zero. It uses only the foods with known values to find the amount per calorie. This assumes the other foods had nutrients in similar proportions, so the score is an estimate when such foods exist. When a meal mixes foods with known and unknown values, the calories of the known foods are estimated from their share of the number of foods.";
-"DietQualityScore.About.Care.Title" = "Please note";
-"DietQualityScore.About.Sources.Title" = "Sources";
 
 /* 統計で栄養素を押すと開く説明 */
 "What it does" = "What it does";

@@ -242,11 +242,9 @@ struct FoodMasterDetailView: View {
   }
 
   private func card(
-    _ nutrient: any NutrientDisplaying, name: String? = nil, @ViewBuilder value: @escaping () -> some View
+    _ nutrient: any NutrientDisplaying, @ViewBuilder value: @escaping () -> some View
   ) -> some View {
-    NutrientCardRow(
-      nutrient: nutrient, name: name, background: Color(UIColor.secondarySystemGroupedBackground), value: value
-    )
+    NutrientCardRow(nutrient: nutrient, background: Color(UIColor.secondarySystemGroupedBackground), value: value)
     .listRowAsCard()
   }
 
@@ -276,17 +274,14 @@ struct FoodMasterDetailView: View {
           card(Nutrient.calories) { valueText(foodMaster.calories, Nutrient.calories) }
           card(Nutrient.protein) { valueText(foodMaster.protein, Nutrient.protein) }
           card(Nutrient.fat) { valueText(foodMaster.fat, Nutrient.fat) }
-          // 入力と同じく、ラベルの並びの炭水化物、うち食物繊維、糖質の順に出す
-          card(Nutrient.carbs, name: NSLocalizedString("Carbohydrates", comment: "Carbohydrates")) {
+          // 入力と同じく、ラベルの並びの炭水化物、食物繊維、糖質の順に出す
+          card(Nutrient.carbs) {
             Text("\(CarbohydrateInput.carbohydrateText(netCarbs: foodMaster.netCarbs, dietaryFiber: foodMaster.dietaryFiber))g")
               .monospacedDigit()
               .fontWeight(.medium)
           }
-          card(
-            Nutrient.fiber,
-            name: NSLocalizedString("Of which dietary fiber", comment: "Dietary fiber as part of carbohydrates")
-          ) { valueText(foodMaster.dietaryFiber, Nutrient.fiber) }
-          card(Nutrient.netCarbs, name: NSLocalizedString("Sugar", comment: "Sugar")) {
+          card(Nutrient.fiber) { valueText(foodMaster.dietaryFiber, Nutrient.fiber) }
+          card(Nutrient.netCarbs) {
             valueText(foodMaster.netCarbs, Nutrient.netCarbs)
           }
           ForEach(NutrientID.labelNutrients, id: \.self) { id in
@@ -470,18 +465,11 @@ struct FoodMasterFormView: View {
           numberCard(Nutrient.protein, text: $protein, field: .protein)
           numberCard(Nutrient.fat, text: $fat, field: .fat)
           // ラベルと同じ並びで、炭水化物とその内訳の食物繊維を入れる。糖質は引き算で出す
-          numberCard(
-            Nutrient.carbs, name: NSLocalizedString("Carbohydrates", comment: "Carbohydrates"),
-            text: $carbohydrate, field: .carbohydrate)
-          numberCard(
-            Nutrient.fiber,
-            name: NSLocalizedString("Of which dietary fiber", comment: "Dietary fiber as part of carbohydrates"),
-            text: $dietaryFiber, field: .dietaryFiber)
+          numberCard(Nutrient.carbs, text: $carbohydrate, field: .carbohydrate)
+          numberCard(Nutrient.fiber, text: $dietaryFiber, field: .dietaryFiber)
           // 計算で出るだけの値なので枠を付けない。入力の欄と見分けられるようにする
           NutrientCardRow(
-            nutrient: Nutrient.netCarbs,
-            name: NSLocalizedString("Sugar (Carbohydrates − Fiber)", comment: "Net carbs computed from the inputs"),
-            background: Self.cardBackground
+            nutrient: Nutrient.netCarbs, background: Self.cardBackground
           ) {
             HStack(spacing: 6) {
               Text(carbohydrateInput.isValid ? NutritionFormatter.formatNutrition(carbohydrateInput.netCarbs) : "—")
@@ -592,12 +580,12 @@ struct FoodMasterFormView: View {
 
   /// 栄養素1つのカードに、数を打つ枠を置く。カードのどこを押しても枠に打てるようにする
   private func numberCard(
-    _ nutrient: any NutrientDisplaying, name: String? = nil, text: Binding<String>,
+    _ nutrient: any NutrientDisplaying, text: Binding<String>,
     placeholder: String = NSLocalizedString("0", comment: "0"), field: FocusedField
   ) -> some View {
-    NutrientCardRow(nutrient: nutrient, name: name, background: Self.cardBackground) {
+    NutrientCardRow(nutrient: nutrient, background: Self.cardBackground) {
       NumberInputField(
-        title: name ?? nutrient.localizedName, text: text, placeholder: placeholder, unit: nutrient.unit,
+        title: nutrient.localizedName, text: text, placeholder: placeholder, unit: nutrient.unit,
         focus: $focusedField, field: field)
     }
     .contentShape(Rectangle())

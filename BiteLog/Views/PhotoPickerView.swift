@@ -303,11 +303,11 @@ struct AIAnalysisResultView: View {
               EditableField(icon: "circle.fill", label: NSLocalizedString("Protein", comment: "Label"), text: $protein, unit: "g", keyboardType: .decimalPad, color: .blue)
               EditableField(icon: "circle.fill", label: NSLocalizedString("Fat", comment: "Label"), text: $fat, unit: "g", keyboardType: .decimalPad, color: .yellow)
               // ラベルと同じ並びで、炭水化物とその内訳の食物繊維を直せるようにする。糖質は引き算で出す
-              EditableField(icon: "circle.fill", label: NSLocalizedString("Carbohydrates", comment: "Label"), text: $carbohydrate, unit: "g", keyboardType: .decimalPad, color: .purple)
-              EditableField(icon: "circle.fill", label: NSLocalizedString("Of which dietary fiber", comment: "Dietary fiber as part of carbohydrates"), text: $dietaryFiber, unit: "g", keyboardType: .decimalPad, color: .brown)
+              EditableField(icon: "circle.fill", label: Nutrient.carbs.localizedName, text: $carbohydrate, unit: "g", keyboardType: .decimalPad, color: .purple)
+              EditableField(icon: "circle.fill", label: Nutrient.fiber.localizedName, text: $dietaryFiber, unit: "g", keyboardType: .decimalPad, color: .brown)
               ResultRow(
                 icon: "circle.fill",
-                label: NSLocalizedString("Sugar (Carbohydrates − Fiber)", comment: "Net carbs computed from the inputs"),
+                label: Nutrient.netCarbs.localizedName,
                 value: carbohydrateInput.isValid ? "\(NutritionFormatter.formatNutrition(carbohydrateInput.netCarbs))g" : "—",
                 color: .green)
               if !carbohydrateInput.isValid {
