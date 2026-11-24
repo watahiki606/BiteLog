@@ -72,14 +72,11 @@ Dependencies/
 
 # fastlane
 #
-# It is recommended to not store the screenshots in the git repo.
-# Instead, use fastlane to re-generate the screenshots whenever they are needed.
-# For more information about the recommended setup visit:
-# https://docs.fastlane.tools/best-practices/source-control/#source-control
+# App Store の画面写真 fastlane/screenshots はリポジトリに置く。CI の screenshots_upload がここから上げる。
+# 撮影は手元で見本のデータを使って行い、その仕組みはリポジトリに置いていないので、作り直せる前提で除外しない。
 
 fastlane/report.xml
 fastlane/Preview.html
-fastlane/screenshots/**/*.png
 fastlane/test_output
 
 # Code Injection

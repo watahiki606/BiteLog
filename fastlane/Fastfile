@@ -127,6 +127,51 @@ platform :ios do
     )
   end
 
+  desc "App Store Connect にある画面写真を、版、言語、画面サイズごとに数える"
+  desc ""
+  desc "何も書き換えない。上げ直す前に、今の枚数と大きさを確かめるためのもの。"
+  lane :screenshots_list do
+    Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.from(hash: asc_api_key)
+    app = Spaceship::ConnectAPI::App.find("com.watahiki.BiteLog")
+    UI.user_error!("App Store Connect に BiteLog が見つかりません") unless app
+
+    platform = Spaceship::ConnectAPI::Platform::IOS
+    versions = [app.get_live_app_store_version(platform: platform), app.get_edit_app_store_version(platform: platform)]
+    versions.compact.each do |version|
+      UI.important("#{version.version_string} #{version.app_store_state}")
+      version.get_app_store_version_localizations.each do |localization|
+        localization.get_app_screenshot_sets.each do |set|
+          shots = (set.app_screenshots || []).map do |shot|
+            size = shot.image_asset ? "#{shot.image_asset['width']}x#{shot.image_asset['height']}" : "?"
+            "#{shot.file_name} #{size}"
+          end
+          UI.message("  #{localization.locale} #{set.screenshot_display_type} #{shots.size}枚: #{shots.join(', ')}")
+        end
+      end
+    end
+  end
+
+  desc "fastlane/screenshots の画面写真を、編集中の版に上げ直す"
+  desc ""
+  desc "言語ごとに今の画面写真を消してから上げる。ビルドとメタデータは送らず、審査にも出さない。"
+  desc "申請の release は画面写真に触らないので、ここで上げたものがそのまま引き継がれる。"
+  lane :screenshots_upload do
+    upload_to_app_store(
+      api_key: asc_api_key,
+      app_identifier: "com.watahiki.BiteLog",
+      app_version: app_version,
+      skip_binary_upload: true,
+      skip_metadata: true,
+      skip_screenshots: false,
+      overwrite_screenshots: true,
+      submit_for_review: false,
+      # CI では確認用の HTML プレビューを開けない。
+      force: true,
+      # 画面写真だけなので、審査の規則の確認は申請のときに任せる。
+      run_precheck_before_submit: false
+    )
+  end
+
   desc "App Store Connect の内容が審査の規則に反していないか調べる"
   desc ""
   desc "何も書き換えない。申請で落ちる要因を先に潰すためのもの。"
@@ -183,8 +228,8 @@ platform :ios do
 
       # ビルドは TestFlight に上がっているものを使う。
       skip_binary_upload: true,
-      # スクリーンショットは App Store Connect にあるものを引き継ぐ。
-      # リポジトリで管理していないので、消さないよう触らない。
+      # 画面写真は screenshots_upload で上げたものを引き継ぐ。申請のたびに上げ直すと、
+      # 審査に出す前に画面写真だけ直したいときにも、毎回撮り直しが要るため。
       skip_screenshots: true,
       # metadata は release_notes だけ置いてある。
       # ファイルの無い項目は App Store Connect の内容がそのまま残る。

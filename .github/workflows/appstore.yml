@@ -13,6 +13,8 @@ on:
           - check   # 審査規則に反していないか調べるだけ。何も書き換えない
           - draft   # App Store Connect に下書きを作る。審査には出さない
           - submit  # 下書きを作り、審査に提出する
+          - screenshots_list    # App Store Connect の画面写真を数えるだけ。何も書き換えない
+          - screenshots_upload  # fastlane/screenshots の画面写真を、編集中の版に上げ直す。審査には出さない
       auto_release:
         description: "審査通過後に自動で公開する（submit のときだけ効く）"
         type: boolean
@@ -61,6 +63,12 @@ jobs:
             submit)
               bundle exec fastlane release \
                 submit:true auto_release:"$AUTO_RELEASE" $args
+              ;;
+            screenshots_list)
+              bundle exec fastlane screenshots_list
+              ;;
+            screenshots_upload)
+              bundle exec fastlane screenshots_upload
               ;;
             *)
               echo "不明な mode: $MODE" >&2
