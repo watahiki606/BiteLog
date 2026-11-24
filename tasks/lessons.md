@@ -67,6 +67,14 @@
     書き出したファイルごと消える
   - 広告のトラッキング許可ダイアログは
     `xcrun simctl privacy <id> deny user-tracking <bundle-id>` で出なくなる
+    （Xcode 26 の simctl には user-tracking が無い。UIテストで springboard のアラートを押して閉じる）
+  - サインインは、テストから Keychain に書く代わりに、`AuthManager.init` で起動時の環境変数を見て
+    `isSignedIn` を立てる一時変更でも足りる。モックは署名を見ないのでトークンは要らない
+  - UIテストから PNG を Mac のパスへ直接は書けない。`XCTAttachment` に入れ、
+    `xcrun xcresulttool export attachments` で結果バンドルから取り出す
+  - iOS 26 のタブバーはスクロールで畳まれ、`app.tabBars.buttons[...]` が見つからなくなる。
+    タブを移る前にアプリを起動し直す
+  - モックの値はアプリの enum の rawValue に合わせる。食事の種類は `Breakfast` のように大文字で始まる
 - **成果**: この確認でしか出ない問題が3件見つかった。ツールバーの Picker が
   幅いっぱいに伸びる、選択肢1つのセグメントが出る、`.confirmationAction` に
   置いたボタンが「完了」に見える、のいずれも部品単体の描画では分からなかった。

@@ -433,7 +433,6 @@
 /* Nutrients added after the first five: salt equivalent and saturated fat */
 "Other Nutrients" = "Other Nutrients";
 "Other Nutrients per Day" = "Other Nutrients per Day";
-"Leave blank if the label doesn't show it. Enter 0 only when it is really 0." = "Leave blank if the label doesn't show it. Enter 0 only when it is really 0.";
 "Salt and Saturated Fat" = "Salt and Saturated Fat";
 "Add your sex and birth date in Profile to compare with the dietary goals." = "Add your sex and birth date in Profile to compare with the dietary goals.";
 
@@ -445,27 +444,26 @@
 /* 栄養素のリングのカード。基準値に対する割合と、ミネラルとビタミンの見出し */
 "%d%% of the recommended amount" = "%d%% of recommended";
 "%d%% of the adequate intake" = "%d%% of the adequate intake";
-"%@ if menstruating" = "%@ if menstruating";
 "Over by %@" = "Over by %@";
 "Reached" = "Reached";
 "Minerals" = "Minerals";
 "Vitamins" = "Vitamins";
 "Fatty acids" = "Fatty acids";
 
-/* 食品の入力で、成分表から選んで値を欄に入れる */
+/* 食品の入力で、似た食品の値を欄に入れる */
 "Enter the product name to see candidates." = "Enter the product name to see candidates.";
-"No match in the food composition table." = "No match in the food composition table.";
-"Pick from the Composition Table" = "Pick from the Composition Table";
-"Search the table" = "Search the table";
-"Edible weight" = "Edible weight";
+"Fill from a Similar Food" = "Fill from a Similar Food";
+"Search foods" = "Search foods";
+"No matching food." = "No matching food.";
+"Weight per portion" = "Weight per portion";
+"e.g. piece, g" = "e.g. piece, g";
 "Fills the nutrient fields with its values" = "Fills the nutrient fields with its values";
 "Filled with %@, %@ g. You can edit the values." = "Filled with %1$@, %2$@ g. You can edit the values.";
-"Fills empty fields with the values for this weight. The weight is the edible part in one portion." = "Fills empty fields with the values for this weight. The weight is the edible part in one portion.";
 "Ingredients behind the values" = "Ingredients behind the values";
 "Data Sources" = "Data Sources";
 
 /* データの出典 */
-"DataSources.Composition" = "Created and processed by BiteLog from the Standard Tables of Food Composition in Japan 2020 (Eighth Revised Edition), 2023 supplement, Ministry of Education, Culture, Sports, Science and Technology, including the errata of March 27, 2026. When you pick a table food and its weight while entering a food, its values go into the nutrient fields. Photo analysis also splits a meal into table foods to calculate its values. Niacin is shown as niacin equivalents, and vitamin E as α-tocopherol.";
+"DataSources.Composition" = "Created and processed by BiteLog from the Standard Tables of Food Composition in Japan 2020 (Eighth Revised Edition), 2023 supplement, Ministry of Education, Culture, Sports, Science and Technology, including the errata of March 27, 2026. When you pick a food and its weight under “Fill from a Similar Food” while entering a food, its table values go into the nutrient fields. Photo analysis also splits a meal into table foods to calculate its values. Niacin is shown as niacin equivalents, and vitamin E as α-tocopherol.";
 "DataSources.DRI" = "Reference values come from the Dietary Reference Intakes for Japanese (2025), Ministry of Health, Labour and Welfare, chosen by the sex and age in your profile. They apply to habitual intake, so they are compared with the daily average over the selected period.";
 "Ministry of Education: Standard Tables of Food Composition" = "Standard Tables of Food Composition in Japan";
 "Ministry of Health: Dietary Reference Intakes for Japanese 2025" = "Dietary Reference Intakes for Japanese (2025)";

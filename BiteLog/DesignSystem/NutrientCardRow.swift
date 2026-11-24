@@ -2,12 +2,15 @@ import SwiftUI
 
 /// 栄養素1つを、印の丸と名前を左に、値を右に置いた1行のカードで見せる。
 ///
-/// 記録の編集と食品の詳細で同じ形にする。印の丸は1日の合計と統計のリングのカードと同じもので、
+/// 記録の編集と食品の詳細と食品の入力で同じ形にする。印の丸は1日の合計と統計のリングのカードと同じもので、
 /// 画面が変わっても同じ栄養素を同じ印で見つけられる。
 struct NutrientCardRow<Value: View>: View {
   let nutrient: any NutrientDisplaying
   /// 栄養素の名前と違う呼び方をしたいとき。食品の詳細の「うち食物繊維」
   var name: String? = nil
+  /// カードの地。フォームの行の上に重ねるときは一段明るい地にする。
+  /// 行の地を消して画面の地に直接並べるときは、1日の合計や統計のカードと同じ地にする
+  var background: Color = Color(UIColor.tertiarySystemGroupedBackground)
   @ViewBuilder let value: () -> Value
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -31,10 +34,7 @@ struct NutrientCardRow<Value: View>: View {
     .font(.subheadline)
     .padding(12)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .background(
-      Color(UIColor.tertiarySystemGroupedBackground),
-      in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-    )
+    .background(background, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
   }
 
   private var label: some View {
