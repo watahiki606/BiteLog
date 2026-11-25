@@ -232,6 +232,7 @@ struct FoodMasterManagementView: View {
 struct FoodMasterDetailView: View {
   let foodMaster: FoodMasterDTO
   @Environment(\.dismiss) var dismiss
+  @State private var showsDetailNutrients = false
 
   /// 値が分からなければ「不明」
   private func valueText(_ value: Double?, _ nutrient: some NutrientDisplaying) -> some View {
@@ -288,12 +289,16 @@ struct FoodMasterDetailView: View {
             card(id) { valueText(foodMaster.nutrients[id], id) }
           }
           // 詳しい栄養素は食品表示に載ることがまれで、数も多いので畳んでおく
-          DisclosureGroup(NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients rarely on food labels")) {
+          DisclosureHeading(
+            NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients rarely on food labels"),
+            isExpanded: $showsDetailNutrients
+          )
+          .listRowAsCard()
+          if showsDetailNutrients {
             ForEach(NutrientID.detailNutrients, id: \.self) { id in
               card(id) { valueText(foodMaster.nutrients[id], id) }
             }
           }
-          .listRowAsCard()
         } header: {
           Text(
             String(
@@ -503,13 +508,14 @@ struct FoodMasterFormView: View {
 
         Section {
           ForEach(NutrientID.labelNutrients, id: \.self) { addedCard($0) }
-          DisclosureGroup(
+          DisclosureHeading(
             NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients rarely on food labels"),
             isExpanded: $showsDetailFields
-          ) {
+          )
+          .listRowAsCard()
+          if showsDetailFields {
             ForEach(NutrientID.detailNutrients, id: \.self) { addedCard($0) }
           }
-          .listRowAsCard()
         } header: {
           Text(NSLocalizedString("Other Nutrients", comment: "Form section for nutrients added later"))
             .sectionHeaderAlignedToCard()

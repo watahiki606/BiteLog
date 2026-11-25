@@ -13,6 +13,7 @@ struct EditItemView: View {
   @State private var currentOffset = 0
   @State private var hasMoreData = true
   @State private var isSaving = false
+  @State private var showsDetailNutrients = false
   @State private var failure: OperationFailure?
   private let pageSize = 100
 
@@ -79,14 +80,16 @@ struct EditItemView: View {
             ForEach(NutrientID.labelNutrients, id: \.self) { id in
               EditNutrientRow(addedNutrient: id, total: totalNutrition.amounts[id])
             }
-            DisclosureGroup(
-              NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients rarely on food labels")
-            ) {
+            DisclosureHeading(
+              NSLocalizedString("Detailed Nutrients", comment: "Disclosure of nutrients rarely on food labels"),
+              isExpanded: $showsDetailNutrients
+            )
+            .listRowAsCard()
+            if showsDetailNutrients {
               ForEach(NutrientID.detailNutrients, id: \.self) { id in
                 EditNutrientRow(addedNutrient: id, total: totalNutrition.amounts[id])
               }
             }
-            .listRowAsCard()
           } header: {
             // 何の値かを一覧の前に言う。脚注に書くと、最後まで読まないと何を見ているか分からない
             Text(

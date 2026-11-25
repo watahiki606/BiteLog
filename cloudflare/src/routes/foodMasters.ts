@@ -156,8 +156,8 @@ const foodMasters = new Hono<{ Bindings: Bindings; Variables: Variables }>()
     ).run();
 
     const row = await c.env.DB.prepare(
-      `SELECT * FROM food_masters WHERE id = ?`
-    ).bind(c.req.param('id')).first<FoodMasterRow>();
+      `SELECT ${FM_SELECT} ${FM_JOIN} WHERE fm.id = ?`
+    ).bind(userId, c.req.param('id')).first<FoodMasterRow>();
 
     if (!row) return c.json({ error: 'Not found' }, 404);
     return c.json(foodMasterToResponse(row));
