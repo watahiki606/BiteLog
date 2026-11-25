@@ -109,6 +109,29 @@ describe('食品の新しい栄養素', () => {
 });
 
 describe('食品の更新', () => {
+  it('直した食品を、1件の取得と同じ形で使った回数と前回の量まで返す', async () => {
+    // アプリは応答を食品として読む。使った回数と前回の量が欠けると読めずに保存の失敗として出る
+    await create(A);
+    await env.DB.prepare(
+      `INSERT INTO user_food_stats (user_id, food_master_id, usage_count, last_used_date, last_number_of_servings)
+       VALUES ('user-a', ?, 3, '2026-11-20', 2.5)`,
+    ).bind(A).run();
+
+    const res = await call(`/api/food-masters/${A}`, { method: 'PUT', body: { zinc: 0.79 } });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual(await get(A));
+    expect(await get(A)).toMatchObject({ zinc: 0.79, usageCount: 3, lastNumberOfServings: 2.5 });
+  });
+
+  it('使ったことの無い食品を直しても、使った回数と前回の量を返す', async () => {
+    await create(A);
+
+    const res = await call(`/api/food-masters/${A}`, { method: 'PUT', body: { zinc: 0.79 } });
+
+    expect(await res.json()).toMatchObject({ usageCount: 0, lastNumberOfServings: 1 });
+  });
+
   it('送られた新しい栄養素だけを変え、送られなかったものは元のまま残す', async () => {
     await create(A, { saltEquivalent: 2.5, saturatedFat: 8 });
 
