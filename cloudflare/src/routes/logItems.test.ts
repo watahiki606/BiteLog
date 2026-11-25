@@ -156,3 +156,69 @@ describe('GET /api/log-items/summary (期間集計)', () => {
     expect(items[0].calories).toBeCloseTo(100, 6);
   });
 });
+
+describe('PUT /api/log-items/:id と前回の量', () => {
+  // 食品を選ぶと前回の量で記録する。選んでから量を直すのがふつうの使い方なので、
+  // 直した量を前回の量にしないと、次も食品の分量で記録されてしまう
+  const FM = 'fm-prev';
+
+  beforeEach(async () => {
+    await env.DB.prepare('DELETE FROM user_food_stats').run();
+    await insertFoodMaster(FM, { calories: 100, portionSize: 100 }).run();
+  });
+
+  async function call(userId: string, path: string, method: string, body?: unknown) {
+    return SELF.fetch(`http://localhost${path}`, {
+      method,
+      headers: { Authorization: `Bearer ${await jwtFor(userId)}`, 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  }
+
+  async function record(userId: string, id: string, servings: number) {
+    const res = await call(userId, '/api/log-items', 'POST', {
+      id, timestamp: '2026-11-24T08:00:00Z', logDate: '2026-11-24', mealType: 'Breakfast',
+      numberOfServings: servings, foodMasterId: FM,
+    });
+    expect(res.status).toBe(201);
+  }
+
+  async function food(userId: string) {
+    return (await call(userId, `/api/food-masters/${FM}`, 'GET')).json<{ usageCount: number; lastNumberOfServings: number }>();
+  }
+
+  it('記録の量を直すと、その食品の前回の量も直した量になる', async () => {
+    await record('user-a', 'log-1', 100);
+
+    const res = await call('user-a', '/api/log-items/log-1', 'PUT', { numberOfServings: 30 });
+
+    expect(res.status).toBe(200);
+    expect(await food('user-a')).toMatchObject({ usageCount: 1, lastNumberOfServings: 30 });
+  });
+
+  it('量を送らない直し方では、前回の量を変えない', async () => {
+    await record('user-a', 'log-1', 40);
+
+    await call('user-a', '/api/log-items/log-1', 'PUT', { mealType: 'Lunch' });
+
+    expect(await food('user-a')).toMatchObject({ lastNumberOfServings: 40 });
+  });
+
+  it('ほかの人の前回の量は変えない', async () => {
+    await record('user-a', 'log-a', 100);
+    await record('user-b', 'log-b', 50);
+
+    await call('user-a', '/api/log-items/log-a', 'PUT', { numberOfServings: 30 });
+
+    expect(await food('user-b')).toMatchObject({ lastNumberOfServings: 50 });
+  });
+
+  it('ほかの人の記録は直せず、前回の量も変わらない', async () => {
+    await record('user-a', 'log-a', 100);
+
+    const res = await call('user-b', '/api/log-items/log-a', 'PUT', { numberOfServings: 30 });
+
+    expect(res.status).toBe(404);
+    expect(await food('user-a')).toMatchObject({ lastNumberOfServings: 100 });
+  });
+});

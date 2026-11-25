@@ -198,6 +198,16 @@ const logItems = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
     if (result.meta.changes === 0) return c.json({ error: 'Not found' }, 404);
 
+    // 食品を選ぶと前回の量で記録し、そのあと量を直すのがふつうの使い方。
+    // 作ったときの量だけを前回の量にすると、直した量が次に効かず、毎回食品の分量で記録される
+    if (body.numberOfServings != null) {
+      await c.env.DB.prepare(
+        `UPDATE user_food_stats SET last_number_of_servings = ?
+         WHERE user_id = ?
+           AND food_master_id = (SELECT food_master_id FROM log_items WHERE id = ? AND user_id = ?)`
+      ).bind(body.numberOfServings, userId, c.req.param('id'), userId).run();
+    }
+
     const row = await c.env.DB.prepare(
       `${JOIN_SELECT} WHERE li.id = ?`
     ).bind(c.req.param('id')).first<LogItemJoinRow>();
