@@ -222,3 +222,66 @@ describe('PUT /api/log-items/:id と前回の量', () => {
     expect(await food('user-a')).toMatchObject({ lastNumberOfServings: 100 });
   });
 });
+
+describe('POST /api/log-items/batch と使った回数・前回の量', () => {
+  // 前日の食事を複製すると、まとめて記録を作る。1件ずつ作ったときと同じく、使った回数と前回の量を数える
+  const FM = 'fm-batch';
+  const OTHER = 'fm-batch-other';
+
+  beforeEach(async () => {
+    await env.DB.prepare('DELETE FROM user_food_stats').run();
+    await insertFoodMaster(FM, { portionSize: 100 }).run();
+    await insertFoodMaster(OTHER, { portionSize: 100 }).run();
+  });
+
+  const item = (id: string, foodMasterId: string, servings: number) => ({
+    id, timestamp: '2026-11-25T08:00:00Z', logDate: '2026-11-25', mealType: 'Breakfast',
+    numberOfServings: servings, foodMasterId,
+  });
+
+  async function batch(userId: string, items: unknown[]) {
+    return SELF.fetch('http://localhost/api/log-items/batch', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${await jwtFor(userId)}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items }),
+    });
+  }
+
+  async function stats(userId: string, foodMasterId: string) {
+    return env.DB.prepare(
+      'SELECT usage_count, last_number_of_servings FROM user_food_stats WHERE user_id = ? AND food_master_id = ?',
+    ).bind(userId, foodMasterId).first<{ usage_count: number; last_number_of_servings: number }>();
+  }
+
+  it('まとめて作った記録も、食品ごとに使った回数を足し、前回の量をその量にする', async () => {
+    await env.DB.prepare(
+      `INSERT INTO user_food_stats (user_id, food_master_id, usage_count, last_used_date, last_number_of_servings)
+       VALUES ('user-a', ?, 2, '2026-11-20', 100)`,
+    ).bind(FM).run();
+
+    const res = await batch('user-a', [item('b-1', FM, 30), item('b-2', OTHER, 45)]);
+
+    expect(await res.json()).toMatchObject({ created: 2 });
+    expect(await stats('user-a', FM)).toEqual({ usage_count: 3, last_number_of_servings: 30 });
+    expect(await stats('user-a', OTHER)).toEqual({ usage_count: 1, last_number_of_servings: 45 });
+  });
+
+  it('既にあって作らなかった記録は数えない', async () => {
+    await batch('user-a', [item('b-1', FM, 30)]);
+
+    const res = await batch('user-a', [item('b-1', FM, 30)]);
+
+    expect(await res.json()).toMatchObject({ created: 0, skipped: 1 });
+    expect(await stats('user-a', FM)).toEqual({ usage_count: 1, last_number_of_servings: 30 });
+  });
+
+  it('食品の無い記録やほかの人の前回の量には触らない', async () => {
+    await batch('user-b', [item('b-other', FM, 70)]);
+
+    await batch('user-a', [item('b-1', FM, 30), { ...item('b-2', FM, 1), foodMasterId: undefined }]);
+
+    expect(await stats('user-b', FM)).toEqual({ usage_count: 1, last_number_of_servings: 70 });
+    expect(await stats('user-a', FM)).toEqual({ usage_count: 1, last_number_of_servings: 30 });
+  });
+});
+

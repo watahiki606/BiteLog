@@ -52,6 +52,18 @@ const JOIN_SELECT = `SELECT li.*, fm.id as fm_id, fm.brand_name, fm.product_name
  LEFT JOIN food_masters fm ON fm.id = li.food_master_id
  LEFT JOIN user_food_stats ufs ON ufs.food_master_id = li.food_master_id AND ufs.user_id = li.user_id`;
 
+/** 記録を1件作ったときの、使った回数と前回の量の更新。検索の並びと、次に選んだときの量に使う */
+function countFoodUse(db: D1Database, userId: string, foodMasterId: string, servings: number): D1PreparedStatement {
+  return db.prepare(
+    `INSERT INTO user_food_stats (user_id, food_master_id, usage_count, last_used_date, last_number_of_servings)
+     VALUES (?, ?, 1, datetime('now'), ?)
+     ON CONFLICT(user_id, food_master_id) DO UPDATE SET
+       usage_count = usage_count + 1,
+       last_used_date = datetime('now'),
+       last_number_of_servings = excluded.last_number_of_servings`
+  ).bind(userId, foodMasterId, servings);
+}
+
 const logItems = new Hono<{ Bindings: Bindings; Variables: Variables }>()
   .use('*', authMiddleware)
   .get('/', async (c) => {
@@ -124,14 +136,7 @@ const logItems = new Hono<{ Bindings: Bindings; Variables: Variables }>()
     ).run();
 
     if (body.foodMasterId) {
-      await c.env.DB.prepare(
-        `INSERT INTO user_food_stats (user_id, food_master_id, usage_count, last_used_date, last_number_of_servings)
-         VALUES (?, ?, 1, datetime('now'), ?)
-         ON CONFLICT(user_id, food_master_id) DO UPDATE SET
-           usage_count = usage_count + 1,
-           last_used_date = datetime('now'),
-           last_number_of_servings = excluded.last_number_of_servings`
-      ).bind(userId, body.foodMasterId, body.numberOfServings).run();
+      await countFoodUse(c.env.DB, userId, body.foodMasterId, body.numberOfServings).run();
     }
 
     const row = await c.env.DB.prepare(
@@ -167,6 +172,13 @@ const logItems = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
     const results = await c.env.DB.batch(statements);
     const created = results.filter(r => r.meta.changes > 0).length;
+
+    // 前日の食事の複製はここを通る。1件ずつ作ったときと同じく、作れた記録だけを数える
+    const uses = body.items
+      .filter((item, i) => item.foodMasterId && results[i].meta.changes > 0)
+      .map(item => countFoodUse(c.env.DB, userId, item.foodMasterId!, item.numberOfServings));
+    if (uses.length > 0) await c.env.DB.batch(uses);
+
     return c.json({ created, skipped: body.items.length - created, errors: 0 });
   })
   .delete('/all', async (c) => {
