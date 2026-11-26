@@ -271,6 +271,19 @@ struct LogItemUpdateDTO: Codable {
   var timestamp: String?
 }
 
+extension LogItemUpdateDTO {
+  /// 変わった項目だけを入れる。
+  ///
+  /// 量を送るとサーバーはその食品の「前回の量」をこの記録の量で上書きする。
+  /// 古い記録の食事だけを移したときに前回の量が変わらないよう、変わっていない量は送らない。
+  init(changesFrom item: LogItemDTO, numberOfServings: Double, mealType: MealType) {
+    self.init(
+      numberOfServings: numberOfServings == item.numberOfServings ? nil : numberOfServings,
+      mealType: mealType == item.mealType ? nil : mealType.rawValue,
+      timestamp: nil)
+  }
+}
+
 struct LogItemListResponse: Codable {
   var items: [LogItemDTO]
   var hasMore: Bool?

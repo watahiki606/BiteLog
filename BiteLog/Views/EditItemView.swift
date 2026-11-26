@@ -7,6 +7,7 @@ struct EditItemView: View {
   var onSaved: ((LogItemDTO) -> Void)?
 
   @State private var numberOfServings: String
+  @State private var mealType: MealType
   @State private var foodMaster: FoodMasterDTO?
   @State private var showingFoodSearch = false
   @State private var searchResults: [FoodMasterDTO] = []
@@ -42,6 +43,7 @@ struct EditItemView: View {
   init(item: LogItemDTO, onSaved: ((LogItemDTO) -> Void)? = nil) {
     _item = State(initialValue: item)
     _numberOfServings = State(initialValue: NutritionFormatter.formatNutrition(item.numberOfServings))
+    _mealType = State(initialValue: item.mealType)
     _foodMaster = State(initialValue: item.foodMaster)
     self.onSaved = onSaved
   }
@@ -50,9 +52,16 @@ struct EditItemView: View {
     NavigationStack {
       Form {
         Section {
+          MealTypeSelector(selection: $mealType)
+            // 追加画面と同じく行の地は敷かない。選んだ食事の影が行の外で切れないよう、下だけ余白を広く取る
+            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 14, trailing: 0))
+            .listRowBackground(Color.clear)
+        }
+
+        Section {
           foodRow
 
-          // この画面で直せるのは食べた量だけ。その欄にだけ枠を付け、ほかは表示だけと分かるようにする
+          // 直せるのは食事と食べた量だけ。量の欄にだけ枠を付け、食品は表示だけと分かるようにする
           LabeledContent(NSLocalizedString("Servings", comment: "Servings label")) {
             NumberInputField(
               title: NSLocalizedString("Servings", comment: "Servings label"), text: $numberOfServings,
@@ -155,18 +164,14 @@ struct EditItemView: View {
   }
 
   private func saveLogItem() {
-    let dto = LogItemUpdateDTO(
-      numberOfServings: servingsValue,
-      mealType: nil,
-      timestamp: nil
-    )
+    let dto = LogItemUpdateDTO(changesFrom: item, numberOfServings: servingsValue, mealType: mealType)
     Task {
       isSaving = true
       defer { isSaving = false }
       do {
         let updated = try await APIClient.shared.updateLogItem(id: item.id, dto)
-        onSaved?(updated)
         dismiss()
+        onSaved?(updated)
       } catch {
         // 失敗しても閉じると、保存できていないのに保存したつもりになる。
         // 入力を残したまま伝え、もう一度試せるようにする。
