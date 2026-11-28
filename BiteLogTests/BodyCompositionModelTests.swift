@@ -510,6 +510,217 @@ struct BodyCompositionModelTests {
     #expect(model.reference(for: model.newResult!) == morning)
   }
 
+  // MARK: - 測定のシート
+
+  @Test func 測るを押したらシートが開く() async {
+    let scale = FakeScale()
+    let model = Self.model(scale: scale, store: FakeStore(), paired: true)
+    await Self.appear(model)
+    #expect(!model.isMeasurementSheetPresented)
+
+    model.measureByHand()
+
+    #expect(model.isMeasurementSheetPresented)
+    #expect(model.stage == .searching)
+  }
+
+  @Test func 過去の日では測るを押してもシートは開かない() async {
+    let scale = FakeScale()
+    let model = Self.model(scale: scale, store: FakeStore(), paired: true)
+    await Self.appear(model, date: Self.now.addingTimeInterval(-86400))
+
+    model.measureByHand()
+
+    #expect(!model.isMeasurementSheetPresented)
+  }
+
+  @Test func 段階の画面でやめたら接続が止まりシートが閉じる() async {
+    let scale = FakeScale()
+    let model = Self.model(scale: scale, store: FakeStore(), paired: true)
+    await Self.appear(model)
+    model.measureByHand()
+    scale.subject.send(.waitingForStep)
+
+    model.stop()
+
+    #expect(scale.stopCount == 1)
+    #expect(!model.isMeasurementSheetPresented)
+    #expect(model.activity == .idle)
+  }
+
+  @Test func シートを閉じても接続は止まらない() async {
+    let scale = FakeScale()
+    let model = Self.model(scale: scale, store: FakeStore(), paired: true)
+    await Self.appear(model)
+    model.measureByHand()
+    scale.subject.send(.waitingForStep)
+
+    model.dismissMeasurementSheet()
+
+    #expect(!model.isMeasurementSheetPresented)
+    #expect(scale.stopCount == 0)
+    // 進み具合はカードの下段に残る
+    #expect(model.activity == .waitingForStep)
+  }
+
+  @Test func 測っている途中でもう一度押したらシートを開き直すだけ() async {
+    let scale = FakeScale()
+    let model = Self.model(scale: scale, store: FakeStore(), paired: true)
+    await Self.appear(model)
+    model.measureByHand()
+    scale.subject.send(.waitingForStep)
+    model.dismissMeasurementSheet()
+
+    model.measureByHand()
+
+    #expect(model.isMeasurementSheetPresented)
+    #expect(scale.startedWith == [.manual])
+    #expect(model.activity == .waitingForStep)
+  }
+
+  @Test func 受け取ったあと保存より先に終わりが来ても受け取り中のまま見せて保存後に結果を開く() async throws {
+    let scale = FakeScale()
+    let store = FakeStore()
+    let model = Self.model(scale: scale, store: store, paired: true)
+    await Self.appear(model)
+    model.measureByHand()
+    scale.subject.send(.waitingForStep)
+    scale.subject.send(.reading)
+
+    scale.onMeasurement?(Self.received(weight: 61.2))
+    // 保存はまだ終わっていない。終わりの合図だけが先に届く
+    scale.subject.send(.finished)
+
+    #expect(model.activity == .reading)
+    #expect(model.stage == .reading)
+    #expect(model.isMeasurementSheetPresented)
+    #expect(model.newResult == nil)
+
+    try await Self.settle { model.newResult != nil }
+
+    #expect(model.newResult?.weightKg == 61.2)
+    #expect(model.isMeasurementSheetPresented)
+    #expect(scale.startedWith == [.manual, .automatic])
+  }
+
+  @Test func 手で始めて失敗したらシートは開いたまま失敗を出しもう一度測れる() async {
+    let scale = FakeScale()
+    let model = Self.model(scale: scale, store: FakeStore(), paired: true)
+    await Self.appear(model)
+    model.measureByHand()
+
+    scale.subject.send(.failed("体組成計が見つかりませんでした"))
+
+    #expect(model.isMeasurementSheetPresented)
+    #expect(model.stage == .failed)
+    #expect(model.manualFailure == "体組成計が見つかりませんでした")
+
+    model.measureByHand()
+
+    #expect(scale.startedWith == [.manual, .manual])
+    #expect(model.stage == .searching)
+    #expect(model.manualFailure == nil)
+  }
+
+  @Test func 失敗の画面を閉じたらシートが閉じる() async {
+    let scale = FakeScale()
+    let model = Self.model(scale: scale, store: FakeStore(), paired: true)
+    await Self.appear(model)
+    model.measureByHand()
+    scale.subject.send(.failed("体組成計が見つかりませんでした"))
+
+    model.dismissMeasurementSheet()
+
+    #expect(!model.isMeasurementSheetPresented)
+  }
+
+  @Test func 閉じたあとで続けて乗ったらまた開いて新しい結果を出す() async throws {
+    let scale = FakeScale()
+    let store = FakeStore()
+    let model = Self.model(scale: scale, store: store, paired: true)
+    await Self.appear(model)
+    model.measureByHand()
+    scale.onMeasurement?(Self.received(weight: 61.2))
+    scale.subject.send(.finished)
+    try await Self.settle { model.newResult != nil }
+
+    model.dismissMeasurementSheet()
+    #expect(!model.isMeasurementSheetPresented)
+    #expect(model.newResult == nil)
+
+    scale.onMeasurement?(Self.received(weight: 54.8, at: Self.now.addingTimeInterval(90)))
+    scale.subject.send(.finished)
+    try await Self.settle { model.newResult?.weightKg == 54.8 }
+
+    #expect(model.isMeasurementSheetPresented)
+  }
+
+  @Test func 引き取り済みの測定だけだったらシートを閉じる() async throws {
+    let scale = FakeScale()
+    let store = FakeStore()
+    store.createError = APIError.conflict(Data())
+    let model = Self.model(scale: scale, store: store, paired: true)
+    await Self.appear(model)
+    model.measureByHand()
+    #expect(model.isMeasurementSheetPresented)
+
+    scale.onMeasurement?(Self.received(weight: 61.2))
+    scale.subject.send(.finished)
+    // 保存の間は受け取り中のまま開いている
+    #expect(model.isMeasurementSheetPresented)
+    try await Self.settle { !model.isMeasurementSheetPresented }
+
+    #expect(model.newResult == nil)
+    #expect(model.activity == .idle)
+  }
+
+  @Test func 別の日へ移ったらシートも閉じる() async {
+    let scale = FakeScale()
+    let model = Self.model(scale: scale, store: FakeStore(), paired: true)
+    await Self.appear(model)
+    model.measureByHand()
+
+    await model.load(date: Self.now.addingTimeInterval(-86400), now: Self.now)
+
+    #expect(!model.isMeasurementSheetPresented)
+  }
+
+  @Test func 結果を開いたまま待ち受けだけやめられる() async throws {
+    let scale = FakeScale()
+    let store = FakeStore()
+    let model = Self.model(scale: scale, store: store, paired: true)
+    await Self.appear(model)
+    model.measureByHand()
+    scale.onMeasurement?(Self.received(weight: 61.2))
+    scale.subject.send(.finished)
+    try await Self.settle { model.newResult != nil }
+
+    model.stop()
+
+    #expect(scale.stopCount == 1)
+    #expect(model.isMeasurementSheetPresented)
+    #expect(model.newResult?.weightKg == 61.2)
+  }
+
+  @Test func 段階の表は三段の進み具合と失敗を分けて持つ() {
+    let steps = MeasurementStage.allCases.compactMap(\.content.stepIndex)
+    #expect(steps == [0, 1, 2])
+    #expect(MeasurementStage.failed.content.stepIndex == nil)
+    let symbols = Set(MeasurementStage.allCases.map(\.content.symbol))
+    #expect(symbols.count == MeasurementStage.allCases.count)
+    #expect(MeasurementStage.stepTitles.count == 3)
+  }
+
+  @Test func 結果を見ているときのカードの1行は乗り直せば切り替わると伝える() {
+    let first = MeasurementStage.waitingForStep.cardLine(waitingForNext: false)
+    let next = MeasurementStage.waitingForStep.cardLine(waitingForNext: true)
+    #expect(first != nil)
+    #expect(next != nil)
+    #expect(first != next)
+    // 失敗の文面はカードが失敗そのものを出すので、1行は持たない
+    #expect(MeasurementStage.failed.cardLine(waitingForNext: false) == nil)
+  }
+
   /// `onMeasurement` は `Task` を作って抜けるので、結果が揃うまで待つ
   private static func settle(
     _ condition: @MainActor () -> Bool, attempts: Int = 100

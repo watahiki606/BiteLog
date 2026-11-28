@@ -510,3 +510,14 @@
 "NutrientInfo.Source.EHealthNet" = "厚生労働省 e-ヘルスネット「%@」";
 "NutrientInfo.Source.HFNet" = "国立健康・栄養研究所「健康食品」の安全性・有効性情報「%@」";
 "Shows what this nutrient does" = "栄養素の説明を開きます";
+
+// 測っている間の段階
+"If it is not found, press the scale's communication button while it is off" = "見つからないときは、電源が切れた状態で体組成計の通信ボタンを押してください";
+"Stay on the scale until it finishes" = "測り終わるまで、乗ったままお待ちください";
+"Measurement complete" = "測り終わりました";
+"Receiving the result. You can step off now" = "結果を受け取っています。降りてもかまいません";
+"Could not measure" = "測れませんでした";
+"Scale step: find" = "探す";
+"Scale step: step on" = "乗る";
+"Scale step: receive" = "受け取る";
+"Step %1$d of %2$d" = "%2$d段階のうち%1$d段階目";

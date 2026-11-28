@@ -42,10 +42,16 @@ final class BodyCompositionModel: ObservableObject {
   @Published private(set) var isToday = false
   /// 手で始めたときだけ出す文面。自動のときは入れない
   @Published private(set) var manualFailure: String?
-  /// 測り終えたばかりの1件。入ると記録の画面がその場で開く。閉じたら `nil` に戻す。
+  /// 測り終えたばかりの1件。入ると測定のシートがその1件を見せる。
   ///
   /// 開いている間も続けて乗るのを待つ。もう一度乗れば、開いたまま新しい1件に切り替わる。
-  @Published var newResult: BodyMeasurementDTO?
+  /// 倒すのは `dismissMeasurementSheet()` だけ。
+  @Published private(set) var newResult: BodyMeasurementDTO?
+  /// 測定のシートを出しているか。測り始めから結果を見終えるまでを1枚で見せる。
+  ///
+  /// 立つのは「測る」を押したときと、結果が入ったとき。倒れるのは
+  /// `dismissMeasurementSheet()` と、見せるものが無くなったとき。
+  @Published private(set) var isMeasurementSheetPresented = false
 
   private let connection: ScaleSession
   private let api: BodyMeasurementStore
@@ -64,6 +70,13 @@ final class BodyCompositionModel: ObservableObject {
   private var lastSavedAt: Date?
   /// 手で始めたかどうか。空振りを伝えるかどうかがここで変わる
   private var startedByHand = false
+  /// 受け取って保存している最中の件数。
+  ///
+  /// 体重計は測り終えてから応答する。終わりの合図は保存より先に届くので、
+  /// 数えておかないと、保存が終わるまでの間が「何もしていない」に見える。
+  private var savesInFlight = 0
+  /// 保存中に終わりの合図が来て、状態を `.reading` のまま保っているか
+  private var finishedWhileSaving = false
   private var day: String?
 
   init(
@@ -82,7 +95,7 @@ final class BodyCompositionModel: ObservableObject {
     self.isPaired = TanitaScaleConnection.isPaired(defaults: defaults)
 
     connection.onMeasurement = { [weak self] measurement in
-      Task { await self?.store(measurement) }
+      MainActor.assumeIsolated { self?.receive(measurement) }
     }
     connection.stateStream
       .sink { [weak self] state in MainActor.assumeIsolated { self?.apply(state) } }
@@ -106,6 +119,12 @@ final class BodyCompositionModel: ObservableObject {
 
   var isRunning: Bool { activity != .idle }
 
+  /// シートの中央に出す段階。測っている間は進み具合、手で始めて失敗したときは失敗
+  var stage: MeasurementStage? {
+    if let stage = MeasurementStage(activity: activity) { return stage }
+    return manualFailure == nil ? nil : .failed
+  }
+
   /// 見ている日が変わったときに呼ぶ。測定を取り直すだけで、探しはしない。
   func load(date: Date, now: Date = Date()) async {
     let day = BodyMeasurementDTO.formatDay(date, timeZone: timeZone)
@@ -117,9 +136,13 @@ final class BodyCompositionModel: ObservableObject {
     await reload(day: day)
   }
 
-  /// カードの「測る」から始める。自動で空振りしたあとでも押せる
+  /// カードの「測る」や追加ボタンの長押しから始める。自動で空振りしたあとでも押せる。
+  ///
+  /// 既に測っている最中なら、始め直さずにシートを開き直すだけ。
   func measureByHand() {
-    guard canMeasure, !isRunning else { return }
+    guard canMeasure else { return }
+    isMeasurementSheetPresented = true
+    guard !isRunning else { return }
     manualFailure = nil
     startedByHand = true
     isMeasuring = true
@@ -130,6 +153,14 @@ final class BodyCompositionModel: ObservableObject {
     isMeasuring = false
     pendingRearm = false
     connection.stop()
+    closeSheetIfNothingToShow()
+  }
+
+  /// シートを閉じる。接続は止めない。続けて乗れば、また開く。
+  /// 進み具合はカードの下段に残る。
+  func dismissMeasurementSheet() {
+    isMeasurementSheetPresented = false
+    newResult = nil
   }
 
   /// 1件を開いたときに比べる相手。前の日の同じ頃に測った回
@@ -169,6 +200,7 @@ final class BodyCompositionModel: ObservableObject {
   }
 
   private func apply(_ state: TanitaScaleConnection.State) {
+    finishedWhileSaving = false
     switch state {
     case .scanning, .connecting, .preparing:
       activity = .searching
@@ -176,6 +208,10 @@ final class BodyCompositionModel: ObservableObject {
       activity = .waitingForStep
     case .reading:
       activity = .reading
+    case .finished where isMeasuring && savesInFlight > 0:
+      // 保存が終わるまでは受け取り中のまま見せる。落とすと、シートが閉じたり段階がちらついたりする
+      activity = .reading
+      finishedWhileSaving = true
     case .idle, .finished:
       activity = .idle
       followUpNewMeasurement()
@@ -189,6 +225,14 @@ final class BodyCompositionModel: ObservableObject {
       // 登録が外れていると分かったら、接続が識別子を消している。測る導線を引っ込める
       isPaired = TanitaScaleConnection.isPaired(defaults: defaults)
     }
+    closeSheetIfNothingToShow()
+  }
+
+  /// 測る途中でなくなり、結果も失敗も無いなら、シートを閉じる。
+  /// 別の日へ移ったときや、受け取ったのが引き取り済みの測定だけだったときに当たる。
+  private func closeSheetIfNothingToShow() {
+    guard isMeasurementSheetPresented, newResult == nil, stage == nil else { return }
+    isMeasurementSheetPresented = false
   }
 
   /// 新しい測定が入ったら、その1件を開き、続けて乗るかもしれないのでもう一度待ちに入る。
@@ -213,6 +257,22 @@ final class BodyCompositionModel: ObservableObject {
       let saved = summary?.recent.last(where: { $0.isMeasured(at: lastSavedAt) })
     else { return }
     newResult = saved
+    isMeasurementSheetPresented = true
+  }
+
+  /// 受け取った測定を保存する。保存が終わるまで、状態を `.reading` に保つ。
+  private func receive(_ measurement: TanitaBodyMeasurement) {
+    savesInFlight += 1
+    Task {
+      await store(measurement)
+      savesInFlight -= 1
+      if savesInFlight == 0, finishedWhileSaving {
+        finishedWhileSaving = false
+        activity = .idle
+      }
+      followUpNewMeasurement()
+      closeSheetIfNothingToShow()
+    }
   }
 
   private func store(_ measurement: TanitaBodyMeasurement) async {
@@ -234,7 +294,6 @@ final class BodyCompositionModel: ObservableObject {
       lastSavedAt = BodyMeasurementDTO.date(fromTimestamp: dto.measuredAt)
       pendingRearm = true
     }
-    followUpNewMeasurement()
   }
 }
 

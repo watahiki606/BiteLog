@@ -169,29 +169,13 @@ struct BodyCompositionActionView: View {
   private var progress: some View {
     HStack(spacing: 10) {
       ProgressView()
-      Text(activityText)
+      Text(MeasurementStage(activity: activity)?.cardLine(waitingForNext: isWaitingForNext) ?? "")
         .font(.subheadline)
         .foregroundStyle(activity == .waitingForStep ? .primary : .secondary)
       Spacer()
       Button(NSLocalizedString("Stop", comment: "Scale import button"), action: onStop)
         .buttonStyle(.borderless)
         .font(.subheadline)
-    }
-  }
-
-  private var activityText: String {
-    switch activity {
-    case .idle:
-      return ""
-    case .searching:
-      return NSLocalizedString("Looking for the scale", comment: "Scale import status")
-    case .waitingForStep:
-      return isWaitingForNext
-        ? NSLocalizedString(
-          "Step on again to see the next result", comment: "Scale import status")
-        : NSLocalizedString("Step on the scale", comment: "Scale import status")
-    case .reading:
-      return NSLocalizedString("Receiving measurements", comment: "Scale import status")
     }
   }
 }
