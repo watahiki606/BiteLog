@@ -36,26 +36,25 @@ struct DayContentView: View {
   }
 
   var body: some View {
-    ScrollViewReader { proxy in
-      Group {
-        // 読み込めず手元に何も無いときだけ画面を差し替える。
-        // 既に出せている内容があるなら残し、失敗はアラートで伝える。
-        if loadFailed && dayLogItems.isEmpty {
-          LoadFailureView { await loadLogItems() }
-        } else {
-          logList
-        }
+    Group {
+      // 読み込めず手元に何も無いときだけ画面を差し替える。
+      // 既に出せている内容があるなら残し、失敗はアラートで伝える。
+      if loadFailed && dayLogItems.isEmpty {
+        LoadFailureView { await loadLogItems() }
+      } else {
+        logList
       }
-      // スクロールしなくても届くよう、追加の入口を画面の左下に固定する。
-      // 食事の種類は時刻から仮に選び、追加画面の上部で切り替えてもらう
-      .overlay(alignment: .bottomLeading) {
-        AddMealButton(
-          onAdd: { onAddTapped(date, MealType.suggested()) },
-          onMeasure: bodyComposition.canMeasure ? { measureByLongPress(scrollingWith: proxy) } : nil
-        )
-        .padding(.leading, 20)
-        .padding(.bottom, 16)
-      }
+    }
+    // スクロールしなくても届くよう、追加の入口を画面の左下に固定する。
+    // 食事の種類は時刻から仮に選び、追加画面の上部で切り替えてもらう
+    .overlay(alignment: .bottomLeading) {
+      AddMealButton(
+        onAdd: { onAddTapped(date, MealType.suggested()) },
+        // 測る様子はシートが見せる。カードの行までスクロールする必要は無い
+        onMeasure: bodyComposition.canMeasure ? { bodyComposition.measureByHand() } : nil
+      )
+      .padding(.leading, 20)
+      .padding(.bottom, 16)
     }
     // 広告はスクロール内容に混ぜず画面下端に固定する。
     // 高さは AdaptiveBannerView が幅に合わせて決めるので、ここで固定しない。
@@ -110,18 +109,18 @@ struct DayContentView: View {
       // 画面を離れたら探すのをやめる。つないだまま残すと Bluetooth を掴み続ける
       bodyComposition.stop()
     }
-    // 測り終えたら結果をその場で開く。
+    // 測り始めたらシートを開き、今の段階から結果までを1枚の中で切り替える。
     //
     // 一覧から開くときのように画面を進めると、この画面の onDisappear が走って
     // 続けて乗るための待ち受けが止まる。シートなら下の画面は残るので、待ち受けを
     // 続けたまま結果を見せられる。閉じればカードに戻り、待ち受けもそこに出ている。
     .sheet(
       isPresented: Binding(
-        get: { bodyComposition.newResult != nil },
-        set: { if !$0 { bodyComposition.newResult = nil } }
+        get: { bodyComposition.isMeasurementSheetPresented },
+        set: { if !$0 { bodyComposition.dismissMeasurementSheet() } }
       )
     ) {
-      newResultSheet
+      measurementSheet
     }
     .onReceive(NotificationCenter.default.publisher(for: .allDataDeleted)) { _ in
       dayLogItems = []
@@ -257,7 +256,6 @@ struct DayContentView: View {
             onStop: { bodyComposition.stop() }
           )
           .cardRow()
-          .id(Self.bodyActionRowID)
         }
       } header: {
         Text(NSLocalizedString("Body Composition", comment: "Body composition section"))
@@ -267,62 +265,64 @@ struct DayContentView: View {
     }
   }
 
-  /// 測り終えたときに開く結果。
+  /// 測定のシート。結果があれば結果、無ければ今の段階か失敗を出す。
   ///
-  /// 開いている間も続けて乗るのを待っているので、そのことを下に出す。
+  /// 結果を開いている間も続けて乗るのを待っているので、そのことを下に出す。
   /// 次に乗れば、開いたまま新しい結果に切り替わる。
   @ViewBuilder
-  private var newResultSheet: some View {
-    if let result = bodyComposition.newResult {
-      NavigationStack {
-        BodyMeasurementDetailView(
-          measurement: result,
-          reference: bodyComposition.reference(for: result),
-          onDelete: { await bodyComposition.delete(result) }
+  private var measurementSheet: some View {
+    Group {
+      if let result = bodyComposition.newResult {
+        resultSheet(result)
+      } else if let stage = bodyComposition.stage {
+        ScaleStageView(
+          stage: stage,
+          failureMessage: bodyComposition.manualFailure,
+          // 段階の画面でやめたら、測るのをやめてシートも閉じる
+          onStop: { bodyComposition.stop() },
+          onRetry: { bodyComposition.measureByHand() },
+          onClose: { bodyComposition.dismissMeasurementSheet() }
         )
-        .toolbar {
-          ToolbarItem(placement: .confirmationAction) {
-            Button(NSLocalizedString("Done", comment: "Done button")) {
-              bodyComposition.newResult = nil
-            }
-          }
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-          if bodyComposition.isRunning {
-            BodyCompositionActionView(
-              hasMeasurementToday: true,
-              activity: bodyComposition.activity,
-              canMeasure: false,
-              failure: nil,
-              isWaitingForNext: true,
-              onMeasure: {},
-              onStop: { bodyComposition.stop() }
-            )
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
-            .background {
-              Rectangle()
-                .fill(.bar)
-                .ignoresSafeArea(edges: .bottom)
-            }
+      }
+    }
+    .keepsScreenAwake(bodyComposition.isRunning)
+  }
+
+  private func resultSheet(_ result: BodyMeasurementDTO) -> some View {
+    NavigationStack {
+      BodyMeasurementDetailView(
+        measurement: result,
+        reference: bodyComposition.reference(for: result),
+        onDelete: { await bodyComposition.delete(result) }
+      )
+      .toolbar {
+        ToolbarItem(placement: .confirmationAction) {
+          Button(NSLocalizedString("Done", comment: "Done button")) {
+            bodyComposition.dismissMeasurementSheet()
           }
         }
       }
-    }
-  }
-
-  /// 体組成カードの下段の行。左下のボタンから測り始めたときにここまで送る
-  private static let bodyActionRowID = "bodyCompositionAction"
-
-  /// 左下のボタンの長押しから測り始める。
-  ///
-  /// 探している間も「乗ってください」も、体組成カードの下段にしか出ない。
-  /// 下へスクロールしたまま始めると、何が起きているか見えないまま待たされる。
-  /// 既に探しているときに長押ししても、カードを見せるだけで始め直しはしない。
-  private func measureByLongPress(scrollingWith proxy: ScrollViewProxy) {
-    bodyComposition.measureByHand()
-    withAnimation {
-      proxy.scrollTo(Self.bodyActionRowID, anchor: .center)
+      .safeAreaInset(edge: .bottom, spacing: 0) {
+        if bodyComposition.isRunning {
+          BodyCompositionActionView(
+            hasMeasurementToday: true,
+            activity: bodyComposition.activity,
+            canMeasure: false,
+            failure: nil,
+            isWaitingForNext: true,
+            onMeasure: {},
+            // 結果は開いたまま、待ち受けだけ止める
+            onStop: { bodyComposition.stop() }
+          )
+          .padding(.horizontal, 20)
+          .padding(.vertical, 14)
+          .background {
+            Rectangle()
+              .fill(.bar)
+              .ignoresSafeArea(edges: .bottom)
+          }
+        }
+      }
     }
   }
 

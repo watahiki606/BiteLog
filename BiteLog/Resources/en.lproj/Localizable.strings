@@ -484,3 +484,14 @@
 "NutrientInfo.Source.EHealthNet" = "MHLW e-Health Net: %@";
 "NutrientInfo.Source.HFNet" = "NIHN Safety and Effectiveness Information on Health Foods: %@";
 "Shows what this nutrient does" = "Shows what this nutrient does";
+
+// 測っている間の段階
+"If it is not found, press the scale's communication button while it is off" = "If it is not found, press the scale's communication button while it is off.";
+"Stay on the scale until it finishes" = "Stay on the scale until it finishes.";
+"Measurement complete" = "Measurement complete";
+"Receiving the result. You can step off now" = "Receiving the result. You can step off now.";
+"Could not measure" = "Could not measure";
+"Scale step: find" = "Find";
+"Scale step: step on" = "Step on";
+"Scale step: receive" = "Receive";
+"Step %1$d of %2$d" = "Step %1$d of %2$d";

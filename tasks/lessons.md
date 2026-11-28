@@ -469,3 +469,8 @@ lessons に既に書いてあるのに、また忘れてクローン側に書き
   `app.cells.containing(.staticText, identifier: "亜鉛").textFields.firstMatch` で探す。
   入れたら「完了」でキーボードを閉じる。閉じないと下の欄が隠れて押せない
 - **教訓**: 画面が開かないとき、自分の変更を疑う前に main の画面で同じテストを流して切り分ける
+
+## ImageRenderer は ScrollView と GeometryReader も真っ白にする
+
+- **症状**: `GeometryReader` の中の `ScrollView` に包んだ画面を描画ギャラリーに入れると、PNG が全面真っ白（ダークは真っ黒）になる。
+- **回避**: スクロールと読み上げの付いた外側と、中身のビューを分ける。ギャラリーは中身を直接描く。

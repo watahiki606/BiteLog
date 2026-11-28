@@ -61,6 +61,12 @@ struct DesignSystemGalleryTests {
       try render(
         BodyDetailGalleryView(withReference: false), to: base, name: "body-detail-partial-\(name)",
         scheme: scheme, typeSize: typeSize)
+      // 測っている間の段階は、段階ごとに別の絵にする。ProgressView を使わないので描ける
+      for stage in MeasurementStage.allCases {
+        try render(
+          ScaleStageGalleryView(stage: stage), to: base, name: "stage-\(stage)-\(name)",
+          scheme: scheme, typeSize: typeSize)
+      }
     }
   }
 
@@ -318,6 +324,22 @@ private struct BodyGalleryView: View {
         .foregroundStyle(.secondary)
       content()
     }
+  }
+}
+
+/// 測っている間の段階の画面。シートの中身を、シートと同じ背景と高さで描く。
+/// ScrollView は描けないので、スクロールを除いた中身を描く。
+private struct ScaleStageGalleryView: View {
+  let stage: MeasurementStage
+
+  var body: some View {
+    ScaleStageContent(
+      stage: stage,
+      failureMessage: "体組成計が見つかりませんでした。電源が入っていない状態で通信ボタンを押してから、もう一度試してください",
+      onStop: {}, onRetry: {}, onClose: {}
+    )
+    .frame(minHeight: 700)
+    .background(Color(UIColor.systemBackground))
   }
 }
 
